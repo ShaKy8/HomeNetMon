@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}HomeNetMon{% endblock %}</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <!-- D3.js for network graph -->
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    
+    <!-- Custom CSS -->
+    <link href="{{ url_for('static', filename='css/app.css') }}" rel="stylesheet">
+    
+    <style>
+        .status-up { color: #28a745; }
+        .status-down { color: #dc3545; }
+        .status-warning { color: #ffc107; }
+        .status-unknown { color: #6c757d; }
+        
+        .device-card {
+            transition: transform 0.2s;
+            cursor: pointer;
+        }
+        
+        .device-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .status-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .status-indicator.up { background-color: #28a745; }
+        .status-indicator.down { background-color: #dc3545; }
+        .status-indicator.warning { background-color: #ffc107; }
+        .status-indicator.unknown { background-color: #6c757d; }
+        
+        .sidebar {
+            min-height: calc(100vh - 56px);
+            background-color: #f8f9fa;
+        }
+        
+        .main-content {
+            padding: 20px;
+        }
+        
+        .stats-card {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+        }
+        
+        .alert-badge {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+        }
+    </style>
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <i class="bi bi-router"></i> HomeNetMon
+            </a>
+            
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            
+            <div class="collapse navbar-collapse" id="navbarNav">
+                <ul class="navbar-nav me-auto">
+                    <li class="nav-item">
+                        <a class="nav-link{% if request.endpoint == 'dashboard' %} active{% endif %}" href="{{ url_for('dashboard') }}">
+                            <i class="bi bi-speedometer2"></i> Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{% if request.endpoint == 'alerts' %} active{% endif %}" href="{{ url_for('alerts') }}">
+                            <i class="bi bi-exclamation-triangle"></i> Alerts
+                            <span id="alert-count-badge" class="badge bg-danger ms-1" style="display: none;">0</span>
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{% if request.endpoint == 'topology' %} active{% endif %}" href="{{ url_for('topology') }}">
+                            <i class="bi bi-diagram-3"></i> Network Topology
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{% if request.endpoint == 'settings' %} active{% endif %}" href="{{ url_for('settings') }}">
+                            <i class="bi bi-gear"></i> Settings
+                        </a>
+                    </li>
+                </ul>
+                
+                <ul class="navbar-nav">
+                    <li class="nav-item">
+                        <span class="navbar-text">
+                            <span id="connection-status" class="badge bg-success">
+                                <i class="bi bi-wifi"></i> Connected
+                            </span>
+                        </span>
+                    </li>
+                </ul>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <div class="container-fluid">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-md-2 sidebar p-3">
+                <div class="d-flex flex-column">
+                    <h6 class="text-muted mb-3">QUICK STATS</h6>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Total Devices</small>
+                        <div class="h5 mb-0" id="total-devices">-</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Devices Up</small>
+                        <div class="h5 mb-0 text-success" id="devices-up">-</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Devices Down</small>
+                        <div class="h5 mb-0 text-danger" id="devices-down">-</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Active Alerts</small>
+                        <div class="h5 mb-0 text-warning" id="active-alerts">-</div>
+                    </div>
+                    
+                    <hr>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Last Update</small>
+                        <div class="small" id="last-update">-</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <small class="text-muted">Network Range</small>
+                        <div class="small" id="network-range">{{ config.NETWORK_RANGE if config else '192.168.86.0/24' }}</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Main Content Area -->
+            <div class="col-md-10 main-content">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container for Notifications -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3">
+        <!-- Toast notifications will be added here dynamically -->
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- Base JavaScript -->
+    <script>
+        // Global variables
+        let socket;
+        let devices = [];
+        let alerts = [];
+        
+        // Initialize Socket.IO connection
+        function initializeSocket() {
+            socket = io();
+            
+            socket.on('connect', function() {
+                console.log('Connected to HomeNetMon server');
+                updateConnectionStatus(true);
+            });
+            
+            socket.on('disconnect', function() {
+                console.log('Disconnected from HomeNetMon server');
+                updateConnectionStatus(false);
+            });
+            
+            socket.on('device_status_update', function(data) {
+                console.log('Device status update:', data);
+                updateDeviceStatus(data);
+                showToast(`Device ${data.display_name} status updated`, 'info');
+            });
+            
+            socket.on('monitoring_summary', function(data) {
+                console.log('Monitoring summary:', data);
+                updateSidebarStats(data);
+                updateLastUpdateTime();
+            });
+            
+            // Request initial device update
+            socket.emit('request_device_update');
+        }
+        
+        // Update connection status indicator
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connection-status');
+            if (connected) {
+                statusElement.className = 'badge bg-success';
+                statusElement.innerHTML = '<i class="bi bi-wifi"></i> Connected';
+            } else {
+                statusElement.className = 'badge bg-danger';
+                statusElement.innerHTML = '<i class="bi bi-wifi-off"></i> Disconnected';
+            }
+        }
+        
+        // Update sidebar statistics
+        function updateSidebarStats(data) {
+            if (data.total_devices !== undefined) {
+                document.getElementById('total-devices').textContent = data.total_devices;
+            }
+            if (data.devices_up !== undefined) {
+                document.getElementById('devices-up').textContent = data.devices_up;
+            }
+            if (data.devices_down !== undefined) {
+                document.getElementById('devices-down').textContent = data.devices_down;
+            }
+        }
+        
+        // Update last update time
+        function updateLastUpdateTime() {
+            document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
+        }
+        
+        // Show toast notification
+        function showToast(message, type = 'info', duration = 5000) {
+            const toastContainer = document.querySelector('.toast-container');
+            const toastId = 'toast-' + Date.now();
+            
+            const bgClass = {
+                'success': 'bg-success',
+                'error': 'bg-danger',
+                'warning': 'bg-warning',
+                'info': 'bg-info'
+            }[type] || 'bg-info';
+            
+            const toastHtml = `
+                <div id="${toastId}" class="toast ${bgClass} text-white" role="alert">
+                    <div class="d-flex">
+                        <div class="toast-body">
+                            ${message}
+                        </div>
+                        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                    </div>
+                </div>
+            `;
+            
+            toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+            
+            const toast = new bootstrap.Toast(document.getElementById(toastId), {
+                autohide: true,
+                delay: duration
+            });
+            
+            toast.show();
+            
+            // Remove element after it's hidden
+            document.getElementById(toastId).addEventListener('hidden.bs.toast', function() {
+                this.remove();
+            });
+        }
+        
+        // Format response time
+        function formatResponseTime(ms) {
+            if (ms === null || ms === undefined) {
+                return 'N/A';
+            }
+            if (ms < 1) {
+                return '<1ms';
+            }
+            return Math.round(ms) + 'ms';
+        }
+        
+        // Format uptime percentage
+        function formatUptime(percentage) {
+            if (percentage === null || percentage === undefined) {
+                return 'N/A';
+            }
+            return percentage.toFixed(1) + '%';
+        }
+        
+        // Load active alerts count
+        async function loadActiveAlertsCount() {
+            try {
+                const response = await fetch('/api/monitoring/alerts?resolved=false');
+                const data = await response.json();
+                
+                const count = data.count || 0;
+                const badge = document.getElementById('alert-count-badge');
+                
+                if (count > 0) {
+                    badge.textContent = count;
+                    badge.style.display = 'inline';
+                } else {
+                    badge.style.display = 'none';
+                }
+                
+                document.getElementById('active-alerts').textContent = count;
+                
+            } catch (error) {
+                console.error('Error loading alerts count:', error);
+            }
+        }
+        
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSocket();
+            loadActiveAlertsCount();
+            
+            // Refresh alerts count periodically
+            setInterval(loadActiveAlertsCount, 30000); // Every 30 seconds
+        });
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>

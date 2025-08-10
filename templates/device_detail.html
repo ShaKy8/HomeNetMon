@@ -1,0 +1,619 @@
+{% extends "base.html" %}
+
+{% block title %}Device Details - HomeNetMon{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <div>
+        <nav aria-label="breadcrumb">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                <li class="breadcrumb-item active">Device Details</li>
+            </ol>
+        </nav>
+        <h1 id="device-title"><i class="bi bi-router"></i> Loading...</h1>
+    </div>
+    
+    <div class="btn-group">
+        <button type="button" class="btn btn-primary" id="ping-device-btn">
+            <i class="bi bi-wifi"></i> Ping
+        </button>
+        <button type="button" class="btn btn-outline-primary" id="edit-device-btn" data-bs-toggle="modal" data-bs-target="#editDeviceModal">
+            <i class="bi bi-pencil"></i> Edit
+        </button>
+        <button type="button" class="btn btn-outline-danger" id="delete-device-btn">
+            <i class="bi bi-trash"></i> Delete
+        </button>
+    </div>
+</div>
+
+<!-- Device Info Cards -->
+<div class="row mb-4" id="device-info">
+    <!-- Cards will be loaded here -->
+</div>
+
+<!-- Charts Row -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Response Time</h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary active" data-period="1">1H</button>
+                    <button class="btn btn-outline-secondary" data-period="6">6H</button>
+                    <button class="btn btn-outline-secondary" data-period="24">24H</button>
+                    <button class="btn btn-outline-secondary" data-period="168">7D</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <canvas id="responseTimeChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Uptime</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="uptimeChart" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Statistics and Alerts -->
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Statistics</h5>
+            </div>
+            <div class="card-body">
+                <div id="device-statistics">
+                    <!-- Statistics will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Recent Alerts</h5>
+                <a href="{{ url_for('alerts') }}" class="btn btn-sm btn-outline-primary">View All</a>
+            </div>
+            <div class="card-body">
+                <div id="device-alerts">
+                    <!-- Alerts will be loaded here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Monitoring Data -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-table"></i> Recent Monitoring Data</h5>
+        <button class="btn btn-sm btn-outline-primary" id="export-data-btn">
+            <i class="bi bi-download"></i> Export
+        </button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>Timestamp</th>
+                        <th>Response Time</th>
+                        <th>Status</th>
+                    </tr>
+                </thead>
+                <tbody id="monitoring-data-table">
+                    <!-- Data will be loaded here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Edit Device Modal -->
+<div class="modal fade" id="editDeviceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Edit Device</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-device-form">
+                    <div class="mb-3">
+                        <label for="edit-device-name" class="form-label">Custom Name</label>
+                        <input type="text" class="form-control" id="edit-device-name">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit-device-type" class="form-label">Device Type</label>
+                        <select class="form-select" id="edit-device-type">
+                            <option value="unknown">Unknown</option>
+                            <option value="router">Router</option>
+                            <option value="computer">Computer</option>
+                            <option value="phone">Phone</option>
+                            <option value="iot">IoT Device</option>
+                            <option value="printer">Printer</option>
+                            <option value="camera">Camera</option>
+                            <option value="server">Server</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="edit-device-group" class="form-label">Group</label>
+                        <input type="text" class="form-control" id="edit-device-group">
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="edit-device-monitor">
+                        <label class="form-check-label" for="edit-device-monitor">
+                            Monitor this device
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-edit-btn">Save Changes</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const deviceId = {{ device_id }};
+let device = null;
+let responseTimeChart = null;
+let uptimeChart = null;
+
+// Load device details
+async function loadDeviceDetails() {
+    try {
+        const response = await fetch(`/api/devices/${deviceId}`);
+        if (!response.ok) {
+            if (response.status === 404) {
+                showToast('Device not found', 'error');
+                window.location.href = '/';
+                return;
+            }
+            throw new Error('Failed to load device');
+        }
+        
+        device = await response.json();
+        
+        // Update page title and device info
+        document.getElementById('device-title').innerHTML = `
+            <i class="bi bi-router"></i> ${device.display_name}
+            <span class="status-indicator ${device.status} ms-2"></span>
+        `;
+        
+        document.title = `${device.display_name} - HomeNetMon`;
+        
+        // Load device info cards
+        loadDeviceInfoCards();
+        
+        // Load charts
+        loadResponseTimeChart();
+        loadUptimeChart();
+        
+        // Load statistics
+        loadDeviceStatistics();
+        
+        // Load alerts
+        loadDeviceAlerts();
+        
+        // Load monitoring data table
+        loadMonitoringDataTable();
+        
+        // Populate edit form
+        populateEditForm();
+        
+    } catch (error) {
+        console.error('Error loading device details:', error);
+        showToast('Error loading device details', 'error');
+    }
+}
+
+// Load device info cards
+function loadDeviceInfoCards() {
+    const container = document.getElementById('device-info');
+    
+    container.innerHTML = `
+        <div class="col-md-3">
+            <div class="card border-${getStatusColor(device.status)}">
+                <div class="card-body text-center">
+                    <i class="bi bi-${getStatusIcon(device.status)} display-4 text-${getStatusColor(device.status)}"></i>
+                    <h4 class="mt-2 text-${getStatusColor(device.status)}">${device.status.toUpperCase()}</h4>
+                    <p class="mb-0">Current Status</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-stopwatch display-4 text-primary"></i>
+                    <h4 class="mt-2">${formatResponseTime(device.latest_response_time)}</h4>
+                    <p class="mb-0">Response Time</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-graph-up display-4 text-success"></i>
+                    <h4 class="mt-2">${formatUptime(device.uptime_percentage)}</h4>
+                    <p class="mb-0">Uptime (7d)</p>
+                </div>
+            </div>
+        </div>
+        
+        <div class="col-md-3">
+            <div class="card">
+                <div class="card-body text-center">
+                    <i class="bi bi-exclamation-triangle display-4 text-warning"></i>
+                    <h4 class="mt-2">${device.active_alerts || 0}</h4>
+                    <p class="mb-0">Active Alerts</p>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Helper functions for status display
+function getStatusColor(status) {
+    const colors = {
+        'up': 'success',
+        'down': 'danger',
+        'warning': 'warning',
+        'unknown': 'secondary'
+    };
+    return colors[status] || 'secondary';
+}
+
+function getStatusIcon(status) {
+    const icons = {
+        'up': 'check-circle',
+        'down': 'x-circle',
+        'warning': 'exclamation-triangle',
+        'unknown': 'question-circle'
+    };
+    return icons[status] || 'question-circle';
+}
+
+// Load response time chart
+async function loadResponseTimeChart(hours = 24) {
+    try {
+        const response = await fetch(`/api/monitoring/timeline?device_id=${deviceId}&hours=${hours}&interval=hour`);
+        const data = await response.json();
+        
+        const ctx = document.getElementById('responseTimeChart').getContext('2d');
+        
+        if (responseTimeChart) {
+            responseTimeChart.destroy();
+        }
+        
+        responseTimeChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: data.timeline.map(item => new Date(item.timestamp).toLocaleString()),
+                datasets: [{
+                    label: 'Response Time (ms)',
+                    data: data.timeline.map(item => item.avg_response_time),
+                    borderColor: 'rgb(54, 162, 235)',
+                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                    tension: 0.1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Response Time (ms)'
+                        }
+                    }
+                }
+            }
+        });
+        
+    } catch (error) {
+        console.error('Error loading response time chart:', error);
+    }
+}
+
+// Load uptime chart
+function loadUptimeChart() {
+    const ctx = document.getElementById('uptimeChart').getContext('2d');
+    
+    if (uptimeChart) {
+        uptimeChart.destroy();
+    }
+    
+    const uptime = device.uptime_percentage || 0;
+    const downtime = 100 - uptime;
+    
+    uptimeChart = new Chart(ctx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Uptime', 'Downtime'],
+            datasets: [{
+                data: [uptime, downtime],
+                backgroundColor: ['#28a745', '#dc3545'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom'
+                }
+            }
+        }
+    });
+}
+
+// Load device statistics
+function loadDeviceStatistics() {
+    const stats24h = device.statistics['24h'];
+    const stats7d = device.statistics['7d'];
+    
+    const container = document.getElementById('device-statistics');
+    
+    container.innerHTML = `
+        <div class="row">
+            <div class="col-6">
+                <h6>24 Hours</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <td>Total Checks:</td>
+                        <td><strong>${stats24h?.total_checks || 'N/A'}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Successful:</td>
+                        <td><strong>${stats24h?.successful_checks || 'N/A'}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Failed:</td>
+                        <td><strong>${stats24h?.failed_checks || 'N/A'}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Avg Response:</td>
+                        <td><strong>${stats24h?.avg_response_time ? Math.round(stats24h.avg_response_time) + 'ms' : 'N/A'}</strong></td>
+                    </tr>
+                </table>
+            </div>
+            <div class="col-6">
+                <h6>7 Days</h6>
+                <table class="table table-sm">
+                    <tr>
+                        <td>Total Checks:</td>
+                        <td><strong>${stats7d?.total_checks || 'N/A'}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Successful:</td>
+                        <td><strong>${stats7d?.successful_checks || 'N/A'}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Failed:</td>
+                        <td><strong>${stats7d?.failed_checks || 'N/A'}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Avg Response:</td>
+                        <td><strong>${stats7d?.avg_response_time ? Math.round(stats7d.avg_response_time) + 'ms' : 'N/A'}</strong></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    `;
+}
+
+// Load device alerts
+function loadDeviceAlerts() {
+    const alerts = device.recent_alerts || [];
+    const container = document.getElementById('device-alerts');
+    
+    if (alerts.length === 0) {
+        container.innerHTML = '<p class="text-muted">No recent alerts</p>';
+        return;
+    }
+    
+    let alertsHtml = '';
+    alerts.slice(0, 5).forEach(alert => {
+        const severity = alert.severity;
+        const badgeClass = {
+            'critical': 'bg-danger',
+            'warning': 'bg-warning',
+            'info': 'bg-info'
+        }[severity] || 'bg-secondary';
+        
+        alertsHtml += `
+            <div class="d-flex justify-content-between align-items-start mb-2">
+                <div>
+                    <span class="badge ${badgeClass}">${severity}</span>
+                    <small class="text-muted ms-2">${new Date(alert.created_at).toLocaleString()}</small>
+                    <br>
+                    <small>${alert.message}</small>
+                </div>
+                ${!alert.resolved ? '<i class="bi bi-exclamation-circle text-warning"></i>' : '<i class="bi bi-check-circle text-success"></i>'}
+            </div>
+        `;
+    });
+    
+    container.innerHTML = alertsHtml;
+}
+
+// Load monitoring data table
+function loadMonitoringDataTable() {
+    const data = device.recent_monitoring_data || [];
+    const tbody = document.getElementById('monitoring-data-table');
+    
+    if (data.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="3" class="text-muted text-center">No monitoring data available</td></tr>';
+        return;
+    }
+    
+    tbody.innerHTML = data.slice(0, 10).map(item => `
+        <tr>
+            <td>${new Date(item.timestamp).toLocaleString()}</td>
+            <td>${formatResponseTime(item.response_time)}</td>
+            <td>
+                <span class="status-indicator ${item.response_time ? 'up' : 'down'}"></span>
+                ${item.response_time ? 'Up' : 'Down'}
+            </td>
+        </tr>
+    `).join('');
+}
+
+// Populate edit form
+function populateEditForm() {
+    document.getElementById('edit-device-name').value = device.custom_name || '';
+    document.getElementById('edit-device-type').value = device.device_type || 'unknown';
+    document.getElementById('edit-device-group').value = device.device_group || '';
+    document.getElementById('edit-device-monitor').checked = device.is_monitored;
+}
+
+// Ping device
+async function pingDevice() {
+    try {
+        const response = await fetch(`/api/devices/${deviceId}/ping`, {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(`Device pinged successfully: ${formatResponseTime(data.response_time)}`, 'success');
+        } else {
+            showToast('Device ping failed', 'error');
+        }
+        
+        // Refresh device details
+        setTimeout(loadDeviceDetails, 1000);
+        
+    } catch (error) {
+        console.error('Error pinging device:', error);
+        showToast('Error pinging device', 'error');
+    }
+}
+
+// Save device edits
+async function saveDeviceEdits() {
+    try {
+        const updateData = {
+            custom_name: document.getElementById('edit-device-name').value.trim() || null,
+            device_type: document.getElementById('edit-device-type').value,
+            device_group: document.getElementById('edit-device-group').value.trim() || null,
+            is_monitored: document.getElementById('edit-device-monitor').checked
+        };
+        
+        const response = await fetch(`/api/devices/${deviceId}`, {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+        });
+        
+        if (response.ok) {
+            showToast('Device updated successfully', 'success');
+            
+            // Close modal
+            const modal = bootstrap.Modal.getInstance(document.getElementById('editDeviceModal'));
+            modal.hide();
+            
+            // Reload device details
+            loadDeviceDetails();
+        } else {
+            const error = await response.json();
+            showToast(error.error || 'Error updating device', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error updating device:', error);
+        showToast('Error updating device', 'error');
+    }
+}
+
+// Delete device
+async function deleteDevice() {
+    if (!confirm(`Are you sure you want to delete device "${device.display_name}"? This action cannot be undone.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/devices/${deviceId}`, {
+            method: 'DELETE'
+        });
+        
+        if (response.ok) {
+            showToast('Device deleted successfully', 'success');
+            window.location.href = '/';
+        } else {
+            const error = await response.json();
+            showToast(error.error || 'Error deleting device', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error deleting device:', error);
+        showToast('Error deleting device', 'error');
+    }
+}
+
+// Export data
+function exportData() {
+    window.open(`/api/monitoring/export?device_id=${deviceId}&hours=168`, '_blank');
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    loadDeviceDetails();
+    
+    // Chart period buttons
+    document.querySelectorAll('[data-period]').forEach(button => {
+        button.addEventListener('click', function() {
+            // Update active button
+            document.querySelectorAll('[data-period]').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Reload chart
+            const hours = parseInt(this.dataset.period);
+            loadResponseTimeChart(hours);
+        });
+    });
+    
+    // Button event listeners
+    document.getElementById('ping-device-btn').addEventListener('click', pingDevice);
+    document.getElementById('save-edit-btn').addEventListener('click', saveDeviceEdits);
+    document.getElementById('delete-device-btn').addEventListener('click', deleteDevice);
+    document.getElementById('export-data-btn').addEventListener('click', exportData);
+    
+    // Auto-refresh every 30 seconds
+    setInterval(() => {
+        loadDeviceDetails();
+    }, 30000);
+});
+</script>
+{% endblock %}

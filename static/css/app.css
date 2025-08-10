@@ -1,0 +1,260 @@
+/* Custom styles for HomeNetMon */
+
+/* Utility classes */
+.alert-item:hover {
+    background-color: rgba(0, 123, 255, 0.05) !important;
+}
+
+.cursor-pointer {
+    cursor: pointer;
+}
+
+/* Status indicators */
+.status-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    margin-right: 8px;
+    animation: pulse 2s infinite;
+}
+
+.status-indicator.up {
+    background-color: #28a745;
+}
+
+.status-indicator.down {
+    background-color: #dc3545;
+    animation: blink 1s infinite;
+}
+
+.status-indicator.warning {
+    background-color: #ffc107;
+    animation: pulse 1.5s infinite;
+}
+
+.status-indicator.unknown {
+    background-color: #6c757d;
+    animation: none;
+}
+
+/* Animations */
+@keyframes pulse {
+    0% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.5;
+    }
+    100% {
+        opacity: 1;
+    }
+}
+
+@keyframes blink {
+    0%, 50% {
+        opacity: 1;
+    }
+    51%, 100% {
+        opacity: 0.3;
+    }
+}
+
+/* Device cards */
+.device-card {
+    transition: all 0.3s ease;
+    border: 1px solid #dee2e6;
+}
+
+.device-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    border-color: #007bff;
+}
+
+.device-card .card-body {
+    position: relative;
+    padding: 1rem;
+}
+
+.alert-badge {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+    z-index: 10;
+}
+
+/* Sidebar */
+.sidebar {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-right: 1px solid #dee2e6;
+    min-height: calc(100vh - 56px);
+}
+
+.sidebar h6 {
+    font-weight: 600;
+    letter-spacing: 0.5px;
+}
+
+/* Stats cards */
+.stats-card {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    transition: transform 0.3s ease;
+}
+
+.stats-card:hover {
+    transform: scale(1.02);
+}
+
+/* Charts */
+.chart-container {
+    position: relative;
+    height: 300px;
+}
+
+/* Tables */
+.table th {
+    background-color: #f8f9fa;
+    border-top: none;
+    font-weight: 600;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+}
+
+/* Alerts */
+.alert-item {
+    transition: background-color 0.2s ease;
+    border-left: 4px solid transparent;
+}
+
+.alert-item[data-severity="critical"] {
+    border-left-color: #dc3545;
+}
+
+.alert-item[data-severity="warning"] {
+    border-left-color: #ffc107;
+}
+
+.alert-item[data-severity="info"] {
+    border-left-color: #17a2b8;
+}
+
+/* Loading states */
+.loading-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .sidebar {
+        position: fixed;
+        top: 56px;
+        left: -250px;
+        width: 250px;
+        height: calc(100vh - 56px);
+        z-index: 1000;
+        transition: left 0.3s ease;
+        background: white;
+        box-shadow: 2px 0 5px rgba(0, 0, 0, 0.1);
+    }
+    
+    .sidebar.show {
+        left: 0;
+    }
+    
+    .main-content {
+        margin-left: 0;
+        padding: 15px;
+    }
+    
+    .device-card {
+        margin-bottom: 1rem;
+    }
+    
+    .stats-card .display-4 {
+        font-size: 2rem;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .sidebar {
+        background: linear-gradient(135deg, #343a40 0%, #495057 100%);
+        color: white;
+    }
+    
+    .device-card {
+        background-color: #343a40;
+        border-color: #495057;
+        color: white;
+    }
+    
+    .table {
+        color: white;
+    }
+    
+    .table th {
+        background-color: #495057;
+        color: white;
+    }
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a8a8a8;
+}
+
+/* Print styles */
+@media print {
+    .navbar,
+    .sidebar,
+    .btn,
+    .toast-container {
+        display: none !important;
+    }
+    
+    .main-content {
+        margin-left: 0 !important;
+        width: 100% !important;
+    }
+    
+    .device-card {
+        break-inside: avoid;
+        box-shadow: none;
+        border: 1px solid #ddd;
+    }
+    
+    .alert-item {
+        break-inside: avoid;
+        border: 1px solid #ddd;
+        margin-bottom: 10px;
+    }
+}

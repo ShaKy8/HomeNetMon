@@ -1,0 +1,676 @@
+{% extends "base.html" %}
+
+{% block title %}Network Topology - HomeNetMon{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1>Network Topology</h1>
+    <div>
+        <button type="button" class="btn btn-outline-secondary" id="fullscreen-btn" title="Toggle Fullscreen">
+            <i class="bi bi-arrows-fullscreen"></i>
+        </button>
+    </div>
+</div>
+
+<!-- Interactive Network Graph -->
+<div class="card mb-4" id="topology-card">
+    <div class="card-header bg-dark text-white">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0">
+                <i class="bi bi-diagram-3 me-2"></i>Network Topology
+            </h5>
+            <div class="btn-group btn-group-sm" role="group">
+                <button type="button" class="btn btn-outline-light" id="graph-layout-force" title="Force Layout">
+                    <i class="bi bi-arrows-move"></i>
+                </button>
+                <button type="button" class="btn btn-outline-light" id="graph-layout-circle" title="Circle Layout">
+                    <i class="bi bi-circle"></i>
+                </button>
+                <button type="button" class="btn btn-outline-light active" id="graph-layout-grid" title="Grid Layout">
+                    <i class="bi bi-grid"></i>
+                </button>
+                <button type="button" class="btn btn-outline-light" id="graph-auto-arrange" title="Auto-Arrange (Smart Layout)">
+                    <i class="bi bi-magic"></i>
+                </button>
+                <button type="button" class="btn btn-outline-light" id="graph-refresh" title="Refresh Data">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <button type="button" class="btn btn-outline-light" id="graph-reset" title="Reset Positions">
+                    <i class="bi bi-arrow-counterclockwise"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+    <div class="card-body p-0">
+        <div id="network-graph" style="height: 600px; width: 100%; position: relative; overflow: hidden;">
+            <div class="d-flex justify-content-center align-items-center h-100">
+                <div class="text-center">
+                    <div class="spinner-border text-primary" role="status">
+                        <span class="visually-hidden">Loading network graph...</span>
+                    </div>
+                    <p class="mt-2 text-muted">Loading network topology...</p>
+                </div>
+            </div>
+        </div>
+        <!-- Graph Legend -->
+        <div class="border-top px-3 py-2 bg-light">
+            <div class="row text-center mb-2">
+                <div class="col-md-3">
+                    <span class="badge" style="background-color: #28a745; width: 12px; height: 12px; border-radius: 50%; display: inline-block;"></span>
+                    <small class="ms-1">Online</small>
+                </div>
+                <div class="col-md-3">
+                    <span class="badge" style="background-color: #dc3545; width: 12px; height: 12px; border-radius: 50%; display: inline-block;"></span>
+                    <small class="ms-1">Offline</small>
+                </div>
+                <div class="col-md-3">
+                    <span class="badge" style="background-color: #ffc107; width: 12px; height: 12px; border-radius: 50%; display: inline-block;"></span>
+                    <small class="ms-1">Warning</small>
+                </div>
+                <div class="col-md-3">
+                    <span class="badge" style="background-color: #6c757d; width: 12px; height: 12px; border-radius: 50%; display: inline-block;"></span>
+                    <small class="ms-1">Unknown</small>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-12">
+                    <small class="text-muted">
+                        <i class="bi bi-info-circle me-1"></i>
+                        Drag nodes to reposition them. Use auto-arrange for smart grouping by device type and status. Positions stay fixed until reset.
+                    </small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Network Overview Cards -->
+<div class="row mb-3">
+    <div class="col-md-3">
+        <div class="card stats-card">
+            <div class="card-body text-center py-2">
+                <div class="d-flex align-items-center justify-content-center">
+                    <i class="bi bi-router fs-3 me-2"></i>
+                    <div>
+                        <h5 class="mb-0" id="overview-total">-</h5>
+                        <small class="text-muted">Total Devices</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-success">
+            <div class="card-body text-center py-2">
+                <div class="d-flex align-items-center justify-content-center">
+                    <i class="bi bi-check-circle fs-3 text-success me-2"></i>
+                    <div>
+                        <h5 class="mb-0 text-success" id="overview-up">-</h5>
+                        <small class="text-muted">Online</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-danger">
+            <div class="card-body text-center py-2">
+                <div class="d-flex align-items-center justify-content-center">
+                    <i class="bi bi-x-circle fs-3 text-danger me-2"></i>
+                    <div>
+                        <h5 class="mb-0 text-danger" id="overview-down">-</h5>
+                        <small class="text-muted">Offline</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-3">
+        <div class="card border-warning">
+            <div class="card-body text-center py-2">
+                <div class="d-flex align-items-center justify-content-center">
+                    <i class="bi bi-exclamation-triangle fs-3 text-warning me-2"></i>
+                    <div>
+                        <h5 class="mb-0 text-warning" id="overview-alerts">-</h5>
+                        <small class="text-muted">Alerts</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Fullscreen styles */
+.fullscreen-mode {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh !important;
+    z-index: 9999 !important;
+    background: white !important;
+    margin: 0 !important;
+}
+
+.fullscreen-mode .card-body {
+    padding: 0 !important;
+}
+
+.fullscreen-mode #network-graph {
+    height: calc(100vh - 120px) !important;
+}
+
+.fullscreen-exit-btn {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    z-index: 10000;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let networkGraph;
+let isFullscreen = false;
+
+// Network Graph Visualization
+class NetworkGraph {
+    constructor(containerId) {
+        this.containerId = containerId;
+        this.container = d3.select(`#${containerId}`);
+        this.width = 0;
+        this.height = 600;
+        this.svg = null;
+        this.simulation = null;
+        this.nodes = [];
+        this.links = [];
+        this.currentLayout = 'grid';
+        this.nodeGroup = null;
+        this.linkGroup = null;
+        
+        this.init();
+        this.loadData();
+        this.startAutoRefresh();
+    }
+    
+    init() {
+        const container = this.container.node();
+        this.width = container.clientWidth;
+        this.height = container.clientHeight;
+        
+        // Clear existing content
+        this.container.selectAll('*').remove();
+        
+        // Create SVG
+        this.svg = this.container.append('svg')
+            .attr('width', '100%')
+            .attr('height', '100%')
+            .attr('viewBox', `0 0 ${this.width} ${this.height}`)
+            .style('background', '#f8f9fa');
+            
+        // Create groups for links and nodes
+        this.linkGroup = this.svg.append('g').attr('class', 'links');
+        this.nodeGroup = this.svg.append('g').attr('class', 'nodes');
+        
+        // Create simulation
+        this.simulation = d3.forceSimulation()
+            .force('link', d3.forceLink().id(d => d.id).strength(0.3))
+            .force('charge', d3.forceManyBody().strength(-100))
+            .force('center', d3.forceCenter(this.width / 2, this.height / 2))
+            .force('collision', d3.forceCollide().radius(30));
+    }
+    
+    async loadData() {
+        try {
+            const response = await fetch('/api/monitoring/topology-test');
+            const data = await response.json();
+            
+            if (data.nodes && data.edges) {
+                this.updateGraph(data.nodes, data.edges);
+                this.updateStats(data.stats);
+            }
+        } catch (error) {
+            console.error('Error loading topology data:', error);
+        }
+    }
+    
+    updateGraph(nodes, edges) {
+        this.nodes = nodes.map(d => ({...d}));
+        this.links = edges.map(d => ({...d}));
+        
+        // Update simulation
+        this.simulation.nodes(this.nodes);
+        this.simulation.force('link').links(this.links);
+        
+        this.render();
+    }
+    
+    updateStats(stats) {
+        if (stats) {
+            document.getElementById('overview-total').textContent = stats.total_devices || 0;
+            const upCount = this.nodes.filter(n => n.status === 'up').length;
+            const downCount = this.nodes.filter(n => n.status === 'down').length;
+            const alertCount = this.nodes.reduce((sum, n) => sum + (n.active_alerts || 0), 0);
+            
+            document.getElementById('overview-up').textContent = upCount;
+            document.getElementById('overview-down').textContent = downCount;
+            document.getElementById('overview-alerts').textContent = alertCount;
+        }
+    }
+    
+    render() {
+        // Update links
+        const link = this.linkGroup.selectAll('.link')
+            .data(this.links, d => `${d.source.id || d.source}-${d.target.id || d.target}`);
+            
+        link.exit().remove();
+        
+        const linkEnter = link.enter().append('line')
+            .attr('class', 'link')
+            .attr('stroke', d => d.color || '#999')
+            .attr('stroke-width', d => Math.sqrt(d.strength || 1) * 2)
+            .attr('stroke-opacity', 0.6);
+        
+        // Update nodes
+        const node = this.nodeGroup.selectAll('.node')
+            .data(this.nodes, d => d.id);
+            
+        node.exit().remove();
+        
+        const nodeEnter = node.enter().append('g')
+            .attr('class', 'node')
+            .style('cursor', 'pointer');
+            
+        // Add circles
+        nodeEnter.append('circle')
+            .attr('r', d => d.size || 20)
+            .attr('fill', d => d.color || '#999')
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 2);
+            
+        // Add icons
+        nodeEnter.append('text')
+            .attr('text-anchor', 'middle')
+            .attr('dy', 5)
+            .attr('font-size', '16px')
+            .text(d => d.icon || '❓');
+            
+        // Add labels
+        nodeEnter.append('text')
+            .attr('text-anchor', 'middle')
+            .attr('dy', d => d.size + 20)
+            .attr('font-size', '12px')
+            .attr('fill', '#333')
+            .text(d => d.label.length > 15 ? d.label.substring(0, 15) + '...' : d.label);
+            
+        // Add click handlers
+        nodeEnter.on('click', (event, d) => this.onNodeClick(event, d))
+            .on('mouseover', (event, d) => this.onNodeHover(event, d))
+            .on('mouseout', (event, d) => this.onNodeHoverOut(event, d));
+            
+        // Add drag behavior
+        nodeEnter.call(d3.drag()
+            .on('start', (event, d) => this.dragstarted(event, d))
+            .on('drag', (event, d) => this.dragged(event, d))
+            .on('end', (event, d) => this.dragended(event, d)));
+        
+        // Update simulation
+        this.simulation.on('tick', () => {
+            this.linkGroup.selectAll('.link')
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+                
+            this.nodeGroup.selectAll('.node')
+                .attr('transform', d => `translate(${d.x},${d.y})`);
+        });
+        
+        // Apply layout
+        this.setLayout(this.currentLayout);
+    }
+    
+    setLayout(layout) {
+        this.currentLayout = layout;
+        
+        switch (layout) {
+            case 'force':
+                this.simulation
+                    .force('x', null)
+                    .force('y', null)
+                    .alpha(0.3).restart();
+                break;
+                
+            case 'circle':
+                this.simulation
+                    .force('x', d3.forceX().x((d, i) => {
+                        const angle = (i / this.nodes.length) * 2 * Math.PI;
+                        return this.width/2 + Math.cos(angle) * 150;
+                    }).strength(0.5))
+                    .force('y', d3.forceY().y((d, i) => {
+                        const angle = (i / this.nodes.length) * 2 * Math.PI;
+                        return this.height/2 + Math.sin(angle) * 150;
+                    }).strength(0.5))
+                    .alpha(0.3).restart();
+                break;
+                
+            case 'grid':
+                const cols = Math.ceil(Math.sqrt(this.nodes.length));
+                this.simulation
+                    .force('x', d3.forceX().x((d, i) => {
+                        const col = i % cols;
+                        return (col + 1) * (this.width / (cols + 1));
+                    }).strength(0.5))
+                    .force('y', d3.forceY().y((d, i) => {
+                        const row = Math.floor(i / cols);
+                        const rows = Math.ceil(this.nodes.length / cols);
+                        return (row + 1) * (this.height / (rows + 1));
+                    }).strength(0.5))
+                    .alpha(0.3).restart();
+                break;
+        }
+    }
+    
+    onNodeClick(event, d) {
+        // Create device details modal or popup
+        const details = `
+            <strong>Device:</strong> ${d.label}<br>
+            <strong>IP:</strong> ${d.ip}<br>
+            <strong>Status:</strong> ${d.status}<br>
+            <strong>Type:</strong> ${d.device_type}<br>
+            <strong>Response Time:</strong> ${d.response_time ? d.response_time.toFixed(2) + 'ms' : 'N/A'}<br>
+            <strong>Uptime:</strong> ${d.uptime_percentage ? d.uptime_percentage.toFixed(1) + '%' : 'N/A'}<br>
+            <strong>Alerts:</strong> ${d.active_alerts || 0}
+        `;
+        
+        // Show details in a tooltip or modal
+        console.log('Device clicked:', d);
+    }
+    
+    onNodeHover(event, d) {
+        // Highlight node
+        d3.select(event.currentTarget).select('circle')
+            .attr('stroke-width', 4)
+            .attr('stroke', '#007bff');
+    }
+    
+    onNodeHoverOut(event, d) {
+        // Remove highlight
+        d3.select(event.currentTarget).select('circle')
+            .attr('stroke-width', 2)
+            .attr('stroke', '#fff');
+    }
+    
+    dragstarted(event, d) {
+        if (!event.active) this.simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+    
+    dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+    
+    dragended(event, d) {
+        if (!event.active) this.simulation.alphaTarget(0);
+        // Keep the node fixed at its current position - don't reset fx/fy
+        // d.fx = null;
+        // d.fy = null;
+    }
+    
+    refresh() {
+        this.loadData();
+    }
+    
+    resize() {
+        const container = this.container.node();
+        this.width = container.clientWidth;
+        this.height = container.clientHeight;
+        
+        this.svg.attr('viewBox', `0 0 ${this.width} ${this.height}`);
+        this.simulation.force('center', d3.forceCenter(this.width / 2, this.height / 2));
+        this.simulation.alpha(0.3).restart();
+    }
+    
+    autoArrange() {
+        // Smart auto-arrange based on device types, status, and relationships
+        const margin = 80;
+        const groupSpacing = 120;
+        const deviceSpacing = 100;
+        
+        // Group devices by type and status
+        const deviceGroups = {
+            'core': [],      // routers, switches, core infrastructure
+            'servers': [],   // computers, servers
+            'smart_home': [],// smart home devices
+            'cameras': [],   // security cameras
+            'mobile': [],    // phones, tablets, mobile devices
+            'unknown': []    // unknown or other devices
+        };
+        
+        // Categorize devices into logical groups
+        this.nodes.forEach(node => {
+            const type = node.device_type.toLowerCase();
+            const status = node.status;
+            
+            if (type.includes('router') || type.includes('switch') || type.includes('gateway')) {
+                deviceGroups.core.push(node);
+            } else if (type.includes('computer') || type.includes('server')) {
+                deviceGroups.servers.push(node);
+            } else if (type.includes('smart_home') || type.includes('iot') || type.includes('thermostat')) {
+                deviceGroups.smart_home.push(node);
+            } else if (type.includes('camera')) {
+                deviceGroups.cameras.push(node);
+            } else if (type.includes('phone') || type.includes('mobile') || type.includes('tablet') || type.includes('apple') || type.includes('android')) {
+                deviceGroups.mobile.push(node);
+            } else {
+                deviceGroups.unknown.push(node);
+            }
+        });
+        
+        // Sort each group: online first, then warning, then offline
+        const statusOrder = { 'up': 0, 'warning': 1, 'down': 2, 'unknown': 3 };
+        Object.values(deviceGroups).forEach(group => {
+            group.sort((a, b) => {
+                const statusDiff = statusOrder[a.status] - statusOrder[b.status];
+                if (statusDiff !== 0) return statusDiff;
+                return a.label.localeCompare(b.label); // Secondary sort by name
+            });
+        });
+        
+        // Calculate layout positions
+        let currentY = margin;
+        const centerX = this.width / 2;
+        
+        // Position core infrastructure at the top center
+        if (deviceGroups.core.length > 0) {
+            this.positionGroup(deviceGroups.core, centerX, currentY, deviceSpacing, 'horizontal');
+            currentY += groupSpacing;
+        }
+        
+        // Position servers in the second tier
+        if (deviceGroups.servers.length > 0) {
+            this.positionGroup(deviceGroups.servers, centerX, currentY, deviceSpacing, 'horizontal');
+            currentY += groupSpacing;
+        }
+        
+        // Position other groups in rows below
+        const remainingGroups = ['smart_home', 'cameras', 'mobile', 'unknown'].filter(key => deviceGroups[key].length > 0);
+        
+        if (remainingGroups.length > 0) {
+            const groupsPerRow = Math.min(2, remainingGroups.length);
+            const groupWidth = (this.width - 2 * margin) / groupsPerRow;
+            
+            for (let i = 0; i < remainingGroups.length; i += groupsPerRow) {
+                const rowGroups = remainingGroups.slice(i, i + groupsPerRow);
+                
+                rowGroups.forEach((groupKey, index) => {
+                    const group = deviceGroups[groupKey];
+                    const x = margin + (index + 0.5) * groupWidth;
+                    this.positionGroup(group, x, currentY, deviceSpacing * 0.8, 'grid');
+                });
+                
+                currentY += groupSpacing;
+            }
+        }
+        
+        // Restart simulation with the new positions
+        this.simulation.alpha(0.3).restart();
+    }
+    
+    positionGroup(devices, centerX, startY, spacing, layout) {
+        if (devices.length === 0) return;
+        
+        if (layout === 'horizontal') {
+            // Arrange devices in a horizontal line
+            const totalWidth = (devices.length - 1) * spacing;
+            const startX = centerX - totalWidth / 2;
+            
+            devices.forEach((device, index) => {
+                device.fx = startX + index * spacing;
+                device.fy = startY;
+            });
+        } else if (layout === 'grid') {
+            // Arrange devices in a compact grid
+            const cols = Math.ceil(Math.sqrt(devices.length));
+            const rows = Math.ceil(devices.length / cols);
+            const gridSpacing = spacing * 0.7;
+            
+            devices.forEach((device, index) => {
+                const col = index % cols;
+                const row = Math.floor(index / cols);
+                const gridWidth = (cols - 1) * gridSpacing;
+                const gridHeight = (rows - 1) * gridSpacing;
+                
+                device.fx = centerX - gridWidth / 2 + col * gridSpacing;
+                device.fy = startY - gridHeight / 2 + row * gridSpacing;
+            });
+        }
+    }
+    
+    resetPositions() {
+        // Clear all fixed positions and restart with current layout
+        this.nodes.forEach(d => {
+            d.fx = null;
+            d.fy = null;
+        });
+        this.setLayout(this.currentLayout);
+    }
+    
+    startAutoRefresh() {
+        // Auto-refresh disabled to preserve node positions when moved
+        // setInterval(() => {
+        //     this.refresh();
+        // }, 30000); // Refresh every 30 seconds
+    }
+}
+
+function setActiveGraphButton(activeId) {
+    document.querySelectorAll('#topology-card .btn-group .btn').forEach(btn => {
+        btn.classList.remove('active');
+    });
+    document.getElementById(activeId).classList.add('active');
+}
+
+function toggleFullscreen() {
+    const card = document.getElementById('topology-card');
+    const btn = document.getElementById('fullscreen-btn');
+    const icon = btn.querySelector('i');
+    
+    if (!isFullscreen) {
+        // Enter fullscreen
+        card.classList.add('fullscreen-mode');
+        
+        // Add exit button
+        const exitBtn = document.createElement('button');
+        exitBtn.className = 'btn btn-danger fullscreen-exit-btn';
+        exitBtn.innerHTML = '<i class="bi bi-x-lg"></i>';
+        exitBtn.onclick = toggleFullscreen;
+        document.body.appendChild(exitBtn);
+        
+        icon.className = 'bi bi-fullscreen-exit';
+        isFullscreen = true;
+        
+        // Resize graph
+        setTimeout(() => {
+            networkGraph.resize();
+        }, 100);
+    } else {
+        // Exit fullscreen
+        card.classList.remove('fullscreen-mode');
+        
+        // Remove exit button
+        const exitBtn = document.querySelector('.fullscreen-exit-btn');
+        if (exitBtn) {
+            exitBtn.remove();
+        }
+        
+        icon.className = 'bi bi-arrows-fullscreen';
+        isFullscreen = false;
+        
+        // Resize graph
+        setTimeout(() => {
+            networkGraph.resize();
+        }, 100);
+    }
+}
+
+// Initialize when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize network graph
+    networkGraph = new NetworkGraph('network-graph');
+    
+    // Network graph controls
+    document.getElementById('graph-layout-force').addEventListener('click', () => {
+        networkGraph.setLayout('force');
+        setActiveGraphButton('graph-layout-force');
+    });
+    
+    document.getElementById('graph-layout-circle').addEventListener('click', () => {
+        networkGraph.setLayout('circle');
+        setActiveGraphButton('graph-layout-circle');
+    });
+    
+    document.getElementById('graph-layout-grid').addEventListener('click', () => {
+        networkGraph.setLayout('grid');
+        setActiveGraphButton('graph-layout-grid');
+    });
+    
+    document.getElementById('graph-refresh').addEventListener('click', () => {
+        networkGraph.refresh();
+    });
+    
+    document.getElementById('graph-reset').addEventListener('click', () => {
+        networkGraph.resetPositions();
+    });
+    
+    document.getElementById('graph-auto-arrange').addEventListener('click', () => {
+        networkGraph.autoArrange();
+        setActiveGraphButton('graph-auto-arrange');
+    });
+    
+    // Fullscreen toggle
+    document.getElementById('fullscreen-btn').addEventListener('click', toggleFullscreen);
+    
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        if (networkGraph) {
+            networkGraph.resize();
+        }
+    });
+    
+    // ESC key to exit fullscreen
+    document.addEventListener('keydown', function(event) {
+        if (event.key === 'Escape' && isFullscreen) {
+            toggleFullscreen();
+        }
+    });
+});
+</script>
+{% endblock %}

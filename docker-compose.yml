@@ -1,0 +1,139 @@
+version: '3.8'
+
+services:
+  homeNetMon:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: homeNetMon
+    restart: unless-stopped
+    
+    # Network configuration for host network access (required for network scanning)
+    network_mode: host
+    
+    # Environment variables
+    environment:
+      - HOST=0.0.0.0
+      - PORT=5000
+      - DEBUG=false
+      - NETWORK_RANGE=192.168.86.0/24
+      - PING_INTERVAL=30
+      - SCAN_INTERVAL=300
+      - PING_TIMEOUT=3.0
+      - MAX_WORKERS=50
+      - DATA_RETENTION_DAYS=30
+      # Email configuration (optional - can be set via web interface)
+      - SMTP_SERVER=${SMTP_SERVER:-}
+      - SMTP_PORT=${SMTP_PORT:-587}
+      - SMTP_USERNAME=${SMTP_USERNAME:-}
+      - SMTP_PASSWORD=${SMTP_PASSWORD:-}
+      - SMTP_USE_TLS=${SMTP_USE_TLS:-true}
+      - ALERT_FROM_EMAIL=${ALERT_FROM_EMAIL:-}
+      - ALERT_TO_EMAILS=${ALERT_TO_EMAILS:-}
+      # Webhook configuration (optional)
+      - WEBHOOK_URL=${WEBHOOK_URL:-}
+      - WEBHOOK_TIMEOUT=${WEBHOOK_TIMEOUT:-10}
+      # Security
+      - SECRET_KEY=${SECRET_KEY:-homeNetMon-change-this-in-production}
+    
+    # Volume mounts
+    volumes:
+      - homeNetMon_data:/app/data
+      - ./config:/app/config:ro  # Optional: mount external config directory
+    
+    # Capabilities required for network operations
+    cap_add:
+      - NET_RAW
+      - NET_ADMIN
+    
+    # Labels for documentation
+    labels:
+      - "com.homeNetMon.description=Home Network Monitoring System"
+      - "com.homeNetMon.version=1.0"
+      - "traefik.enable=true"  # Enable if using Traefik
+      - "traefik.http.routers.homeNetMon.rule=Host(`homeNetMon.local`)"
+      - "traefik.http.routers.homeNetMon.tls=true"
+      - "traefik.http.services.homeNetMon.loadbalancer.server.port=5000"
+    
+    # Health check
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    # Logging configuration
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+volumes:
+  homeNetMon_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: ./data  # Creates ./data directory on host
+
+# Alternative configuration for bridge networking
+# (use this if you don't need host network mode)
+---
+version: '3.8'
+
+services:
+  homeNetMon-bridge:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: homeNetMon-bridge
+    restart: unless-stopped
+    
+    # Bridge network configuration
+    ports:
+      - "5000:5000"
+    
+    networks:
+      - homeNetMon_network
+    
+    environment:
+      - HOST=0.0.0.0
+      - PORT=5000
+      - DEBUG=false
+      # Note: Network scanning capabilities will be limited in bridge mode
+      - NETWORK_RANGE=172.20.0.0/16  # Container network range
+      - PING_INTERVAL=30
+      - SCAN_INTERVAL=300
+    
+    volumes:
+      - homeNetMon_data_bridge:/app/data
+    
+    # Limited capabilities for bridge network
+    cap_add:
+      - NET_RAW
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+networks:
+  homeNetMon_network:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
+
+volumes:
+  homeNetMon_data_bridge:
+    driver: local

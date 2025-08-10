@@ -1,0 +1,30 @@
+[Unit]
+Description=HomeNetMon Network Monitoring Service
+After=network.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kyle
+Group=kyle
+WorkingDirectory=/home/kyle/ClaudeCode/HomeNetMon
+Environment=PATH=/usr/local/bin:/usr/bin:/bin
+Environment=PYTHONPATH=/home/kyle/ClaudeCode/HomeNetMon
+ExecStart=/usr/bin/python3 /home/kyle/ClaudeCode/HomeNetMon/app.py
+ExecStartPost=/bin/sleep 5
+ExecStartPost=/usr/bin/python3 /home/kyle/ClaudeCode/HomeNetMon/startup_notification.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=homenetmon
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=false
+ReadWritePaths=/home/kyle/ClaudeCode/HomeNetMon
+
+[Install]
+WantedBy=multi-user.target

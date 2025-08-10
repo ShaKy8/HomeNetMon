@@ -1,0 +1,40 @@
+# Web Framework
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-SocketIO==5.3.6
+
+# Database
+SQLAlchemy==2.0.23
+
+# Network Operations
+python-nmap==0.7.1
+ping3==4.0.4
+scapy==2.5.0
+pysnmp==4.4.12
+psutil==5.9.6
+
+# HTTP Requests for webhooks
+requests==2.31.0
+
+# Configuration and Utilities
+PyYAML==6.0.1
+python-dotenv==1.0.0
+
+# Email Support
+# smtplib is part of Python standard library
+
+# Threading and Async Support
+eventlet==0.36.1
+
+# MAC Vendor Lookup
+manuf==1.1.5
+
+# Date/Time Utilities
+python-dateutil==2.8.2
+
+# Logging
+structlog==23.2.0
+
+# Development Dependencies (optional)
+pytest==7.4.3
+pytest-flask==1.3.0

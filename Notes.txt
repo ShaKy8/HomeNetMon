@@ -1,0 +1,6 @@
+Service Management Commands:
+  - systemctl --user status homeNetMon - Check status
+  - systemctl --user start homeNetMon - Start service
+  - systemctl --user stop homeNetMon - Stop service
+  - systemctl --user restart homeNetMon - Restart service
+  - systemctl --user logs homeNetMon - View logs
