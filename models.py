@@ -73,22 +73,72 @@ class Device(db.Model):
     
     @property
     def uptime_percentage(self, days=7):
+        """Calculate uptime percentage with intelligent downtime detection"""
         cutoff = datetime.utcnow() - timedelta(days=days)
-        total_checks = MonitoringData.query.filter(
+        
+        # Get all monitoring data for the time period, ordered by timestamp
+        monitoring_data = MonitoringData.query.filter(
             MonitoringData.device_id == self.id,
             MonitoringData.timestamp >= cutoff
-        ).count()
+        ).order_by(MonitoringData.timestamp).all()
         
-        if total_checks == 0:
+        if not monitoring_data:
             return 0
         
-        successful_checks = MonitoringData.query.filter(
-            MonitoringData.device_id == self.id,
-            MonitoringData.timestamp >= cutoff,
-            MonitoringData.response_time.isnot(None)
-        ).count()
+        # Use sliding window approach to identify true downtime periods
+        # This reduces impact of isolated ping failures and focuses on sustained downtime
+        total_time_seconds = (datetime.utcnow() - cutoff).total_seconds()
+        downtime_seconds = 0
         
-        return round((successful_checks / total_checks) * 100, 2)
+        # Group consecutive failures to identify downtime periods
+        failure_periods = []
+        current_failure_start = None
+        consecutive_failures = 0
+        
+        for i, data_point in enumerate(monitoring_data):
+            is_failure = data_point.response_time is None
+            
+            if is_failure:
+                consecutive_failures += 1
+                if current_failure_start is None:
+                    current_failure_start = data_point.timestamp
+            else:
+                # Success - check if we need to close a failure period
+                if current_failure_start is not None and consecutive_failures >= 2:
+                    # Only count as downtime if there were 2+ consecutive failures
+                    # This filters out isolated ping timeouts that don't represent real downtime
+                    failure_periods.append({
+                        'start': current_failure_start,
+                        'end': data_point.timestamp,
+                        'duration': (data_point.timestamp - current_failure_start).total_seconds()
+                    })
+                
+                # Reset failure tracking
+                current_failure_start = None
+                consecutive_failures = 0
+        
+        # Handle case where failure period extends to the end
+        if current_failure_start is not None and consecutive_failures >= 2:
+            failure_periods.append({
+                'start': current_failure_start,
+                'end': datetime.utcnow(),
+                'duration': (datetime.utcnow() - current_failure_start).total_seconds()
+            })
+        
+        # Sum up downtime from all failure periods
+        total_downtime_seconds = sum(period['duration'] for period in failure_periods)
+        
+        # Calculate uptime percentage
+        if total_time_seconds <= 0:
+            return 0
+        
+        uptime_seconds = total_time_seconds - total_downtime_seconds
+        uptime_percentage = (uptime_seconds / total_time_seconds) * 100
+        
+        # Ensure we don't go below 0 or above 100
+        uptime_percentage = max(0, min(100, uptime_percentage))
+        
+        return round(uptime_percentage, 2)
     
     def to_dict(self):
         return {

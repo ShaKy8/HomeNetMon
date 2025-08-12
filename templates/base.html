@@ -5,6 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}HomeNetMon{% endblock %}</title>
     
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#0d6efd">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="HomeNetMon">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="HomeNetMon">
+    
+    <!-- PWA Icons -->
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
+    <link rel="icon" type="image/png" sizes="512x512" href="{{ url_for('static', filename='icons/icon-512x512.png') }}">
+    
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
@@ -20,18 +36,53 @@
     <link href="{{ url_for('static', filename='css/app.css') }}" rel="stylesheet">
     
     <style>
-        .status-up { color: #28a745; }
-        .status-down { color: #dc3545; }
-        .status-warning { color: #ffc107; }
-        .status-unknown { color: #6c757d; }
+        /* Theme variables */
+        :root {
+            --primary-color: #0d6efd;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --secondary-color: #6c757d;
+            --bg-color: #ffffff;
+            --bg-secondary: #f8f9fa;
+            --text-color: #212529;
+            --text-muted: #6c757d;
+            --border-color: #dee2e6;
+            --card-bg: #ffffff;
+            --sidebar-bg: #f8f9fa;
+        }
+        
+        [data-bs-theme="dark"] {
+            --bg-color: #212529;
+            --bg-secondary: #343a40;
+            --text-color: #ffffff;
+            --text-muted: #adb5bd;
+            --border-color: #495057;
+            --card-bg: #343a40;
+            --sidebar-bg: #2b3035;
+        }
+        
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+        
+        .status-up { color: var(--success-color); }
+        .status-down { color: var(--danger-color); }
+        .status-warning { color: var(--warning-color); }
+        .status-unknown { color: var(--secondary-color); }
         
         .device-card {
-            transition: transform 0.2s;
+            transition: transform 0.2s, box-shadow 0.2s;
             cursor: pointer;
+            background-color: var(--card-bg);
+            border-color: var(--border-color);
         }
         
         .device-card:hover {
             transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
         
         .status-indicator {
@@ -42,14 +93,15 @@
             margin-right: 8px;
         }
         
-        .status-indicator.up { background-color: #28a745; }
-        .status-indicator.down { background-color: #dc3545; }
-        .status-indicator.warning { background-color: #ffc107; }
-        .status-indicator.unknown { background-color: #6c757d; }
+        .status-indicator.up { background-color: var(--success-color); }
+        .status-indicator.down { background-color: var(--danger-color); }
+        .status-indicator.warning { background-color: var(--warning-color); }
+        .status-indicator.unknown { background-color: var(--secondary-color); }
         
         .sidebar {
             min-height: calc(100vh - 56px);
-            background-color: #f8f9fa;
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
         }
         
         .main-content {
@@ -66,6 +118,109 @@
             position: absolute;
             top: -8px;
             right: -8px;
+        }
+        
+        .theme-toggle {
+            position: relative;
+            width: 50px;
+            height: 26px;
+        }
+        
+        .theme-toggle input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .theme-slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--secondary-color);
+            transition: .3s;
+            border-radius: 26px;
+        }
+        
+        .theme-slider:before {
+            position: absolute;
+            content: "";
+            height: 20px;
+            width: 20px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .3s;
+            border-radius: 50%;
+        }
+        
+        .theme-toggle input:checked + .theme-slider {
+            background-color: var(--primary-color);
+        }
+        
+        .theme-toggle input:checked + .theme-slider:before {
+            transform: translateX(24px);
+        }
+        
+        /* PWA specific styles */
+        @media (display-mode: standalone) {
+            .navbar-brand::after {
+                content: " PWA";
+                font-size: 0.7em;
+                opacity: 0.7;
+            }
+        }
+        
+        /* Improved mobile experience */
+        @media (max-width: 768px) {
+            .sidebar {
+                position: fixed;
+                top: 56px;
+                left: -100%;
+                width: 250px;
+                height: calc(100vh - 56px);
+                z-index: 1050;
+                transition: left 0.3s ease;
+            }
+            
+            .sidebar.show {
+                left: 0;
+            }
+            
+            .main-content {
+                padding: 15px;
+            }
+            
+            .device-card {
+                margin-bottom: 0.75rem;
+            }
+        }
+        
+        /* Keyboard shortcuts help */
+        .shortcuts-help {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--card-bg);
+            border: 2px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            z-index: 1060;
+            max-width: 400px;
+            width: 90%;
+            display: none;
+        }
+        
+        .shortcut-key {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            padding: 2px 8px;
+            font-family: monospace;
+            font-size: 0.9em;
         }
     </style>
 </head>
@@ -95,6 +250,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link{% if request.endpoint == 'analytics' %} active{% endif %}" href="{{ url_for('analytics') }}">
+                            <i class="bi bi-graph-up"></i> Analytics
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link{% if request.endpoint == 'topology' %} active{% endif %}" href="{{ url_for('topology') }}">
                             <i class="bi bi-diagram-3"></i> Network Topology
                         </a>
@@ -106,7 +266,33 @@
                     </li>
                 </ul>
                 
+                <!-- Global Search -->
+                <form class="d-flex me-auto" style="max-width: 300px;">
+                    <div class="input-group">
+                        <input class="form-control" type="search" id="global-search" 
+                               placeholder="Search devices..." aria-label="Search">
+                        <button class="btn btn-outline-light" type="button" id="search-btn">
+                            <i class="bi bi-search"></i>
+                        </button>
+                    </div>
+                </form>
+                
                 <ul class="navbar-nav">
+                    <li class="nav-item me-3">
+                        <button class="btn btn-outline-light btn-sm" id="shortcuts-help-btn" title="Keyboard Shortcuts (?)">
+                            <i class="bi bi-question-circle"></i>
+                        </button>
+                    </li>
+                    <li class="nav-item me-3">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-sun-fill text-warning me-2"></i>
+                            <label class="theme-toggle">
+                                <input type="checkbox" id="theme-toggle">
+                                <span class="theme-slider"></span>
+                            </label>
+                            <i class="bi bi-moon-fill text-info ms-2"></i>
+                        </div>
+                    </li>
                     <li class="nav-item">
                         <span class="navbar-text">
                             <span id="connection-status" class="badge bg-success">
@@ -164,6 +350,65 @@
             <!-- Main Content Area -->
             <div class="col-md-10 main-content">
                 {% block content %}{% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Keyboard Shortcuts Help Dialog -->
+    <div id="shortcuts-help" class="shortcuts-help">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0">Keyboard Shortcuts</h5>
+            <button type="button" class="btn-close" id="shortcuts-close"></button>
+        </div>
+        <div class="row g-2">
+            <div class="col-6"><span class="shortcut-key">?</span></div>
+            <div class="col-6">Show this help</div>
+            
+            <div class="col-6"><span class="shortcut-key">Ctrl</span> + <span class="shortcut-key">K</span></div>
+            <div class="col-6">Global search</div>
+            
+            <div class="col-6"><span class="shortcut-key">R</span></div>
+            <div class="col-6">Refresh data</div>
+            
+            <div class="col-6"><span class="shortcut-key">S</span></div>
+            <div class="col-6">Scan network</div>
+            
+            <div class="col-6"><span class="shortcut-key">P</span></div>
+            <div class="col-6">Ping all devices</div>
+            
+            <div class="col-6"><span class="shortcut-key">1-5</span></div>
+            <div class="col-6">Navigate pages (Dashboard, Alerts, Analytics, Topology, Settings)</div>
+            
+            <div class="col-6"><span class="shortcut-key">T</span></div>
+            <div class="col-6">Toggle theme</div>
+            
+            <div class="col-6"><span class="shortcut-key">Esc</span></div>
+            <div class="col-6">Close dialogs</div>
+        </div>
+    </div>
+
+    <!-- Mobile Sidebar Toggle -->
+    <button class="btn btn-primary d-md-none position-fixed" id="sidebar-toggle" 
+            style="bottom: 20px; left: 20px; z-index: 1040; border-radius: 50%; width: 50px; height: 50px;">
+        <i class="bi bi-list"></i>
+    </button>
+
+    <!-- Search Results Overlay -->
+    <div id="search-overlay" class="position-fixed w-100 h-100" 
+         style="top: 0; left: 0; background: rgba(0,0,0,0.5); z-index: 1055; display: none;">
+        <div class="container-fluid mt-5 pt-5">
+            <div class="row justify-content-center">
+                <div class="col-md-8 col-lg-6">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h6 class="mb-0">Search Results</h6>
+                            <button class="btn-close" id="search-overlay-close"></button>
+                        </div>
+                        <div class="card-body" id="search-results">
+                            <!-- Search results will be populated here -->
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -256,7 +501,7 @@
             }[type] || 'bg-info';
             
             const toastHtml = `
-                <div id="${toastId}" class="toast ${bgClass} text-white" role="alert">
+                <div id="${toastId}" class="toast ${bgClass} text-white notification-enter" role="alert">
                     <div class="d-flex">
                         <div class="toast-body">
                             ${message}
@@ -323,13 +568,359 @@
             }
         }
         
+        // PWA Installation
+        let deferredPrompt;
+        let installButton;
+        
+        // PWA Service Worker Registration
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', async () => {
+                try {
+                    const registration = await navigator.serviceWorker.register('/static/service-worker.js');
+                    console.log('Service Worker registered successfully:', registration);
+                    
+                    // Listen for updates
+                    registration.addEventListener('updatefound', () => {
+                        const newWorker = registration.installing;
+                        newWorker.addEventListener('statechange', () => {
+                            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                                showToast('New version available! Refresh to update.', 'info', 10000);
+                            }
+                        });
+                    });
+                } catch (error) {
+                    console.log('Service Worker registration failed:', error);
+                }
+            });
+        }
+        
+        // PWA Install Prompt
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            
+            // Show install button if not already installed
+            if (!window.matchMedia('(display-mode: standalone)').matches) {
+                showInstallBanner();
+            }
+        });
+        
+        // Show PWA install banner
+        function showInstallBanner() {
+            const banner = document.createElement('div');
+            banner.className = 'alert alert-info alert-dismissible position-fixed';
+            banner.style.cssText = 'top: 70px; right: 20px; z-index: 1050; max-width: 300px;';
+            banner.innerHTML = `
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-download me-2"></i>
+                    <div>
+                        <strong>Install HomeNetMon</strong><br>
+                        <small>Add to home screen for better experience</small>
+                    </div>
+                </div>
+                <hr class="my-2">
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-primary" id="install-app-btn">Install</button>
+                    <button class="btn btn-sm btn-outline-secondary" data-bs-dismiss="alert">Later</button>
+                </div>
+            `;
+            document.body.appendChild(banner);
+            
+            document.getElementById('install-app-btn').addEventListener('click', installApp);
+        }
+        
+        // Install PWA
+        async function installApp() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const result = await deferredPrompt.userChoice;
+                
+                if (result.outcome === 'accepted') {
+                    showToast('HomeNetMon installed successfully!', 'success');
+                }
+                
+                deferredPrompt = null;
+                document.querySelector('.alert')?.remove();
+            }
+        }
+        
+        // Theme Management
+        function initializeTheme() {
+            const savedTheme = localStorage.getItem('homenetmon-theme');
+            const systemTheme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+            const theme = savedTheme || systemTheme;
+            
+            setTheme(theme);
+            document.getElementById('theme-toggle').checked = theme === 'dark';
+        }
+        
+        function setTheme(theme) {
+            document.documentElement.setAttribute('data-bs-theme', theme);
+            localStorage.setItem('homenetmon-theme', theme);
+            
+            // Update meta theme color
+            const metaTheme = document.querySelector('meta[name="theme-color"]');
+            metaTheme.content = theme === 'dark' ? '#212529' : '#0d6efd';
+        }
+        
+        function toggleTheme() {
+            const currentTheme = document.documentElement.getAttribute('data-bs-theme');
+            const newTheme = currentTheme === 'dark' ? 'light' : 'dark';
+            setTheme(newTheme);
+            document.getElementById('theme-toggle').checked = newTheme === 'dark';
+        }
+        
+        // Global Search Functionality
+        let searchCache = [];
+        let searchIndex = null;
+        
+        async function initializeSearch() {
+            try {
+                const response = await fetch('/api/devices');
+                const data = await response.json();
+                searchCache = data.devices || [];
+                buildSearchIndex();
+            } catch (error) {
+                console.error('Failed to load devices for search:', error);
+            }
+        }
+        
+        function buildSearchIndex() {
+            searchIndex = searchCache.map(device => ({
+                id: device.id,
+                ip: device.ip_address,
+                name: device.display_name,
+                hostname: device.hostname,
+                mac: device.mac_address,
+                type: device.device_type,
+                vendor: device.vendor,
+                searchText: [
+                    device.display_name,
+                    device.ip_address,
+                    device.hostname,
+                    device.mac_address,
+                    device.device_type,
+                    device.vendor
+                ].filter(Boolean).join(' ').toLowerCase()
+            }));
+        }
+        
+        function performSearch(query) {
+            if (!searchIndex || query.length < 2) {
+                return [];
+            }
+            
+            const searchTerms = query.toLowerCase().split(' ');
+            return searchIndex.filter(device => {
+                return searchTerms.every(term => device.searchText.includes(term));
+            }).slice(0, 10); // Limit results
+        }
+        
+        function displaySearchResults(results) {
+            const container = document.getElementById('search-results');
+            
+            if (results.length === 0) {
+                container.innerHTML = '<p class="text-muted mb-0">No devices found matching your search.</p>';
+                return;
+            }
+            
+            const html = results.map(device => `
+                <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                    <div>
+                        <div class="fw-bold">${device.name}</div>
+                        <small class="text-muted">${device.ip} • ${device.type || 'Unknown'}</small>
+                    </div>
+                    <a href="/device/${device.id}" class="btn btn-sm btn-outline-primary">View</a>
+                </div>
+            `).join('');
+            
+            container.innerHTML = html;
+        }
+        
+        function showSearchOverlay(query) {
+            const results = performSearch(query);
+            displaySearchResults(results);
+            document.getElementById('search-overlay').style.display = 'block';
+        }
+        
+        function hideSearchOverlay() {
+            document.getElementById('search-overlay').style.display = 'none';
+        }
+        
+        // Keyboard Shortcuts
+        function initializeKeyboardShortcuts() {
+            document.addEventListener('keydown', (e) => {
+                // Ignore if user is typing in input fields
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+                    // Allow Ctrl+K in input fields to focus search
+                    if (e.ctrlKey && e.key === 'k') {
+                        e.preventDefault();
+                        document.getElementById('global-search').focus();
+                        document.getElementById('global-search').select();
+                    }
+                    return;
+                }
+                
+                switch (e.key) {
+                    case '?':
+                        e.preventDefault();
+                        toggleShortcutsHelp();
+                        break;
+                    case 'r':
+                    case 'R':
+                        e.preventDefault();
+                        refreshData();
+                        break;
+                    case 's':
+                    case 'S':
+                        e.preventDefault();
+                        scanNetwork();
+                        break;
+                    case 'p':
+                    case 'P':
+                        e.preventDefault();
+                        pingAll();
+                        break;
+                    case 't':
+                    case 'T':
+                        e.preventDefault();
+                        toggleTheme();
+                        break;
+                    case '1':
+                        e.preventDefault();
+                        window.location.href = '/';
+                        break;
+                    case '2':
+                        e.preventDefault();
+                        window.location.href = '/alerts';
+                        break;
+                    case '3':
+                        e.preventDefault();
+                        window.location.href = '/analytics';
+                        break;
+                    case '4':
+                        e.preventDefault();
+                        window.location.href = '/topology';
+                        break;
+                    case '5':
+                        e.preventDefault();
+                        window.location.href = '/settings';
+                        break;
+                    case 'Escape':
+                        hideShortcutsHelp();
+                        hideSearchOverlay();
+                        break;
+                }
+                
+                // Ctrl+K for global search
+                if (e.ctrlKey && e.key === 'k') {
+                    e.preventDefault();
+                    document.getElementById('global-search').focus();
+                    document.getElementById('global-search').select();
+                }
+            });
+        }
+        
+        function toggleShortcutsHelp() {
+            const dialog = document.getElementById('shortcuts-help');
+            dialog.style.display = dialog.style.display === 'block' ? 'none' : 'block';
+        }
+        
+        function hideShortcutsHelp() {
+            document.getElementById('shortcuts-help').style.display = 'none';
+        }
+        
+        // Action functions for keyboard shortcuts
+        function refreshData() {
+            if (typeof refreshDevices === 'function') {
+                refreshDevices();
+            } else {
+                location.reload();
+            }
+            showToast('Refreshing data...', 'info');
+        }
+        
+        function scanNetwork() {
+            if (typeof scanNetworkDevices === 'function') {
+                scanNetworkDevices();
+            }
+            showToast('Starting network scan...', 'info');
+        }
+        
+        function pingAll() {
+            if (typeof pingAllDevices === 'function') {
+                pingAllDevices();
+            }
+            showToast('Pinging all devices...', 'info');
+        }
+        
+        // Mobile sidebar toggle
+        function initializeMobileSidebar() {
+            const sidebarToggle = document.getElementById('sidebar-toggle');
+            const sidebar = document.querySelector('.sidebar');
+            
+            if (sidebarToggle && sidebar) {
+                sidebarToggle.addEventListener('click', () => {
+                    sidebar.classList.toggle('show');
+                });
+                
+                // Close sidebar when clicking outside
+                document.addEventListener('click', (e) => {
+                    if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
+                        sidebar.classList.remove('show');
+                    }
+                });
+            }
+        }
+        
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', function() {
             initializeSocket();
             loadActiveAlertsCount();
+            initializeTheme();
+            initializeSearch();
+            initializeKeyboardShortcuts();
+            initializeMobileSidebar();
             
-            // Refresh alerts count periodically
-            setInterval(loadActiveAlertsCount, 30000); // Every 30 seconds
+            // Theme toggle event listener
+            document.getElementById('theme-toggle').addEventListener('change', toggleTheme);
+            
+            // Search functionality
+            const searchInput = document.getElementById('global-search');
+            const searchBtn = document.getElementById('search-btn');
+            
+            searchInput.addEventListener('input', (e) => {
+                if (e.target.value.length >= 2) {
+                    showSearchOverlay(e.target.value);
+                } else {
+                    hideSearchOverlay();
+                }
+            });
+            
+            searchBtn.addEventListener('click', () => {
+                const query = searchInput.value.trim();
+                if (query.length >= 2) {
+                    showSearchOverlay(query);
+                }
+            });
+            
+            // Shortcuts help
+            document.getElementById('shortcuts-help-btn').addEventListener('click', toggleShortcutsHelp);
+            document.getElementById('shortcuts-close').addEventListener('click', hideShortcutsHelp);
+            
+            // Search overlay close
+            document.getElementById('search-overlay-close').addEventListener('click', hideSearchOverlay);
+            document.getElementById('search-overlay').addEventListener('click', (e) => {
+                if (e.target === e.currentTarget) {
+                    hideSearchOverlay();
+                }
+            });
+            
+            // Refresh data and search index periodically
+            setInterval(() => {
+                loadActiveAlertsCount();
+                initializeSearch(); // Refresh search index
+            }, 30000); // Every 30 seconds
         });
     </script>
     

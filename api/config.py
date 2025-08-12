@@ -63,8 +63,8 @@ def update_config_value(key):
         if key == 'ping_interval':
             try:
                 value = int(data['value'])
-                if value < 5 or value > 300:
-                    return jsonify({'error': 'Ping interval must be between 5 and 300 seconds'}), 400
+                if value < 5 or value > 900:
+                    return jsonify({'error': 'Ping interval must be between 5 and 900 seconds'}), 400
             except ValueError:
                 return jsonify({'error': 'Ping interval must be a number'}), 400
         
@@ -138,11 +138,11 @@ def update_network_config():
         if 'ping_interval' in data:
             try:
                 value = int(data['ping_interval'])
-                if 5 <= value <= 300:
+                if 5 <= value <= 900:
                     Configuration.set_value('ping_interval', str(value), 'Ping interval in seconds')
                     updated_fields.append('ping_interval')
                 else:
-                    return jsonify({'error': 'Ping interval must be between 5 and 300 seconds'}), 400
+                    return jsonify({'error': 'Ping interval must be between 5 and 900 seconds'}), 400
             except ValueError:
                 return jsonify({'error': 'Ping interval must be a number'}), 400
         
@@ -325,6 +325,7 @@ def reset_configuration():
 def test_email_config():
     """Test email configuration by sending a test email"""
     try:
+        from datetime import datetime
         data = request.get_json() or {}
         
         # Use provided settings or current configuration
@@ -397,6 +398,7 @@ def test_email_config():
 def test_webhook_config():
     """Test webhook configuration by sending a test webhook"""
     try:
+        from datetime import datetime
         data = request.get_json() or {}
         
         webhook_url = data.get('webhook_url') or Config.WEBHOOK_URL
@@ -515,4 +517,134 @@ def restart_services():
         return jsonify({
             'success': False,
             'error': f'Error restarting services: {str(e)}'
+        }), 500
+
+@config_bp.route('/restart-system', methods=['POST'])
+def restart_system():
+    """Restart the entire HomeNetMon application"""
+    try:
+        import os
+        import sys
+        import subprocess
+        
+        # Method 1: Try systemd service restart first
+        try:
+            result = subprocess.run(['systemctl', 'is-active', 'homenetmon'], 
+                                  capture_output=True, text=True, timeout=5)
+            if result.returncode == 0:  # Service is active
+                # Restart the systemd service
+                restart_result = subprocess.run(['sudo', 'systemctl', 'restart', 'homenetmon'], 
+                                              capture_output=True, text=True, timeout=30)
+                if restart_result.returncode == 0:
+                    return jsonify({
+                        'success': True,
+                        'message': 'HomeNetMon service restarted successfully',
+                        'method': 'systemd'
+                    })
+                else:
+                    # If systemd restart failed, fall through to process restart
+                    pass
+        except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.CalledProcessError):
+            # systemctl not available or service not running, fall through
+            pass
+        
+        # Method 2: Kill current process and let system restart it
+        try:
+            # Get the current process ID
+            current_pid = os.getpid()
+            
+            # Schedule a restart by killing the current process
+            # This should work if the application is being managed by a process manager
+            # or if it's set to auto-restart
+            def delayed_restart():
+                import time
+                time.sleep(2)  # Give time for response to be sent
+                os.kill(current_pid, 15)  # SIGTERM
+            
+            import threading
+            threading.Thread(target=delayed_restart, daemon=True).start()
+            
+            return jsonify({
+                'success': True,
+                'message': 'HomeNetMon restart initiated. Page will refresh automatically.',
+                'method': 'process_restart',
+                'note': 'Application will be available again in 10-15 seconds'
+            })
+            
+        except Exception as e:
+            return jsonify({
+                'success': False,
+                'error': f'Error initiating restart: {str(e)}',
+                'instructions': [
+                    'Manual restart required',
+                    'If running manually: Stop (Ctrl+C) and restart with "python3 app.py"',
+                    'If running as service: Run "sudo systemctl restart homenetmon"'
+                ]
+            }), 500
+            
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': f'Error restarting system: {str(e)}'
+        }), 500
+
+@config_bp.route('/reset-monitoring-data', methods=['POST'])
+def reset_monitoring_data():
+    """Reset all historical monitoring data"""
+    try:
+        from datetime import datetime
+        from models import MonitoringData, Device
+        
+        data = request.get_json() or {}
+        confirm = data.get('confirm', False)
+        
+        if not confirm:
+            return jsonify({
+                'error': 'Please confirm data deletion by sending {"confirm": true}',
+                'warning': 'This action will permanently delete all historical ping data and cannot be undone'
+            }), 400
+        
+        # Count records before deletion
+        total_monitoring_records = MonitoringData.query.count()
+        
+        # Get time span of data being deleted
+        oldest_record = MonitoringData.query.order_by(MonitoringData.timestamp.asc()).first()
+        newest_record = MonitoringData.query.order_by(MonitoringData.timestamp.desc()).first()
+        
+        time_span_info = None
+        if oldest_record and newest_record:
+            time_span = newest_record.timestamp - oldest_record.timestamp
+            days = time_span.days
+            time_span_info = f"{days} days of data (from {oldest_record.timestamp.strftime('%Y-%m-%d')} to {newest_record.timestamp.strftime('%Y-%m-%d')})"
+        
+        # Delete all monitoring data
+        deleted_count = MonitoringData.query.delete()
+        
+        # Reset device last_seen timestamps to current time for fresh start
+        # This ensures uptime calculations start fresh
+        updated_devices = Device.query.filter_by(is_monitored=True).all()
+        current_time = datetime.utcnow()
+        
+        for device in updated_devices:
+            device.last_seen = current_time
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Successfully deleted {deleted_count} monitoring records',
+            'details': {
+                'total_deleted': deleted_count,
+                'time_span': time_span_info,
+                'devices_reset': len(updated_devices),
+                'reset_time': current_time.isoformat() + 'Z'
+            },
+            'note': 'Uptime percentages will now start calculating fresh from this point forward'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({
+            'success': False,
+            'error': f'Error resetting monitoring data: {str(e)}'
         }), 500

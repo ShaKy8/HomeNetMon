@@ -31,42 +31,79 @@ class DeviceMonitor:
             return str(default)
         
     def ping_device(self, device):
-        """Ping a single device and return response time using system ping command"""
-        try:
-            # Get ping timeout from database configuration
-            ping_timeout = float(self.get_config_value('ping_timeout', Config.PING_TIMEOUT))
-            
-            # Use system ping command (works without root privileges)
-            cmd = ['ping', '-c', '1', '-W', str(int(ping_timeout)), device.ip_address]
-            
-            result = subprocess.run(
-                cmd,
-                capture_output=True,
-                text=True,
-                timeout=ping_timeout + 2
-            )
-            
-            if result.returncode == 0:
-                # Parse ping output to extract response time
-                # Look for patterns like "time=1.23 ms"
-                time_match = re.search(r'time=([0-9.]+)\s*ms', result.stdout)
-                if time_match:
-                    response_time_ms = float(time_match.group(1))
-                    device.last_seen = datetime.utcnow()
-                    return response_time_ms
-                else:
-                    # Ping succeeded but couldn't parse time, return 0
-                    device.last_seen = datetime.utcnow()
-                    return 0.0
-            else:
-                return None
+        """Ping a single device with retry logic and return response time using system ping command"""
+        # Get ping timeout from database configuration
+        ping_timeout = float(self.get_config_value('ping_timeout', Config.PING_TIMEOUT))
+        
+        # For critical infrastructure (router, servers), use more lenient settings
+        is_critical_device = (
+            device.ip_address.endswith('.1') or  # Router
+            'router' in device.device_type.lower() or
+            'server' in device.device_type.lower() or
+            'nuc' in device.hostname.lower() if device.hostname else False
+        )
+        
+        # Adjust retry logic based on device criticality
+        max_retries = 2 if is_critical_device else 1
+        retry_delay = 0.5  # 500ms between retries
+        
+        for attempt in range(max_retries + 1):  # +1 for initial attempt
+            try:
+                # Use more generous timeout for critical devices
+                actual_timeout = ping_timeout * 1.5 if is_critical_device else ping_timeout
                 
-        except subprocess.TimeoutExpired:
-            logger.debug(f"Ping timeout for {device.ip_address}")
-            return None
-        except Exception as e:
-            logger.error(f"Error pinging {device.ip_address}: {e}")
-            return None
+                # Use system ping command (works without root privileges)
+                cmd = ['ping', '-c', '1', '-W', str(int(actual_timeout)), device.ip_address]
+                
+                result = subprocess.run(
+                    cmd,
+                    capture_output=True,
+                    text=True,
+                    timeout=actual_timeout + 2
+                )
+                
+                if result.returncode == 0:
+                    # Parse ping output to extract response time
+                    # Look for patterns like "time=1.23 ms"
+                    time_match = re.search(r'time=([0-9.]+)\s*ms', result.stdout)
+                    if time_match:
+                        response_time_ms = float(time_match.group(1))
+                        device.last_seen = datetime.utcnow()
+                        logger.debug(f"Ping successful for {device.ip_address} on attempt {attempt + 1}: {response_time_ms}ms")
+                        return response_time_ms
+                    else:
+                        # Ping succeeded but couldn't parse time, return 0
+                        device.last_seen = datetime.utcnow()
+                        logger.debug(f"Ping successful for {device.ip_address} on attempt {attempt + 1} (no time parsed)")
+                        return 0.0
+                else:
+                    # Ping failed, try again if we have retries left
+                    if attempt < max_retries:
+                        logger.debug(f"Ping failed for {device.ip_address} on attempt {attempt + 1}, retrying...")
+                        time.sleep(retry_delay)
+                        continue
+                    else:
+                        logger.debug(f"Ping failed for {device.ip_address} after {max_retries + 1} attempts")
+                        return None
+                        
+            except subprocess.TimeoutExpired:
+                if attempt < max_retries:
+                    logger.debug(f"Ping timeout for {device.ip_address} on attempt {attempt + 1}, retrying...")
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    logger.debug(f"Ping timeout for {device.ip_address} after {max_retries + 1} attempts")
+                    return None
+            except Exception as e:
+                if attempt < max_retries:
+                    logger.debug(f"Error pinging {device.ip_address} on attempt {attempt + 1}: {e}, retrying...")
+                    time.sleep(retry_delay)
+                    continue
+                else:
+                    logger.error(f"Error pinging {device.ip_address} after {max_retries + 1} attempts: {e}")
+                    return None
+        
+        return None
     
     def monitor_device(self, device):
         """Monitor a single device and record data"""
@@ -132,8 +169,20 @@ class DeviceMonitor:
                     db.session.rollback()
             return None
     
+    def is_critical_device(self, device):
+        """Determine if a device is critical infrastructure"""
+        # Critical device criteria
+        return (
+            device.ip_address.endswith('.1') or  # Router/Gateway
+            device.ip_address.endswith('.64') or  # Server
+            'router' in device.device_type.lower() if device.device_type else False or
+            'server' in device.device_type.lower() if device.device_type else False or
+            'nuc' in (device.hostname or '').lower() or
+            'gateway' in (device.hostname or '').lower()
+        )
+    
     def monitor_all_devices(self):
-        """Monitor all devices in parallel"""
+        """Monitor devices with intelligent prioritization and batching"""
         try:
             if not self.app:
                 logger.error("No Flask app context available for monitoring")
@@ -141,33 +190,66 @@ class DeviceMonitor:
             
             with self.app.app_context():
                 # Get all devices that should be monitored
-                devices = Device.query.filter_by(is_monitored=True).all()
+                all_devices = Device.query.filter_by(is_monitored=True).all()
             
-            if not devices:
+            if not all_devices:
                 logger.debug("No devices to monitor")
                 return
             
-            logger.debug(f"Monitoring {len(devices)} devices")
+            # Separate critical from regular devices
+            critical_devices = [d for d in all_devices if self.is_critical_device(d)]
+            regular_devices = [d for d in all_devices if not self.is_critical_device(d)]
             
-            # Get configuration values
-            max_workers = int(self.get_config_value('max_workers', Config.MAX_WORKERS))
+            logger.debug(f"Monitoring: {len(critical_devices)} critical, {len(regular_devices)} regular devices")
+            
+            # Always monitor critical devices every cycle
+            devices_to_monitor = critical_devices[:]
+            
+            # Rotate through regular devices (monitor subset each cycle)
+            if regular_devices:
+                # Initialize rotation counter if not exists
+                if not hasattr(self, '_device_rotation_index'):
+                    self._device_rotation_index = 0
+                
+                # Monitor 10-15 regular devices per cycle (instead of all 50+)
+                batch_size = min(15, len(regular_devices))
+                start_idx = self._device_rotation_index
+                end_idx = start_idx + batch_size
+                
+                # Handle wrap-around
+                if end_idx <= len(regular_devices):
+                    regular_batch = regular_devices[start_idx:end_idx]
+                else:
+                    regular_batch = regular_devices[start_idx:] + regular_devices[:end_idx - len(regular_devices)]
+                
+                devices_to_monitor.extend(regular_batch)
+                
+                # Update rotation index for next cycle
+                self._device_rotation_index = (self._device_rotation_index + batch_size) % len(regular_devices)
+                
+                logger.debug(f"Regular device batch: {start_idx}-{end_idx % len(regular_devices)} ({len(regular_batch)} devices)")
+            
+            logger.debug(f"Total monitoring this cycle: {len(devices_to_monitor)} devices")
+            
+            # Get configuration values - use smaller worker pool to reduce load
+            max_workers = min(10, len(devices_to_monitor))  # Cap at 10 workers max
             ping_timeout = float(self.get_config_value('ping_timeout', Config.PING_TIMEOUT))
             
-            # Use ThreadPoolExecutor for concurrent monitoring
-            with ThreadPoolExecutor(max_workers=min(max_workers, len(devices))) as executor:
+            # Use ThreadPoolExecutor with smaller batch size
+            with ThreadPoolExecutor(max_workers=max_workers) as executor:
                 # Submit monitoring tasks
                 future_to_device = {
                     executor.submit(self.monitor_device, device): device 
-                    for device in devices
+                    for device in devices_to_monitor
                 }
                 
                 results = []
                 
-                # Collect results
-                for future in as_completed(future_to_device, timeout=ping_timeout * 2):
+                # Collect results with timeout
+                for future in as_completed(future_to_device, timeout=ping_timeout * 3):
                     device = future_to_device[future]
                     try:
-                        result = future.result(timeout=ping_timeout)
+                        result = future.result(timeout=ping_timeout + 1)
                         if result:
                             results.append(result)
                     except Exception as e:
@@ -186,7 +268,7 @@ class DeviceMonitor:
                     'success_rate': (successful_pings / total_devices * 100) if total_devices > 0 else 0
                 })
             
-                logger.info(f"Monitoring cycle completed for {len(devices)} devices")
+                logger.info(f"Monitoring cycle completed for {len(devices_to_monitor)} devices")
             
         except Exception as e:
             logger.error(f"Error during device monitoring cycle: {e}")

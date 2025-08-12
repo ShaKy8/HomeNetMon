@@ -13,6 +13,9 @@
         <button type="button" class="btn btn-outline-secondary" id="acknowledge-all">
             <i class="bi bi-check-all"></i> Acknowledge All
         </button>
+        <button type="button" class="btn btn-outline-danger" id="clear-all-alerts">
+            <i class="bi bi-trash"></i> Clear All Alerts
+        </button>
     </div>
 </div>
 
@@ -76,7 +79,7 @@
                 <label for="filter-hours" class="form-label">Time Period</label>
                 <select class="form-select" id="filter-hours">
                     <option value="24">Last 24 Hours</option>
-                    <option value="168">Last 7 Days</option>
+                    <option value="168" selected>Last 7 Days</option>
                     <option value="720">Last 30 Days</option>
                 </select>
             </div>
@@ -145,22 +148,38 @@
 {% block scripts %}
 <script>
 // Simple alerts loading
-async function loadAlerts() {
-    console.log('Loading alerts...');
+async function loadAlerts(filters = {}) {
+    console.log('Loading alerts with filters:', filters);
     
-    // Force hide loading immediately
-    document.getElementById('loading-indicator').style.display = 'none';
+    // Show loading indicator
+    document.getElementById('loading-indicator').style.display = 'block';
+    document.getElementById('alerts-container').style.display = 'none';
+    document.getElementById('no-alerts').style.display = 'none';
     
     try {
-        const response = await fetch('/api/monitoring/alerts');
+        // Build query parameters
+        const params = new URLSearchParams();
+        if (filters.severity) params.append('severity', filters.severity);
+        if (filters.resolved !== undefined) params.append('resolved', filters.resolved);
+        if (filters.hours) params.append('hours', filters.hours);
+        params.append('limit', '50'); // Get more alerts for filtering
+        
+        const url = `/api/monitoring/alerts${params.toString() ? '?' + params.toString() : ''}`;
+        console.log('Fetching:', url);
+        
+        const response = await fetch(url);
         const data = await response.json();
         
         console.log('Alerts loaded:', data);
         
-        // Update summary counts
-        document.getElementById('critical-count').textContent = '0';
-        document.getElementById('warning-count').textContent = '0';
-        document.getElementById('info-count').textContent = data.alerts ? data.alerts.length : '0';
+        // Update summary counts based on loaded alerts
+        const criticalCount = data.alerts ? data.alerts.filter(a => a.severity === 'critical').length : 0;
+        const warningCount = data.alerts ? data.alerts.filter(a => a.severity === 'warning').length : 0;
+        const infoCount = data.alerts ? data.alerts.filter(a => a.severity === 'info').length : 0;
+        
+        document.getElementById('critical-count').textContent = criticalCount;
+        document.getElementById('warning-count').textContent = warningCount;
+        document.getElementById('info-count').textContent = infoCount;
         
         if (data.alerts && data.alerts.length > 0) {
             // Show alerts
@@ -176,12 +195,23 @@ async function loadAlerts() {
                 alertDiv.className = 'p-3 border-bottom';
                 alertDiv.innerHTML = `
                     <div class="d-flex justify-content-between align-items-start">
-                        <div>
+                        <div class="flex-grow-1 me-3">
                             <h6 class="mb-1">${alert.device_name} (${alert.device_ip})</h6>
                             <p class="mb-1">${alert.message}</p>
                             <small class="text-muted">Created: ${new Date(alert.created_at).toLocaleString()}</small>
+                            ${alert.acknowledged ? `<br><small class="text-success">Acknowledged by ${alert.acknowledged_by} on ${new Date(alert.acknowledged_at).toLocaleString()}</small>` : ''}
+                            ${alert.resolved ? `<br><small class="text-info">Resolved on ${new Date(alert.resolved_at).toLocaleString()}</small>` : ''}
                         </div>
-                        <span class="badge bg-info">${alert.severity.toUpperCase()}</span>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge ${
+                                alert.severity === 'critical' ? 'bg-danger text-white' :
+                                alert.severity === 'warning' ? 'bg-warning text-dark' :
+                                alert.severity === 'info' ? 'bg-info text-white' : 'bg-secondary text-white'
+                            }">${alert.severity.toUpperCase()}</span>
+                            <button type="button" class="btn btn-sm btn-outline-danger delete-alert-btn" data-alert-id="${alert.id}" title="Delete Alert">
+                                <i class="bi bi-trash"></i>
+                            </button>
+                        </div>
                     </div>
                 `;
                 alertsList.appendChild(alertDiv);
@@ -204,7 +234,33 @@ async function loadAlerts() {
         errorDiv.className = 'alert alert-danger';
         errorDiv.innerHTML = `<h4>Error Loading Alerts</h4><p>${error.message}</p>`;
         document.body.appendChild(errorDiv);
+    } finally {
+        // Always hide loading indicator
+        document.getElementById('loading-indicator').style.display = 'none';
     }
+}
+
+// Get current filter values from form
+function getCurrentFilters() {
+    return {
+        severity: document.getElementById('filter-severity').value || undefined,
+        resolved: document.getElementById('filter-status').value === '' ? undefined : document.getElementById('filter-status').value,
+        hours: parseInt(document.getElementById('filter-hours').value) || 168
+    };
+}
+
+// Apply filters
+function applyFilters() {
+    const filters = getCurrentFilters();
+    loadAlerts(filters);
+}
+
+// Clear all filters
+function clearFilters() {
+    document.getElementById('filter-severity').value = '';
+    document.getElementById('filter-status').value = 'false'; // Reset to Active
+    document.getElementById('filter-hours').value = '168'; // Reset to Last 7 Days
+    loadAlerts();
 }
 
 // Acknowledge all alerts function
@@ -224,26 +280,7 @@ async function acknowledgeAllAlerts() {
         
         if (response.ok) {
             console.log('Acknowledged alerts:', data);
-            // Show success message
-            const alertsContainer = document.getElementById('alerts-container');
-            if (alertsContainer) {
-                const successDiv = document.createElement('div');
-                successDiv.className = 'alert alert-success alert-dismissible fade show';
-                successDiv.innerHTML = `
-                    <i class="bi bi-check-circle"></i> ${data.message}
-                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-                `;
-                alertsContainer.insertBefore(successDiv, alertsContainer.firstChild);
-                
-                // Auto-dismiss after 3 seconds
-                setTimeout(() => {
-                    if (successDiv.parentNode) {
-                        successDiv.remove();
-                    }
-                }, 3000);
-            }
-            
-            // Reload alerts to show updated status
+            showSuccessMessage(data.message);
             await loadAlerts();
         } else {
             console.error('Error acknowledging alerts:', data);
@@ -254,6 +291,97 @@ async function acknowledgeAllAlerts() {
         console.error('Error acknowledging alerts:', error);
         alert('Error acknowledging alerts: ' + error.message);
     }
+}
+
+// Clear all alerts function
+async function clearAllAlerts() {
+    if (!confirm('Are you sure you want to permanently delete ALL alerts? This action cannot be undone.')) {
+        return;
+    }
+    
+    // Double confirmation for destructive action
+    if (!confirm('This will permanently delete all alerts from the database. Are you absolutely sure?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/monitoring/alerts/delete-all', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                confirm: true
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            console.log('Cleared all alerts:', data);
+            showSuccessMessage(`Successfully deleted ${data.total_deleted} alerts`);
+            await loadAlerts();
+        } else {
+            console.error('Error clearing alerts:', data);
+            alert('Error clearing alerts: ' + (data.error || 'Unknown error'));
+        }
+        
+    } catch (error) {
+        console.error('Error clearing alerts:', error);
+        alert('Error clearing alerts: ' + error.message);
+    }
+}
+
+// Delete single alert function
+async function deleteAlert(alertId) {
+    if (!confirm('Are you sure you want to permanently delete this alert?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/monitoring/alerts/${alertId}`, {
+            method: 'DELETE'
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok) {
+            console.log('Deleted alert:', data);
+            showSuccessMessage('Alert deleted successfully');
+            await loadAlerts();
+        } else {
+            console.error('Error deleting alert:', data);
+            alert('Error deleting alert: ' + (data.error || 'Unknown error'));
+        }
+        
+    } catch (error) {
+        console.error('Error deleting alert:', error);
+        alert('Error deleting alert: ' + error.message);
+    }
+}
+
+// Helper function to show success messages
+function showSuccessMessage(message) {
+    const alertsContainer = document.getElementById('alerts-container') || document.querySelector('.container');
+    const successDiv = document.createElement('div');
+    successDiv.className = 'alert alert-success alert-dismissible fade show';
+    successDiv.innerHTML = `
+        <i class="bi bi-check-circle"></i> ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    if (alertsContainer.firstChild) {
+        alertsContainer.insertBefore(successDiv, alertsContainer.firstChild);
+    } else {
+        alertsContainer.appendChild(successDiv);
+    }
+    
+    // Auto-dismiss after 4 seconds
+    setTimeout(() => {
+        if (successDiv.parentNode) {
+            successDiv.remove();
+        }
+    }, 4000);
 }
 
 // Simple initialization
@@ -272,6 +400,28 @@ document.addEventListener('DOMContentLoaded', function() {
     if (acknowledgeAllBtn) {
         acknowledgeAllBtn.addEventListener('click', acknowledgeAllAlerts);
     }
+    
+    // Add clear all alerts button listener
+    const clearAllBtn = document.getElementById('clear-all-alerts');
+    if (clearAllBtn) {
+        clearAllBtn.addEventListener('click', clearAllAlerts);
+    }
+    
+    // Add filter event listeners
+    document.getElementById('filter-severity').addEventListener('change', applyFilters);
+    document.getElementById('filter-status').addEventListener('change', applyFilters);
+    document.getElementById('filter-hours').addEventListener('change', applyFilters);
+    document.getElementById('clear-filters').addEventListener('click', clearFilters);
+    
+    // Add event delegation for delete alert buttons
+    document.addEventListener('click', function(e) {
+        if (e.target.closest('.delete-alert-btn')) {
+            const alertId = e.target.closest('.delete-alert-btn').dataset.alertId;
+            if (alertId) {
+                deleteAlert(parseInt(alertId));
+            }
+        }
+    });
 });
 </script>
 {% endblock %}

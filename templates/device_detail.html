@@ -15,9 +15,16 @@
     </div>
     
     <div class="btn-group">
-        <button type="button" class="btn btn-primary" id="ping-device-btn">
-            <i class="bi bi-wifi"></i> Ping
+        <button type="button" class="btn btn-primary dropdown-toggle" data-bs-toggle="dropdown" aria-expanded="false">
+            <i class="bi bi-gear"></i> Device Control
         </button>
+        <ul class="dropdown-menu">
+            <li><a class="dropdown-item" href="#" id="ping-device-btn"><i class="bi bi-wifi"></i> Ping Device</a></li>
+            <li><a class="dropdown-item" href="#" id="wake-device-btn"><i class="bi bi-power"></i> Wake on LAN</a></li>
+            <li><a class="dropdown-item" href="#" id="port-scan-btn"><i class="bi bi-search"></i> Port Scan</a></li>
+            <li><a class="dropdown-item" href="#" id="discover-info-btn"><i class="bi bi-info-circle"></i> Discover Info</a></li>
+            <li><a class="dropdown-item" href="#" id="traceroute-btn"><i class="bi bi-diagram-3"></i> Traceroute</a></li>
+        </ul>
         <button type="button" class="btn btn-outline-primary" id="edit-device-btn" data-bs-toggle="modal" data-bs-target="#editDeviceModal">
             <i class="bi bi-pencil"></i> Edit
         </button>
@@ -293,11 +300,66 @@ function getStatusIcon(status) {
     return icons[status] || 'question-circle';
 }
 
+// Format date labels based on time period
+function formatDateLabel(dateString, hours) {
+    const date = new Date(dateString);
+    
+    if (hours <= 1) {
+        // 1 hour: show time with minutes (14:30)
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (hours <= 6) {
+        // 6 hours: show time with minutes (14:30)
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (hours <= 24) {
+        // 24 hours: show time with hour only (14:00)
+        return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (hours <= 168) {
+        // 7 days: show day and time (Mon 14:00)
+        const dayNames = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+        const day = dayNames[date.getDay()];
+        const time = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        return `${day} ${time}`;
+    } else {
+        // Longer periods: show date and time (8/5 14:00)
+        return date.toLocaleDateString([], { month: 'numeric', day: 'numeric' }) + ' ' + 
+               date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    }
+}
+
 // Load response time chart
 async function loadResponseTimeChart(hours = 24) {
     try {
-        const response = await fetch(`/api/monitoring/timeline?device_id=${deviceId}&hours=${hours}&interval=hour`);
+        // Adjust limit based on time period to ensure we get enough data points
+        let limit;
+        if (hours <= 1) {
+            limit = 120;     // 1 hour: ~120 points (30s intervals)
+        } else if (hours <= 6) {
+            limit = 720;     // 6 hours: ~720 points  
+        } else if (hours <= 24) {
+            limit = 1000;    // 24 hours: ~2880 points, limit to 1000 for performance
+        } else {
+            limit = 2000;    // 7+ days: need more points to show trend, limit to 2000
+        }
+        
+        const response = await fetch(`/api/monitoring/data?device_id=${deviceId}&hours=${hours}&limit=${limit}`);
         const data = await response.json();
+        
+        if (!data.monitoring_data || data.monitoring_data.length === 0) {
+            console.log('No monitoring data available for chart');
+            return;
+        }
+        
+        // Filter and reverse data (API returns newest first, we want oldest first for chart)
+        let validData = data.monitoring_data
+            .filter(item => item.response_time !== null)
+            .reverse();
+        
+        // For longer time periods, thin out the data to improve chart performance
+        if (hours > 24 && validData.length > 200) {
+            // For 7+ days, show every nth point to keep ~200 data points
+            const step = Math.ceil(validData.length / 200);
+            validData = validData.filter((item, index) => index % step === 0);
+        }
         
         const ctx = document.getElementById('responseTimeChart').getContext('2d');
         
@@ -308,13 +370,14 @@ async function loadResponseTimeChart(hours = 24) {
         responseTimeChart = new Chart(ctx, {
             type: 'line',
             data: {
-                labels: data.timeline.map(item => new Date(item.timestamp).toLocaleString()),
+                labels: validData.map(item => formatDateLabel(item.timestamp, hours)),
                 datasets: [{
                     label: 'Response Time (ms)',
-                    data: data.timeline.map(item => item.avg_response_time),
+                    data: validData.map(item => item.response_time),
                     borderColor: 'rgb(54, 162, 235)',
                     backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                    tension: 0.1
+                    tension: 0.1,
+                    fill: false
                 }]
             },
             options: {
@@ -587,6 +650,234 @@ function exportData() {
     window.open(`/api/monitoring/export?device_id=${deviceId}&hours=168`, '_blank');
 }
 
+// Device control functions
+async function performDeviceControl(action) {
+    try {
+        let endpoint, data, loadingMessage, successMessage;
+        
+        switch (action) {
+            case 'ping':
+                endpoint = '/api/device-control/ping';
+                data = { device_id: deviceId, count: 4 };
+                loadingMessage = 'Pinging device...';
+                successMessage = 'Ping completed';
+                break;
+            case 'wake':
+                endpoint = '/api/device-control/wake-on-lan';
+                data = { device_id: deviceId };
+                loadingMessage = 'Sending Wake-on-LAN packet...';
+                successMessage = 'Wake-on-LAN packet sent';
+                break;
+            case 'port-scan':
+                endpoint = '/api/device-control/port-scan';
+                data = { device_id: deviceId };
+                loadingMessage = 'Scanning ports...';
+                successMessage = 'Port scan completed';
+                break;
+            case 'discover-info':
+                endpoint = '/api/device-control/discover-info';
+                data = { device_id: deviceId };
+                loadingMessage = 'Discovering device information...';
+                successMessage = 'Device discovery completed';
+                break;
+            case 'traceroute':
+                endpoint = '/api/device-control/traceroute';
+                data = { device_id: deviceId };
+                loadingMessage = 'Running traceroute...';
+                successMessage = 'Traceroute completed';
+                break;
+            default:
+                throw new Error(`Unknown action: ${action}`);
+        }
+        
+        // Show loading toast
+        showToast(loadingMessage, 'info');
+        
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(data)
+        });
+        
+        const result = await response.json();
+        
+        if (result.success) {
+            showToast(successMessage, 'success');
+            showDeviceControlResults(action, result);
+        } else {
+            showToast(result.error || 'Operation failed', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Device control error:', error);
+        showToast('Device control operation failed', 'error');
+    }
+}
+
+// Show device control results in a modal
+function showDeviceControlResults(action, result) {
+    let title, content;
+    
+    switch (action) {
+        case 'ping':
+            title = 'Ping Results';
+            content = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>Target:</strong> ${result.ip_address}<br>
+                        <strong>Packets Sent:</strong> ${result.packets_sent}<br>
+                        <strong>Packets Received:</strong> ${result.packets_received}<br>
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Packet Loss:</strong> ${result.packet_loss_percent}%<br>
+                        <strong>Avg Response Time:</strong> ${result.avg_response_time}ms<br>
+                    </div>
+                </div>
+                <hr>
+                <strong>Raw Output:</strong>
+                <pre class="mt-2" style="font-size: 0.9em; background: #f8f9fa; padding: 10px; border-radius: 4px;">${result.raw_output}</pre>
+            `;
+            break;
+        case 'wake':
+            title = 'Wake-on-LAN Results';
+            content = `
+                <p><strong>Status:</strong> <span class="badge bg-success">Packet Sent</span></p>
+                <p><strong>Message:</strong> ${result.message}</p>
+                <p><strong>Broadcast Count:</strong> ${result.broadcast_count}</p>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    Wake-on-LAN packet has been sent. If the device supports WOL and is properly configured, it should wake up within a few seconds.
+                </div>
+            `;
+            break;
+        case 'port-scan':
+            title = 'Port Scan Results';
+            content = `
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Target:</strong> ${result.ip_address}<br>
+                        <strong>Total Ports Scanned:</strong> ${result.total_scanned}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Open Ports:</strong> ${result.open_ports.length}<br>
+                        <strong>Closed Ports:</strong> ${result.closed_ports.length}
+                    </div>
+                </div>
+                <strong>Open Ports & Services:</strong>
+                ${result.open_services.length > 0 ? `
+                    <div class="table-responsive mt-2">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Port</th>
+                                    <th>Service</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${result.open_services.map(service => `
+                                    <tr>
+                                        <td>${service.port}</td>
+                                        <td>${service.service}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                ` : '<p class="text-muted mt-2">No open ports found</p>'}
+            `;
+            break;
+        case 'discover-info':
+            title = 'Device Discovery Results';
+            const info = result.device_info;
+            content = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <strong>IP Address:</strong> ${info.ip_address}<br>
+                        <strong>Hostname:</strong> ${info.hostname || 'Not available'}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>HTTP Title:</strong> ${info.http_title || 'Not available'}<br>
+                        <strong>HTTPS Title:</strong> ${info.https_title || 'Not available'}
+                    </div>
+                </div>
+            `;
+            break;
+        case 'traceroute':
+            title = 'Traceroute Results';
+            content = `
+                <div class="row mb-3">
+                    <div class="col-md-6">
+                        <strong>Target:</strong> ${result.ip_address}<br>
+                        <strong>Command Used:</strong> ${result.command_used}
+                    </div>
+                    <div class="col-md-6">
+                        <strong>Hop Count:</strong> ${result.hop_count}<br>
+                    </div>
+                </div>
+                <strong>Route:</strong>
+                ${result.hops.length > 0 ? `
+                    <div class="table-responsive mt-2">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Hop</th>
+                                    <th>IP Address</th>
+                                    <th>Details</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${result.hops.map(hop => `
+                                    <tr>
+                                        <td>${hop.hop}</td>
+                                        <td>${hop.ip || 'Unknown'}</td>
+                                        <td><small>${hop.raw_line}</small></td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                ` : '<p class="text-muted mt-2">No route information available</p>'}
+                <hr>
+                <strong>Raw Output:</strong>
+                <pre class="mt-2" style="font-size: 0.8em; background: #f8f9fa; padding: 10px; border-radius: 4px; max-height: 200px; overflow-y: auto;">${result.raw_output}</pre>
+            `;
+            break;
+    }
+    
+    // Create modal if it doesn't exist
+    let modal = document.getElementById('deviceControlModal');
+    if (!modal) {
+        modal = document.createElement('div');
+        modal.id = 'deviceControlModal';
+        modal.className = 'modal fade';
+        modal.innerHTML = `
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="deviceControlModalTitle"></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body" id="deviceControlModalBody">
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(modal);
+    }
+    
+    // Set content and show modal
+    document.getElementById('deviceControlModalTitle').textContent = title;
+    document.getElementById('deviceControlModalBody').innerHTML = content;
+    
+    const bsModal = new bootstrap.Modal(modal);
+    bsModal.show();
+}
+
 // Event listeners
 document.addEventListener('DOMContentLoaded', function() {
     loadDeviceDetails();
@@ -605,7 +896,11 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // Button event listeners
-    document.getElementById('ping-device-btn').addEventListener('click', pingDevice);
+    document.getElementById('ping-device-btn').addEventListener('click', () => performDeviceControl('ping'));
+    document.getElementById('wake-device-btn').addEventListener('click', () => performDeviceControl('wake'));
+    document.getElementById('port-scan-btn').addEventListener('click', () => performDeviceControl('port-scan'));
+    document.getElementById('discover-info-btn').addEventListener('click', () => performDeviceControl('discover-info'));
+    document.getElementById('traceroute-btn').addEventListener('click', () => performDeviceControl('traceroute'));
     document.getElementById('save-edit-btn').addEventListener('click', saveDeviceEdits);
     document.getElementById('delete-device-btn').addEventListener('click', deleteDevice);
     document.getElementById('export-data-btn').addEventListener('click', exportData);

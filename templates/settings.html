@@ -89,15 +89,17 @@
                                         <i class="bi bi-broadcast"></i> Automatic Ping Interval (seconds)
                                     </label>
                                     <div class="input-group">
-                                        <input type="number" class="form-control" id="ping-interval" min="5" max="300">
+                                        <input type="number" class="form-control" id="ping-interval" min="5" max="900">
                                         <div class="btn-group" role="group">
-                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setPingInterval(15)">15s</button>
                                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setPingInterval(30)">30s</button>
                                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setPingInterval(60)">1m</button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setPingInterval(300)">5m</button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setPingInterval(600)">10m</button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setPingInterval(900)">15m</button>
                                         </div>
                                     </div>
                                     <div class="form-text">
-                                        How often to automatically ping all monitored devices (5-300 seconds)
+                                        How often to automatically ping all monitored devices (5-900 seconds)
                                         <br><small class="text-muted">Default: 30 seconds • Lower values = more frequent monitoring</small>
                                     </div>
                                 </div>
@@ -111,7 +113,10 @@
                                         <div class="btn-group" role="group">
                                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setScanInterval(120)">2m</button>
                                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setScanInterval(300)">5m</button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setScanInterval(600)">10m</button>
                                             <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setScanInterval(900)">15m</button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setScanInterval(1800)">30m</button>
+                                            <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setScanInterval(3600)">1h</button>
                                         </div>
                                     </div>
                                     <div class="form-text">
@@ -372,6 +377,30 @@
                             <button class="btn btn-outline-danger" id="reset-settings-btn">
                                 <i class="bi bi-arrow-clockwise"></i> Reset to Defaults
                             </button>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h6>Data Management</h6>
+                            <p class="text-muted">Reset historical monitoring data to start fresh uptime calculations</p>
+                            <button class="btn btn-outline-danger" id="reset-ping-history-btn">
+                                <i class="bi bi-database-dash"></i> Reset Ping History
+                            </button>
+                            <div class="form-text mt-2">
+                                <i class="bi bi-exclamation-triangle text-danger"></i> 
+                                This will permanently delete all historical ping data. Uptime percentages will start calculating fresh from now.
+                            </div>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h6>System Control</h6>
+                            <p class="text-muted">Restart the HomeNetMon application and all monitoring services</p>
+                            <button class="btn btn-warning" id="restart-system-btn">
+                                <i class="bi bi-power"></i> Restart HomeNetMon
+                            </button>
+                            <div class="form-text mt-2">
+                                <i class="bi bi-exclamation-triangle text-warning"></i> 
+                                This will restart the entire application and briefly interrupt monitoring.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -874,6 +903,125 @@ function showRestartButton() {
     notice.innerHTML = '<i class="bi bi-exclamation-triangle text-warning"></i> <span class="text-warning">Network range changed. Restart required to apply changes.</span>';
 }
 
+// Restart system
+async function restartSystem() {
+    if (!confirm('Are you sure you want to restart HomeNetMon? This will temporarily interrupt monitoring for about 10-15 seconds.')) {
+        return;
+    }
+    
+    const button = document.getElementById('restart-system-btn');
+    const originalText = button.innerHTML;
+    
+    try {
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Restarting Application...';
+        button.disabled = true;
+        
+        const response = await fetch('/api/config/restart-system', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            
+            // Show countdown and then refresh
+            let countdown = 15;
+            const countdownInterval = setInterval(() => {
+                button.innerHTML = `<span class="spinner-border spinner-border-sm me-2"></span>Restarting... (${countdown}s)`;
+                countdown--;
+                
+                if (countdown <= 0) {
+                    clearInterval(countdownInterval);
+                    // Refresh the page after restart
+                    window.location.reload();
+                }
+            }, 1000);
+        } else {
+            showToast(data.error || 'Error restarting system', 'error');
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+        
+    } catch (error) {
+        console.error('Error restarting system:', error);
+        showToast('Error restarting system', 'error');
+        button.innerHTML = originalText;
+        button.disabled = false;
+    }
+}
+
+// Reset ping history
+async function resetPingHistory() {
+    // First confirmation
+    if (!confirm('⚠️ WARNING: This will permanently delete ALL historical ping data!\n\nThis includes:\n• All uptime history\n• All response time data\n• All monitoring records\n\nUptime percentages will start fresh from 0%.\n\nAre you sure you want to continue?')) {
+        return;
+    }
+    
+    // Second confirmation with more specific warning
+    if (!confirm('🚨 FINAL WARNING: This action CANNOT be undone!\n\n• Your router showing 70% uptime will reset to 0%\n• All devices will start with 0% uptime\n• Historical charts will be empty\n• This affects ALL devices\n\nClick OK only if you understand these consequences.')) {
+        return;
+    }
+    
+    const button = document.getElementById('reset-ping-history-btn');
+    const originalText = button.innerHTML;
+    
+    try {
+        button.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Deleting Historical Data...';
+        button.disabled = true;
+        
+        const response = await fetch('/api/config/reset-monitoring-data', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                confirm: true
+            })
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(data.message, 'success');
+            
+            // Show detailed success information
+            const details = data.details;
+            const successMessage = `
+                <div class="alert alert-success mt-3">
+                    <h6><i class="bi bi-check-circle"></i> Historical Data Reset Complete</h6>
+                    <ul class="mb-0">
+                        <li>Deleted ${details.total_deleted} monitoring records</li>
+                        <li>Time span: ${details.time_span || 'Unknown'}</li>
+                        <li>Reset ${details.devices_reset} devices</li>
+                        <li>New monitoring started at: ${new Date(details.reset_time).toLocaleString()}</li>
+                    </ul>
+                    <p class="mt-2 mb-0"><strong>All uptime percentages will now start calculating fresh!</strong></p>
+                </div>
+            `;
+            
+            button.parentNode.insertAdjacentHTML('afterend', successMessage);
+            button.innerHTML = '<i class="bi bi-check-circle"></i> Data Reset Complete';
+            button.classList.remove('btn-outline-danger');
+            button.classList.add('btn-success');
+            
+        } else {
+            showToast(data.error || 'Error resetting ping history', 'error');
+            button.innerHTML = originalText;
+            button.disabled = false;
+        }
+        
+    } catch (error) {
+        console.error('Error resetting ping history:', error);
+        showToast('Error resetting ping history', 'error');
+        button.innerHTML = originalText;
+        button.disabled = false;
+    }
+}
+
 // Reset settings
 async function resetSettings() {
     if (!confirm('Are you sure you want to reset all settings to defaults? This action cannot be undone.')) {
@@ -934,6 +1082,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // System actions
     document.getElementById('reset-settings-btn').addEventListener('click', resetSettings);
     document.getElementById('restart-services-btn').addEventListener('click', restartServices);
+    document.getElementById('restart-system-btn').addEventListener('click', restartSystem);
+    document.getElementById('reset-ping-history-btn').addEventListener('click', resetPingHistory);
     
     // Network range change detection
     document.getElementById('network-range').addEventListener('input', function() {

@@ -38,38 +38,85 @@
     animation: none;
 }
 
-/* Animations */
+/* Enhanced animations */
 @keyframes pulse {
     0% {
         opacity: 1;
+        transform: scale(1);
     }
     50% {
-        opacity: 0.5;
+        opacity: 0.7;
+        transform: scale(1.05);
     }
     100% {
         opacity: 1;
+        transform: scale(1);
     }
 }
 
 @keyframes blink {
     0%, 50% {
         opacity: 1;
+        transform: scale(1);
     }
     51%, 100% {
         opacity: 0.3;
+        transform: scale(0.95);
     }
 }
 
-/* Device cards */
+/* New enhanced animations */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideInRight {
+    from { transform: translateX(100%); opacity: 0; }
+    to { transform: translateX(0); opacity: 1; }
+}
+
+@keyframes slideOutRight {
+    from { transform: translateX(0); opacity: 1; }
+    to { transform: translateX(100%); opacity: 0; }
+}
+
+@keyframes countUp {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+@keyframes statusChange {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.2); }
+    100% { transform: scale(1); }
+}
+
+@keyframes networkPulse {
+    0%, 100% { opacity: 0.4; }
+    50% { opacity: 1; }
+}
+
+/* Device cards with enhanced animations */
 .device-card {
-    transition: all 0.3s ease;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
     border: 1px solid #dee2e6;
+    transform-origin: center;
 }
 
 .device-card:hover {
-    transform: translateY(-4px);
-    box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+    transform: translateY(-4px) scale(1.01);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
     border-color: #007bff;
+}
+
+.device-card.status-change {
+    animation: statusChange 0.5s ease-in-out;
 }
 
 .device-card .card-body {
@@ -230,6 +277,171 @@
 
 ::-webkit-scrollbar-thumb:hover {
     background: #a8a8a8;
+}
+
+/* Enhanced animation utility classes */
+.fade-in {
+    animation: fadeIn 0.6s ease-out;
+}
+
+.fade-in-delay-1 {
+    animation: fadeIn 0.6s ease-out 0.1s both;
+}
+
+.fade-in-delay-2 {
+    animation: fadeIn 0.6s ease-out 0.2s both;
+}
+
+.fade-in-delay-3 {
+    animation: fadeIn 0.6s ease-out 0.3s both;
+}
+
+.count-animation {
+    animation: countUp 0.8s ease-out;
+}
+
+.loading {
+    animation: spin 1s linear infinite;
+}
+
+.network-activity {
+    animation: networkPulse 1.5s infinite;
+}
+
+.notification-enter {
+    animation: slideInRight 0.3s ease-out;
+}
+
+.notification-exit {
+    animation: slideOutRight 0.3s ease-in;
+}
+
+/* Button enhancements */
+.btn {
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.btn:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+/* Card hover enhancements */
+.card {
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+}
+
+/* Progress bar animations */
+.progress-bar {
+    transition: width 1s ease-in-out;
+}
+
+/* Modal enhancements */
+.modal.fade .modal-dialog {
+    transform: scale(0.8) translateY(-50px);
+    transition: all 0.3s ease;
+}
+
+.modal.show .modal-dialog {
+    transform: scale(1) translateY(0);
+}
+
+/* Dashboard grid animations */
+.dashboard-grid {
+    /* Use Bootstrap's flexbox grid system - don't override display property */
+}
+
+.dashboard-grid .card {
+    opacity: 0;
+    transform: translateY(30px);
+    animation: fadeInUp 0.6s ease-out forwards;
+}
+
+.dashboard-grid .card:nth-child(1) { animation-delay: 0.1s; }
+.dashboard-grid .card:nth-child(2) { animation-delay: 0.2s; }
+.dashboard-grid .card:nth-child(3) { animation-delay: 0.3s; }
+.dashboard-grid .card:nth-child(4) { animation-delay: 0.4s; }
+.dashboard-grid .card:nth-child(5) { animation-delay: 0.5s; }
+.dashboard-grid .card:nth-child(6) { animation-delay: 0.6s; }
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Search box enhancements */
+.search-box {
+    transition: all 0.3s ease;
+}
+
+.search-box:focus-within {
+    transform: scale(1.02);
+    box-shadow: 0 4px 20px rgba(13, 110, 253, 0.2);
+}
+
+/* Chart loading states */
+.chart-container {
+    position: relative;
+    overflow: hidden;
+}
+
+.chart-loading {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 10;
+}
+
+/* Bulk selection styles */
+.device-card.selection-mode {
+    border-style: dashed;
+    border-width: 2px;
+}
+
+.device-card.selection-mode:hover {
+    border-color: #0d6efd;
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+.device-checkbox {
+    z-index: 10;
+}
+
+.device-select:checked + .device-card {
+    background-color: rgba(13, 110, 253, 0.1);
+    border-color: #0d6efd;
+}
+
+/* Speed test overall rating fixes */
+#overall-rating-badge {
+    opacity: 1 !important;
+    animation: none !important;
+    visibility: visible !important;
+    position: relative !important;
+}
+
+#overall-rating-badge:not(:empty) {
+    background-color: var(--bs-secondary) !important;
+}
+
+/* Remove placeholder animations from speed test ratings */
+#overall-speed-rating .placeholder-glow,
+#overall-speed-rating .placeholder {
+    display: none !important;
 }
 
 /* Print styles */

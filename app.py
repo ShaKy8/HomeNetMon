@@ -27,15 +27,29 @@ def create_app():
     from api.devices import devices_bp
     from api.monitoring import monitoring_bp
     from api.config import config_bp
+    from api.analytics import analytics_bp
+    from api.speedtest import speedtest_bp
+    from api.device_control import device_control_bp
     
     app.register_blueprint(devices_bp, url_prefix='/api/devices')
     app.register_blueprint(monitoring_bp, url_prefix='/api/monitoring')
     app.register_blueprint(config_bp, url_prefix='/api/config')
+    app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
+    app.register_blueprint(speedtest_bp, url_prefix='/api/speedtest')
+    app.register_blueprint(device_control_bp, url_prefix='/api/device-control')
     
     # Initialize monitoring services
     scanner = NetworkScanner(app)
     monitor = DeviceMonitor(socketio, app)
     alert_manager = AlertManager(app)
+    
+    # Initialize speed test service
+    from services.speedtest import speed_test_service
+    speed_test_service.app = app
+    
+    # Make services accessible to other parts of the app
+    app.alert_manager = alert_manager
+    app.speed_test_service = speed_test_service
     
     # Start background services in separate threads
     def start_monitoring_services():
@@ -86,6 +100,10 @@ def create_app():
     def alerts():
         return render_template('alerts.html')
     
+    @app.route('/analytics')
+    def analytics():
+        return render_template('analytics.html')
+    
     @app.route('/topology')
     def topology():
         try:
@@ -96,6 +114,10 @@ def create_app():
     @app.route('/test')
     def test():
         return jsonify({'message': 'Flask is working'})
+    
+    @app.route('/static/service-worker.js')
+    def service_worker():
+        return app.send_static_file('service-worker.js'), 200, {'Content-Type': 'application/javascript'}
     
     # SocketIO events
     @socketio.on('connect')

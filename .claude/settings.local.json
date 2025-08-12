@@ -44,7 +44,9 @@
       "Bash(true)",
       "Bash(fping:*)",
       "Bash(python:*)",
-      "Bash(ping:*)"
+      "Bash(ping:*)",
+      "Bash(speedtest:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }

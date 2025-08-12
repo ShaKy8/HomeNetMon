@@ -18,157 +18,272 @@ class AlertManager:
         self.is_running = False
         self._stop_event = threading.Event()
         self.alert_thresholds = {
-            'device_down_minutes': 3,  # Alert if device down for 3+ minutes
-            'high_latency_ms': 1000,   # Alert if ping > 1000ms
-            'packet_loss_threshold': 50  # Alert if packet loss > 50%
+            'device_down_minutes_critical': 8,   # Alert if critical device down for 8+ minutes
+            'device_down_minutes_regular': 15,   # Alert if regular device down for 15+ minutes
+            'high_latency_ms': 1000,             # Alert if ping > 1000ms
+            'packet_loss_threshold': 50,          # Alert if packet loss > 50%
+            'consecutive_failures_required': 3    # Require 3 consecutive failures before alerting
         }
         
+    def is_critical_device(self, device):
+        """Determine if a device is critical infrastructure (same logic as monitor)"""
+        return (
+            device.ip_address.endswith('.1') or  # Router/Gateway
+            device.ip_address.endswith('.64') or  # Server
+            'router' in device.device_type.lower() if device.device_type else False or
+            'server' in device.device_type.lower() if device.device_type else False or
+            'nuc' in (device.hostname or '').lower() or
+            'gateway' in (device.hostname or '').lower()
+        )
+    
+    def has_consecutive_failures(self, device, required_failures=3):
+        """Check if device has the required number of consecutive monitoring failures"""
+        if not device.last_seen:
+            return True  # Never seen = definitely down
+        
+        # Get recent monitoring data
+        recent_cutoff = datetime.utcnow() - timedelta(hours=1)
+        monitoring_data = MonitoringData.query.filter(
+            MonitoringData.device_id == device.id,
+            MonitoringData.timestamp >= recent_cutoff
+        ).order_by(MonitoringData.timestamp.desc()).limit(required_failures * 2).all()
+        
+        if len(monitoring_data) < required_failures:
+            return False  # Not enough data to determine
+        
+        # Check if the most recent records are all failures
+        consecutive_count = 0
+        for data_point in monitoring_data:
+            if data_point.response_time is None:
+                consecutive_count += 1
+            else:
+                break  # Found a success, reset count
+        
+        return consecutive_count >= required_failures
+    
     def check_device_down_alerts(self):
-        """Check for devices that have been down for too long"""
-        try:
-            threshold_minutes = self.alert_thresholds['device_down_minutes']
-            cutoff_time = datetime.utcnow() - timedelta(minutes=threshold_minutes)
+        """Check for devices that have been down for too long with intelligent thresholds"""
+        if not self.app:
+            logger.error("No Flask app context available for alert checking")
+            return
             
-            # Find devices that haven't responded recently
-            devices = Device.query.filter(
-                Device.is_monitored == True,
-                Device.last_seen < cutoff_time
-            ).all()
-            
-            for device in devices:
-                # Check if we already have an active alert for this device
-                existing_alert = Alert.query.filter(
-                    Alert.device_id == device.id,
-                    Alert.alert_type == 'device_down',
-                    Alert.resolved == False
-                ).first()
+        with self.app.app_context():
+            try:
+                # Get all monitored devices
+                all_devices = Device.query.filter_by(is_monitored=True).all()
+                consecutive_failures_required = self.alert_thresholds['consecutive_failures_required']
                 
-                if not existing_alert:
-                    # Create new alert
-                    alert = Alert(
-                        device_id=device.id,
-                        alert_type='device_down',
-                        severity='critical',
-                        message=f"Device {device.display_name} ({device.ip_address}) has been down for over {threshold_minutes} minutes"
-                    )
+                for device in all_devices:
+                    # Determine threshold based on device criticality
+                    if self.is_critical_device(device):
+                        threshold_minutes = self.alert_thresholds['device_down_minutes_critical']
+                    else:
+                        threshold_minutes = self.alert_thresholds['device_down_minutes_regular']
                     
-                    db.session.add(alert)
-                    db.session.commit()
+                    cutoff_time = datetime.utcnow() - timedelta(minutes=threshold_minutes)
                     
-                    # Send notifications
-                    self.send_alert_notifications(alert)
-                    
-                    logger.warning(f"Device down alert created for {device.display_name}")
-                    
-        except Exception as e:
-            logger.error(f"Error checking device down alerts: {e}")
-            db.session.rollback()
+                    # Only alert if device hasn't been seen AND has consecutive failures
+                    if (device.last_seen and device.last_seen < cutoff_time and 
+                        self.has_consecutive_failures(device, consecutive_failures_required)):
+                        
+                        # Check if we already have an active alert for this device
+                        existing_alert = Alert.query.filter(
+                            Alert.device_id == device.id,
+                            Alert.alert_type == 'device_down',
+                            Alert.resolved == False
+                        ).first()
+                        
+                        if not existing_alert:
+                            device_type = "critical" if self.is_critical_device(device) else "regular"
+                            
+                            # Create new alert
+                            alert = Alert(
+                                device_id=device.id,
+                                alert_type='device_down',
+                                severity='critical' if self.is_critical_device(device) else 'warning',
+                                message=f"{device_type.title()} device {device.display_name} ({device.ip_address}) has been down for over {threshold_minutes} minutes with {consecutive_failures_required}+ consecutive monitoring failures"
+                            )
+                            
+                            db.session.add(alert)
+                            db.session.commit()
+                            
+                            # Send notifications
+                            self.send_alert_notifications(alert)
+                            
+                            logger.warning(f"Device down alert created for {device.display_name} (threshold: {threshold_minutes}min, type: {device_type})")
+                        
+            except Exception as e:
+                logger.error(f"Error checking device down alerts: {e}")
+                db.session.rollback()
     
     def check_high_latency_alerts(self):
         """Check for devices with consistently high latency"""
-        try:
-            threshold_ms = self.alert_thresholds['high_latency_ms']
+        if not self.app:
+            logger.error("No Flask app context available for alert checking")
+            return
             
-            # Check last 5 minutes of data
-            cutoff_time = datetime.utcnow() - timedelta(minutes=5)
-            
-            # Find devices with recent high latency measurements
-            subquery = db.session.query(MonitoringData.device_id).filter(
-                MonitoringData.timestamp >= cutoff_time,
-                MonitoringData.response_time > threshold_ms
-            ).group_by(MonitoringData.device_id).having(
-                db.func.count(MonitoringData.id) >= 3  # At least 3 high latency measurements
-            ).subquery()
-            
-            devices = Device.query.filter(
-                Device.id.in_(subquery),
-                Device.is_monitored == True
-            ).all()
-            
-            for device in devices:
-                # Check if we already have an active alert
-                existing_alert = Alert.query.filter(
-                    Alert.device_id == device.id,
-                    Alert.alert_type == 'high_latency',
-                    Alert.resolved == False
-                ).first()
+        with self.app.app_context():
+            try:
+                threshold_ms = self.alert_thresholds['high_latency_ms']
                 
-                if not existing_alert:
-                    # Get average latency for alert message
-                    avg_latency = db.session.query(
-                        db.func.avg(MonitoringData.response_time)
-                    ).filter(
-                        MonitoringData.device_id == device.id,
-                        MonitoringData.timestamp >= cutoff_time,
-                        MonitoringData.response_time.isnot(None)
-                    ).scalar()
+                # Check last 5 minutes of data
+                cutoff_time = datetime.utcnow() - timedelta(minutes=5)
+                
+                # Find devices with recent high latency measurements
+                subquery = db.session.query(MonitoringData.device_id).filter(
+                    MonitoringData.timestamp >= cutoff_time,
+                    MonitoringData.response_time > threshold_ms
+                ).group_by(MonitoringData.device_id).having(
+                    db.func.count(MonitoringData.id) >= 3  # At least 3 high latency measurements
+                ).subquery()
+                
+                devices = Device.query.filter(
+                    Device.id.in_(subquery),
+                    Device.is_monitored == True
+                ).all()
+                
+                for device in devices:
+                    # Check if we already have an active alert
+                    existing_alert = Alert.query.filter(
+                        Alert.device_id == device.id,
+                        Alert.alert_type == 'high_latency',
+                        Alert.resolved == False
+                    ).first()
                     
-                    alert = Alert(
-                        device_id=device.id,
-                        alert_type='high_latency',
-                        severity='warning',
-                        message=f"Device {device.display_name} ({device.ip_address}) has high latency: {avg_latency:.0f}ms average"
-                    )
-                    
-                    db.session.add(alert)
-                    db.session.commit()
-                    
-                    # Send notifications
-                    self.send_alert_notifications(alert)
-                    
-                    logger.warning(f"High latency alert created for {device.display_name}")
-                    
-        except Exception as e:
-            logger.error(f"Error checking high latency alerts: {e}")
-            db.session.rollback()
+                    if not existing_alert:
+                        # Get average latency for alert message
+                        avg_latency = db.session.query(
+                            db.func.avg(MonitoringData.response_time)
+                        ).filter(
+                            MonitoringData.device_id == device.id,
+                            MonitoringData.timestamp >= cutoff_time,
+                            MonitoringData.response_time.isnot(None)
+                        ).scalar()
+                        
+                        alert = Alert(
+                            device_id=device.id,
+                            alert_type='high_latency',
+                            severity='warning',
+                            message=f"Device {device.display_name} ({device.ip_address}) has high latency: {avg_latency:.0f}ms average"
+                        )
+                        
+                        db.session.add(alert)
+                        db.session.commit()
+                        
+                        # Send notifications
+                        self.send_alert_notifications(alert)
+                        
+                        logger.warning(f"High latency alert created for {device.display_name}")
+                        
+            except Exception as e:
+                logger.error(f"Error checking high latency alerts: {e}")
+                db.session.rollback()
+                
+    def check_device_recovery_alerts(self):
+        """Check for devices that have recently come back online"""
+        if not self.app:
+            logger.error("No Flask app context available for device recovery checking")
+            return
+            
+        with self.app.app_context():
+            try:
+                # Use the critical device threshold as baseline for recovery detection
+                threshold_minutes = self.alert_thresholds['device_down_minutes_critical']
+                recent_time = datetime.utcnow() - timedelta(minutes=threshold_minutes // 2)
+                
+                # Find active device down alerts
+                active_down_alerts = Alert.query.filter(
+                    Alert.alert_type == 'device_down',
+                    Alert.resolved == False
+                ).all()
+                
+                for alert in active_down_alerts:
+                    device = alert.device
+                    if device and device.last_seen and device.last_seen >= recent_time:
+                        # Device is back up - create recovery alert
+                        existing_recovery_alert = Alert.query.filter(
+                            Alert.device_id == device.id,
+                            Alert.alert_type == 'device_recovery',
+                            Alert.created_at >= recent_time
+                        ).first()
+                        
+                        if not existing_recovery_alert:
+                            # Create recovery alert
+                            recovery_alert = Alert(
+                                device_id=device.id,
+                                alert_type='device_recovery',
+                                severity='info',
+                                message=f"Device {device.display_name} ({device.ip_address}) is back online after being down"
+                            )
+                            
+                            db.session.add(recovery_alert)
+                            db.session.commit()
+                            
+                            # Send notifications
+                            self.send_alert_notifications(recovery_alert)
+                            
+                            logger.info(f"Device recovery alert created for {device.display_name}")
+                            
+                        # Resolve the original down alert
+                        alert.resolve()
+                        logger.info(f"Resolved device down alert for {device.display_name}")
+                        
+            except Exception as e:
+                logger.error(f"Error checking device recovery alerts: {e}")
+                db.session.rollback()
     
     def resolve_alerts(self):
         """Resolve alerts for devices that are back to normal"""
-        try:
-            # Resolve device down alerts for devices that are back up
-            threshold_minutes = self.alert_thresholds['device_down_minutes']
-            recent_time = datetime.utcnow() - timedelta(minutes=threshold_minutes // 2)
+        if not self.app:
+            logger.error("No Flask app context available for alert resolving")
+            return
             
-            # Find active device down alerts where device is now responding
-            active_down_alerts = Alert.query.filter(
-                Alert.alert_type == 'device_down',
-                Alert.resolved == False
-            ).all()
-            
-            for alert in active_down_alerts:
-                device = alert.device
-                if device and device.last_seen and device.last_seen >= recent_time:
-                    alert.resolve()
-                    logger.info(f"Resolved device down alert for {device.display_name}")
-            
-            # Resolve high latency alerts for devices with normal latency
-            threshold_ms = self.alert_thresholds['high_latency_ms']
-            cutoff_time = datetime.utcnow() - timedelta(minutes=3)
-            
-            active_latency_alerts = Alert.query.filter(
-                Alert.alert_type == 'high_latency',
-                Alert.resolved == False
-            ).all()
-            
-            for alert in active_latency_alerts:
-                device = alert.device
-                if device:
-                    # Check recent latency measurements
-                    recent_high_latency = MonitoringData.query.filter(
-                        MonitoringData.device_id == device.id,
-                        MonitoringData.timestamp >= cutoff_time,
-                        MonitoringData.response_time > threshold_ms
-                    ).count()
-                    
-                    if recent_high_latency == 0:
+        with self.app.app_context():
+            try:
+                # Resolve device down alerts for devices that are back up
+                threshold_minutes = self.alert_thresholds['device_down_minutes_critical']
+                recent_time = datetime.utcnow() - timedelta(minutes=threshold_minutes // 2)
+                
+                # Find active device down alerts where device is now responding
+                active_down_alerts = Alert.query.filter(
+                    Alert.alert_type == 'device_down',
+                    Alert.resolved == False
+                ).all()
+                
+                for alert in active_down_alerts:
+                    device = alert.device
+                    if device and device.last_seen and device.last_seen >= recent_time:
                         alert.resolve()
-                        logger.info(f"Resolved high latency alert for {device.display_name}")
-            
-            db.session.commit()
-            
-        except Exception as e:
-            logger.error(f"Error resolving alerts: {e}")
-            db.session.rollback()
+                        logger.info(f"Resolved device down alert for {device.display_name}")
+                
+                # Resolve high latency alerts for devices with normal latency
+                threshold_ms = self.alert_thresholds['high_latency_ms']
+                cutoff_time = datetime.utcnow() - timedelta(minutes=3)
+                
+                active_latency_alerts = Alert.query.filter(
+                    Alert.alert_type == 'high_latency',
+                    Alert.resolved == False
+                ).all()
+                
+                for alert in active_latency_alerts:
+                    device = alert.device
+                    if device:
+                        # Check recent latency measurements
+                        recent_high_latency = MonitoringData.query.filter(
+                            MonitoringData.device_id == device.id,
+                            MonitoringData.timestamp >= cutoff_time,
+                            MonitoringData.response_time > threshold_ms
+                        ).count()
+                        
+                        if recent_high_latency == 0:
+                            alert.resolve()
+                            logger.info(f"Resolved high latency alert for {device.display_name}")
+                
+                db.session.commit()
+                
+            except Exception as e:
+                logger.error(f"Error resolving alerts: {e}")
+                db.session.rollback()
     
     def send_email_alert(self, alert):
         """Send email notification for alert"""
@@ -291,6 +406,16 @@ This is an automated message from HomeNetMon.
                     ip_address=device.ip_address,
                     dashboard_url=dashboard_url
                 )
+            elif alert.alert_type == 'device_recovery':
+                # For device recovery, send a positive notification
+                title = f"✅ Device Online: {device.display_name}"
+                success = push_service.send_notification(
+                    title=title,
+                    message=alert.message,
+                    priority="default",
+                    tags="success,green_circle,check",
+                    click_url=dashboard_url
+                )
             elif alert.alert_type == 'high_latency':
                 # For high latency, send a generic notification
                 title = f"⚠️ High Latency: {device.display_name}"
@@ -350,15 +475,36 @@ This is an automated message from HomeNetMon.
     
     def get_active_alerts(self):
         """Get all active (unresolved) alerts"""
-        try:
-            return Alert.query.filter(Alert.resolved == False).order_by(Alert.created_at.desc()).all()
-        except Exception as e:
-            logger.error(f"Error getting active alerts: {e}")
+        if not self.app:
+            logger.error("No Flask app context available for getting alerts")
             return []
+            
+        with self.app.app_context():
+            try:
+                return Alert.query.filter(Alert.resolved == False).order_by(Alert.created_at.desc()).all()
+            except Exception as e:
+                logger.error(f"Error getting active alerts: {e}")
+                return []
+    
+    def set_alert_pause(self, minutes):
+        """Pause alert generation for specified minutes (called after bulk deletion)"""
+        self.alert_pause_until = datetime.utcnow() + timedelta(minutes=minutes)
+        logger.info(f"Alert generation paused for {minutes} minutes until {self.alert_pause_until}")
+    
+    def is_alert_generation_paused(self):
+        """Check if alert generation is currently paused"""
+        if hasattr(self, 'alert_pause_until') and self.alert_pause_until:
+            if datetime.utcnow() < self.alert_pause_until:
+                return True
+            else:
+                # Pause period expired, clear it
+                self.alert_pause_until = None
+        return False
     
     def start_monitoring(self):
-        """Start the alert monitoring process"""
+        """Start the alert monitoring process with intelligent timing"""
         self.is_running = True
+        self.alert_pause_until = None
         logger.info("Starting alert monitoring")
         
         # Cleanup old alerts on startup
@@ -366,11 +512,16 @@ This is an automated message from HomeNetMon.
         
         while not self._stop_event.is_set():
             try:
-                # Check for new alerts
-                self.check_device_down_alerts()
-                self.check_high_latency_alerts()
+                # Check if alert generation is paused
+                if self.is_alert_generation_paused():
+                    logger.debug("Alert generation is paused, skipping alert checks")
+                else:
+                    # Check for new alerts
+                    self.check_device_down_alerts()
+                    self.check_high_latency_alerts()
+                    self.check_device_recovery_alerts()
                 
-                # Resolve alerts that are no longer valid
+                # Always resolve alerts (even when paused)
                 self.resolve_alerts()
                 
                 # Periodic cleanup (every 10 cycles)
@@ -383,8 +534,9 @@ This is an automated message from HomeNetMon.
                     self.cleanup_old_alerts()
                     self._cleanup_counter = 0
                 
-                # Wait before next check (check more frequently than monitoring)
-                self._stop_event.wait(Config.PING_INTERVAL // 2)
+                # Wait before next check - run less frequently to reduce system load
+                # Check every 2-3 minutes instead of every 15 seconds
+                self._stop_event.wait(120)  # 2 minutes between checks
                 
             except Exception as e:
                 logger.error(f"Error in alert monitoring loop: {e}")

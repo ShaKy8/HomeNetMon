@@ -77,6 +77,42 @@ def get_monitoring_statistics():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@monitoring_bp.route('/chart-data', methods=['GET'])
+def get_chart_data():
+    """Simple chart data endpoint for testing"""
+    try:
+        device_id = request.args.get('device_id', type=int)
+        hours = request.args.get('hours', default=24, type=int)
+        
+        if not device_id:
+            return jsonify({'error': 'Device ID required'}), 400
+        
+        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        
+        # Get recent monitoring data for the device
+        monitoring_data = MonitoringData.query.filter(
+            MonitoringData.device_id == device_id,
+            MonitoringData.timestamp >= cutoff
+        ).order_by(MonitoringData.timestamp.desc()).limit(100).all()
+        
+        # Format data for chart
+        timeline_data = []
+        for data_point in monitoring_data:
+            timeline_data.append({
+                'timestamp': data_point.timestamp.strftime('%Y-%m-%d %H:%M:%S'),
+                'avg_response_time': data_point.response_time
+            })
+        
+        return jsonify({
+            'timeline': timeline_data,
+            'count': len(timeline_data),
+            'interval': 'raw',
+            'hours': hours
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @monitoring_bp.route('/timeline', methods=['GET'])
 def get_monitoring_timeline():
     """Get monitoring timeline data for charts"""
@@ -90,50 +126,76 @@ def get_monitoring_timeline():
         if hours > 168:  # Max 7 days
             hours = 168
         
-        # Determine time grouping
-        if interval == '5min':
-            time_format = '%Y-%m-%d %H:%M'
-            group_minutes = 5
-        elif interval == '15min':
-            time_format = '%Y-%m-%d %H:%M'
-            group_minutes = 15
-        elif interval == '30min':
-            time_format = '%Y-%m-%d %H:%M'
-            group_minutes = 30
-        else:  # hour
-            time_format = '%Y-%m-%d %H:00'
-            group_minutes = 60
-        
         cutoff = datetime.utcnow() - timedelta(hours=hours)
         
-        # Build base query
-        query = db.session.query(
-            func.strftime(time_format, MonitoringData.timestamp).label('time_group'),
-            func.avg(MonitoringData.response_time).label('avg_response_time'),
-            func.min(MonitoringData.response_time).label('min_response_time'),
-            func.max(MonitoringData.response_time).label('max_response_time'),
-            func.count(MonitoringData.id).label('total_checks'),
-            func.sum(func.case([(MonitoringData.response_time.isnot(None), 1)], else_=0)).label('successful_checks')
-        ).filter(MonitoringData.timestamp >= cutoff)
+        # Build simple query to get raw monitoring data
+        query = MonitoringData.query.filter(MonitoringData.timestamp >= cutoff)
         
         if device_id:
             query = query.filter(MonitoringData.device_id == device_id)
         
-        results = query.group_by('time_group').order_by('time_group').all()
+        monitoring_data = query.order_by(MonitoringData.timestamp).all()
         
-        # Format results
+        # Group data by time intervals in Python
         timeline_data = []
-        for result in results:
-            success_rate = (result.successful_checks / result.total_checks * 100) if result.total_checks > 0 else 0
+        current_bucket = None
+        bucket_data = []
+        
+        # Determine time bucket size
+        if interval == '5min':
+            bucket_minutes = 5
+        elif interval == '15min':
+            bucket_minutes = 15
+        elif interval == '30min':
+            bucket_minutes = 30
+        else:  # hour
+            bucket_minutes = 60
+        
+        for data_point in monitoring_data:
+            # Calculate bucket timestamp
+            timestamp = data_point.timestamp
+            minutes_since_epoch = int(timestamp.timestamp() / 60)
+            bucket_minutes_since_epoch = (minutes_since_epoch // bucket_minutes) * bucket_minutes
+            bucket_timestamp = datetime.fromtimestamp(bucket_minutes_since_epoch * 60)
+            
+            # Check if we need to start a new bucket
+            if current_bucket is None or current_bucket != bucket_timestamp:
+                # Process previous bucket
+                if current_bucket is not None and bucket_data:
+                    response_times = [d.response_time for d in bucket_data if d.response_time is not None]
+                    total_checks = len(bucket_data)
+                    successful_checks = len(response_times)
+                    
+                    timeline_data.append({
+                        'timestamp': current_bucket.strftime('%Y-%m-%d %H:%M:%S'),
+                        'avg_response_time': sum(response_times) / len(response_times) if response_times else None,
+                        'min_response_time': min(response_times) if response_times else None,
+                        'max_response_time': max(response_times) if response_times else None,
+                        'success_rate': round((successful_checks / total_checks * 100), 2) if total_checks > 0 else 0,
+                        'total_checks': total_checks,
+                        'successful_checks': successful_checks
+                    })
+                
+                # Start new bucket
+                current_bucket = bucket_timestamp
+                bucket_data = []
+            
+            bucket_data.append(data_point)
+        
+        # Process the last bucket
+        if current_bucket is not None and bucket_data:
+            response_times = [d.response_time for d in bucket_data if d.response_time is not None]
+            total_checks = len(bucket_data)
+            successful_checks = len(response_times)
             
             timeline_data.append({
-                'timestamp': result.time_group,
-                'avg_response_time': float(result.avg_response_time) if result.avg_response_time else None,
-                'min_response_time': float(result.min_response_time) if result.min_response_time else None,
-                'max_response_time': float(result.max_response_time) if result.max_response_time else None,
-                'success_rate': round(success_rate, 2),
-                'total_checks': result.total_checks,
-                'successful_checks': result.successful_checks
+                'timestamp': current_bucket.strftime('%Y-%m-%d %H:%M:%S'),
+                'avg_response_time': sum(response_times) / len(response_times) if response_times else None,
+                'min_response_time': min(response_times) if response_times else None,
+                'max_response_time': max(response_times) if response_times else None,
+                'success_rate': round((successful_checks / total_checks * 100), 2) if total_checks > 0 else 0,
+                'total_checks': total_checks,
+                'successful_checks': successful_checks
             })
         
         return jsonify({
@@ -237,6 +299,77 @@ def resolve_alert(alert_id):
         return jsonify(alert.to_dict())
         
     except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/alerts/<int:alert_id>', methods=['DELETE'])
+def delete_alert(alert_id):
+    """Delete a specific alert"""
+    try:
+        alert = Alert.query.get_or_404(alert_id)
+        
+        # Store alert info for response
+        alert_info = {
+            'id': alert.id,
+            'device_name': alert.device.display_name,
+            'device_ip': alert.device.ip_address,
+            'alert_type': alert.alert_type,
+            'message': alert.message
+        }
+        
+        db.session.delete(alert)
+        db.session.commit()
+        
+        # Brief pause for individual deletions (2 minutes)
+        from flask import current_app
+        if hasattr(current_app, 'alert_manager'):
+            current_app.alert_manager.set_alert_pause(2)
+        
+        return jsonify({
+            'message': f'Alert deleted successfully',
+            'deleted_alert': alert_info,
+            'alert_generation_paused': '2 minutes'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/alerts/delete-all', methods=['DELETE'])
+def delete_all_alerts():
+    """Delete all alerts"""
+    try:
+        data = request.get_json() or {}
+        confirm = data.get('confirm', False)
+        
+        if not confirm:
+            return jsonify({
+                'error': 'Please confirm deletion by sending {"confirm": true}',
+                'warning': 'This action will permanently delete all alerts and cannot be undone'
+            }), 400
+        
+        # Count alerts before deletion
+        total_alerts = Alert.query.count()
+        active_alerts = Alert.query.filter_by(resolved=False).count()
+        
+        # Delete all alerts
+        deleted_count = Alert.query.delete()
+        db.session.commit()
+        
+        # Pause alert generation for 10 minutes to prevent immediate regeneration
+        from flask import current_app
+        if hasattr(current_app, 'alert_manager'):
+            current_app.alert_manager.set_alert_pause(10)
+        
+        return jsonify({
+            'message': f'Successfully deleted {deleted_count} alerts',
+            'total_deleted': deleted_count,
+            'previously_active': active_alerts,
+            'previously_total': total_alerts,
+            'alert_generation_paused': '10 minutes'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/status', methods=['GET'])
