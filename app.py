@@ -2,7 +2,7 @@ import os
 import threading
 import time
 from datetime import datetime
-from flask import Flask, render_template, request, jsonify
+from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_socketio import SocketIO, emit
 from config import Config
 from models import db, init_db
@@ -142,6 +142,15 @@ def create_app():
     def security_dashboard():
         return render_template('security_dashboard.html')
     
+    # Redirect routes for common URL variations (underscored URLs redirect to hyphenated ones)
+    @app.route('/ai_dashboard')
+    def ai_dashboard_underscore_redirect():
+        return redirect(url_for('ai_dashboard'))
+    
+    @app.route('/security_dashboard')  
+    def security_dashboard_underscore_redirect():
+        return redirect(url_for('security_dashboard'))
+    
     @app.route('/topology')
     def topology():
         try:
@@ -152,6 +161,33 @@ def create_app():
     @app.route('/test')
     def test():
         return jsonify({'message': 'Flask is working'})
+    
+    @app.route('/debug/routes')
+    def list_routes():
+        routes = []
+        for rule in app.url_map.iter_rules():
+            routes.append({
+                'endpoint': rule.endpoint,
+                'methods': list(rule.methods),
+                'rule': rule.rule
+            })
+        return jsonify({'count': len(routes), 'routes': routes})
+    
+    @app.route('/simple-test')
+    def simple_test():
+        return redirect('/ai-dashboard')
+    
+    @app.route('/traceroute-test')
+    def traceroute_test():
+        from services.device_control import DeviceControlService
+        service = DeviceControlService()
+        result = service.traceroute_to_device('8.8.8.8')
+        return jsonify({
+            'hop_count': result.get('hop_count', 0),
+            'hops_length': len(result.get('hops', [])),
+            'success': result.get('success', False),
+            'first_hop': result.get('hops', [{}])[0] if result.get('hops') else None
+        })
     
     @app.route('/static/service-worker.js')
     def service_worker():

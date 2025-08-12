@@ -253,29 +253,46 @@ class DeviceControlService:
                         if result.returncode == 0:
                             # Parse traceroute output
                             hops = []
-                            lines = result.stdout.split('\\n')
-                            
+                            lines = result.stdout.split('\n')
+                            # Parse traceroute output
                             for line in lines:
                                 line = line.strip()
-                                if line and not line.startswith('traceroute'):
+                                if line and not line.startswith(('traceroute', 'Start:', 'HOST:')):
                                     parts = line.split()
                                     if len(parts) >= 2:
-                                        hop_num = parts[0].rstrip('.')
+                                        # Handle mtr output format: "1.|-- hostname"
+                                        hop_part = parts[0]
+                                        if '.|--' in hop_part:
+                                            hop_num = hop_part.split('.')[0]
+                                        else:
+                                            hop_num = parts[0].rstrip('.')
+                                        
                                         if hop_num.isdigit():
                                             hop_info = {
                                                 'hop': int(hop_num),
                                                 'raw_line': line
                                             }
                                             
-                                            # Try to extract IP and timing
-                                            for part in parts[1:]:
-                                                if '.' in part and part.count('.') == 3:
+                                            # Extract hostname from mtr format
+                                            if '.|--' in parts[0] and len(parts) > 1:
+                                                hostname = parts[1]
+                                                hop_info['hostname'] = hostname
+                                                
+                                                # Check if hostname is already an IP
+                                                if '.' in hostname and hostname.count('.') == 3:
                                                     try:
-                                                        socket.inet_aton(part)
-                                                        hop_info['ip'] = part
-                                                        break
+                                                        socket.inet_aton(hostname)
+                                                        hop_info['ip'] = hostname
                                                     except:
                                                         pass
+                                            
+                                            # Extract timing info (Last column in mtr)
+                                            if len(parts) >= 6:
+                                                try:
+                                                    last_time = float(parts[5])
+                                                    hop_info['rtt'] = f"{last_time:.1f}ms"
+                                                except (ValueError, IndexError):
+                                                    pass
                                             
                                             hops.append(hop_info)
                             
@@ -286,7 +303,7 @@ class DeviceControlService:
                                 'hop_count': len(hops),
                                 'raw_output': result.stdout,
                                 'command_used': cmd[0],
-                                'timestamp': datetime.utcnow()
+                                'timestamp': datetime.utcnow().isoformat() + 'Z'
                             }
                 except FileNotFoundError:
                     continue
