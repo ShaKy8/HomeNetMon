@@ -18,6 +18,7 @@ class SpeedTestService:
         self.last_test_time = None
         self.test_results = []
         self.max_results = 100  # Keep last 100 results
+        self.last_async_result = None  # Store async test results
         
     def is_speedtest_available(self):
         """Check if speedtest-cli is available"""
@@ -60,17 +61,29 @@ class SpeedTestService:
         try:
             if test_type == 'upload_only':
                 # Skip download test for faster results  
-                cmd = ['speedtest', '--json', '--no-download']
+                cmd = ['speedtest', '--no-download']
                 timeout = 60
             else:
-                # Full test with JSON output (download + upload)
-                cmd = ['speedtest', '--json']
-                timeout = 180
+                # Full test with simple output (like manual command that works)
+                cmd = ['speedtest']
+                timeout = 90  # Reduced from 180s since manual test takes only 16s
             
-            logger.info(f"Starting speed test ({test_type}) - timeout: {timeout}s...")
+            logger.info(f"Starting speed test ({test_type}) with command: {' '.join(cmd)}")
+            logger.info(f"Timeout set to: {timeout}s")
             start_time = time.time()
             
+            logger.info("Executing subprocess.run...")
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+            
+            execution_time = time.time() - start_time
+            logger.info(f"Subprocess completed in {execution_time:.2f}s with return code: {result.returncode}")
+            
+            if result.stdout:
+                logger.info(f"Stdout length: {len(result.stdout)} chars")
+                logger.debug(f"Stdout content: {result.stdout[:500]}...")  # First 500 chars
+            
+            if result.stderr:
+                logger.warning(f"Stderr: {result.stderr}")
             
             if result.returncode != 0:
                 return {
@@ -79,37 +92,68 @@ class SpeedTestService:
                     'success': False
                 }
             
-            # Parse JSON result
-            try:
-                data = json.loads(result.stdout)
-                # Convert from bits per second to megabits per second
-                data['download_mbps'] = round((data.get('download', 0) or 0) / 1_000_000, 2)
-                data['upload_mbps'] = round((data.get('upload', 0) or 0) / 1_000_000, 2)
-                data['simple_mode'] = False
-            except json.JSONDecodeError:
-                # Fallback to simple parsing for --simple mode
-                lines = result.stdout.strip().split('\n')
-                data = {
-                    'download': 0,
-                    'upload': 0,
-                    'ping': 0,
-                    'simple_mode': True
-                }
-                for line in lines:
-                    if 'Download:' in line:
-                        # Extract "129.01" from "Download: 129.01 Mbit/s"
+            # Parse simple mode result (like manual command output)
+            lines = result.stdout.strip().split('\n')
+            data = {
+                'download': 0,
+                'upload': 0,
+                'ping': 0,
+                'simple_mode': True,
+                'server': {},
+                'client': {}
+            }
+            
+            logger.info("Parsing speed test output...")
+            for line in lines:
+                logger.debug(f"Processing line: {line}")
+                if 'Download:' in line:
+                    # Extract "663.22" from "Download: 663.22 Mbit/s"
+                    try:
                         speed_str = line.split(':')[1].strip().split()[0]
                         data['download'] = float(speed_str)
                         data['download_mbps'] = float(speed_str)  # Already in Mbps for simple mode
-                    elif 'Upload:' in line:
-                        # Extract "97.03" from "Upload: 97.03 Mbit/s"  
+                        logger.info(f"Parsed download speed: {data['download_mbps']} Mbps")
+                    except (IndexError, ValueError) as e:
+                        logger.error(f"Failed to parse download line '{line}': {e}")
+                        
+                elif 'Upload:' in line:
+                    # Extract "115.87" from "Upload: 115.87 Mbit/s"  
+                    try:
                         speed_str = line.split(':')[1].strip().split()[0]
                         data['upload'] = float(speed_str)
                         data['upload_mbps'] = float(speed_str)  # Already in Mbps for simple mode
-                    elif 'Ping:' in line:
-                        # Extract "22.484" from "Ping: 22.484 ms"
-                        ping_str = line.split(':')[1].strip().split()[0]
+                        logger.info(f"Parsed upload speed: {data['upload_mbps']} Mbps")
+                    except (IndexError, ValueError) as e:
+                        logger.error(f"Failed to parse upload line '{line}': {e}")
+                        
+                elif 'Hosted by' in line and 'ms' in line:
+                    # Extract "16.409" from "Hosted by ScaleMatrix (San Diego, CA) [109.44 km]: 16.409 ms"
+                    try:
+                        ping_str = line.split(']:')[1].strip().split()[0]
                         data['ping'] = float(ping_str)
+                        logger.info(f"Parsed ping: {data['ping']} ms")
+                        
+                        # Also extract server info
+                        server_part = line.split('Hosted by ')[1].split(']:')[0]
+                        if '(' in server_part and ')' in server_part:
+                            server_name = server_part.split('(')[0].strip()
+                            location = server_part.split('(')[1].split(')')[0]
+                            data['server']['name'] = server_name
+                            data['server']['location'] = location
+                            logger.info(f"Parsed server: {server_name} in {location}")
+                    except (IndexError, ValueError) as e:
+                        logger.error(f"Failed to parse server line '{line}': {e}")
+                        
+                elif 'Testing from' in line:
+                    # Extract ISP info from "Testing from Cox Communications (68.4.52.242)..."
+                    try:
+                        isp_part = line.split('Testing from ')[1].split('(')[0].strip()
+                        ip_part = line.split('(')[1].split(')')[0]
+                        data['client']['isp'] = isp_part
+                        data['client']['ip'] = ip_part
+                        logger.info(f"Parsed client: {isp_part} ({ip_part})")
+                    except (IndexError, ValueError) as e:
+                        logger.error(f"Failed to parse client line '{line}': {e}")
             
             end_time = time.time()
             test_duration = end_time - start_time
@@ -150,15 +194,20 @@ class SpeedTestService:
             
             return result_data
             
-        except subprocess.TimeoutExpired:
-            timeout_msg = f'Speed test timed out after {timeout // 60} minute{"s" if timeout >= 120 else ""}'
+        except subprocess.TimeoutExpired as e:
+            execution_time = time.time() - start_time
+            logger.error(f"Speed test timed out after {execution_time:.2f}s (timeout was {timeout}s)")
+            logger.error(f"TimeoutExpired details: {e}")
+            timeout_msg = f'Speed test timed out after {timeout}s'
             return {
                 'error': timeout_msg,
                 'timestamp': datetime.utcnow(),
                 'success': False
             }
         except Exception as e:
-            logger.error(f"Error running speed test: {e}")
+            execution_time = time.time() - start_time
+            logger.error(f"Error running speed test after {execution_time:.2f}s: {e}")
+            logger.error(f"Exception type: {type(e).__name__}")
             return {
                 'error': f'Speed test error: {str(e)}',
                 'timestamp': datetime.utcnow(),

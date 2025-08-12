@@ -83,9 +83,14 @@
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><i class="bi bi-speedometer"></i> Internet Speed Test</h6>
-                <button class="btn btn-primary" id="speedtest-btn" title="Test download and upload speeds">
-                    <i class="bi bi-speedometer2"></i> Run Speed Test
-                </button>
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="speedtest-btn" title="Test download and upload speeds">
+                        <i class="bi bi-speedometer2"></i> Run Speed Test
+                    </button>
+                    <button class="btn btn-outline-danger" id="cancel-speedtest-btn" style="display: none;" title="Cancel speed test">
+                        <i class="bi bi-x-circle"></i> Cancel
+                    </button>
+                </div>
             </div>
             <div class="card-body">
                 <div class="row">
@@ -212,7 +217,9 @@
             <div class="card-body collapse show" id="usage-patterns">
                 <div class="mb-3">
                     <h6>📈 24-Hour Activity Pattern</h6>
-                    <canvas id="hourly-pattern-chart" width="400" height="200"></canvas>
+                    <div style="height: 250px; position: relative;">
+                        <canvas id="hourly-pattern-chart"></canvas>
+                    </div>
                 </div>
                 
                 <hr class="my-3">
@@ -343,8 +350,9 @@
         // Event listeners
         document.getElementById('refresh-analytics').addEventListener('click', loadAllAnalytics);
         
-        // Speed test event listener
+        // Speed test event listeners
         document.getElementById('speedtest-btn').addEventListener('click', () => runSpeedTest('comprehensive'));
+        document.getElementById('cancel-speedtest-btn').addEventListener('click', cancelSpeedTest);
         document.getElementById('refresh-rating-btn').addEventListener('click', async () => {
             const btn = document.getElementById('refresh-rating-btn');
             const icon = btn.querySelector('i');
@@ -679,6 +687,12 @@
                     legend: {
                         display: false
                     }
+                },
+                layout: {
+                    padding: {
+                        top: 10,
+                        bottom: 10
+                    }
                 }
             }
         });
@@ -838,6 +852,12 @@
             ratingBadge.title = message;
         }
         
+        // Clear placeholders and show unavailable state
+        const speedRecommendations = document.getElementById('speed-recommendations');
+        if (speedRecommendations) {
+            speedRecommendations.innerHTML = '<div class="small text-muted">Run a speed test to see recommendations</div>';
+        }
+        
         // Clear individual ratings
         ['download-rating', 'upload-rating', 'ping-rating'].forEach(id => {
             const element = document.getElementById(id);
@@ -847,14 +867,18 @@
         });
     }
 
+    let currentSpeedTestController = null;
+
     async function runSpeedTest(testType) {
         try {
             // Disable button and show progress
             const speedBtn = document.getElementById('speedtest-btn');
+            const cancelBtn = document.getElementById('cancel-speedtest-btn');
             const statusDiv = document.getElementById('speedtest-status');
             const progressDiv = document.getElementById('speedtest-progress');
             
             speedBtn.disabled = true;
+            cancelBtn.style.display = 'inline-block';
             statusDiv.style.display = 'block';
             progressDiv.style.display = 'block';
             
@@ -862,11 +886,15 @@
             const statusText = 'Running speed test (download + upload)...';
             statusDiv.querySelector('span').textContent = statusText;
             
+            // Create abort controller for cancellation
+            currentSpeedTestController = new AbortController();
+            
             // Start the test
             const response = await fetch('/api/speedtest/run', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type: testType })
+                body: JSON.stringify({ type: testType }),
+                signal: currentSpeedTestController.signal
             });
             
             const startData = await response.json();
@@ -884,15 +912,29 @@
             await pollForSpeedTestResults();
             
         } catch (error) {
-            console.error('Error running speed test:', error);
-            showToast(`Speed test error: ${error.message}`, 'error');
+            if (error.name === 'AbortError') {
+                showToast('Speed test cancelled', 'warning');
+            } else {
+                console.error('Error running speed test:', error);
+                showToast(`Speed test error: ${error.message}`, 'error');
+            }
         } finally {
             // Re-enable button and hide progress
             document.getElementById('speedtest-btn').disabled = false;
+            document.getElementById('cancel-speedtest-btn').style.display = 'none';
             document.getElementById('speedtest-status').style.display = 'none';
             document.getElementById('speedtest-progress').style.display = 'none';
+            currentSpeedTestController = null;
         }
     }
+
+    function cancelSpeedTest() {
+        if (currentSpeedTestController) {
+            currentSpeedTestController.abort();
+            showToast('Cancelling speed test...', 'warning');
+        }
+    }
+
 
     function animateProgress(estimatedSeconds) {
         const progressBar = document.querySelector('#speedtest-progress .progress-bar');
@@ -913,31 +955,41 @@
 
     async function pollForSpeedTestResults() {
         let attempts = 0;
-        const maxAttempts = 30; // 5 minutes max
+        const maxAttempts = 36; // 6 minutes max (36 * 10 seconds)
+        const testStartTime = Date.now();
         
         while (attempts < maxAttempts) {
             try {
                 await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds
+                attempts++;
                 
                 const response = await fetch('/api/speedtest/latest');
-                const data = await response.json();
-                
-                if (data.success && new Date(data.timestamp) > new Date(Date.now() - 300000)) {
-                    // New result within last 5 minutes
-                    updateSpeedTestDisplay(data);
-                    loadSpeedTestBenchmark(); // Refresh benchmark
-                    showToast('Speed test completed!', 'success');
-                    return;
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    // Check if this is a new result since we started the test
+                    const resultTime = new Date(data.timestamp).getTime();
+                    if (data.success && resultTime > testStartTime) {
+                        updateSpeedTestDisplay(data);
+                        await loadSpeedTestBenchmark(); // Refresh benchmark  
+                        showToast('Speed test completed!', 'success');
+                        return;
+                    }
                 }
                 
-                attempts++;
+                // Update progress text
+                const statusSpan = document.querySelector('#speedtest-status span');
+                if (statusSpan) {
+                    statusSpan.textContent = `Running speed test... (${attempts * 10}s elapsed)`;
+                }
+                
             } catch (error) {
                 attempts++;
                 console.error('Error polling for results:', error);
             }
         }
         
-        showToast('Speed test may still be running. Check back in a few minutes.', 'warning');
+        showToast('Speed test timed out. It may still be running in the background.', 'warning');
     }
 
     function updateSpeedTestDisplay(data) {

@@ -29,10 +29,10 @@ def run_speedtest():
         def run_test_async():
             try:
                 result = speed_test_service.run_speed_test(test_type)
-                # Store result for later retrieval
-                current_app.last_speedtest_result = result
+                # Store result in the service instead of current_app for thread safety
+                speed_test_service.last_async_result = result
             except Exception as e:
-                current_app.last_speedtest_result = {
+                speed_test_service.last_async_result = {
                     'error': str(e),
                     'success': False,
                     'timestamp': datetime.utcnow()
@@ -99,16 +99,18 @@ def get_speedtest_results():
 def get_latest_result():
     """Get the most recent speed test result"""
     try:
-        # Try to get result from current app context (for async tests)
-        if hasattr(current_app, 'last_speedtest_result'):
-            result = current_app.last_speedtest_result
+        # Check for async result first (most recent)
+        if hasattr(speed_test_service, 'last_async_result') and speed_test_service.last_async_result:
+            result = speed_test_service.last_async_result
             # Convert timestamp if needed
             if 'timestamp' in result and hasattr(result['timestamp'], 'isoformat'):
                 result = dict(result)
                 result['timestamp'] = result['timestamp'].isoformat() + 'Z'
+            # Clear the async result after returning it
+            speed_test_service.last_async_result = None
             return jsonify(result)
         
-        # Otherwise get from service
+        # Otherwise get from service history
         results = speed_test_service.get_recent_results(1)
         if not results:
             return jsonify({'error': 'No speed test results available'}), 404
@@ -265,3 +267,29 @@ def install_speedtest_cli():
             
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@speedtest_bp.route('/debug', methods=['POST'])
+def debug_speedtest():
+    """Debug endpoint to test speedtest execution directly"""
+    try:
+        import subprocess
+        import time
+        
+        start_time = time.time()
+        result = subprocess.run(['speedtest'], capture_output=True, text=True, timeout=90)
+        execution_time = time.time() - start_time
+        
+        return jsonify({
+            'execution_time': execution_time,
+            'return_code': result.returncode,
+            'stdout_length': len(result.stdout),
+            'stderr_length': len(result.stderr),
+            'stdout_preview': result.stdout[:500] if result.stdout else '',
+            'stderr_preview': result.stderr[:500] if result.stderr else '',
+            'success': result.returncode == 0
+        })
+        
+    except subprocess.TimeoutExpired:
+        return jsonify({'error': 'Debug speedtest timed out'}), 500
+    except Exception as e:
+        return jsonify({'error': f'Debug error: {str(e)}'}), 500
