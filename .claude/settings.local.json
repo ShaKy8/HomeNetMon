@@ -46,7 +46,14 @@
       "Bash(python:*)",
       "Bash(ping:*)",
       "Bash(speedtest:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git push:*)",
+      "Bash(gh auth:*)",
+      "Bash(gh repo set-default:*)",
+      "Bash(gh repo sync:*)",
+      "Bash(git remote set-url:*)",
+      "Bash(ssh:*)",
+      "Bash(nmap:*)"
     ],
     "deny": []
   }

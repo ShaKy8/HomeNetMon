@@ -269,6 +269,76 @@ class Configuration(db.Model):
         db.session.commit()
         return config
 
+class SecurityScan(db.Model):
+    """Model for storing security scan results"""
+    __tablename__ = 'security_scans'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.Integer, db.ForeignKey('devices.id'), nullable=False)
+    ip_address = db.Column(db.String(45), nullable=False)
+    port = db.Column(db.Integer, nullable=False)
+    state = db.Column(db.String(20), nullable=False)  # open, closed, filtered
+    service = db.Column(db.String(50))
+    version = db.Column(db.String(100))
+    product = db.Column(db.String(100))
+    extra_info = db.Column(db.Text)
+    confidence = db.Column(db.Integer, default=0)
+    risk_score = db.Column(db.Float, default=0.0)
+    scanned_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    # Relationships
+    device = db.relationship('Device', backref=db.backref('security_scans', lazy=True))
+    
+    def __repr__(self):
+        return f'<SecurityScan {self.ip_address}:{self.port} - {self.service}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'device_id': self.device_id,
+            'device_name': self.device.display_name if self.device else 'Unknown',
+            'ip_address': self.ip_address,
+            'port': self.port,
+            'state': self.state,
+            'service': self.service,
+            'version': self.version,
+            'product': self.product,
+            'extra_info': self.extra_info,
+            'confidence': self.confidence,
+            'risk_score': self.risk_score,
+            'scanned_at': self.scanned_at.isoformat() + 'Z'
+        }
+
+class SecurityEvent(db.Model):
+    """Model for tracking security events and changes"""
+    __tablename__ = 'security_events'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.Integer, db.ForeignKey('devices.id'), nullable=False)
+    event_type = db.Column(db.String(50), nullable=False)  # scan_completed, new_service, service_removed, etc.
+    severity = db.Column(db.String(20), default='info')    # info, low, medium, high, critical
+    message = db.Column(db.Text, nullable=False)
+    event_metadata = db.Column(db.Text)  # JSON metadata
+    created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+    
+    # Relationships
+    device = db.relationship('Device', backref=db.backref('security_events', lazy=True))
+    
+    def __repr__(self):
+        return f'<SecurityEvent {self.event_type} for {self.device.ip_address if self.device else "Unknown"}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'device_id': self.device_id,
+            'device_name': self.device.display_name if self.device else 'Unknown',
+            'event_type': self.event_type,
+            'severity': self.severity,
+            'message': self.message,
+            'event_metadata': self.event_metadata,
+            'created_at': self.created_at.isoformat() + 'Z'
+        }
+
 # Database event listeners for cleanup
 @event.listens_for(MonitoringData, 'before_insert')
 def cleanup_old_monitoring_data(mapper, connection, target):

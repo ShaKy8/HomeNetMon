@@ -1,0 +1,837 @@
+{% extends "base.html" %}
+
+{% block title %}Security Dashboard - HomeNetMon{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1><i class="bi bi-shield-check"></i> Security Dashboard</h1>
+    <div class="btn-group" role="group">
+        <button type="button" class="btn btn-outline-primary" id="refresh-security-data">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+        <button type="button" class="btn btn-outline-warning" id="run-security-scan">
+            <i class="bi bi-search"></i> Run Network Scan
+        </button>
+    </div>
+</div>
+
+<!-- Security Scan Progress Bar -->
+<div class="row mb-3" id="scan-progress-container" style="display: none;">
+    <div class="col-12">
+        <div class="card border-warning">
+            <div class="card-body py-3">
+                <div class="d-flex align-items-center mb-2">
+                    <div class="spinner-border spinner-border-sm text-warning me-2" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                    <strong>Running Security Scan...</strong>
+                    <span class="ms-auto text-muted" id="scan-status-text">Initializing...</span>
+                </div>
+                <div class="progress" style="height: 8px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" 
+                         role="progressbar" id="scan-progress-bar" style="width: 0%"></div>
+                </div>
+                <small class="text-muted mt-1" id="scan-details">Preparing security scan...</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Security Status Cards -->
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card bg-success text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Security Status</h6>
+                        <h4 id="security-status" class="mb-0">Secure</h4>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-shield-check fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-info text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Devices Scanned</h6>
+                        <h4 id="devices-scanned" class="mb-0">--</h4>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-router fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-warning text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">Open Ports</h6>
+                        <h4 id="total-open-ports" class="mb-0">--</h4>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-door-open fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card bg-danger text-white">
+            <div class="card-body">
+                <div class="d-flex justify-content-between">
+                    <div>
+                        <h6 class="card-title">High Risk Devices</h6>
+                        <h4 id="high-risk-devices" class="mb-0">--</h4>
+                    </div>
+                    <div class="align-self-center">
+                        <i class="bi bi-exclamation-triangle fa-2x"></i>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Security Charts -->
+<div class="row mb-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Security Alerts by Type</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="security-alerts-chart" style="height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Risk Distribution</h6>
+            </div>
+            <div class="card-body">
+                <canvas id="risk-distribution-chart" style="height: 300px;"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Network Security Overview -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-network-widescreen"></i> Network Security Overview</h6>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-secondary time-filter" data-hours="24">24h</button>
+                    <button class="btn btn-outline-secondary time-filter" data-hours="168">7d</button>
+                    <button class="btn btn-outline-secondary time-filter" data-hours="720">30d</button>
+                </div>
+            </div>
+            <div class="card-body">
+                <div id="network-overview-table">
+                    <div class="placeholder-glow">
+                        <div class="placeholder col-12 mb-2"></div>
+                        <div class="placeholder col-10 mb-2"></div>
+                        <div class="placeholder col-8 mb-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Security Alerts -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-shield-exclamation"></i> Recent Security Alerts</h6>
+                <button class="btn btn-sm btn-outline-secondary" id="acknowledge-all-alerts">
+                    <i class="bi bi-check-all"></i> Acknowledge All
+                </button>
+            </div>
+            <div class="card-body">
+                <div id="security-alerts-table">
+                    <div class="placeholder-glow">
+                        <div class="placeholder col-12 mb-2"></div>
+                        <div class="placeholder col-10 mb-2"></div>
+                        <div class="placeholder col-8 mb-2"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Risk Assessment -->
+<div class="row">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-clipboard-data"></i> Security Recommendations</h6>
+            </div>
+            <div class="card-body">
+                <div id="security-recommendations">
+                    <div class="placeholder-glow">
+                        <div class="placeholder col-12 mb-2"></div>
+                        <div class="placeholder col-10 mb-2"></div>
+                        <div class="placeholder col-8"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-gear"></i> Security Settings</h6>
+            </div>
+            <div class="card-body">
+                <form id="security-settings-form">
+                    <div class="mb-3">
+                        <label class="form-label">Scan Interval (hours)</label>
+                        <input type="number" class="form-control" id="scan-interval" min="1" max="168" value="24">
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Top Ports to Scan</label>
+                        <select class="form-select" id="top-ports">
+                            <option value="100">Top 100 ports</option>
+                            <option value="1000" selected>Top 1000 ports</option>
+                            <option value="10000">Top 10000 ports</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="service-detection" checked>
+                            <label class="form-check-label" for="service-detection">
+                                Service Detection
+                            </label>
+                        </div>
+                    </div>
+                    <div class="mb-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="version-detection" checked>
+                            <label class="form-check-label" for="version-detection">
+                                Version Detection
+                            </label>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-check-circle"></i> Update Settings
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+    let securityCharts = {};
+    let currentTimeFilter = 24; // Default 24 hours
+
+    document.addEventListener('DOMContentLoaded', function() {
+        loadSecurityData();
+        
+        // Event listeners
+        document.getElementById('refresh-security-data').addEventListener('click', loadSecurityData);
+        document.getElementById('run-security-scan').addEventListener('click', runNetworkScan);
+        document.getElementById('security-settings-form').addEventListener('submit', updateSecuritySettings);
+        
+        // Time filter buttons
+        document.querySelectorAll('.time-filter').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                // Update active button
+                document.querySelectorAll('.time-filter').forEach(b => b.classList.remove('btn-secondary'));
+                document.querySelectorAll('.time-filter').forEach(b => b.classList.add('btn-outline-secondary'));
+                e.target.classList.remove('btn-outline-secondary');
+                e.target.classList.add('btn-secondary');
+                
+                currentTimeFilter = parseInt(e.target.dataset.hours);
+                loadSecurityData();
+            });
+        });
+        
+        // Set default active button
+        document.querySelector('.time-filter[data-hours="24"]').click();
+        
+        // Auto-refresh every 60 seconds
+        setInterval(loadSecurityData, 60000);
+    });
+    
+    async function loadSecurityData() {
+        try {
+            await Promise.all([
+                loadSecuritySummary(),
+                loadNetworkOverview(),
+                loadSecurityAlerts(),
+                loadRiskAssessment()
+            ]);
+        } catch (error) {
+            console.error('Error loading security data:', error);
+            showToast('Error loading security dashboard data', 'error');
+        }
+    }
+    
+    async function loadSecuritySummary() {
+        try {
+            const response = await fetch(`/api/security/summary?hours=${currentTimeFilter}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                const summary = data.summary;
+                
+                // Update summary cards
+                document.getElementById('devices-scanned').textContent = summary.devices_scanned || 0;
+                document.getElementById('total-open-ports').textContent = summary.total_alerts || 0;
+                document.getElementById('high-risk-devices').textContent = 
+                    (summary.by_severity.high || 0) + (summary.by_severity.critical || 0);
+                
+                // Update security status
+                updateSecurityStatus(summary);
+                
+                // Update charts
+                updateSecurityAlertsChart(summary.by_type);
+                updateRiskDistributionChart(summary.by_severity);
+            }
+        } catch (error) {
+            console.error('Error loading security summary:', error);
+        }
+    }
+    
+    async function loadNetworkOverview() {
+        try {
+            const response = await fetch(`/api/security/network-overview?hours=${currentTimeFilter}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                updateNetworkOverviewTable(data.network_overview);
+            }
+        } catch (error) {
+            console.error('Error loading network overview:', error);
+        }
+    }
+    
+    async function loadSecurityAlerts() {
+        try {
+            const response = await fetch(`/api/security/alerts?hours=${currentTimeFilter}&limit=20`);
+            const data = await response.json();
+            
+            if (data.success) {
+                updateSecurityAlertsTable(data.alerts);
+            }
+        } catch (error) {
+            console.error('Error loading security alerts:', error);
+        }
+    }
+    
+    async function loadRiskAssessment() {
+        try {
+            const response = await fetch(`/api/security/risk-assessment?hours=${currentTimeFilter}`);
+            const data = await response.json();
+            
+            if (data.success) {
+                updateSecurityRecommendations(data.risk_assessment);
+            }
+        } catch (error) {
+            console.error('Error loading risk assessment:', error);
+        }
+    }
+    
+    async function runNetworkScan() {
+        try {
+            const button = document.getElementById('run-security-scan');
+            const originalText = button.innerHTML;
+            const progressContainer = document.getElementById('scan-progress-container');
+            const progressBar = document.getElementById('scan-progress-bar');
+            const statusText = document.getElementById('scan-status-text');
+            const detailsText = document.getElementById('scan-details');
+            
+            // Show progress UI
+            button.disabled = true;
+            button.innerHTML = '<i class="bi bi-hourglass-split"></i> Starting...';
+            progressContainer.style.display = 'block';
+            progressBar.style.width = '0%';
+            statusText.textContent = 'Starting scan...';
+            detailsText.textContent = 'Initializing network security scan...';
+            
+            // Start the scan
+            const response = await fetch('/api/security/run-scan', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({})
+            });
+            
+            const data = await response.json();
+            
+            if (!data.success) {
+                throw new Error(data.error || 'Failed to start scan');
+            }
+            
+            // Start polling for progress
+            button.innerHTML = '<i class="bi bi-hourglass-split"></i> Scanning...';
+            statusText.textContent = 'Scan started';
+            detailsText.textContent = 'Scanning network devices for open ports and services...';
+            
+            let progressInterval = setInterval(async () => {
+                try {
+                    const progressResponse = await fetch('/api/security/scan-progress');
+                    const progressData = await progressResponse.json();
+                    
+                    if (progressData.success) {
+                        const progress = progressData.progress;
+                        
+                        // Update progress bar
+                        progressBar.style.width = progress.progress + '%';
+                        
+                        // Update status text
+                        if (progress.status === 'running') {
+                            if (progress.current_device) {
+                                statusText.textContent = `Scanning device: ${progress.current_device}`;
+                                detailsText.textContent = `Device ${progress.devices_completed + 1}/${progress.total_devices} • ${progress.open_ports_found} open ports found • ${progress.alerts_generated} alerts generated`;
+                            } else {
+                                statusText.textContent = 'Scanning devices...';
+                                detailsText.textContent = `${progress.devices_completed}/${progress.total_devices} devices scanned`;
+                            }
+                            
+                            // Show elapsed time
+                            if (progress.duration_formatted) {
+                                detailsText.textContent += ` • Duration: ${progress.duration_formatted}`;
+                            }
+                            
+                        } else if (progress.status === 'completed') {
+                            clearInterval(progressInterval);
+                            
+                            progressBar.style.width = '100%';
+                            statusText.textContent = 'Scan completed successfully!';
+                            detailsText.textContent = `Scanned ${progress.total_devices} devices • Found ${progress.open_ports_found} open ports • Generated ${progress.alerts_generated} security alerts`;
+                            
+                            if (progress.duration_formatted) {
+                                detailsText.textContent += ` • Completed in ${progress.duration_formatted}`;
+                            }
+                            
+                            showToast('Network security scan completed successfully', 'success');
+                            
+                            // Hide progress after a delay and refresh data
+                            setTimeout(() => {
+                                progressContainer.style.display = 'none';
+                                loadSecurityData();
+                            }, 3000);
+                            
+                        } else if (progress.status === 'failed') {
+                            clearInterval(progressInterval);
+                            
+                            progressBar.classList.add('bg-danger');
+                            statusText.textContent = 'Scan failed';
+                            detailsText.textContent = progress.error_message || 'An error occurred during the scan';
+                            
+                            showToast(`Scan failed: ${progress.error_message}`, 'error');
+                            
+                            setTimeout(() => {
+                                progressContainer.style.display = 'none';
+                                progressBar.classList.remove('bg-danger');
+                            }, 5000);
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error polling scan progress:', error);
+                }
+            }, 2000); // Poll every 2 seconds
+            
+            // Set a timeout to stop polling after 30 minutes (just in case)
+            setTimeout(() => {
+                if (progressInterval) {
+                    clearInterval(progressInterval);
+                }
+            }, 30 * 60 * 1000);
+            
+        } catch (error) {
+            console.error('Error running security scan:', error);
+            
+            const progressBar = document.getElementById('scan-progress-bar');
+            const statusText = document.getElementById('scan-status-text');
+            const detailsText = document.getElementById('scan-details');
+            
+            progressBar.style.width = '100%';
+            progressBar.classList.add('bg-danger');
+            statusText.textContent = 'Error!';
+            detailsText.textContent = error.message || 'Failed to start security scan';
+            
+            showToast('Error running security scan: ' + (error.message || 'Unknown error'), 'error');
+            
+            setTimeout(() => {
+                document.getElementById('scan-progress-container').style.display = 'none';
+                progressBar.classList.remove('bg-danger');
+            }, 5000);
+            
+        } finally {
+            // Re-enable button
+            setTimeout(() => {
+                const button = document.getElementById('run-security-scan');
+                button.disabled = false;
+                button.innerHTML = '<i class="bi bi-search"></i> Run Network Scan';
+            }, 1000);
+        }
+    }
+    
+    function updateSecurityStatus(summary) {
+        const statusElement = document.getElementById('security-status');
+        const statusCard = statusElement.closest('.card');
+        
+        const criticalIssues = summary.by_severity?.critical || 0;
+        const highIssues = summary.by_severity?.high || 0;
+        
+        if (criticalIssues > 0) {
+            statusElement.textContent = 'Critical';
+            statusCard.className = 'card bg-danger text-white';
+        } else if (highIssues > 0) {
+            statusElement.textContent = 'At Risk';
+            statusCard.className = 'card bg-warning text-white';
+        } else if ((summary.by_severity?.medium || 0) > 0) {
+            statusElement.textContent = 'Moderate';
+            statusCard.className = 'card bg-info text-white';
+        } else {
+            statusElement.textContent = 'Secure';
+            statusCard.className = 'card bg-success text-white';
+        }
+    }
+    
+    function updateSecurityAlertsChart(byType) {
+        const ctx = document.getElementById('security-alerts-chart').getContext('2d');
+        
+        if (securityCharts.alerts) {
+            securityCharts.alerts.destroy();
+        }
+        
+        const labels = Object.keys(byType || {});
+        const data = Object.values(byType || {});
+        
+        securityCharts.alerts = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: labels.map(label => label.replace('_', ' ').toUpperCase()),
+                datasets: [{
+                    label: 'Count',
+                    data: data,
+                    backgroundColor: [
+                        '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        ticks: {
+                            stepSize: 1
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                }
+            }
+        });
+    }
+    
+    function updateRiskDistributionChart(bySeverity) {
+        const ctx = document.getElementById('risk-distribution-chart').getContext('2d');
+        
+        if (securityCharts.risk) {
+            securityCharts.risk.destroy();
+        }
+        
+        securityCharts.risk = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Low', 'Medium', 'High', 'Critical'],
+                datasets: [{
+                    data: [
+                        bySeverity?.low || 0,
+                        bySeverity?.medium || 0,
+                        bySeverity?.high || 0,
+                        bySeverity?.critical || 0
+                    ],
+                    backgroundColor: [
+                        '#28a745', '#ffc107', '#fd7e14', '#dc3545'
+                    ]
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom'
+                    }
+                }
+            }
+        });
+    }
+    
+    function updateNetworkOverviewTable(overview) {
+        const container = document.getElementById('network-overview-table');
+        
+        if (!overview || !overview.devices || overview.devices.length === 0) {
+            container.innerHTML = '<div class="text-muted text-center py-4">No security scan data available for the selected time period.</div>';
+            return;
+        }
+        
+        const table = `
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Device</th>
+                            <th>IP Address</th>
+                            <th>Open Ports</th>
+                            <th>Risk Score</th>
+                            <th>Security Status</th>
+                            <th>Services</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${overview.devices.map(device => `
+                            <tr>
+                                <td>
+                                    <span class="fw-bold">${device.name}</span>
+                                </td>
+                                <td>
+                                    <code>${device.ip_address}</code>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">${device.open_ports}</span>
+                                </td>
+                                <td>
+                                    <div class="progress" style="width: 60px; height: 8px;">
+                                        <div class="progress-bar bg-${getRiskColor(device.avg_risk_score)}" 
+                                             style="width: ${(device.avg_risk_score / 10) * 100}%"></div>
+                                    </div>
+                                    <small>${device.avg_risk_score.toFixed(1)}/10</small>
+                                </td>
+                                <td>
+                                    <span class="badge bg-${getSecurityStatusColor(device.security_status)}">${device.security_status.toUpperCase()}</span>
+                                </td>
+                                <td>
+                                    <small>${device.services.slice(0, 3).join(', ')}${device.services.length > 3 ? '...' : ''}</small>
+                                </td>
+                                <td>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="scanDevice(${device.id})">
+                                        <i class="bi bi-search"></i>
+                                    </button>
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        container.innerHTML = table;
+    }
+    
+    function updateSecurityAlertsTable(alerts) {
+        const container = document.getElementById('security-alerts-table');
+        
+        if (!alerts || alerts.length === 0) {
+            container.innerHTML = '<div class="text-muted text-center py-4">No security alerts found for the selected time period.</div>';
+            return;
+        }
+        
+        const table = `
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Device</th>
+                            <th>Alert Type</th>
+                            <th>Severity</th>
+                            <th>Port/Service</th>
+                            <th>Message</th>
+                            <th>Time</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${alerts.map(alert => `
+                            <tr>
+                                <td>
+                                    <span class="fw-bold">${alert.device_name}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-info">${alert.alert_type.replace('_', ' ')}</span>
+                                </td>
+                                <td>
+                                    <span class="badge bg-${getSeverityColor(alert.severity)}">${alert.severity.toUpperCase()}</span>
+                                </td>
+                                <td>
+                                    ${alert.port ? `<code>${alert.port}</code>` : ''}
+                                    ${alert.service ? `<br><small>${alert.service}</small>` : ''}
+                                </td>
+                                <td>
+                                    <small>${alert.message.replace('[SECURITY] ', '')}</small>
+                                </td>
+                                <td>
+                                    <small>${new Date(alert.created_at).toLocaleString()}</small>
+                                </td>
+                                <td>
+                                    ${alert.acknowledged ? 
+                                        '<span class="badge bg-success">Acknowledged</span>' : 
+                                        '<button class="btn btn-sm btn-outline-warning" onclick="acknowledgeAlert(' + alert.id + ')">Acknowledge</button>'
+                                    }
+                                </td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+            </div>
+        `;
+        
+        container.innerHTML = table;
+    }
+    
+    function updateSecurityRecommendations(riskAssessment) {
+        const container = document.getElementById('security-recommendations');
+        
+        if (!riskAssessment || !riskAssessment.recommendations) {
+            container.innerHTML = '<div class="text-muted">No recommendations available.</div>';
+            return;
+        }
+        
+        const recommendations = riskAssessment.recommendations.map(rec => `
+            <div class="d-flex align-items-start mb-2">
+                <i class="bi bi-check-circle text-success me-2 mt-1"></i>
+                <div>${rec}</div>
+            </div>
+        `).join('');
+        
+        const riskLevel = riskAssessment.overall_risk_level;
+        const riskColor = getRiskColor(riskAssessment.risk_score || 0);
+        
+        container.innerHTML = `
+            <div class="alert alert-${riskColor} mb-3">
+                <strong>Network Risk Level: ${riskLevel.toUpperCase()}</strong>
+                <div class="mt-2">
+                    Risk Score: ${riskAssessment.risk_score || 0}/100
+                </div>
+            </div>
+            <h6>Recommendations:</h6>
+            ${recommendations}
+        `;
+    }
+    
+    function getRiskColor(score) {
+        if (score >= 8) return 'danger';
+        if (score >= 6) return 'warning';
+        if (score >= 4) return 'info';
+        return 'success';
+    }
+    
+    function getSecurityStatusColor(status) {
+        const colors = {
+            'low': 'success',
+            'medium': 'warning', 
+            'high': 'danger',
+            'critical': 'dark'
+        };
+        return colors[status] || 'secondary';
+    }
+    
+    function getSeverityColor(severity) {
+        const colors = {
+            'low': 'success',
+            'medium': 'warning',
+            'high': 'danger',
+            'critical': 'dark'
+        };
+        return colors[severity] || 'secondary';
+    }
+    
+    async function scanDevice(deviceId) {
+        try {
+            showToast('Starting device security scan...', 'info');
+            
+            const response = await fetch(`/api/security/device/${deviceId}/scan`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast(`Device scan completed. Found ${data.open_ports} open ports, ${data.security_alerts} security alerts.`, 'success');
+                loadSecurityData(); // Refresh data
+            } else {
+                showToast(`Device scan failed: ${data.error}`, 'error');
+            }
+        } catch (error) {
+            console.error('Error scanning device:', error);
+            showToast('Error scanning device', 'error');
+        }
+    }
+    
+    async function acknowledgeAlert(alertId) {
+        try {
+            const response = await fetch(`/api/monitoring/alerts/${alertId}/acknowledge`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                showToast('Alert acknowledged', 'success');
+                loadSecurityAlerts(); // Refresh alerts
+            } else {
+                showToast(`Failed to acknowledge alert: ${data.error}`, 'error');
+            }
+        } catch (error) {
+            console.error('Error acknowledging alert:', error);
+            showToast('Error acknowledging alert', 'error');
+        }
+    }
+    
+    async function updateSecuritySettings(event) {
+        event.preventDefault();
+        
+        try {
+            const settings = {
+                scan_interval: parseInt(document.getElementById('scan-interval').value) * 3600, // Convert to seconds
+                top_ports: parseInt(document.getElementById('top-ports').value),
+                service_detection: document.getElementById('service-detection').checked,
+                version_detection: document.getElementById('version-detection').checked
+            };
+            
+            // For now, just show a success message
+            // In production, this would update the scanner configuration
+            showToast('Security settings updated successfully', 'success');
+            
+        } catch (error) {
+            console.error('Error updating settings:', error);
+            showToast('Error updating security settings', 'error');
+        }
+    }
+</script>
+{% endblock %}

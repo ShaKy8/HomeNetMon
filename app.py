@@ -30,6 +30,8 @@ def create_app():
     from api.analytics import analytics_bp
     from api.speedtest import speedtest_bp
     from api.device_control import device_control_bp
+    from api.anomaly import anomaly_bp
+    from api.security import security_bp
     
     app.register_blueprint(devices_bp, url_prefix='/api/devices')
     app.register_blueprint(monitoring_bp, url_prefix='/api/monitoring')
@@ -37,6 +39,8 @@ def create_app():
     app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
     app.register_blueprint(speedtest_bp, url_prefix='/api/speedtest')
     app.register_blueprint(device_control_bp, url_prefix='/api/device-control')
+    app.register_blueprint(anomaly_bp, url_prefix='/api/anomaly')
+    app.register_blueprint(security_bp, url_prefix='/api/security')
     
     # Initialize monitoring services
     scanner = NetworkScanner(app)
@@ -47,9 +51,19 @@ def create_app():
     from services.speedtest import speed_test_service
     speed_test_service.app = app
     
+    # Initialize anomaly detection service
+    from services.anomaly_detection import anomaly_detection_service
+    anomaly_detection_service.app = app
+    
+    # Initialize security scanner service
+    from services.security_scanner import security_scanner
+    security_scanner.app = app
+    
     # Make services accessible to other parts of the app
     app.alert_manager = alert_manager
     app.speed_test_service = speed_test_service
+    app.anomaly_detection_service = anomaly_detection_service
+    app.security_scanner = security_scanner
     
     # Start background services in separate threads
     def start_monitoring_services():
@@ -78,6 +92,22 @@ def create_app():
             name='AlertManager'
         )
         alert_thread.start()
+        
+        # Start anomaly detection service
+        anomaly_thread = threading.Thread(
+            target=anomaly_detection_service.start_monitoring,
+            daemon=True,
+            name='AnomalyDetection'
+        )
+        anomaly_thread.start()
+        
+        # Start security scanner service
+        security_thread = threading.Thread(
+            target=security_scanner.start_monitoring,
+            daemon=True,
+            name='SecurityScanner'
+        )
+        security_thread.start()
     
     # Start services in background
     services_thread = threading.Thread(target=start_monitoring_services, daemon=True)
@@ -103,6 +133,14 @@ def create_app():
     @app.route('/analytics')
     def analytics():
         return render_template('analytics.html')
+    
+    @app.route('/ai-dashboard')
+    def ai_dashboard():
+        return render_template('ai_dashboard.html')
+    
+    @app.route('/security-dashboard')
+    def security_dashboard():
+        return render_template('security_dashboard.html')
     
     @app.route('/topology')
     def topology():
