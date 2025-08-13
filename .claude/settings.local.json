@@ -53,7 +53,12 @@
       "Bash(gh repo sync:*)",
       "Bash(git remote set-url:*)",
       "Bash(ssh:*)",
-      "Bash(nmap:*)"
+      "Bash(nmap:*)",
+      "Bash(git symbolic-ref:*)",
+      "Bash(git remote set-head:*)",
+      "Bash(echo $?)",
+      "Bash(mtr:*)",
+      "Bash(time curl:*)"
     ],
     "deny": []
   }

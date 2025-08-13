@@ -16,6 +16,7 @@ class Config:
     NETWORK_RANGE = os.environ.get('NETWORK_RANGE', '192.168.86.0/24')
     PING_INTERVAL = int(os.environ.get('PING_INTERVAL', '30'))
     SCAN_INTERVAL = int(os.environ.get('SCAN_INTERVAL', '300'))
+    BANDWIDTH_INTERVAL = int(os.environ.get('BANDWIDTH_INTERVAL', '60'))
     
     # Monitoring Settings
     PING_TIMEOUT = float(os.environ.get('PING_TIMEOUT', '3.0'))

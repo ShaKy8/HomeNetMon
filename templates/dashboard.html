@@ -16,6 +16,9 @@
         <button type="button" class="btn btn-outline-success" id="ping-all-btn">
             <i class="bi bi-broadcast"></i> Ping All
         </button>
+        <button type="button" class="btn btn-outline-info" id="toggle-selection-btn">
+            <i class="bi bi-check-square"></i> Select Devices
+        </button>
         <div class="btn-group" role="group">
             <button type="button" class="btn btn-outline-warning dropdown-toggle" data-bs-toggle="dropdown" id="bulk-actions-btn">
                 <i class="bi bi-gear"></i> Bulk Actions
@@ -178,7 +181,7 @@
             <div class="mt-2 d-flex justify-content-between">
                 <small class="text-info">
                     <i class="bi bi-search"></i> 
-                    Discovering devices on 192.168.86.0/24
+                    <span id="scan-network-text">Discovering devices...</span>
                 </small>
                 <small class="text-success">
                     <i class="bi bi-plus-circle"></i> 
@@ -286,12 +289,21 @@
             <table class="table table-hover mb-0">
                 <thead class="table-light">
                     <tr>
+                        <th class="table-select-column" style="display: none;">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="select-all-table">
+                                <label class="form-check-label" for="select-all-table">
+                                    Select
+                                </label>
+                            </div>
+                        </th>
                         <th>Status</th>
                         <th>Name</th>
                         <th>IP Address</th>
                         <th>Type</th>
                         <th>Response Time</th>
                         <th>Uptime</th>
+                        <th>Bandwidth</th>
                         <th>Last Seen</th>
                         <th>Actions</th>
                     </tr>
@@ -547,7 +559,7 @@ function createDeviceCard(device, index = 0) {
             <div class="card-body position-relative">
                 ${alertBadge}
                 <div class="form-check position-absolute top-0 start-0 mt-2 ms-2 device-checkbox" style="display: none;">
-                    <input class="form-check-input device-select" type="checkbox" value="${device.id}" onclick="event.stopPropagation();">
+                    <input class="form-check-input device-select" type="checkbox" value="${device.id}" ${selectedDevices.has(device.id) ? 'checked' : ''} onclick="event.stopPropagation();">
                 </div>
                 
                 <div class="d-flex align-items-center mb-2">
@@ -559,13 +571,17 @@ function createDeviceCard(device, index = 0) {
                 <p class="text-muted small mb-2">${device.ip_address}</p>
                 
                 <div class="row text-center">
-                    <div class="col-6">
+                    <div class="col-4">
                         <div class="small text-muted">Response</div>
                         <div class="fw-bold">${formatResponseTime(device.latest_response_time)}</div>
                     </div>
-                    <div class="col-6">
+                    <div class="col-4">
                         <div class="small text-muted">Uptime</div>
                         <div class="fw-bold">${formatUptime(device.uptime_percentage)}</div>
+                    </div>
+                    <div class="col-4">
+                        <div class="small text-muted">Bandwidth</div>
+                        <div class="fw-bold">${formatBandwidth(device.current_bandwidth)}</div>
                     </div>
                 </div>
                 
@@ -620,6 +636,11 @@ function createDeviceRow(device) {
         `<span class="badge bg-danger ms-1">${device.active_alerts}</span>` : '';
     
     row.innerHTML = `
+        <td class="table-select-column" style="display: none;" onclick="event.stopPropagation()">
+            <div class="form-check">
+                <input class="form-check-input device-select table-device-select" type="checkbox" value="${device.id}" ${selectedDevices.has(device.id) ? 'checked' : ''}>
+            </div>
+        </td>
         <td>
             <span class="status-indicator ${device.status}"></span>
             ${device.status}
@@ -639,6 +660,7 @@ function createDeviceRow(device) {
         </td>
         <td>${formatResponseTime(device.latest_response_time)}</td>
         <td>${formatUptime(device.uptime_percentage)}</td>
+        <td>${formatBandwidth(device.current_bandwidth)}</td>
         <td>${device.last_seen ? new Date(device.last_seen).toLocaleString() : 'Never'}</td>
         <td onclick="event.stopPropagation()">
             <div class="btn-group btn-group-sm">
@@ -1082,12 +1104,27 @@ document.addEventListener('DOMContentLoaded', function() {
         const progressBar = document.getElementById('scan-progress-bar');
         const progressText = document.getElementById('scan-progress-text');
         const newDevicesCount = document.getElementById('scan-new-devices');
+        const scanNetworkText = document.getElementById('scan-network-text');
         
         try {
+            // Get current network range
+            const networkResponse = await fetch('/api/config/network');
+            const networkData = await networkResponse.json();
+            const networkRange = networkData.network_range || 'unknown network';
+            
+            // Update scan text with actual network range
+            scanNetworkText.textContent = `Discovering devices on ${networkRange}`;
+            
             // Get current device count
             const beforeResponse = await fetch('/api/devices');
             const beforeData = await beforeResponse.json();
-            const devicesBefore = beforeData.devices.length;
+            
+            // Check if API returned an error
+            if (beforeData.error) {
+                throw new Error(beforeData.error);
+            }
+            
+            const devicesBefore = beforeData.devices ? beforeData.devices.length : 0;
             
             // Show progress bar and disable button
             button.disabled = true;
@@ -1102,28 +1139,61 @@ document.addEventListener('DOMContentLoaded', function() {
             
             showToast('Network scan initiated - discovering devices...', 'info');
             
-            // Simulate scan progress stages
-            const scanStages = [
-                { progress: 10, text: 'Checking ARP table...', delay: 500 },
-                { progress: 25, text: 'Starting nmap scan...', delay: 1000 },
-                { progress: 40, text: 'Scanning IP range 192.168.86.1-50...', delay: 1500 },
-                { progress: 60, text: 'Scanning IP range 192.168.86.51-100...', delay: 1500 },
-                { progress: 75, text: 'Scanning IP range 192.168.86.101-200...', delay: 1500 },
-                { progress: 90, text: 'Resolving hostnames and vendors...', delay: 1000 },
-                { progress: 100, text: 'Updating database...', delay: 800 }
-            ];
+            // Trigger real network scan
+            progressText.textContent = `Starting scan of ${networkRange}...`;
+            progressBar.style.width = '10%';
+            progressBar.setAttribute('aria-valuenow', '10');
             
-            for (const stage of scanStages) {
-                await new Promise(resolve => setTimeout(resolve, stage.delay));
-                progressBar.style.width = `${stage.progress}%`;
-                progressBar.setAttribute('aria-valuenow', stage.progress.toString());
-                progressText.textContent = stage.text;
+            // Call the real scan API
+            const scanResponse = await fetch('/api/monitoring/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            const scanResult = await scanResponse.json();
+            
+            if (!scanResult.success) {
+                throw new Error(scanResult.error || 'Scan request failed');
             }
+            
+            progressText.textContent = 'Scan in progress...';
+            progressBar.style.width = '50%';
+            progressBar.setAttribute('aria-valuenow', '50');
+            
+            // Wait for scan to complete (polling for completion)
+            let scanComplete = false;
+            let attempts = 0;
+            const maxAttempts = 30; // 30 seconds max wait
+            
+            while (!scanComplete && attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                attempts++;
+                
+                const progress = 50 + (attempts / maxAttempts) * 40; // 50% to 90%
+                progressBar.style.width = `${progress}%`;
+                progressBar.setAttribute('aria-valuenow', progress.toString());
+                progressText.textContent = `Scanning ${networkRange}... (${attempts}s)`;
+                
+                // Check if new devices appeared (simple completion check)
+                if (attempts >= 5) { // Give scan at least 5 seconds
+                    scanComplete = true;
+                }
+            }
+            
+            progressText.textContent = 'Finalizing scan results...';
+            progressBar.style.width = '100%';
+            progressBar.setAttribute('aria-valuenow', '100');
             
             // Get updated device count
             const afterResponse = await fetch('/api/devices');
             const afterData = await afterResponse.json();
-            const devicesAfter = afterData.devices.length;
+            
+            // Check if API returned an error
+            if (afterData.error) {
+                throw new Error(afterData.error);
+            }
+            
+            const devicesAfter = afterData.devices ? afterData.devices.length : 0;
             const newDevices = devicesAfter - devicesBefore;
             
             newDevicesCount.textContent = newDevices.toString();
@@ -1289,12 +1359,16 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!selectionMode) toggleSelectionMode();
     });
     
+    // New prominent toggle selection button
+    document.getElementById('toggle-selection-btn').addEventListener('click', toggleSelectionMode);
+    
     // Add device modal
     document.getElementById('save-device-btn').addEventListener('click', addDevice);
     
     // Bulk operations event listeners
     document.getElementById('toggle-selection-mode').addEventListener('click', toggleSelectionMode);
     document.getElementById('select-all-devices').addEventListener('change', selectAllDevices);
+    document.getElementById('select-all-table').addEventListener('change', selectAllDevices);
     document.getElementById('clear-selection').addEventListener('click', clearSelection);
     document.getElementById('bulk-wake-on-lan').addEventListener('click', bulkWakeOnLan);
     document.getElementById('bulk-ping-devices').addEventListener('click', bulkPingDevices);
@@ -1302,6 +1376,20 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('bulk-disable-monitoring').addEventListener('click', () => bulkUpdateMonitoring(false));
     document.getElementById('bulk-set-group').addEventListener('click', bulkSetGroup);
     document.getElementById('bulk-delete-devices').addEventListener('click', bulkDeleteDevices);
+    
+    // Event delegation for device checkboxes (since they're dynamically created)
+    document.addEventListener('change', function(event) {
+        if (event.target.classList.contains('device-select')) {
+            const deviceId = parseInt(event.target.value);
+            if (event.target.checked) {
+                selectedDevices.add(deviceId);
+            } else {
+                selectedDevices.delete(deviceId);
+            }
+            updateSelectionCount();
+            updateSelectAllCheckbox();
+        }
+    });
     
     // Auto-refresh every 30 seconds
     setInterval(loadDevices, 30000);
@@ -1325,14 +1413,21 @@ function handleDeviceCardClick(event, deviceId) {
 function toggleSelectionMode() {
     selectionMode = !selectionMode;
     const button = document.getElementById('toggle-selection-mode');
+    const newButton = document.getElementById('toggle-selection-btn');
     const bulkControls = document.getElementById('bulk-selection-controls');
     const checkboxes = document.querySelectorAll('.device-checkbox');
+    const tableColumns = document.querySelectorAll('.table-select-column');
     
     if (selectionMode) {
         // Enable selection mode
-        button.innerHTML = '<i class="bi bi-x-circle"></i> Exit Selection';
+        if (button) button.innerHTML = '<i class="bi bi-x-circle"></i> Exit Selection';
+        if (newButton) {
+            newButton.innerHTML = '<i class="bi bi-x-circle"></i> Exit Selection';
+            newButton.className = 'btn btn-warning';
+        }
         bulkControls.style.display = 'block';
         checkboxes.forEach(cb => cb.style.display = 'block');
+        tableColumns.forEach(col => col.style.display = '');
         
         // Add selection visual cues
         document.querySelectorAll('.device-card').forEach(card => {
@@ -1343,9 +1438,14 @@ function toggleSelectionMode() {
         showToast('Selection mode enabled - click devices to select them', 'info');
     } else {
         // Disable selection mode
-        button.innerHTML = '<i class="bi bi-check-square"></i> Enable Selection';
+        if (button) button.innerHTML = '<i class="bi bi-check-square"></i> Enable Selection';
+        if (newButton) {
+            newButton.innerHTML = '<i class="bi bi-check-square"></i> Select Devices';
+            newButton.className = 'btn btn-outline-info';
+        }
         bulkControls.style.display = 'none';
         checkboxes.forEach(cb => cb.style.display = 'none');
+        tableColumns.forEach(col => col.style.display = 'none');
         clearSelection();
         
         // Remove selection visual cues
@@ -1358,13 +1458,14 @@ function toggleSelectionMode() {
 
 // Toggle device selection
 function toggleDeviceSelection(deviceId) {
-    const checkbox = document.querySelector(`input[value="${deviceId}"]`);
+    const id = parseInt(deviceId); // Ensure consistent integer type
+    const checkbox = document.querySelector(`input[value="${id}"]`);
     if (checkbox) {
         checkbox.checked = !checkbox.checked;
         if (checkbox.checked) {
-            selectedDevices.add(deviceId);
+            selectedDevices.add(id);
         } else {
-            selectedDevices.delete(deviceId);
+            selectedDevices.delete(id);
         }
         updateSelectionCount();
         updateSelectAllCheckbox();
@@ -1372,11 +1473,24 @@ function toggleDeviceSelection(deviceId) {
 }
 
 // Select all devices
-function selectAllDevices() {
-    const selectAllCheckbox = document.getElementById('select-all-devices');
+function selectAllDevices(event) {
+    const isTableCheckbox = event.target.id === 'select-all-table';
+    const isGridCheckbox = event.target.id === 'select-all-devices';
+    
+    const selectAllGrid = document.getElementById('select-all-devices');
+    const selectAllTable = document.getElementById('select-all-table');
     const deviceCheckboxes = document.querySelectorAll('.device-select');
     
-    if (selectAllCheckbox.checked) {
+    // Sync both checkboxes
+    if (isTableCheckbox) {
+        selectAllGrid.checked = selectAllTable.checked;
+    } else if (isGridCheckbox) {
+        selectAllTable.checked = selectAllGrid.checked;
+    }
+    
+    const isChecked = event.target.checked;
+    
+    if (isChecked) {
         deviceCheckboxes.forEach(cb => {
             cb.checked = true;
             selectedDevices.add(parseInt(cb.value));
@@ -1395,6 +1509,7 @@ function clearSelection() {
     selectedDevices.clear();
     document.querySelectorAll('.device-select').forEach(cb => cb.checked = false);
     document.getElementById('select-all-devices').checked = false;
+    document.getElementById('select-all-table').checked = false;
     updateSelectionCount();
 }
 
@@ -1408,12 +1523,19 @@ function updateSelectionCount() {
 
 // Update select all checkbox state
 function updateSelectAllCheckbox() {
-    const selectAllCheckbox = document.getElementById('select-all-devices');
+    const selectAllGrid = document.getElementById('select-all-devices');
+    const selectAllTable = document.getElementById('select-all-table');
     const deviceCheckboxes = document.querySelectorAll('.device-select');
     const checkedBoxes = document.querySelectorAll('.device-select:checked');
     
-    selectAllCheckbox.indeterminate = checkedBoxes.length > 0 && checkedBoxes.length < deviceCheckboxes.length;
-    selectAllCheckbox.checked = checkedBoxes.length === deviceCheckboxes.length && deviceCheckboxes.length > 0;
+    const isIndeterminate = checkedBoxes.length > 0 && checkedBoxes.length < deviceCheckboxes.length;
+    const isAllChecked = checkedBoxes.length === deviceCheckboxes.length && deviceCheckboxes.length > 0;
+    
+    // Update both grid and table checkboxes
+    selectAllGrid.indeterminate = isIndeterminate;
+    selectAllGrid.checked = isAllChecked;
+    selectAllTable.indeterminate = isIndeterminate;
+    selectAllTable.checked = isAllChecked;
 }
 
 // Bulk Wake-on-LAN

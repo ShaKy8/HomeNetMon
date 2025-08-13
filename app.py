@@ -9,6 +9,7 @@ from models import db, init_db
 from monitoring.scanner import NetworkScanner
 from monitoring.monitor import DeviceMonitor
 from monitoring.alerts import AlertManager
+from monitoring.bandwidth_monitor import BandwidthMonitor
 
 # Global variable to track server startup time
 SERVER_START_TIME = datetime.now()
@@ -46,6 +47,7 @@ def create_app():
     scanner = NetworkScanner(app)
     monitor = DeviceMonitor(socketio, app)
     alert_manager = AlertManager(app)
+    bandwidth_monitor = BandwidthMonitor(app)
     
     # Initialize speed test service
     from services.speedtest import speed_test_service
@@ -60,7 +62,9 @@ def create_app():
     security_scanner.app = app
     
     # Make services accessible to other parts of the app
+    app._scanner = scanner
     app.alert_manager = alert_manager
+    app.bandwidth_monitor = bandwidth_monitor
     app.speed_test_service = speed_test_service
     app.anomaly_detection_service = anomaly_detection_service
     app.security_scanner = security_scanner
@@ -108,6 +112,14 @@ def create_app():
             name='SecurityScanner'
         )
         security_thread.start()
+        
+        # Start bandwidth monitor
+        bandwidth_thread = threading.Thread(
+            target=bandwidth_monitor.start_monitoring,
+            daemon=True,
+            name='BandwidthMonitor'
+        )
+        bandwidth_thread.start()
     
     # Start services in background
     services_thread = threading.Thread(target=start_monitoring_services, daemon=True)

@@ -58,8 +58,8 @@
                                                 <div class="col-md-8">
                                                     <small>
                                                         <strong>Currently monitoring:</strong> 
-                                                        <span id="current-network-display" class="text-primary">192.168.86.0/24</span>
-                                                        (<span id="current-network-range">192.168.86.1 - 192.168.86.254</span>)
+                                                        <span id="current-network-display" class="text-primary">Loading...</span>
+                                                        (<span id="current-network-range">Loading...</span>)
                                                     </small>
                                                 </div>
                                                 <div class="col-md-4 text-end">
@@ -431,6 +431,8 @@ async function loadNetworkConfig() {
         // Update network range display
         if (networkConfig.network_range) {
             updateNetworkRangeDisplay(networkConfig.network_range);
+            // Also update the "Currently monitoring" display
+            document.getElementById('current-network-display').textContent = networkConfig.network_range;
         }
         
     } catch (error) {
@@ -501,6 +503,8 @@ function setScanInterval(seconds) {
 function setNetworkRange(range) {
     document.getElementById('network-range').value = range;
     updateNetworkRangeDisplay(range);
+    // Update the "Currently monitoring" display immediately
+    document.getElementById('current-network-display').textContent = range;
     showRestartButton();
 }
 
@@ -1087,6 +1091,12 @@ document.addEventListener('DOMContentLoaded', function() {
     
     // Network range change detection
     document.getElementById('network-range').addEventListener('input', function() {
+        const newRange = this.value.trim();
+        if (newRange) {
+            // Update the "Currently monitoring" display as user types
+            document.getElementById('current-network-display').textContent = newRange;
+            updateNetworkRangeDisplay(newRange);
+        }
         showRestartButton();
     });
 });

@@ -352,7 +352,7 @@
                     
                     <div class="mb-3">
                         <small class="text-muted">Network Range</small>
-                        <div class="small" id="network-range">{{ config.NETWORK_RANGE if config else '192.168.86.0/24' }}</div>
+                        <div class="small" id="network-range">Loading...</div>
                     </div>
                 </div>
             </div>
@@ -555,6 +555,26 @@
             return percentage.toFixed(1) + '%';
         }
         
+        // Format bandwidth usage
+        function formatBandwidth(bandwidth) {
+            if (!bandwidth || (!bandwidth.total_mbps && bandwidth.total_mbps !== 0)) {
+                return 'N/A';
+            }
+            
+            const totalMbps = bandwidth.total_mbps;
+            if (totalMbps === 0) {
+                return '0 Mbps';
+            } else if (totalMbps < 0.1) {
+                return '<0.1 Mbps';
+            } else if (totalMbps < 1) {
+                return (totalMbps * 1000).toFixed(0) + ' Kbps';
+            } else if (totalMbps < 10) {
+                return totalMbps.toFixed(1) + ' Mbps';
+            } else {
+                return totalMbps.toFixed(0) + ' Mbps';
+            }
+        }
+        
         // Load active alerts count
         async function loadActiveAlertsCount() {
             try {
@@ -692,6 +712,19 @@
                 buildSearchIndex();
             } catch (error) {
                 console.error('Failed to load devices for search:', error);
+            }
+        }
+        
+        // Load and display current network range in sidebar
+        async function loadCurrentNetworkRange() {
+            try {
+                const response = await fetch('/api/config/network');
+                const data = await response.json();
+                if (data.network_range) {
+                    document.getElementById('network-range').textContent = data.network_range;
+                }
+            } catch (error) {
+                console.error('Failed to load network range:', error);
             }
         }
         
@@ -889,6 +922,7 @@
             loadActiveAlertsCount();
             initializeTheme();
             initializeSearch();
+            loadCurrentNetworkRange();
             initializeKeyboardShortcuts();
             initializeMobileSidebar();
             
@@ -930,6 +964,7 @@
             setInterval(() => {
                 loadActiveAlertsCount();
                 initializeSearch(); // Refresh search index
+                loadCurrentNetworkRange(); // Refresh network range display
             }, 30000); // Every 30 seconds
         });
     </script>

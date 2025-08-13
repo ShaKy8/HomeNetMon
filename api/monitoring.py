@@ -1,10 +1,56 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 from sqlalchemy import func
-from models import db, Device, MonitoringData, Alert
+from models import db, Device, MonitoringData, Alert, BandwidthData
 from monitoring.monitor import DeviceMonitor
 
 monitoring_bp = Blueprint('monitoring', __name__)
+
+@monitoring_bp.route('/scan', methods=['POST'])
+def trigger_network_scan():
+    """Trigger manual network scan"""
+    try:
+        from flask import current_app
+        
+        # Get the network scanner instance from the app
+        if not hasattr(current_app, '_scanner'):
+            return jsonify({
+                'success': False,
+                'error': 'Network scanner not available'
+            }), 503
+        
+        scanner = current_app._scanner
+        
+        # Check if scanner is currently running a scan
+        if hasattr(scanner, 'is_scanning') and scanner.is_scanning:
+            return jsonify({
+                'success': False,
+                'error': 'Network scan already in progress'
+            }), 429
+        
+        # Trigger the scan in a background thread
+        import threading
+        
+        def run_scan():
+            try:
+                scanner.scan_network()
+            except Exception as e:
+                current_app.logger.error(f"Background scan error: {e}")
+        
+        scan_thread = threading.Thread(target=run_scan, daemon=True)
+        scan_thread.start()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Network scan initiated',
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        })
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
 
 @monitoring_bp.route('/data', methods=['GET'])
 def get_monitoring_data():
@@ -799,6 +845,334 @@ def get_network_topology():
                 'subnets': len(subnet_groups),
                 'connections': len(edges)
             },
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/bandwidth', methods=['GET'])
+def get_bandwidth_data():
+    """Get bandwidth usage data with optional filtering"""
+    try:
+        # Query parameters
+        device_id = request.args.get('device_id', type=int)
+        hours = request.args.get('hours', default=24, type=int)
+        limit = request.args.get('limit', default=100, type=int)
+        
+        # Validate parameters
+        if hours > 168:  # Max 7 days
+            hours = 168
+        if limit > 1000:  # Max 1000 records
+            limit = 1000
+        
+        # Build query
+        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        query = BandwidthData.query.filter(BandwidthData.timestamp >= cutoff)
+        
+        if device_id:
+            query = query.filter(BandwidthData.device_id == device_id)
+        
+        bandwidth_data = query.order_by(BandwidthData.timestamp.desc()).limit(limit).all()
+        
+        # Convert to dict format
+        data = []
+        for item in bandwidth_data:
+            item_dict = item.to_dict()
+            item_dict['device_name'] = item.device.display_name
+            item_dict['device_ip'] = item.device.ip_address
+            data.append(item_dict)
+        
+        return jsonify({
+            'bandwidth_data': data,
+            'count': len(data),
+            'hours': hours
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/bandwidth/timeline', methods=['GET'])
+def get_bandwidth_timeline():
+    """Get bandwidth timeline data for charts"""
+    try:
+        # Query parameters
+        device_id = request.args.get('device_id', type=int)
+        hours = request.args.get('hours', default=24, type=int)
+        interval = request.args.get('interval', default='hour')  # hour, 30min, 15min, 5min
+        
+        # Validate parameters
+        if hours > 168:  # Max 7 days
+            hours = 168
+        
+        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        
+        # Build query
+        query = BandwidthData.query.filter(BandwidthData.timestamp >= cutoff)
+        
+        if device_id:
+            query = query.filter(BandwidthData.device_id == device_id)
+        
+        bandwidth_data = query.order_by(BandwidthData.timestamp).all()
+        
+        # Group data by time intervals
+        timeline_data = []
+        current_bucket = None
+        bucket_data = []
+        
+        # Determine time bucket size
+        if interval == '5min':
+            bucket_minutes = 5
+        elif interval == '15min':
+            bucket_minutes = 15
+        elif interval == '30min':
+            bucket_minutes = 30
+        else:  # hour
+            bucket_minutes = 60
+        
+        for data_point in bandwidth_data:
+            # Calculate bucket timestamp
+            timestamp = data_point.timestamp
+            minutes_since_epoch = int(timestamp.timestamp() / 60)
+            bucket_minutes_since_epoch = (minutes_since_epoch // bucket_minutes) * bucket_minutes
+            bucket_timestamp = datetime.fromtimestamp(bucket_minutes_since_epoch * 60)
+            
+            # Check if we need to start a new bucket
+            if current_bucket is None or current_bucket != bucket_timestamp:
+                # Process previous bucket
+                if current_bucket is not None and bucket_data:
+                    in_mbps_values = [d.bandwidth_in_mbps for d in bucket_data]
+                    out_mbps_values = [d.bandwidth_out_mbps for d in bucket_data]
+                    
+                    timeline_data.append({
+                        'timestamp': current_bucket.strftime('%Y-%m-%d %H:%M:%S'),
+                        'avg_bandwidth_in_mbps': sum(in_mbps_values) / len(in_mbps_values) if in_mbps_values else 0,
+                        'avg_bandwidth_out_mbps': sum(out_mbps_values) / len(out_mbps_values) if out_mbps_values else 0,
+                        'peak_bandwidth_in_mbps': max(in_mbps_values) if in_mbps_values else 0,
+                        'peak_bandwidth_out_mbps': max(out_mbps_values) if out_mbps_values else 0,
+                        'total_bytes_in': sum(d.bytes_in for d in bucket_data),
+                        'total_bytes_out': sum(d.bytes_out for d in bucket_data),
+                        'sample_count': len(bucket_data)
+                    })
+                
+                # Start new bucket
+                current_bucket = bucket_timestamp
+                bucket_data = []
+            
+            bucket_data.append(data_point)
+        
+        # Process the last bucket
+        if current_bucket is not None and bucket_data:
+            in_mbps_values = [d.bandwidth_in_mbps for d in bucket_data]
+            out_mbps_values = [d.bandwidth_out_mbps for d in bucket_data]
+            
+            timeline_data.append({
+                'timestamp': current_bucket.strftime('%Y-%m-%d %H:%M:%S'),
+                'avg_bandwidth_in_mbps': sum(in_mbps_values) / len(in_mbps_values) if in_mbps_values else 0,
+                'avg_bandwidth_out_mbps': sum(out_mbps_values) / len(out_mbps_values) if out_mbps_values else 0,
+                'peak_bandwidth_in_mbps': max(in_mbps_values) if in_mbps_values else 0,
+                'peak_bandwidth_out_mbps': max(out_mbps_values) if out_mbps_values else 0,
+                'total_bytes_in': sum(d.bytes_in for d in bucket_data),
+                'total_bytes_out': sum(d.bytes_out for d in bucket_data),
+                'sample_count': len(bucket_data)
+            })
+        
+        return jsonify({
+            'timeline': timeline_data,
+            'count': len(timeline_data),
+            'interval': interval,
+            'hours': hours
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/bandwidth/summary', methods=['GET'])
+def get_bandwidth_summary():
+    """Get bandwidth usage summary statistics"""
+    try:
+        # Query parameters
+        hours = request.args.get('hours', default=24, type=int)
+        
+        # Validate parameters
+        if hours > 168:  # Max 7 days
+            hours = 168
+        
+        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        
+        # Get network-wide bandwidth statistics
+        result = db.session.execute(
+            db.text("""
+                SELECT 
+                    SUM(bytes_in) as total_bytes_in,
+                    SUM(bytes_out) as total_bytes_out,
+                    AVG(bandwidth_in_mbps) as avg_bandwidth_in,
+                    AVG(bandwidth_out_mbps) as avg_bandwidth_out,
+                    MAX(bandwidth_in_mbps + bandwidth_out_mbps) as peak_total_bandwidth,
+                    COUNT(DISTINCT device_id) as active_devices,
+                    COUNT(*) as total_measurements
+                FROM bandwidth_data 
+                WHERE timestamp >= :cutoff
+            """),
+            {'cutoff': cutoff}
+        ).fetchone()
+        
+        # Get top bandwidth consumers
+        top_consumers = db.session.execute(
+            db.text("""
+                SELECT 
+                    d.id,
+                    d.ip_address,
+                    d.custom_name,
+                    d.hostname,
+                    d.device_type,
+                    SUM(b.bytes_in + b.bytes_out) as total_bytes,
+                    AVG(b.bandwidth_in_mbps + b.bandwidth_out_mbps) as avg_total_mbps,
+                    MAX(b.bandwidth_in_mbps + b.bandwidth_out_mbps) as peak_total_mbps
+                FROM devices d
+                JOIN bandwidth_data b ON d.id = b.device_id
+                WHERE b.timestamp >= :cutoff
+                GROUP BY d.id, d.ip_address, d.custom_name, d.hostname, d.device_type
+                ORDER BY total_bytes DESC
+                LIMIT 10
+            """),
+            {'cutoff': cutoff}
+        ).fetchall()
+        
+        # Format top consumers
+        top_consumers_list = []
+        for row in top_consumers:
+            device_name = row[2] or row[3] or f"Device {row[1]}"
+            top_consumers_list.append({
+                'device_id': row[0],
+                'ip_address': row[1],
+                'device_name': device_name,
+                'device_type': row[4],
+                'total_gb': round(row[5] / (1024**3), 2) if row[5] else 0,
+                'avg_mbps': round(row[6], 2) if row[6] else 0,
+                'peak_mbps': round(row[7], 2) if row[7] else 0
+            })
+        
+        # Get current real-time bandwidth (last 5 minutes)
+        recent_cutoff = datetime.utcnow() - timedelta(minutes=5)
+        current_result = db.session.execute(
+            db.text("""
+                SELECT 
+                    AVG(bandwidth_in_mbps) as current_in_mbps,
+                    AVG(bandwidth_out_mbps) as current_out_mbps
+                FROM bandwidth_data 
+                WHERE timestamp >= :recent_cutoff
+            """),
+            {'recent_cutoff': recent_cutoff}
+        ).fetchone()
+        
+        summary = {
+            'period_hours': hours,
+            'total_data': {
+                'total_gb_in': round(result[0] / (1024**3), 2) if result[0] else 0,
+                'total_gb_out': round(result[1] / (1024**3), 2) if result[1] else 0,
+                'total_gb': round((result[0] + result[1]) / (1024**3), 2) if result[0] and result[1] else 0
+            },
+            'average_bandwidth': {
+                'avg_in_mbps': round(result[2], 2) if result[2] else 0,
+                'avg_out_mbps': round(result[3], 2) if result[3] else 0,
+                'avg_total_mbps': round((result[2] + result[3]), 2) if result[2] and result[3] else 0
+            },
+            'peak_bandwidth': {
+                'peak_total_mbps': round(result[4], 2) if result[4] else 0
+            },
+            'current_bandwidth': {
+                'current_in_mbps': round(current_result[0], 2) if current_result[0] else 0,
+                'current_out_mbps': round(current_result[1], 2) if current_result[1] else 0,
+                'current_total_mbps': round((current_result[0] + current_result[1]), 2) if current_result[0] and current_result[1] else 0
+            },
+            'statistics': {
+                'active_devices': result[5] or 0,
+                'total_measurements': result[6] or 0
+            },
+            'top_consumers': top_consumers_list,
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        }
+        
+        return jsonify(summary)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/bandwidth/devices', methods=['GET'])
+def get_device_bandwidth_rankings():
+    """Get bandwidth usage rankings by device"""
+    try:
+        # Query parameters
+        hours = request.args.get('hours', default=24, type=int)
+        limit = request.args.get('limit', default=20, type=int)
+        
+        # Validate parameters
+        if hours > 168:  # Max 7 days
+            hours = 168
+        if limit > 100:  # Max 100 devices
+            limit = 100
+        
+        cutoff = datetime.utcnow() - timedelta(hours=hours)
+        
+        # Get device bandwidth statistics
+        device_stats = db.session.execute(
+            db.text("""
+                SELECT 
+                    d.id,
+                    d.ip_address,
+                    d.custom_name,
+                    d.hostname,
+                    d.device_type,
+                    d.vendor,
+                    SUM(b.bytes_in) as total_bytes_in,
+                    SUM(b.bytes_out) as total_bytes_out,
+                    AVG(b.bandwidth_in_mbps) as avg_in_mbps,
+                    AVG(b.bandwidth_out_mbps) as avg_out_mbps,
+                    MAX(b.bandwidth_in_mbps) as peak_in_mbps,
+                    MAX(b.bandwidth_out_mbps) as peak_out_mbps,
+                    COUNT(b.id) as measurement_count
+                FROM devices d
+                LEFT JOIN bandwidth_data b ON d.id = b.device_id AND b.timestamp >= :cutoff
+                WHERE d.is_monitored = 1
+                GROUP BY d.id, d.ip_address, d.custom_name, d.hostname, d.device_type, d.vendor
+                ORDER BY (COALESCE(total_bytes_in, 0) + COALESCE(total_bytes_out, 0)) DESC
+                LIMIT :limit
+            """),
+            {'cutoff': cutoff, 'limit': limit}
+        ).fetchall()
+        
+        # Format device statistics
+        devices = []
+        for row in device_stats:
+            device_name = row[2] or row[3] or f"Device {row[1]}"
+            total_bytes = (row[6] or 0) + (row[7] or 0)
+            
+            devices.append({
+                'device_id': row[0],
+                'ip_address': row[1],
+                'device_name': device_name,
+                'hostname': row[3],
+                'device_type': row[4],
+                'vendor': row[5],
+                'bandwidth_stats': {
+                    'total_gb_in': round((row[6] or 0) / (1024**3), 2),
+                    'total_gb_out': round((row[7] or 0) / (1024**3), 2),
+                    'total_gb': round(total_bytes / (1024**3), 2),
+                    'avg_in_mbps': round(row[8], 2) if row[8] else 0,
+                    'avg_out_mbps': round(row[9], 2) if row[9] else 0,
+                    'avg_total_mbps': round((row[8] or 0) + (row[9] or 0), 2),
+                    'peak_in_mbps': round(row[10], 2) if row[10] else 0,
+                    'peak_out_mbps': round(row[11], 2) if row[11] else 0,
+                    'peak_total_mbps': round((row[10] or 0) + (row[11] or 0), 2),
+                    'measurement_count': row[12] or 0
+                }
+            })
+        
+        return jsonify({
+            'devices': devices,
+            'count': len(devices),
+            'period_hours': hours,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         })
         

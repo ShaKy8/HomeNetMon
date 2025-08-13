@@ -140,6 +140,52 @@ class Device(db.Model):
         
         return round(uptime_percentage, 2)
     
+    def get_current_bandwidth(self):
+        """Get current bandwidth usage for this device"""
+        latest_bandwidth = db.session.query(db.func.max(db.table('bandwidth_data').c.id))\
+                                    .filter(db.table('bandwidth_data').c.device_id == self.id)\
+                                    .scalar()
+        if latest_bandwidth:
+            bandwidth_data = db.session.execute(
+                db.text("SELECT bandwidth_in_mbps, bandwidth_out_mbps, timestamp FROM bandwidth_data WHERE id = :id"),
+                {'id': latest_bandwidth}
+            ).fetchone()
+            if bandwidth_data:
+                return {
+                    'in_mbps': bandwidth_data[0],
+                    'out_mbps': bandwidth_data[1], 
+                    'total_mbps': bandwidth_data[0] + bandwidth_data[1],
+                    'timestamp': bandwidth_data[2]
+                }
+        return None
+    
+    def get_bandwidth_usage_24h(self):
+        """Get 24-hour bandwidth usage statistics"""
+        cutoff = datetime.utcnow() - timedelta(hours=24)
+        result = db.session.execute(
+            db.text("""
+                SELECT 
+                    SUM(bytes_in) as total_bytes_in,
+                    SUM(bytes_out) as total_bytes_out,
+                    AVG(bandwidth_in_mbps) as avg_bandwidth_in,
+                    AVG(bandwidth_out_mbps) as avg_bandwidth_out,
+                    MAX(bandwidth_in_mbps + bandwidth_out_mbps) as peak_bandwidth
+                FROM bandwidth_data 
+                WHERE device_id = :device_id AND timestamp >= :cutoff
+            """),
+            {'device_id': self.id, 'cutoff': cutoff}
+        ).fetchone()
+        
+        if result and result[0] is not None:
+            return {
+                'total_gb_in': round(result[0] / (1024**3), 2) if result[0] else 0,
+                'total_gb_out': round(result[1] / (1024**3), 2) if result[1] else 0,
+                'avg_mbps_in': round(result[2], 2) if result[2] else 0,
+                'avg_mbps_out': round(result[3], 2) if result[3] else 0,
+                'peak_mbps': round(result[4], 2) if result[4] else 0
+            }
+        return None
+    
     def to_dict(self):
         return {
             'id': self.id,
@@ -154,6 +200,8 @@ class Device(db.Model):
             'is_monitored': self.is_monitored,
             'status': self.status,
             'uptime_percentage': self.uptime_percentage,
+            'current_bandwidth': self.get_current_bandwidth(),
+            'bandwidth_usage_24h': self.get_bandwidth_usage_24h(),
             'created_at': (self.created_at.isoformat() + 'Z') if self.created_at else None,
             'updated_at': (self.updated_at.isoformat() + 'Z') if self.updated_at else None,
             'last_seen': (self.last_seen.isoformat() + 'Z') if self.last_seen else None,
@@ -269,6 +317,40 @@ class Configuration(db.Model):
         db.session.commit()
         return config
 
+class BandwidthData(db.Model):
+    """Model for storing bandwidth usage data"""
+    __tablename__ = 'bandwidth_data'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.Integer, db.ForeignKey('devices.id'), nullable=False, index=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    bytes_in = db.Column(db.BigInteger, default=0)  # bytes received
+    bytes_out = db.Column(db.BigInteger, default=0)  # bytes transmitted
+    packets_in = db.Column(db.Integer, default=0)
+    packets_out = db.Column(db.Integer, default=0)
+    bandwidth_in_mbps = db.Column(db.Float, default=0.0)  # calculated incoming bandwidth
+    bandwidth_out_mbps = db.Column(db.Float, default=0.0)  # calculated outgoing bandwidth
+    
+    # Relationships
+    device = db.relationship('Device', backref=db.backref('bandwidth_data', lazy=True))
+    
+    def __repr__(self):
+        return f'<BandwidthData {self.device.ip_address if self.device else "Unknown"} at {self.timestamp}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'device_id': self.device_id,
+            'timestamp': self.timestamp.isoformat() + 'Z',
+            'bytes_in': self.bytes_in,
+            'bytes_out': self.bytes_out,
+            'packets_in': self.packets_in,
+            'packets_out': self.packets_out,
+            'bandwidth_in_mbps': self.bandwidth_in_mbps,
+            'bandwidth_out_mbps': self.bandwidth_out_mbps,
+            'total_mbps': self.bandwidth_in_mbps + self.bandwidth_out_mbps
+        }
+
 class SecurityScan(db.Model):
     """Model for storing security scan results"""
     __tablename__ = 'security_scans'
@@ -363,6 +445,7 @@ def init_db(app):
             ('network_range', '192.168.86.0/24', 'Network range to monitor'),
             ('ping_interval', '30', 'Ping interval in seconds'),
             ('scan_interval', '300', 'Network scan interval in seconds'),
+            ('bandwidth_interval', '60', 'Bandwidth monitoring interval in seconds'),
             ('alert_email_enabled', 'false', 'Enable email alerts'),
             ('alert_webhook_enabled', 'false', 'Enable webhook alerts'),
         ]

@@ -290,6 +290,73 @@
     </div>
 </div>
 
+<!-- Bandwidth Analytics -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-speedometer"></i> Bandwidth Usage Analytics</h6>
+                <div class="btn-group btn-group-sm" role="group">
+                    <input type="radio" class="btn-check" name="bandwidth-period" id="bw-24h" value="24" checked>
+                    <label class="btn btn-outline-primary" for="bw-24h">24 Hours</label>
+                    
+                    <input type="radio" class="btn-check" name="bandwidth-period" id="bw-7d" value="168">
+                    <label class="btn btn-outline-primary" for="bw-7d">7 Days</label>
+                </div>
+            </div>
+            <div class="card-body">
+                <!-- Network-wide bandwidth summary -->
+                <div class="row mb-4">
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h4 mb-1" id="total-bandwidth">--</div>
+                            <div class="text-muted small">Current Total</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h4 mb-1" id="peak-bandwidth">--</div>
+                            <div class="text-muted small">Peak Usage</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h4 mb-1" id="avg-bandwidth">--</div>
+                            <div class="text-muted small">Average Usage</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="h4 mb-1" id="total-data">--</div>
+                            <div class="text-muted small">Total Data</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Bandwidth timeline chart -->
+                <div style="height: 300px; margin-bottom: 20px;">
+                    <canvas id="bandwidth-chart"></canvas>
+                </div>
+                
+                <!-- Top bandwidth consumers -->
+                <div class="row">
+                    <div class="col-12">
+                        <h6 class="mb-3">Top Bandwidth Consumers</h6>
+                        <div id="bandwidth-consumers">
+                            <div class="text-center py-3">
+                                <div class="spinner-border spinner-border-sm text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <div class="mt-2 text-muted">Loading bandwidth data...</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Fun Network Statistics -->
 <div class="row">
     <div class="col-12">
@@ -396,6 +463,13 @@
                 loadNetworkTrends(parseInt(e.target.value));
             });
         });
+        
+        // Bandwidth period radio buttons
+        document.querySelectorAll('input[name="bandwidth-period"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                loadBandwidthAnalytics(parseInt(e.target.value));
+            });
+        });
     });
 
     async function loadAllAnalytics() {
@@ -406,7 +480,8 @@
                 loadNetworkHealth(),
                 loadDeviceInsights(),
                 loadUsagePatterns(),
-                loadNetworkTrends(7)  // Default 7 days
+                loadNetworkTrends(7),  // Default 7 days
+                loadBandwidthAnalytics(24)  // Default 24 hours for bandwidth
             ]);
         } catch (error) {
             console.error('Error loading analytics:', error);
@@ -1101,6 +1176,193 @@
         if (ping <= 60) return { rating: 'good', color: '#17a2b8' };
         if (ping <= 100) return { rating: 'fair', color: '#ffc107' };
         return { rating: 'poor', color: '#dc3545' };
+    }
+    
+    // Bandwidth Analytics Functions
+    let bandwidthChart = null;
+    
+    async function loadBandwidthAnalytics(hours = 24) {
+        try {
+            console.log(`Loading bandwidth analytics for ${hours} hours`);
+            
+            // Load bandwidth summary and timeline data
+            const [summaryResponse, timelineResponse, devicesResponse] = await Promise.all([
+                fetch(`/api/monitoring/bandwidth/summary?hours=${hours}`),
+                fetch(`/api/monitoring/bandwidth/timeline?hours=${hours}&interval=hour`),
+                fetch(`/api/monitoring/bandwidth/devices?hours=${hours}&limit=10`)
+            ]);
+            
+            const summaryData = await summaryResponse.json();
+            const timelineData = await timelineResponse.json();
+            const devicesData = await devicesResponse.json();
+            
+            if (summaryData.error || timelineData.error || devicesData.error) {
+                throw new Error(summaryData.error || timelineData.error || devicesData.error);
+            }
+            
+            updateBandwidthSummary(summaryData);
+            updateBandwidthChart(timelineData);
+            updateBandwidthConsumers(devicesData);
+            
+        } catch (error) {
+            console.error('Error loading bandwidth analytics:', error);
+            // Show fallback UI with dummy data or no data message
+            updateBandwidthSummaryFallback();
+            updateBandwidthConsumersFallback();
+        }
+    }
+    
+    function updateBandwidthSummary(data) {
+        document.getElementById('total-bandwidth').textContent = 
+            formatBandwidthValue(data.current_bandwidth?.current_total_mbps || 0);
+        document.getElementById('peak-bandwidth').textContent = 
+            formatBandwidthValue(data.peak_bandwidth?.peak_total_mbps || 0);
+        document.getElementById('avg-bandwidth').textContent = 
+            formatBandwidthValue(data.average_bandwidth?.avg_total_mbps || 0);
+        document.getElementById('total-data').textContent = 
+            formatDataUsage(data.total_data?.total_gb || 0);
+    }
+    
+    function updateBandwidthSummaryFallback() {
+        document.getElementById('total-bandwidth').textContent = 'N/A';
+        document.getElementById('peak-bandwidth').textContent = 'N/A';
+        document.getElementById('avg-bandwidth').textContent = 'N/A';
+        document.getElementById('total-data').textContent = 'N/A';
+    }
+    
+    function updateBandwidthChart(data) {
+        const ctx = document.getElementById('bandwidth-chart').getContext('2d');
+        
+        if (bandwidthChart) {
+            bandwidthChart.destroy();
+        }
+        
+        const timeline = data.timeline || [];
+        const labels = timeline.map(item => new Date(item.timestamp).toLocaleString());
+        const inData = timeline.map(item => item.avg_bandwidth_in_mbps || 0);
+        const outData = timeline.map(item => item.avg_bandwidth_out_mbps || 0);
+        
+        bandwidthChart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Download (Mbps)',
+                    data: inData,
+                    borderColor: '#28a745',
+                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }, {
+                    label: 'Upload (Mbps)',
+                    data: outData,
+                    borderColor: '#dc3545',
+                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    tension: 0.4,
+                    fill: true
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Bandwidth (Mbps)'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Time'
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        position: 'top'
+                    },
+                    title: {
+                        display: true,
+                        text: 'Network Bandwidth Usage Over Time'
+                    }
+                }
+            }
+        });
+    }
+    
+    function updateBandwidthConsumers(data) {
+        const container = document.getElementById('bandwidth-consumers');
+        const devices = data.devices || [];
+        
+        if (devices.length === 0) {
+            container.innerHTML = '<div class="text-center py-3 text-muted">No bandwidth data available</div>';
+            return;
+        }
+        
+        const html = devices.map((device, index) => {
+            const totalGB = device.bandwidth_stats?.total_gb || 0;
+            const avgMbps = device.bandwidth_stats?.avg_total_mbps || 0;
+            const peakMbps = device.bandwidth_stats?.peak_total_mbps || 0;
+            
+            return `
+                <div class="row align-items-center py-2 ${index < devices.length - 1 ? 'border-bottom' : ''}">
+                    <div class="col-md-4">
+                        <div class="d-flex align-items-center">
+                            <div class="me-3">
+                                <span class="badge bg-primary">${index + 1}</span>
+                            </div>
+                            <div>
+                                <div class="fw-bold">${device.device_name}</div>
+                                <div class="small text-muted">${device.ip_address}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-2">
+                        <div class="text-center">
+                            <div class="fw-bold">${totalGB.toFixed(2)} GB</div>
+                            <div class="small text-muted">Total Data</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="fw-bold">${formatBandwidthValue(avgMbps)}</div>
+                            <div class="small text-muted">Avg Bandwidth</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3">
+                        <div class="text-center">
+                            <div class="fw-bold">${formatBandwidthValue(peakMbps)}</div>
+                            <div class="small text-muted">Peak Bandwidth</div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        container.innerHTML = html;
+    }
+    
+    function updateBandwidthConsumersFallback() {
+        const container = document.getElementById('bandwidth-consumers');
+        container.innerHTML = '<div class="text-center py-3 text-muted">Bandwidth monitoring data will appear here once available</div>';
+    }
+    
+    function formatBandwidthValue(mbps) {
+        if (!mbps || mbps === 0) return '0 Mbps';
+        if (mbps < 0.1) return '<0.1 Mbps';
+        if (mbps < 1) return (mbps * 1000).toFixed(0) + ' Kbps';
+        if (mbps < 10) return mbps.toFixed(1) + ' Mbps';
+        return mbps.toFixed(0) + ' Mbps';
+    }
+    
+    function formatDataUsage(gb) {
+        if (!gb || gb === 0) return '0 GB';
+        if (gb < 0.01) return '<0.01 GB';
+        if (gb < 1) return (gb * 1024).toFixed(0) + ' MB';
+        return gb.toFixed(2) + ' GB';
     }
 </script>
 {% endblock %}

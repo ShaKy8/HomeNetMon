@@ -17,6 +17,7 @@ class NetworkScanner:
         self.nm = nmap.PortScanner()
         self.mac_parser = manuf.MacParser()
         self.is_running = False
+        self.is_scanning = False  # Track manual scan status
         self.scan_thread = None
         self._stop_event = threading.Event()
         self.app = app
@@ -234,44 +235,51 @@ class NetworkScanner:
         """Perform complete network scan and update database"""
         logger.info("Starting network discovery scan")
         
-        # Use Flask application context for database operations
-        with self.app.app_context():
-            try:
-                # Get devices from ARP table (faster)
-                arp_devices = self.get_arp_table()
-                logger.info(f"Found {len(arp_devices)} devices in ARP table")
-                
-                # Get network range from database configuration
-                network_range = self.get_config_value('network_range', Config.NETWORK_RANGE)
-                logger.info(f"Using network range: {network_range}")
-                
-                # Merge with nmap scan results
-                nmap_devices = self.nmap_scan(network_range)
-                logger.info(f"Found {len(nmap_devices)} devices with nmap scan")
-                
-                # Combine and deduplicate devices
-                all_devices = {}
-                
-                # Add ARP devices
-                for device in arp_devices:
-                    all_devices[device['ip']] = device
-                
-                # Add nmap devices (may override ARP info)
-                for device in nmap_devices:
-                    if device['ip'] in all_devices:
-                        # Merge information
-                        all_devices[device['ip']].update({k: v for k, v in device.items() if v})
-                    else:
-                        all_devices[device['ip']] = device
-                
-                # Process each discovered device
-                for ip, device_info in all_devices.items():
-                    self.process_discovered_device(device_info)
+        # Set scanning flag
+        self.is_scanning = True
+        
+        try:
+            # Use Flask application context for database operations
+            with self.app.app_context():
+                try:
+                    # Get devices from ARP table (faster)
+                    arp_devices = self.get_arp_table()
+                    logger.info(f"Found {len(arp_devices)} devices in ARP table")
                     
-                logger.info(f"Network scan completed. Processed {len(all_devices)} devices")
-                
-            except Exception as e:
-                logger.error(f"Error during network scan: {e}")
+                    # Get network range from database configuration
+                    network_range = self.get_config_value('network_range', Config.NETWORK_RANGE)
+                    logger.info(f"Using network range: {network_range}")
+                    
+                    # Merge with nmap scan results
+                    nmap_devices = self.nmap_scan(network_range)
+                    logger.info(f"Found {len(nmap_devices)} devices with nmap scan")
+                    
+                    # Combine and deduplicate devices
+                    all_devices = {}
+                    
+                    # Add ARP devices
+                    for device in arp_devices:
+                        all_devices[device['ip']] = device
+                    
+                    # Add nmap devices (may override ARP info)
+                    for device in nmap_devices:
+                        if device['ip'] in all_devices:
+                            # Merge information
+                            all_devices[device['ip']].update({k: v for k, v in device.items() if v})
+                        else:
+                            all_devices[device['ip']] = device
+                    
+                    # Process each discovered device
+                    for ip, device_info in all_devices.items():
+                        self.process_discovered_device(device_info)
+                        
+                    logger.info(f"Network scan completed. Processed {len(all_devices)} devices")
+                    
+                except Exception as e:
+                    logger.error(f"Error during network scan: {e}")
+        finally:
+            # Always clear the scanning flag when done
+            self.is_scanning = False
     
     def process_discovered_device(self, device_info):
         """Process a discovered device and update database"""
