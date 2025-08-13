@@ -22,13 +22,74 @@ class NetworkScanner:
         self._stop_event = threading.Event()
         self.app = app
         
+        # Configuration caching for hot-reload
+        self._config_cache = {}
+        self._config_versions = {}
+        self._last_config_check = datetime.utcnow()
+        
     def get_config_value(self, key, default):
-        """Get configuration value from database or use default"""
+        """Get configuration value from database with hot-reload support"""
         try:
             with self.app.app_context():
-                return Configuration.get_value(key, str(default))
-        except:
+                # Check if we need to reload configuration (every 10 seconds)
+                now = datetime.utcnow()
+                if (now - self._last_config_check).total_seconds() > 10:
+                    self._check_config_changes()
+                    self._last_config_check = now
+                
+                # Return cached value if available and valid
+                if key in self._config_cache:
+                    return self._config_cache[key]
+                
+                # Load from database and cache
+                value = Configuration.get_value(key, str(default))
+                self._config_cache[key] = value
+                self._config_versions[key] = Configuration.get_config_version(key)
+                return value
+        except Exception as e:
+            logger.error(f"Error getting config value {key}: {e}")
             return str(default)
+    
+    def _check_config_changes(self):
+        """Check for configuration changes and reload if needed"""
+        try:
+            with self.app.app_context():
+                # Check each cached config for version changes
+                for key in list(self._config_cache.keys()):
+                    current_version = Configuration.get_config_version(key)
+                    cached_version = self._config_versions.get(key, 0)
+                    
+                    if current_version != cached_version:
+                        # Configuration changed, reload it
+                        new_value = Configuration.get_value(key, self._config_cache[key])
+                        old_value = self._config_cache[key]
+                        self._config_cache[key] = new_value
+                        self._config_versions[key] = current_version
+                        
+                        logger.info(f"Configuration reloaded: {key} changed from '{old_value}' to '{new_value}'")
+                        
+                        # Trigger specific actions for certain config changes
+                        if key == 'network_range' and old_value != new_value:
+                            self._handle_network_range_change(old_value, new_value)
+                        
+        except Exception as e:
+            logger.error(f"Error checking config changes: {e}")
+    
+    def _handle_network_range_change(self, old_range, new_range):
+        """Handle network range configuration change"""
+        logger.info(f"Network range changed from {old_range} to {new_range}")
+        # Trigger a network scan with the new range if not currently scanning
+        if not self.is_scanning:
+            logger.info("Triggering network scan with new range")
+            threading.Thread(target=self.scan_network, daemon=True, name='NetworkRangeScan').start()
+    
+    def reload_config(self):
+        """Force reload all cached configuration"""
+        logger.info("Force reloading all configuration")
+        self._config_cache.clear()
+        self._config_versions.clear()
+        self._last_config_check = datetime.utcnow()
+        self._check_config_changes()
         
     def get_arp_table(self):
         """Parse ARP table to find active devices"""

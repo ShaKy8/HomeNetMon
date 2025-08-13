@@ -142,48 +142,56 @@ class Device(db.Model):
     
     def get_current_bandwidth(self):
         """Get current bandwidth usage for this device"""
-        latest_bandwidth = db.session.query(db.func.max(db.table('bandwidth_data').c.id))\
-                                    .filter(db.table('bandwidth_data').c.device_id == self.id)\
-                                    .scalar()
-        if latest_bandwidth:
-            bandwidth_data = db.session.execute(
-                db.text("SELECT bandwidth_in_mbps, bandwidth_out_mbps, timestamp FROM bandwidth_data WHERE id = :id"),
-                {'id': latest_bandwidth}
-            ).fetchone()
-            if bandwidth_data:
-                return {
-                    'in_mbps': bandwidth_data[0],
-                    'out_mbps': bandwidth_data[1], 
-                    'total_mbps': bandwidth_data[0] + bandwidth_data[1],
-                    'timestamp': bandwidth_data[2]
-                }
+        try:
+            latest_bandwidth = db.session.query(db.func.max(db.table('bandwidth_data').c.id))\
+                                        .filter(db.table('bandwidth_data').c.device_id == self.id)\
+                                        .scalar()
+            if latest_bandwidth:
+                bandwidth_data = db.session.execute(
+                    db.text("SELECT bandwidth_in_mbps, bandwidth_out_mbps, timestamp FROM bandwidth_data WHERE id = :id"),
+                    {'id': latest_bandwidth}
+                ).fetchone()
+                if bandwidth_data:
+                    return {
+                        'in_mbps': bandwidth_data[0],
+                        'out_mbps': bandwidth_data[1], 
+                        'total_mbps': bandwidth_data[0] + bandwidth_data[1],
+                        'timestamp': bandwidth_data[2]
+                    }
+        except Exception:
+            # Return None if bandwidth data is not available
+            pass
         return None
     
     def get_bandwidth_usage_24h(self):
         """Get 24-hour bandwidth usage statistics"""
-        cutoff = datetime.utcnow() - timedelta(hours=24)
-        result = db.session.execute(
-            db.text("""
-                SELECT 
-                    SUM(bytes_in) as total_bytes_in,
-                    SUM(bytes_out) as total_bytes_out,
-                    AVG(bandwidth_in_mbps) as avg_bandwidth_in,
-                    AVG(bandwidth_out_mbps) as avg_bandwidth_out,
-                    MAX(bandwidth_in_mbps + bandwidth_out_mbps) as peak_bandwidth
-                FROM bandwidth_data 
-                WHERE device_id = :device_id AND timestamp >= :cutoff
-            """),
-            {'device_id': self.id, 'cutoff': cutoff}
-        ).fetchone()
-        
-        if result and result[0] is not None:
-            return {
-                'total_gb_in': round(result[0] / (1024**3), 2) if result[0] else 0,
-                'total_gb_out': round(result[1] / (1024**3), 2) if result[1] else 0,
-                'avg_mbps_in': round(result[2], 2) if result[2] else 0,
-                'avg_mbps_out': round(result[3], 2) if result[3] else 0,
-                'peak_mbps': round(result[4], 2) if result[4] else 0
-            }
+        try:
+            cutoff = datetime.utcnow() - timedelta(hours=24)
+            result = db.session.execute(
+                db.text("""
+                    SELECT 
+                        SUM(bytes_in) as total_bytes_in,
+                        SUM(bytes_out) as total_bytes_out,
+                        AVG(bandwidth_in_mbps) as avg_bandwidth_in,
+                        AVG(bandwidth_out_mbps) as avg_bandwidth_out,
+                        MAX(bandwidth_in_mbps + bandwidth_out_mbps) as peak_bandwidth
+                    FROM bandwidth_data 
+                    WHERE device_id = :device_id AND timestamp >= :cutoff
+                """),
+                {'device_id': self.id, 'cutoff': cutoff}
+            ).fetchone()
+            
+            if result and result[0] is not None:
+                return {
+                    'total_gb_in': round(result[0] / (1024**3), 2) if result[0] else 0,
+                    'total_gb_out': round(result[1] / (1024**3), 2) if result[1] else 0,
+                    'avg_mbps_in': round(result[2], 2) if result[2] else 0,
+                    'avg_mbps_out': round(result[3], 2) if result[3] else 0,
+                    'peak_mbps': round(result[4], 2) if result[4] else 0
+                }
+        except Exception:
+            # Return None if bandwidth data is not available
+            pass
         return None
     
     def to_dict(self):
@@ -285,6 +293,7 @@ class Configuration(db.Model):
     description = db.Column(db.Text)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    version = db.Column(db.Integer, default=1)  # Version tracking for hot-reload detection
     
     def __repr__(self):
         return f'<Configuration {self.key}={self.value}>'
@@ -295,6 +304,7 @@ class Configuration(db.Model):
             'key': self.key,
             'value': self.value,
             'description': self.description,
+            'version': self.version,
             'created_at': self.created_at.isoformat() + 'Z',
             'updated_at': self.updated_at.isoformat() + 'Z',
         }
@@ -308,14 +318,29 @@ class Configuration(db.Model):
     def set_value(cls, key, value, description=None):
         config = cls.query.filter_by(key=key).first()
         if config:
+            # Only increment version if value actually changed
+            if config.value != value:
+                config.version = (config.version or 0) + 1
             config.value = value
             if description:
                 config.description = description
         else:
-            config = cls(key=key, value=value, description=description)
+            config = cls(key=key, value=value, description=description, version=1)
             db.session.add(config)
         db.session.commit()
         return config
+    
+    @classmethod
+    def get_config_version(cls, key):
+        """Get the current version number for a configuration key"""
+        config = cls.query.filter_by(key=key).first()
+        return config.version if config else 0
+    
+    @classmethod
+    def get_latest_config_timestamp(cls):
+        """Get the timestamp of the most recently updated configuration"""
+        latest_config = cls.query.order_by(cls.updated_at.desc()).first()
+        return latest_config.updated_at if latest_config else datetime.utcnow()
 
 class BandwidthData(db.Model):
     """Model for storing bandwidth usage data"""
@@ -440,6 +465,23 @@ def init_db(app):
     with app.app_context():
         db.create_all()
         
+        # Handle schema migrations
+        try:
+            # Check if version column exists by trying to access it
+            db.session.execute(db.text("SELECT version FROM configuration LIMIT 1"))
+        except Exception:
+            # Version column doesn't exist, add it
+            try:
+                db.session.execute(db.text("ALTER TABLE configuration ADD COLUMN version INTEGER DEFAULT 1"))
+                db.session.commit()
+                print("Added version column to configuration table")
+            except Exception as e:
+                print(f"Could not add version column: {e}")
+                # If we can't add the column, recreate the table
+                db.drop_all()
+                db.create_all()
+                print("Recreated database tables with new schema")
+        
         # Initialize default configuration
         default_configs = [
             ('network_range', '192.168.86.0/24', 'Network range to monitor'),
@@ -451,5 +493,8 @@ def init_db(app):
         ]
         
         for key, value, description in default_configs:
-            if not Configuration.query.filter_by(key=key).first():
-                Configuration.set_value(key, value, description)
+            try:
+                if not Configuration.query.filter_by(key=key).first():
+                    Configuration.set_value(key, value, description)
+            except Exception as e:
+                print(f"Error initializing configuration {key}: {e}")

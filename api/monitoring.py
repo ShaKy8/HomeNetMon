@@ -52,6 +52,41 @@ def trigger_network_scan():
             'error': str(e)
         }), 500
 
+@monitoring_bp.route('/reload-config', methods=['POST'])
+def reload_scanner_config():
+    """Force reload scanner configuration"""
+    try:
+        from flask import current_app
+        
+        # Get the network scanner instance from the app
+        if not hasattr(current_app, '_scanner'):
+            return jsonify({
+                'success': False,
+                'error': 'Network scanner not available'
+            }), 503
+        
+        scanner = current_app._scanner
+        
+        # Force reload configuration
+        if hasattr(scanner, 'reload_config'):
+            scanner.reload_config()
+            return jsonify({
+                'success': True,
+                'message': 'Scanner configuration reloaded',
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': 'Scanner does not support configuration reload'
+            }), 500
+        
+    except Exception as e:
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
 @monitoring_bp.route('/data', methods=['GET'])
 def get_monitoring_data():
     """Get monitoring data with optional filtering"""

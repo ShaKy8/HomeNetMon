@@ -18,11 +18,11 @@ class AlertManager:
         self.is_running = False
         self._stop_event = threading.Event()
         self.alert_thresholds = {
-            'device_down_minutes_critical': 8,   # Alert if critical device down for 8+ minutes
-            'device_down_minutes_regular': 15,   # Alert if regular device down for 15+ minutes
-            'high_latency_ms': 1000,             # Alert if ping > 1000ms
-            'packet_loss_threshold': 50,          # Alert if packet loss > 50%
-            'consecutive_failures_required': 3    # Require 3 consecutive failures before alerting
+            'device_down_minutes_critical': 10,   # Alert if critical device down for 10+ minutes
+            'device_down_minutes_regular': 20,    # Alert if regular device down for 20+ minutes  
+            'high_latency_ms': 1000,              # Alert if ping > 1000ms
+            'packet_loss_threshold': 50,           # Alert if packet loss > 50%
+            'consecutive_failures_required': 2     # Require 2 consecutive failures (matching uptime logic)
         }
         
     def is_critical_device(self, device):
@@ -39,16 +39,18 @@ class AlertManager:
     def has_consecutive_failures(self, device, required_failures=3):
         """Check if device has the required number of consecutive monitoring failures"""
         if not device.last_seen:
+            logger.debug(f"Device {device.display_name}: Never seen, considering as down")
             return True  # Never seen = definitely down
         
-        # Get recent monitoring data
-        recent_cutoff = datetime.utcnow() - timedelta(hours=1)
+        # Get recent monitoring data - use 4 hour window to align better with uptime calculation
+        recent_cutoff = datetime.utcnow() - timedelta(hours=4)
         monitoring_data = MonitoringData.query.filter(
             MonitoringData.device_id == device.id,
             MonitoringData.timestamp >= recent_cutoff
-        ).order_by(MonitoringData.timestamp.desc()).limit(required_failures * 2).all()
+        ).order_by(MonitoringData.timestamp.desc()).limit(required_failures * 5).all()
         
         if len(monitoring_data) < required_failures:
+            logger.debug(f"Device {device.display_name}: Not enough monitoring data ({len(monitoring_data)} < {required_failures})")
             return False  # Not enough data to determine
         
         # Check if the most recent records are all failures
@@ -59,7 +61,9 @@ class AlertManager:
             else:
                 break  # Found a success, reset count
         
-        return consecutive_count >= required_failures
+        result = consecutive_count >= required_failures
+        logger.debug(f"Device {device.display_name}: Consecutive failures check: {consecutive_count}/{required_failures} = {result}")
+        return result
     
     def check_device_down_alerts(self):
         """Check for devices that have been down for too long with intelligent thresholds"""
@@ -82,9 +86,20 @@ class AlertManager:
                     
                     cutoff_time = datetime.utcnow() - timedelta(minutes=threshold_minutes)
                     
-                    # Only alert if device hasn't been seen AND has consecutive failures
-                    if (device.last_seen and device.last_seen < cutoff_time and 
-                        self.has_consecutive_failures(device, consecutive_failures_required)):
+                    # Only alert if device hasn't been seen AND has consecutive failures AND has poor recent uptime
+                    # This prevents alerts for devices with good long-term uptime but temporary issues
+                    try:
+                        device_uptime = device.uptime_percentage
+                    except Exception:
+                        device_uptime = 100  # Default to good uptime if calculation fails
+                        
+                    should_alert = (device.last_seen and device.last_seen < cutoff_time and 
+                                  self.has_consecutive_failures(device, consecutive_failures_required) and
+                                  device_uptime < 98)  # Only alert if recent uptime is poor (< 98%)
+                    
+                    logger.debug(f"Alert decision for {device.display_name}: last_seen={device.last_seen < cutoff_time if device.last_seen else 'Never'}, consecutive_failures={self.has_consecutive_failures(device, consecutive_failures_required)}, uptime={device_uptime}%, should_alert={should_alert}")
+                    
+                    if should_alert:
                         
                         # Check if we already have an active alert for this device
                         existing_alert = Alert.query.filter(
@@ -92,6 +107,8 @@ class AlertManager:
                             Alert.alert_type == 'device_down',
                             Alert.resolved == False
                         ).first()
+                        
+                        logger.debug(f"Device {device.display_name}: last_seen={device.last_seen}, cutoff={cutoff_time}, consecutive_failures={self.has_consecutive_failures(device, consecutive_failures_required)}, existing_alert={'Yes' if existing_alert else 'No'}")
                         
                         if not existing_alert:
                             device_type = "critical" if self.is_critical_device(device) else "regular"
@@ -110,7 +127,7 @@ class AlertManager:
                             # Send notifications
                             self.send_alert_notifications(alert)
                             
-                            logger.warning(f"Device down alert created for {device.display_name} (threshold: {threshold_minutes}min, type: {device_type})")
+                            logger.warning(f"ALERT CREATED: Device down alert for {device.display_name} (threshold: {threshold_minutes}min, type: {device_type}, last_seen: {device.last_seen}, cutoff: {cutoff_time})")
                         
             except Exception as e:
                 logger.error(f"Error checking device down alerts: {e}")
@@ -135,7 +152,7 @@ class AlertManager:
                     MonitoringData.response_time > threshold_ms
                 ).group_by(MonitoringData.device_id).having(
                     db.func.count(MonitoringData.id) >= 3  # At least 3 high latency measurements
-                ).subquery()
+                )
                 
                 devices = Device.query.filter(
                     Device.id.in_(subquery),
@@ -224,9 +241,8 @@ class AlertManager:
                             
                             logger.info(f"Device recovery alert created for {device.display_name}")
                             
-                        # Resolve the original down alert
-                        alert.resolve()
-                        logger.info(f"Resolved device down alert for {device.display_name}")
+                        # Note: The down alert will be resolved by the resolve_alerts() function
+                        # to avoid duplicate resolution logic and race conditions
                         
             except Exception as e:
                 logger.error(f"Error checking device recovery alerts: {e}")
@@ -241,8 +257,8 @@ class AlertManager:
         with self.app.app_context():
             try:
                 # Resolve device down alerts for devices that are back up
-                threshold_minutes = self.alert_thresholds['device_down_minutes_critical']
-                recent_time = datetime.utcnow() - timedelta(minutes=threshold_minutes // 2)
+                # Use shorter threshold for resolution to resolve alerts faster
+                recent_time = datetime.utcnow() - timedelta(minutes=5)  # If seen in last 5 minutes, resolve alert
                 
                 # Find active device down alerts where device is now responding
                 active_down_alerts = Alert.query.filter(
@@ -254,11 +270,13 @@ class AlertManager:
                     device = alert.device
                     if device and device.last_seen and device.last_seen >= recent_time:
                         alert.resolve()
-                        logger.info(f"Resolved device down alert for {device.display_name}")
+                        logger.info(f"ALERT RESOLVED: Device down alert for {device.display_name} (last_seen: {device.last_seen}, recent_time: {recent_time})")
+                    else:
+                        logger.debug(f"Alert NOT resolved for {device.display_name}: device={device is not None}, last_seen={device.last_seen if device else None}, recent_time={recent_time}")
                 
                 # Resolve high latency alerts for devices with normal latency
                 threshold_ms = self.alert_thresholds['high_latency_ms']
-                cutoff_time = datetime.utcnow() - timedelta(minutes=3)
+                cutoff_time = datetime.utcnow() - timedelta(minutes=5)  # Check last 5 minutes
                 
                 active_latency_alerts = Alert.query.filter(
                     Alert.alert_type == 'high_latency',
