@@ -39,6 +39,9 @@
                                 </label>
                                 <div class="input-group">
                                     <input type="text" class="form-control" id="network-range" placeholder="192.168.86.0/24">
+                                    <button type="button" class="btn btn-outline-success" id="save-network-range-btn" onclick="saveNetworkRangeQuick()" style="display: none;">
+                                        <i class="bi bi-check2"></i> Save
+                                    </button>
                                     <div class="btn-group" role="group">
                                         <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setNetworkRange('192.168.1.0/24')">192.168.1.x</button>
                                         <button type="button" class="btn btn-outline-secondary btn-sm" onclick="setNetworkRange('192.168.86.0/24')">192.168.86.x</button>
@@ -48,6 +51,10 @@
                                 <div class="form-text">
                                     CIDR notation for the network range to monitor (e.g., 192.168.1.0/24 monitors 192.168.1.1-254)
                                     <br><small class="text-muted">Common ranges: Home networks typically use 192.168.1.x or 192.168.86.x</small>
+                                    <br><small class="text-success" id="network-range-help" style="display: none;">✓ Valid network range format</small>
+                                </div>
+                                <div class="invalid-feedback">
+                                    Please enter a valid CIDR network range (e.g., 192.168.1.0/24)
                                 </div>
                                 
                                 <!-- Network Range Helper -->
@@ -501,10 +508,20 @@ function setScanInterval(seconds) {
 
 // Network range functions
 function setNetworkRange(range) {
-    document.getElementById('network-range').value = range;
+    const input = document.getElementById('network-range');
+    const saveButton = document.getElementById('save-network-range-btn');
+    
+    input.value = range;
     updateNetworkRangeDisplay(range);
+    
     // Update the "Currently monitoring" display immediately
     document.getElementById('current-network-display').textContent = range;
+    
+    // Clear validation classes and hide save button for preset values
+    input.classList.remove('is-valid', 'is-invalid');
+    saveButton.style.display = 'none';
+    document.getElementById('network-range-help').style.display = 'none';
+    
     showRestartButton();
 }
 
@@ -710,6 +727,70 @@ async function saveAlertConfig(event) {
     } catch (error) {
         console.error('Error saving alert config:', error);
         showToast('Error saving alert configuration', 'error');
+    }
+}
+
+// Quick save function for network range only
+async function saveNetworkRangeQuick() {
+    try {
+        const networkRange = document.getElementById('network-range').value.trim();
+        
+        if (!networkRange) {
+            showToast('Please enter a network range', 'warning');
+            return;
+        }
+        
+        // Basic client-side validation
+        const cidrPattern = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\/(?:[0-9]|[1-2][0-9]|3[0-2])$/;
+        if (!cidrPattern.test(networkRange)) {
+            showToast('Invalid network range format. Use CIDR notation (e.g., 192.168.1.0/24)', 'error');
+            return;
+        }
+        
+        const formData = {
+            network_range: networkRange
+        };
+        
+        const saveButton = document.getElementById('save-network-range-btn');
+        const originalText = saveButton.innerHTML;
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
+        
+        const response = await fetch('/api/config/network', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            showToast('Network range saved successfully!', 'success');
+            
+            // Hide the save button after successful save
+            saveButton.style.display = 'none';
+            
+            // Trigger a network scan with the new range
+            showToast('Triggering network scan with new range...', 'info');
+            setTimeout(() => {
+                fetch('/api/monitoring/scan', { method: 'POST' })
+                    .then(() => showToast('Network scan started', 'success'))
+                    .catch(() => showToast('Network scan trigger failed', 'warning'));
+            }, 1000);
+            
+        } else {
+            const error = await response.json();
+            showToast(error.error || 'Error saving network range', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error saving network range:', error);
+        showToast('Error saving network range', 'error');
+    } finally {
+        const saveButton = document.getElementById('save-network-range-btn');
+        saveButton.disabled = false;
+        saveButton.innerHTML = '<i class="bi bi-check2"></i> Save';
     }
 }
 
@@ -1089,13 +1170,39 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('restart-system-btn').addEventListener('click', restartSystem);
     document.getElementById('reset-ping-history-btn').addEventListener('click', resetPingHistory);
     
-    // Network range change detection
+    // Network range change detection with real-time validation
     document.getElementById('network-range').addEventListener('input', function() {
         const newRange = this.value.trim();
+        const saveButton = document.getElementById('save-network-range-btn');
+        
         if (newRange) {
             // Update the "Currently monitoring" display as user types
             document.getElementById('current-network-display').textContent = newRange;
             updateNetworkRangeDisplay(newRange);
+            
+            // Show save button when user types manually
+            saveButton.style.display = 'block';
+            
+            // Basic validation feedback
+            const cidrPattern = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\/(?:[0-9]|[1-2][0-9]|3[0-2])$/;
+            const input = this;
+            
+            if (cidrPattern.test(newRange)) {
+                input.classList.remove('is-invalid');
+                input.classList.add('is-valid');
+                saveButton.disabled = false;
+                document.getElementById('network-range-help').style.display = 'block';
+            } else {
+                input.classList.remove('is-valid');
+                input.classList.add('is-invalid');
+                saveButton.disabled = true;
+                document.getElementById('network-range-help').style.display = 'none';
+            }
+        } else {
+            // Hide save button if input is empty
+            saveButton.style.display = 'none';
+            this.classList.remove('is-valid', 'is-invalid');
+            document.getElementById('network-range-help').style.display = 'none';
         }
         showRestartButton();
     });
