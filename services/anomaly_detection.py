@@ -30,6 +30,7 @@ class AnomalyDetectionEngine:
         self.app = app
         self.running = False
         self.detection_interval = 300  # 5 minutes
+        self.rule_engine_service = None
         
         # Configuration
         self.min_data_points = 20  # Minimum data points needed for baseline
@@ -370,9 +371,14 @@ class AnomalyDetectionEngine:
                     f"Confidence: {anomaly.confidence:.2f}, Message: {anomaly.message}"
                 )
                 
-                # Here you would integrate with your existing alert system
-                # For now, we'll store it as a special alert type
+                # Store it as a special alert type
                 self.create_anomaly_alert(anomaly)
+                
+                # Send push notification for the anomaly
+                self.send_anomaly_push_notification(anomaly)
+                
+                # Trigger rule engine for anomaly detection
+                self._trigger_rule_engine_for_anomaly(anomaly)
                 
             except Exception as e:
                 logger.error(f"Error processing anomaly: {e}")
@@ -408,6 +414,49 @@ class AnomalyDetectionEngine:
         except Exception as e:
             logger.error(f"Error creating anomaly alert: {e}")
             db.session.rollback()
+    
+    def send_anomaly_push_notification(self, anomaly: AnomalyAlert):
+        """Send push notification for detected anomaly"""
+        try:
+            from services.push_notifications import push_service
+            from models import Configuration, Device
+            from config import Config
+            
+            # Update push service configuration from database
+            push_service.enabled = Configuration.get_value('push_notifications_enabled', 'false').lower() == 'true'
+            push_service.topic = Configuration.get_value('ntfy_topic', '')
+            push_service.server = Configuration.get_value('ntfy_server', 'https://ntfy.sh')
+            
+            if not push_service.is_configured():
+                logger.debug("Push notifications not configured, skipping anomaly notification")
+                return
+            
+            # Get device information
+            device = Device.query.filter_by(id=anomaly.device_id).first()
+            if not device:
+                logger.error(f"Device {anomaly.device_id} not found for anomaly notification")
+                return
+            
+            # Build dashboard URL
+            dashboard_url = f"http://{Config.HOST}:{Config.PORT}/device/{device.id}"
+            
+            # Send anomaly push notification
+            success = push_service.send_anomaly_alert(
+                device_name=anomaly.device_name,
+                ip_address=device.ip_address,
+                anomaly_type=anomaly.anomaly_type,
+                message=anomaly.message,
+                severity=anomaly.severity,
+                dashboard_url=dashboard_url
+            )
+            
+            if success:
+                logger.info(f"Sent anomaly push notification for {anomaly.device_name}: {anomaly.anomaly_type}")
+            else:
+                logger.warning(f"Failed to send anomaly push notification for {anomaly.device_name}")
+                
+        except Exception as e:
+            logger.error(f"Error sending anomaly push notification: {e}")
     
     def get_anomaly_statistics(self, hours: int = 24) -> Dict:
         """Get anomaly detection statistics"""
@@ -471,6 +520,65 @@ class AnomalyDetectionEngine:
         except Exception as e:
             logger.error(f"Error getting anomaly statistics: {e}")
             return {'error': str(e)}
+    
+    def _trigger_rule_engine_for_anomaly(self, anomaly: AnomalyAlert):
+        """Trigger rule engine evaluation for anomaly detection"""
+        try:
+            # Get rule engine service from app if available
+            if self.app and hasattr(self.app, 'rule_engine_service'):
+                rule_engine_service = self.app.rule_engine_service
+                
+                # Import here to avoid circular imports
+                from services.rule_engine import TriggerContext
+                
+                # Get device information
+                device = None
+                if self.app:
+                    with self.app.app_context():
+                        device = Device.query.get(anomaly.device_id)
+                
+                # Create trigger context for the anomaly detection event
+                context = TriggerContext(
+                    event_type='anomaly_detected',
+                    device_id=anomaly.device_id,
+                    device={
+                        'id': anomaly.device_id,
+                        'display_name': anomaly.device_name,
+                        'ip_address': device.ip_address if device else 'unknown',
+                        'mac_address': device.mac_address if device else None,
+                        'hostname': device.hostname if device else None,
+                        'vendor': device.vendor if device else None,
+                        'device_type': device.device_type if device else 'unknown',
+                        'status': device.status if device else 'unknown',
+                        'is_monitored': device.is_monitored if device else True
+                    },
+                    metadata={
+                        'anomaly_type': anomaly.anomaly_type,
+                        'severity': anomaly.severity,
+                        'confidence': anomaly.confidence,
+                        'baseline_value': anomaly.baseline_value,
+                        'current_value': anomaly.current_value,
+                        'threshold': anomaly.threshold,
+                        'detected_at': anomaly.detected_at.isoformat(),
+                        'message': anomaly.message
+                    }
+                )
+                
+                # Evaluate rules in background thread to avoid blocking anomaly processing
+                import threading
+                rule_thread = threading.Thread(
+                    target=rule_engine_service.evaluate_rules,
+                    args=(context,),
+                    daemon=True,
+                    name=f'RuleEngine-Anomaly-{anomaly.anomaly_type}'
+                )
+                rule_thread.start()
+                
+                logger.debug(f"Triggered rule engine for anomaly: {anomaly.device_name} - {anomaly.anomaly_type} ({anomaly.severity})")
+                
+        except Exception as e:
+            logger.error(f"Error triggering rule engine for anomaly: {e}")
+            # Don't let rule engine errors affect anomaly processing
 
 # Global anomaly detection service instance
 anomaly_detection_service = AnomalyDetectionEngine()

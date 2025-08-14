@@ -446,6 +446,242 @@ class SecurityEvent(db.Model):
             'created_at': self.created_at.isoformat() + 'Z'
         }
 
+class NotificationHistory(db.Model):
+    """Model for tracking sent push notifications"""
+    __tablename__ = 'notification_history'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.Integer, db.ForeignKey('devices.id'), nullable=True, index=True)  # Nullable for system notifications
+    notification_type = db.Column(db.String(50), nullable=False, index=True)  # device_down, device_up, new_device, scan_complete, etc.
+    title = db.Column(db.String(255), nullable=False)
+    message = db.Column(db.Text, nullable=False)
+    priority = db.Column(db.String(20), default='default')  # min, low, default, high, urgent
+    tags = db.Column(db.String(255))  # Emoji tags
+    delivery_status = db.Column(db.String(20), default='unknown')  # success, failed, unknown
+    error_message = db.Column(db.Text)  # If delivery failed
+    sent_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    
+    # Metadata fields  
+    notification_metadata = db.Column(db.Text)  # JSON string for additional data
+    
+    # Relationships
+    device = db.relationship('Device', backref=db.backref('notification_history', lazy=True))
+    
+    def __repr__(self):
+        device_name = self.device.display_name if self.device else 'System'
+        return f'<NotificationHistory {self.notification_type} for {device_name} at {self.sent_at}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'device_id': self.device_id,
+            'device_name': self.device.display_name if self.device else 'System',
+            'notification_type': self.notification_type,
+            'title': self.title,
+            'message': self.message,
+            'priority': self.priority,
+            'tags': self.tags,
+            'delivery_status': self.delivery_status,
+            'error_message': self.error_message,
+            'sent_at': self.sent_at.isoformat() + 'Z',
+            'metadata': json.loads(self.notification_metadata) if self.notification_metadata else {}
+        }
+    
+    @classmethod
+    def log_notification(cls, device_id=None, notification_type='', title='', message='', 
+                        priority='default', tags='', delivery_status='unknown', 
+                        error_message=None, metadata=None):
+        """Log a sent notification"""
+        try:
+            notification = cls(
+                device_id=device_id,
+                notification_type=notification_type,
+                title=title,
+                message=message,
+                priority=priority,
+                tags=tags,
+                delivery_status=delivery_status,
+                error_message=error_message,
+                notification_metadata=json.dumps(metadata) if metadata else None
+            )
+            db.session.add(notification)
+            db.session.commit()
+            return notification
+        except Exception as e:
+            db.session.rollback()
+            print(f"Error logging notification: {e}")
+            return None
+
+class AutomationRule(db.Model):
+    """Model for storing user-defined automation rules"""
+    __tablename__ = 'automation_rules'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text)
+    enabled = db.Column(db.Boolean, default=True)
+    
+    # Rule definition
+    condition_json = db.Column(db.Text, nullable=False)  # JSON string of conditions
+    action_json = db.Column(db.Text, nullable=False)     # JSON string of actions
+    
+    # Execution settings
+    cooldown_minutes = db.Column(db.Integer, default=5)  # Minimum time between executions
+    max_executions_per_hour = db.Column(db.Integer, default=10)  # Rate limiting
+    
+    # Priority and categorization
+    priority = db.Column(db.String(20), default='medium')  # low, medium, high, critical
+    category = db.Column(db.String(50), default='general')  # device, network, security, maintenance
+    
+    # Metadata
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.String(100), default='user')
+    last_executed_at = db.Column(db.DateTime)
+    execution_count = db.Column(db.Integer, default=0)
+    
+    # Relationships
+    executions = db.relationship('RuleExecution', backref='rule', cascade='all, delete-orphan', lazy=True)
+    
+    def __repr__(self):
+        return f'<AutomationRule {self.name} ({"enabled" if self.enabled else "disabled"})>'
+    
+    @property
+    def conditions(self):
+        """Parse condition JSON into a Python object"""
+        try:
+            return json.loads(self.condition_json) if self.condition_json else {}
+        except:
+            return {}
+    
+    @conditions.setter
+    def conditions(self, value):
+        """Set conditions as JSON string"""
+        self.condition_json = json.dumps(value) if value else '{}'
+    
+    @property
+    def actions(self):
+        """Parse action JSON into a Python object"""
+        try:
+            return json.loads(self.action_json) if self.action_json else {}
+        except:
+            return {}
+    
+    @actions.setter
+    def actions(self, value):
+        """Set actions as JSON string"""
+        self.action_json = json.dumps(value) if value else '{}'
+    
+    def can_execute(self):
+        """Check if rule can be executed (cooldown and rate limiting)"""
+        if not self.enabled:
+            return False
+        
+        now = datetime.utcnow()
+        
+        # Check cooldown
+        if self.last_executed_at:
+            cooldown_time = self.last_executed_at + timedelta(minutes=self.cooldown_minutes)
+            if now < cooldown_time:
+                return False
+        
+        # Check rate limiting (executions per hour)
+        hour_ago = now - timedelta(hours=1)
+        recent_executions = RuleExecution.query.filter(
+            RuleExecution.rule_id == self.id,
+            RuleExecution.executed_at >= hour_ago
+        ).count()
+        
+        if recent_executions >= self.max_executions_per_hour:
+            return False
+        
+        return True
+    
+    def mark_executed(self, success=True, result_data=None):
+        """Mark rule as executed and update counters"""
+        self.last_executed_at = datetime.utcnow()
+        self.execution_count += 1
+        db.session.commit()
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'enabled': self.enabled,
+            'conditions': self.conditions,
+            'actions': self.actions,
+            'cooldown_minutes': self.cooldown_minutes,
+            'max_executions_per_hour': self.max_executions_per_hour,
+            'priority': self.priority,
+            'category': self.category,
+            'created_at': self.created_at.isoformat() + 'Z',
+            'updated_at': self.updated_at.isoformat() + 'Z',
+            'last_executed_at': self.last_executed_at.isoformat() + 'Z' if self.last_executed_at else None,
+            'execution_count': self.execution_count,
+            'can_execute': self.can_execute()
+        }
+
+class RuleExecution(db.Model):
+    """Model for tracking rule execution history"""
+    __tablename__ = 'rule_executions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    rule_id = db.Column(db.Integer, db.ForeignKey('automation_rules.id'), nullable=False, index=True)
+    executed_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    
+    # Execution results
+    success = db.Column(db.Boolean, default=False)
+    error_message = db.Column(db.Text)
+    execution_time_ms = db.Column(db.Integer)  # Execution duration in milliseconds
+    
+    # Context and results
+    trigger_context = db.Column(db.Text)  # JSON string of what triggered the rule
+    action_results = db.Column(db.Text)   # JSON string of action execution results
+    
+    def __repr__(self):
+        status = "SUCCESS" if self.success else "FAILED"
+        return f'<RuleExecution {self.rule.name} {status} at {self.executed_at}>'
+    
+    @property
+    def trigger_data(self):
+        """Parse trigger context JSON"""
+        try:
+            return json.loads(self.trigger_context) if self.trigger_context else {}
+        except:
+            return {}
+    
+    @trigger_data.setter
+    def trigger_data(self, value):
+        """Set trigger context as JSON string"""
+        self.trigger_context = json.dumps(value) if value else '{}'
+    
+    @property
+    def results(self):
+        """Parse action results JSON"""
+        try:
+            return json.loads(self.action_results) if self.action_results else {}
+        except:
+            return {}
+    
+    @results.setter
+    def results(self, value):
+        """Set action results as JSON string"""
+        self.action_results = json.dumps(value) if value else '{}'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'rule_id': self.rule_id,
+            'rule_name': self.rule.name if self.rule else 'Unknown',
+            'executed_at': self.executed_at.isoformat() + 'Z',
+            'success': self.success,
+            'error_message': self.error_message,
+            'execution_time_ms': self.execution_time_ms,
+            'trigger_data': self.trigger_data,
+            'results': self.results
+        }
+
 # Database event listeners for cleanup
 @event.listens_for(MonitoringData, 'before_insert')
 def cleanup_old_monitoring_data(mapper, connection, target):

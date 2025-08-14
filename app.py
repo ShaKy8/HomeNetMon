@@ -33,6 +33,8 @@ def create_app():
     from api.device_control import device_control_bp
     from api.anomaly import anomaly_bp
     from api.security import security_bp
+    from api.notifications import notifications_bp
+    from api.automation import automation_bp
     
     app.register_blueprint(devices_bp, url_prefix='/api/devices')
     app.register_blueprint(monitoring_bp, url_prefix='/api/monitoring')
@@ -42,6 +44,8 @@ def create_app():
     app.register_blueprint(device_control_bp, url_prefix='/api/device-control')
     app.register_blueprint(anomaly_bp, url_prefix='/api/anomaly')
     app.register_blueprint(security_bp, url_prefix='/api/security')
+    app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
+    app.register_blueprint(automation_bp, url_prefix='/api/automation')
     
     # Initialize monitoring services
     scanner = NetworkScanner(app)
@@ -61,6 +65,10 @@ def create_app():
     from services.security_scanner import security_scanner
     security_scanner.app = app
     
+    # Initialize rule engine service
+    from services.rule_engine import rule_engine_service
+    rule_engine_service.app = app
+    
     # Make services accessible to other parts of the app
     app._scanner = scanner
     app.alert_manager = alert_manager
@@ -68,6 +76,7 @@ def create_app():
     app.speed_test_service = speed_test_service
     app.anomaly_detection_service = anomaly_detection_service
     app.security_scanner = security_scanner
+    app.rule_engine_service = rule_engine_service
     
     # Start background services in separate threads
     def start_monitoring_services():
@@ -120,6 +129,14 @@ def create_app():
             name='BandwidthMonitor'
         )
         bandwidth_thread.start()
+        
+        # Start rule engine service
+        rule_engine_thread = threading.Thread(
+            target=rule_engine_service.start_monitoring,
+            daemon=True,
+            name='RuleEngine'
+        )
+        rule_engine_thread.start()
     
     # Start services in background
     services_thread = threading.Thread(target=start_monitoring_services, daemon=True)
@@ -141,6 +158,10 @@ def create_app():
     @app.route('/alerts')
     def alerts():
         return render_template('alerts.html')
+    
+    @app.route('/notifications')
+    def notifications():
+        return render_template('notifications.html')
     
     @app.route('/analytics')
     def analytics():

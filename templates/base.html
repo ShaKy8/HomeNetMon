@@ -250,6 +250,11 @@
                         </a>
                     </li>
                     <li class="nav-item">
+                        <a class="nav-link{% if request.endpoint == 'notifications' %} active{% endif %}" href="{{ url_for('notifications') }}">
+                            <i class="bi bi-bell"></i> Notifications
+                        </a>
+                    </li>
+                    <li class="nav-item">
                         <a class="nav-link{% if request.endpoint == 'analytics' %} active{% endif %}" href="{{ url_for('analytics') }}">
                             <i class="bi bi-graph-up"></i> Analytics
                         </a>

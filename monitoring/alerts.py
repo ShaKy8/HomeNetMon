@@ -17,6 +17,7 @@ class AlertManager:
         self.app = app
         self.is_running = False
         self._stop_event = threading.Event()
+        self.rule_engine_service = None
         self.alert_thresholds = {
             'device_down_minutes_critical': 10,   # Alert if critical device down for 10+ minutes
             'device_down_minutes_regular': 20,    # Alert if regular device down for 20+ minutes  
@@ -127,6 +128,9 @@ class AlertManager:
                             # Send notifications
                             self.send_alert_notifications(alert)
                             
+                            # Trigger rule engine for device down event
+                            self._trigger_rule_engine_for_alert(alert, device, 'device_down')
+                            
                             logger.warning(f"ALERT CREATED: Device down alert for {device.display_name} (threshold: {threshold_minutes}min, type: {device_type}, last_seen: {device.last_seen}, cutoff: {cutoff_time})")
                         
             except Exception as e:
@@ -190,6 +194,12 @@ class AlertManager:
                         # Send notifications
                         self.send_alert_notifications(alert)
                         
+                        # Send enhanced push notification for high latency
+                        self._send_high_latency_push_notification(device, avg_latency)
+                        
+                        # Trigger rule engine for high latency event
+                        self._trigger_rule_engine_for_alert(alert, device, 'high_latency', {'avg_latency': avg_latency})
+                        
                         logger.warning(f"High latency alert created for {device.display_name}")
                         
             except Exception as e:
@@ -238,6 +248,12 @@ class AlertManager:
                             
                             # Send notifications
                             self.send_alert_notifications(recovery_alert)
+                            
+                            # Send dedicated device recovery push notification
+                            self._send_device_recovery_push_notification(device)
+                            
+                            # Trigger rule engine for device recovery event
+                            self._trigger_rule_engine_for_alert(recovery_alert, device, 'device_recovery')
                             
                             logger.info(f"Device recovery alert created for {device.display_name}")
                             
@@ -466,6 +482,59 @@ This is an automated message from HomeNetMon.
             logger.error(f"Error sending push notification: {e}")
             return False
     
+    def _send_device_recovery_push_notification(self, device):
+        """Send enhanced push notification for device recovery"""
+        try:
+            dashboard_url = f"http://{Config.HOST}:{Config.PORT}"
+            
+            # Update push service configuration from database
+            push_service.enabled = Configuration.get_value('push_notifications_enabled', 'false').lower() == 'true'
+            push_service.topic = Configuration.get_value('ntfy_topic', '')
+            push_service.server = Configuration.get_value('ntfy_server', 'https://ntfy.sh')
+            
+            if push_service.is_configured():
+                success = push_service.send_device_up_alert(
+                    device_name=device.display_name,
+                    ip_address=device.ip_address,
+                    dashboard_url=dashboard_url
+                )
+                if success:
+                    logger.info(f"Sent device recovery push notification for {device.display_name}")
+                else:
+                    logger.warning(f"Failed to send device recovery push notification for {device.display_name}")
+            else:
+                logger.debug("Push notifications not configured, skipping device recovery notification")
+                
+        except Exception as e:
+            logger.error(f"Error sending device recovery push notification: {e}")
+    
+    def _send_high_latency_push_notification(self, device, avg_latency):
+        """Send enhanced push notification for high latency"""
+        try:
+            dashboard_url = f"http://{Config.HOST}:{Config.PORT}"
+            
+            # Update push service configuration from database
+            push_service.enabled = Configuration.get_value('push_notifications_enabled', 'false').lower() == 'true'
+            push_service.topic = Configuration.get_value('ntfy_topic', '')
+            push_service.server = Configuration.get_value('ntfy_server', 'https://ntfy.sh')
+            
+            if push_service.is_configured():
+                success = push_service.send_high_latency_alert(
+                    device_name=device.display_name,
+                    ip_address=device.ip_address,
+                    avg_latency=avg_latency,
+                    dashboard_url=dashboard_url
+                )
+                if success:
+                    logger.info(f"Sent high latency push notification for {device.display_name}")
+                else:
+                    logger.warning(f"Failed to send high latency push notification for {device.display_name}")
+            else:
+                logger.debug("Push notifications not configured, skipping high latency notification")
+                
+        except Exception as e:
+            logger.error(f"Error sending high latency push notification: {e}")
+    
     def cleanup_old_alerts(self, days=30):
         """Clean up resolved alerts older than specified days"""
         if not self.app:
@@ -568,3 +637,51 @@ This is an automated message from HomeNetMon.
         logger.info("Stopping alert manager")
         self._stop_event.set()
         self.is_running = False
+    
+    def _trigger_rule_engine_for_alert(self, alert, device, event_type, metadata=None):
+        """Trigger rule engine evaluation for alert events"""
+        try:
+            # Get rule engine service from app if available
+            if self.app and hasattr(self.app, 'rule_engine_service'):
+                rule_engine_service = self.app.rule_engine_service
+                
+                # Import here to avoid circular imports
+                from services.rule_engine import TriggerContext
+                
+                # Create trigger context for the alert event
+                context = TriggerContext(
+                    event_type=f'alert_{event_type}',
+                    device_id=device.id,
+                    device={
+                        'id': device.id,
+                        'display_name': device.display_name,
+                        'ip_address': device.ip_address,
+                        'status': device.status,
+                        'device_type': device.device_type,
+                        'is_monitored': device.is_monitored
+                    },
+                    alert={
+                        'id': alert.id,
+                        'alert_type': alert.alert_type,
+                        'severity': alert.severity,
+                        'message': alert.message,
+                        'created_at': alert.created_at.isoformat()
+                    },
+                    metadata=metadata or {}
+                )
+                
+                # Evaluate rules in background thread to avoid blocking alert processing
+                import threading
+                rule_thread = threading.Thread(
+                    target=rule_engine_service.evaluate_rules,
+                    args=(context,),
+                    daemon=True,
+                    name=f'RuleEngine-Alert-{event_type}'
+                )
+                rule_thread.start()
+                
+                logger.debug(f"Triggered rule engine for {event_type} alert on device {device.display_name}")
+                
+        except Exception as e:
+            logger.error(f"Error triggering rule engine for alert: {e}")
+            # Don't let rule engine errors affect alert processing

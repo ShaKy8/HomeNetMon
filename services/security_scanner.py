@@ -535,6 +535,9 @@ class NetworkSecurityScanner:
                 # Create alert record
                 self.create_security_alert(alert)
                 
+                # Send push notification for security alert
+                self.send_security_push_notification(alert)
+                
             except Exception as e:
                 logger.error(f"Error processing security alert: {e}")
     
@@ -569,6 +572,54 @@ class NetworkSecurityScanner:
         except Exception as e:
             logger.error(f"Error creating security alert: {e}")
             db.session.rollback()
+    
+    def send_security_push_notification(self, alert: SecurityAlert):
+        """Send push notification for security alert"""
+        try:
+            from services.push_notifications import push_service
+            from models import Configuration, Device
+            from config import Config
+            
+            # Update push service configuration from database
+            push_service.enabled = Configuration.get_value('push_notifications_enabled', 'false').lower() == 'true'
+            push_service.topic = Configuration.get_value('ntfy_topic', '')
+            push_service.server = Configuration.get_value('ntfy_server', 'https://ntfy.sh')
+            
+            if not push_service.is_configured():
+                logger.debug("Push notifications not configured, skipping security alert notification")
+                return
+            
+            # Get device information
+            device = Device.query.filter_by(id=alert.device_id).first()
+            if not device:
+                logger.error(f"Device {alert.device_id} not found for security alert notification")
+                return
+            
+            # Calculate risk score for push notification
+            risk_score = alert.risk_score if alert.risk_score else self.calculate_risk_score(
+                alert.port if alert.port else 0, 
+                alert.service if alert.service else 'unknown'
+            )
+            
+            # Build dashboard URL
+            dashboard_url = f"http://{Config.HOST}:{Config.PORT}/security"
+            
+            # Send security push notification
+            success = push_service.send_security_alert(
+                device_name=alert.device_name,
+                ip_address=device.ip_address,
+                vulnerability=alert.message,
+                risk_score=risk_score,
+                dashboard_url=dashboard_url
+            )
+            
+            if success:
+                logger.info(f"Sent security push notification for {alert.device_name}: {alert.alert_type}")
+            else:
+                logger.warning(f"Failed to send security push notification for {alert.device_name}")
+                
+        except Exception as e:
+            logger.error(f"Error sending security push notification: {e}")
     
     def get_security_summary(self, hours: int = 24) -> Dict:
         """Get security summary statistics"""

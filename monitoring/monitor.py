@@ -18,6 +18,7 @@ class DeviceMonitor:
         self.is_running = False
         self.executor = None
         self._stop_event = threading.Event()
+        self.rule_engine_service = None
         
     def get_config_value(self, key, default):
         """Get configuration value from database or use default"""
@@ -125,6 +126,9 @@ class DeviceMonitor:
                     if not device_obj:
                         return
                     
+                    # Store previous status to detect changes
+                    previous_status = device_obj.status
+                    
                     # Create monitoring data entry
                     monitoring_data = MonitoringData(
                         device_id=device_id,
@@ -139,6 +143,11 @@ class DeviceMonitor:
                         device_obj.last_seen = datetime.utcnow()
                     
                     db.session.commit()
+                    
+                    # Check for status changes and trigger rule engine
+                    current_status = device_obj.status
+                    if previous_status != current_status:
+                        self._trigger_rule_engine_for_status_change(device_obj, previous_status, current_status, response_time)
             
             # Emit real-time update via SocketIO
             if self.socketio and self.app:
@@ -452,3 +461,58 @@ class DeviceMonitor:
         except Exception as e:
             logger.error(f"Error force monitoring device {device_id}: {e}")
             return None
+    
+    def _trigger_rule_engine_for_status_change(self, device, previous_status, current_status, response_time):
+        """Trigger rule engine evaluation for device status changes"""
+        try:
+            # Get rule engine service from app if available
+            if self.app and hasattr(self.app, 'rule_engine_service'):
+                rule_engine_service = self.app.rule_engine_service
+                
+                # Import here to avoid circular imports
+                from services.rule_engine import TriggerContext
+                
+                # Create trigger context for the device status change event
+                context = TriggerContext(
+                    event_type='device_status_change',
+                    device_id=device.id,
+                    device={
+                        'id': device.id,
+                        'display_name': device.display_name,
+                        'ip_address': device.ip_address,
+                        'mac_address': device.mac_address,
+                        'hostname': device.hostname,
+                        'vendor': device.vendor,
+                        'device_type': device.device_type,
+                        'status': current_status,
+                        'is_monitored': device.is_monitored
+                    },
+                    monitoring_data={
+                        'response_time': response_time,
+                        'previous_status': previous_status,
+                        'current_status': current_status,
+                        'timestamp': datetime.utcnow().isoformat()
+                    },
+                    metadata={
+                        'status_changed_from': previous_status,
+                        'status_changed_to': current_status,
+                        'response_time_ms': response_time,
+                        'monitoring_timestamp': datetime.utcnow().isoformat()
+                    }
+                )
+                
+                # Evaluate rules in background thread to avoid blocking monitoring
+                import threading
+                rule_thread = threading.Thread(
+                    target=rule_engine_service.evaluate_rules,
+                    args=(context,),
+                    daemon=True,
+                    name=f'RuleEngine-StatusChange-{device.display_name}'
+                )
+                rule_thread.start()
+                
+                logger.debug(f"Triggered rule engine for status change: {device.display_name} {previous_status} -> {current_status}")
+                
+        except Exception as e:
+            logger.error(f"Error triggering rule engine for status change: {e}")
+            # Don't let rule engine errors affect monitoring

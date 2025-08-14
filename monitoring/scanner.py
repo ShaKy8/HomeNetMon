@@ -9,6 +9,7 @@ from datetime import datetime
 from manuf import manuf
 from models import db, Device, Configuration
 from config import Config
+from services.push_notifications import push_service
 
 logger = logging.getLogger(__name__)
 
@@ -21,11 +22,16 @@ class NetworkScanner:
         self.scan_thread = None
         self._stop_event = threading.Event()
         self.app = app
+        self.rule_engine_service = None
         
         # Configuration caching for hot-reload
         self._config_cache = {}
         self._config_versions = {}
         self._last_config_check = datetime.utcnow()
+        
+        # Track new devices for notifications
+        self._devices_before_scan = set()
+        self._new_devices_found = []
         
     def get_config_value(self, key, default):
         """Get configuration value from database with hot-reload support"""
@@ -299,6 +305,17 @@ class NetworkScanner:
         # Set scanning flag
         self.is_scanning = True
         
+        # Store existing devices before scan for new device detection
+        try:
+            with self.app.app_context():
+                existing_devices = Device.query.all()
+                self._devices_before_scan = {device.ip_address for device in existing_devices}
+                self._new_devices_found = []
+        except Exception as e:
+            logger.error(f"Error getting existing devices: {e}")
+            self._devices_before_scan = set()
+            self._new_devices_found = []
+        
         try:
             # Use Flask application context for database operations
             with self.app.app_context():
@@ -335,6 +352,12 @@ class NetworkScanner:
                         self.process_discovered_device(device_info)
                         
                     logger.info(f"Network scan completed. Processed {len(all_devices)} devices")
+                    
+                    # Send push notifications for scan completion and new devices
+                    self._send_scan_completion_notifications(len(all_devices))
+                    
+                    # Trigger rule engine for scan completion
+                    self._trigger_rule_engine_for_scan_completion(len(all_devices), len(self._new_devices_found))
                     
                 except Exception as e:
                     logger.error(f"Error during network scan: {e}")
@@ -413,7 +436,20 @@ class NetworkScanner:
                 )
                 
                 db.session.add(device)
+                db.session.flush()  # Ensure device has an ID for rule engine
                 logger.info(f"Added new device: {ip} ({hostname or 'unknown'})")
+                
+                # Trigger rule engine for new device discovery
+                self._trigger_rule_engine_for_new_device(device)
+                
+                # Track new device for notifications
+                if ip not in self._devices_before_scan:
+                    self._new_devices_found.append({
+                        'ip': ip,
+                        'hostname': hostname,
+                        'device_type': device_type,
+                        'vendor': vendor
+                    })
             
             db.session.commit()
             
@@ -421,12 +457,71 @@ class NetworkScanner:
             logger.error(f"Error processing device {device_info.get('ip')}: {e}")
             db.session.rollback()
     
+    def _send_scan_completion_notifications(self, total_devices):
+        """Send push notifications for scan completion and new devices"""
+        try:
+            with self.app.app_context():
+                # Get dashboard URL
+                dashboard_url = f"http://{Config.HOST}:{Config.PORT}"
+                
+                # Send individual notifications for new devices (limit to 5 to avoid spam)
+                new_device_count = len(self._new_devices_found)
+                devices_to_notify = self._new_devices_found[:5]  # Limit to first 5
+                
+                for device_info in devices_to_notify:
+                    device_name = device_info['hostname'] or device_info['ip']
+                    success = push_service.send_new_device_alert(
+                        device_name=device_name,
+                        ip_address=device_info['ip'],
+                        device_type=device_info['device_type'],
+                        dashboard_url=dashboard_url
+                    )
+                    if success:
+                        logger.info(f"Sent new device notification for {device_name}")
+                
+                # Send scan completion notification
+                success = push_service.send_network_scan_complete(
+                    new_devices=new_device_count,
+                    total_devices=total_devices,
+                    dashboard_url=dashboard_url
+                )
+                if success:
+                    logger.info(f"Sent scan completion notification: {new_device_count} new, {total_devices} total")
+                    
+                # If more than 5 new devices, send a summary notification
+                if new_device_count > 5:
+                    summary_title = f"📱 {new_device_count - 5} More New Devices"
+                    summary_message = f"Found {new_device_count - 5} additional new devices. Check the dashboard for full details."
+                    push_service.send_notification(
+                        title=summary_title,
+                        message=summary_message,
+                        priority="low",
+                        tags="information_source,blue_circle",
+                        click_url=dashboard_url
+                    )
+                    
+        except Exception as e:
+            logger.error(f"Error sending scan completion notifications: {e}")
+    
+    def _get_push_service_config(self):
+        """Update push service configuration from database"""
+        try:
+            with self.app.app_context():
+                push_service.enabled = Configuration.get_value('push_notifications_enabled', 'false').lower() == 'true'
+                push_service.topic = Configuration.get_value('ntfy_topic', '')
+                push_service.server = Configuration.get_value('ntfy_server', 'https://ntfy.sh')
+        except Exception as e:
+            logger.error(f"Error updating push service config: {e}")
+    
     def start_continuous_scan(self):
         """Start continuous network scanning"""
         try:
             self.is_running = True
             
             logger.info("Starting continuous network scanning")
+            
+            # Update push service configuration
+            self._get_push_service_config()
             
             # Perform initial scan
             self.scan_network()
@@ -455,3 +550,86 @@ class NetworkScanner:
         logger.info("Stopping network scanner")
         self._stop_event.set()
         self.is_running = False
+    
+    def _trigger_rule_engine_for_new_device(self, device):
+        """Trigger rule engine evaluation for new device discovery"""
+        try:
+            # Get rule engine service from app if available
+            if self.app and hasattr(self.app, 'rule_engine_service'):
+                rule_engine_service = self.app.rule_engine_service
+                
+                # Import here to avoid circular imports
+                from services.rule_engine import TriggerContext
+                
+                # Create trigger context for the new device event
+                context = TriggerContext(
+                    event_type='new_device_discovered',
+                    device_id=device.id,
+                    device={
+                        'id': device.id,
+                        'display_name': device.display_name,
+                        'ip_address': device.ip_address,
+                        'mac_address': device.mac_address,
+                        'hostname': device.hostname,
+                        'vendor': device.vendor,
+                        'device_type': device.device_type,
+                        'is_monitored': device.is_monitored
+                    },
+                    metadata={
+                        'discovery_method': 'network_scan',
+                        'scan_timestamp': datetime.utcnow().isoformat()
+                    }
+                )
+                
+                # Evaluate rules in background thread to avoid blocking scan processing
+                import threading
+                rule_thread = threading.Thread(
+                    target=rule_engine_service.evaluate_rules,
+                    args=(context,),
+                    daemon=True,
+                    name='RuleEngine-NewDevice'
+                )
+                rule_thread.start()
+                
+                logger.debug(f"Triggered rule engine for new device discovery: {device.display_name}")
+                
+        except Exception as e:
+            logger.error(f"Error triggering rule engine for new device: {e}")
+            # Don't let rule engine errors affect scan processing
+    
+    def _trigger_rule_engine_for_scan_completion(self, total_devices, new_devices):
+        """Trigger rule engine evaluation for scan completion"""
+        try:
+            # Get rule engine service from app if available
+            if self.app and hasattr(self.app, 'rule_engine_service'):
+                rule_engine_service = self.app.rule_engine_service
+                
+                # Import here to avoid circular imports
+                from services.rule_engine import TriggerContext
+                
+                # Create trigger context for the scan completion event
+                context = TriggerContext(
+                    event_type='scan_complete',
+                    metadata={
+                        'total_devices': total_devices,
+                        'new_devices': new_devices,
+                        'scan_type': 'network',
+                        'scan_timestamp': datetime.utcnow().isoformat()
+                    }
+                )
+                
+                # Evaluate rules in background thread to avoid blocking scan processing
+                import threading
+                rule_thread = threading.Thread(
+                    target=rule_engine_service.evaluate_rules,
+                    args=(context,),
+                    daemon=True,
+                    name='RuleEngine-ScanComplete'
+                )
+                rule_thread.start()
+                
+                logger.debug(f"Triggered rule engine for scan completion: {total_devices} total, {new_devices} new")
+                
+        except Exception as e:
+            logger.error(f"Error triggering rule engine for scan completion: {e}")
+            # Don't let rule engine errors affect scan processing
