@@ -293,6 +293,11 @@
                 </form>
                 
                 <ul class="navbar-nav">
+                    <li class="nav-item me-2">
+                        <button class="btn btn-outline-light btn-sm" id="about-btn" title="About HomeNetMon">
+                            <i class="bi bi-info-circle"></i>
+                        </button>
+                    </li>
                     <li class="nav-item me-3">
                         <button class="btn btn-outline-light btn-sm" id="shortcuts-help-btn" title="Keyboard Shortcuts (?)">
                             <i class="bi bi-question-circle"></i>
@@ -399,6 +404,115 @@
             
             <div class="col-6"><span class="shortcut-key">Esc</span></div>
             <div class="col-6">Close dialogs</div>
+        </div>
+    </div>
+
+    <!-- About HomeNetMon Dialog -->
+    <div id="about-dialog" class="shortcuts-help">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="mb-0"><i class="bi bi-router me-2"></i>About HomeNetMon</h5>
+            <button type="button" class="btn-close" id="about-close"></button>
+        </div>
+        
+        <!-- Version Info -->
+        <div class="row mb-3">
+            <div class="col-12">
+                <div class="card bg-primary text-white">
+                    <div class="card-body py-3">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <h6 class="mb-1">Version {{ app_version }}</h6>
+                                <small>{{ version_info.release_name }} • Build: {{ version_info.version_build }}</small>
+                            </div>
+                            <div class="col-auto">
+                                <i class="bi bi-shield-check fa-2x"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Application Info -->
+        <div class="row mb-3">
+            <div class="col-6">
+                <div class="text-center">
+                    <i class="bi bi-calendar3 text-primary fs-4"></i>
+                    <div class="mt-1">
+                        <small class="text-muted">Built</small>
+                        <div class="fw-bold">{{ version_info.build_date }}</div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-6">
+                <div class="text-center">
+                    <i class="bi bi-code-square text-success fs-4"></i>
+                    <div class="mt-1">
+                        <small class="text-muted">Runtime</small>
+                        <div class="fw-bold" id="about-runtime">Loading...</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Quick Stats -->
+        <div class="row mb-3">
+            <div class="col-4">
+                <div class="text-center">
+                    <div class="text-primary fw-bold fs-5" id="about-devices">-</div>
+                    <small class="text-muted">Devices</small>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="text-center">
+                    <div class="text-success fw-bold fs-5" id="about-uptime">-</div>
+                    <small class="text-muted">Uptime</small>
+                </div>
+            </div>
+            <div class="col-4">
+                <div class="text-center">
+                    <div class="text-info fw-bold fs-5" id="about-memory">-</div>
+                    <small class="text-muted">Memory</small>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Features -->
+        <div class="mb-3">
+            <h6 class="text-muted mb-2">Key Features</h6>
+            <div class="row g-2">
+                <div class="col-6"><small><i class="bi bi-check2 text-success me-1"></i>Real-time Monitoring</small></div>
+                <div class="col-6"><small><i class="bi bi-check2 text-success me-1"></i>Smart Anomaly Detection</small></div>
+                <div class="col-6"><small><i class="bi bi-check2 text-success me-1"></i>Security Scanning</small></div>
+                <div class="col-6"><small><i class="bi bi-check2 text-success me-1"></i>Push Notifications</small></div>
+                <div class="col-6"><small><i class="bi bi-check2 text-success me-1"></i>Network Topology</small></div>
+                <div class="col-6"><small><i class="bi bi-check2 text-success me-1"></i>Rule Engine</small></div>
+            </div>
+        </div>
+        
+        <!-- Technologies -->
+        <div class="mb-3">
+            <h6 class="text-muted mb-2">Built With</h6>
+            <div class="d-flex flex-wrap gap-1">
+                <span class="badge bg-secondary">Flask</span>
+                <span class="badge bg-secondary">SQLAlchemy</span>
+                <span class="badge bg-secondary">Socket.IO</span>
+                <span class="badge bg-secondary">Bootstrap 5</span>
+                <span class="badge bg-secondary">D3.js</span>
+                <span class="badge bg-secondary">Chart.js</span>
+            </div>
+        </div>
+        
+        <!-- Links -->
+        <div class="d-flex justify-content-between align-items-center pt-2 border-top">
+            <div>
+                <button class="btn btn-outline-primary btn-sm" id="system-info-btn">
+                    <i class="bi bi-gear me-1"></i>System Info
+                </button>
+            </div>
+            <div>
+                <small class="text-muted">{{ version_info.build_author }}</small>
+            </div>
         </div>
     </div>
 
@@ -856,6 +970,7 @@
                         break;
                     case 'Escape':
                         hideShortcutsHelp();
+                        hideAboutDialog();
                         hideSearchOverlay();
                         break;
                 }
@@ -876,6 +991,53 @@
         
         function hideShortcutsHelp() {
             document.getElementById('shortcuts-help').style.display = 'none';
+        }
+        
+        // About dialog functions
+        function showAboutDialog() {
+            const dialog = document.getElementById('about-dialog');
+            dialog.style.display = 'block';
+            loadAboutInfo();
+        }
+        
+        function hideAboutDialog() {
+            document.getElementById('about-dialog').style.display = 'none';
+        }
+        
+        async function loadAboutInfo() {
+            try {
+                // Load system info
+                const systemResponse = await fetch('/api/system/info');
+                const systemData = await systemResponse.json();
+                
+                if (systemData.success) {
+                    // Update runtime info
+                    const pythonVersion = systemData.system.system.python_version;
+                    document.getElementById('about-runtime').textContent = `Python ${pythonVersion}`;
+                    
+                    // Update device count
+                    const deviceResponse = await fetch('/api/devices');
+                    const deviceData = await deviceResponse.json();
+                    document.getElementById('about-devices').textContent = deviceData.devices ? deviceData.devices.length : '-';
+                    
+                    // Update uptime (simplified calculation from process start time)
+                    const started = new Date(systemData.system.process.started);
+                    const now = new Date();
+                    const uptime = Math.floor((now - started) / (1000 * 60 * 60)); // hours
+                    document.getElementById('about-uptime').textContent = uptime > 24 ? `${Math.floor(uptime/24)}d` : `${uptime}h`;
+                    
+                    // Update memory usage
+                    const memoryMB = systemData.system.process.memory_usage_mb;
+                    document.getElementById('about-memory').textContent = `${memoryMB}MB`;
+                }
+            } catch (error) {
+                console.warn('Could not load about info:', error);
+            }
+        }
+        
+        function showDetailedSystemInfo() {
+            // Open detailed system info in new tab or overlay
+            window.open('/api/system/info', '_blank');
         }
         
         // Action functions for keyboard shortcuts
@@ -956,6 +1118,11 @@
             // Shortcuts help
             document.getElementById('shortcuts-help-btn').addEventListener('click', toggleShortcutsHelp);
             document.getElementById('shortcuts-close').addEventListener('click', hideShortcutsHelp);
+            
+            // About dialog
+            document.getElementById('about-btn').addEventListener('click', showAboutDialog);
+            document.getElementById('about-close').addEventListener('click', hideAboutDialog);
+            document.getElementById('system-info-btn').addEventListener('click', showDetailedSystemInfo);
             
             // Search overlay close
             document.getElementById('search-overlay-close').addEventListener('click', hideSearchOverlay);

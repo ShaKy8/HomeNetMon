@@ -6,6 +6,7 @@ from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_socketio import SocketIO, emit
 from config import Config
 from models import db, init_db
+from version import get_version_string, get_complete_info
 from monitoring.scanner import NetworkScanner
 from monitoring.monitor import DeviceMonitor
 from monitoring.alerts import AlertManager
@@ -36,6 +37,7 @@ def create_app():
     from api.notifications import notifications_bp
     from api.automation import automation_bp
     from api.config_management import config_management_bp
+    from api.system import system_bp
     
     app.register_blueprint(devices_bp, url_prefix='/api/devices')
     app.register_blueprint(monitoring_bp, url_prefix='/api/monitoring')
@@ -48,6 +50,7 @@ def create_app():
     app.register_blueprint(security_bp, url_prefix='/api/security')
     app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
     app.register_blueprint(automation_bp, url_prefix='/api/automation')
+    app.register_blueprint(system_bp, url_prefix='/api/system')
     
     # Initialize monitoring services
     scanner = NetworkScanner(app)
@@ -185,6 +188,16 @@ def create_app():
         # Register callbacks in background
         callback_thread = threading.Thread(target=register_config_callbacks, daemon=True)
         callback_thread.start()
+    
+    # Template context processor to inject version info
+    @app.context_processor
+    def inject_version():
+        """Make version information available in all templates"""
+        from version import get_version_string, get_version_info
+        return {
+            'app_version': get_version_string(),
+            'version_info': get_version_info()
+        }
     
     # Start services in background
     services_thread = threading.Thread(target=start_monitoring_services, daemon=True)
