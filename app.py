@@ -1,6 +1,7 @@
 import os
 import threading
 import time
+import logging
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for
 from flask_socketio import SocketIO, emit
@@ -16,6 +17,11 @@ from monitoring.bandwidth_monitor import BandwidthMonitor
 SERVER_START_TIME = datetime.now()
 
 def create_app():
+    # Setup centralized logging
+    Config.setup_logging()
+    logger = logging.getLogger(__name__)
+    logger.info("Starting HomeNetMon application")
+    
     app = Flask(__name__)
     app.config.from_object(Config)
     

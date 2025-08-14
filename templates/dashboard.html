@@ -1768,13 +1768,6 @@ function selectAllDevices(event) {
     
     const isChecked = event.target.checked;
     
-    // DEBUG: Log select all operation
-    console.log('🔘 SELECT ALL DEBUG:', {
-        isChecked: isChecked,
-        deviceCheckboxesCount: deviceCheckboxes.length,
-        currentSelectedCount: selectedDevices.size,
-        filteredDevicesCount: filteredDevices.length
-    });
     
     if (isChecked) {
         deviceCheckboxes.forEach(cb => {
@@ -1789,12 +1782,6 @@ function selectAllDevices(event) {
             selectedDevices.delete(deviceId);
         });
     }
-    
-    // DEBUG: Log final state
-    console.log('🔘 Select all completed:', {
-        selectedDevicesCount: selectedDevices.size,
-        selectedDevicesArray: Array.from(selectedDevices)
-    });
     
     updateSelectionCount();
 }
@@ -1905,12 +1892,6 @@ function selectByPattern(pattern) {
     let matchCount = 0;
     const matchedDevices = [];
     
-    // DEBUG: Log pattern matching process
-    console.log('🔍 PATTERN SELECTION DEBUG:', {
-        pattern: pattern,
-        regex: regex,
-        filteredDevicesCount: filteredDevices.length
-    });
     
     filteredDevices.forEach(device => {
         const name = (device.display_name || device.hostname || '').toLowerCase();
@@ -1925,9 +1906,6 @@ function selectByPattern(pattern) {
         }
     });
     
-    // DEBUG: Log matched devices
-    console.log('🔍 Pattern matched devices:', matchedDevices);
-    console.log('🔍 Selected devices after pattern:', Array.from(selectedDevices));
     
     updateDeviceCheckboxes();
     updateSelectionCount();
@@ -2048,7 +2026,6 @@ async function bulkWakeOnLan() {
         }
         
         if (result.results?.length > 0) {
-            console.log('Bulk WOL results:', result.results);
         }
         
     } catch (error) {
@@ -2095,13 +2072,6 @@ async function bulkUpdateMonitoring(enabled) {
         return;
     }
     
-    // DEBUG: Log selected devices before operation
-    console.log('🔧 BULK MONITORING DEBUG:', {
-        enabled: enabled,
-        selectedDevicesSet: Array.from(selectedDevices),
-        selectedDevicesCount: selectedDevices.size,
-        filteredDevicesCount: filteredDevices.length
-    });
     
     // Get device names for better confirmation dialog
     const selectedDeviceNames = filteredDevices
@@ -2127,7 +2097,6 @@ async function bulkUpdateMonitoring(enabled) {
         
         for (const deviceId of deviceIds) {
             try {
-                console.log(`🔧 Updating device ${deviceId} with is_monitored: ${enabled}`);
                 
                 const response = await fetch(`/api/devices/${deviceId}`, {
                     method: 'PUT',
@@ -2139,10 +2108,8 @@ async function bulkUpdateMonitoring(enabled) {
                 
                 if (response.ok) {
                     successful++;
-                    console.log(`✅ Device ${deviceId} updated successfully:`, responseData);
                 } else {
                     failed++;
-                    console.error(`❌ Device ${deviceId} update failed:`, response.status, responseData);
                 }
             } catch (error) {
                 failed++;

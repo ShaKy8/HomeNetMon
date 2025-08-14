@@ -1,5 +1,7 @@
 import os
 import yaml
+import logging
+import logging.handlers
 from pathlib import Path
 from dotenv import load_dotenv
 
@@ -28,6 +30,12 @@ class Config:
     HOST = os.environ.get('HOST', '0.0.0.0')
     PORT = int(os.environ.get('PORT', '5000'))
     DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
+    
+    # Logging Configuration
+    LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
+    LOG_FILE = os.environ.get('LOG_FILE', 'homeNetMon.log')
+    LOG_MAX_SIZE = int(os.environ.get('LOG_MAX_SIZE', '10485760'))  # 10MB
+    LOG_BACKUP_COUNT = int(os.environ.get('LOG_BACKUP_COUNT', '5'))
     
     # Alert Settings
     SMTP_SERVER = os.environ.get('SMTP_SERVER')
@@ -86,6 +94,51 @@ class Config:
         
         with open(config_path, 'w') as f:
             yaml.dump(config_data, f, default_flow_style=False, indent=2)
+    
+    @classmethod
+    def setup_logging(cls):
+        """Configure application logging"""
+        # Create logs directory if it doesn't exist
+        log_dir = cls.BASE_DIR / 'logs'
+        log_dir.mkdir(exist_ok=True)
+        
+        # Set up root logger
+        root_logger = logging.getLogger()
+        root_logger.setLevel(getattr(logging, cls.LOG_LEVEL))
+        
+        # Clear existing handlers
+        root_logger.handlers.clear()
+        
+        # Console handler
+        console_handler = logging.StreamHandler()
+        console_handler.setLevel(logging.INFO)
+        
+        # File handler with rotation
+        log_file_path = log_dir / cls.LOG_FILE
+        file_handler = logging.handlers.RotatingFileHandler(
+            log_file_path, 
+            maxBytes=cls.LOG_MAX_SIZE, 
+            backupCount=cls.LOG_BACKUP_COUNT
+        )
+        file_handler.setLevel(getattr(logging, cls.LOG_LEVEL))
+        
+        # Formatter
+        formatter = logging.Formatter(
+            '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
+        )
+        console_handler.setFormatter(formatter)
+        file_handler.setFormatter(formatter)
+        
+        # Add handlers to root logger
+        root_logger.addHandler(console_handler)
+        root_logger.addHandler(file_handler)
+        
+        # Set levels for specific loggers to reduce noise
+        logging.getLogger('werkzeug').setLevel(logging.WARNING)
+        logging.getLogger('urllib3').setLevel(logging.WARNING)
+        if not cls.DEBUG:
+            logging.getLogger('socketio').setLevel(logging.WARNING)
+            logging.getLogger('engineio').setLevel(logging.WARNING)
 
 # Load configuration from file if it exists
 Config.load_from_file()
