@@ -1206,7 +1206,10 @@ function startSystemStatusUpdates() {
     console.log('Starting system status updates');
     
     // Update system status every 5 seconds
-    systemStatus.intervalIds.push(setInterval(updateSystemStatus, 5000));
+    systemStatus.intervalIds.push(setInterval(() => {
+        updateSystemStatus();
+        loadCurrentNetworkRange();
+    }, 5000));
     
     // Update current date and time every second
     systemStatus.intervalIds.push(setInterval(updateCurrentDateTime, 1000));
@@ -1214,6 +1217,7 @@ function startSystemStatusUpdates() {
     // Initial updates
     updateSystemStatus();
     updateCurrentDateTime();
+    loadCurrentNetworkRange();
 }
 
 // NetworkGraph class removed - now on dedicated topology page
