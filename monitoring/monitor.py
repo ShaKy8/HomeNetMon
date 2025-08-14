@@ -516,3 +516,22 @@ class DeviceMonitor:
         except Exception as e:
             logger.error(f"Error triggering rule engine for status change: {e}")
             # Don't let rule engine errors affect monitoring
+    
+    def reload_config(self):
+        """Reload configuration for hot-reload support"""
+        try:
+            logger.info("Reloading DeviceMonitor configuration")
+            # Clear any cached config values if we had them
+            # For now, just log the reload - actual reloading happens via get_config_value calls
+            
+            # Log current configuration values
+            if self.app:
+                with self.app.app_context():
+                    ping_interval = self.get_config_value('ping_interval', Config.PING_INTERVAL)
+                    ping_timeout = self.get_config_value('ping_timeout', Config.PING_TIMEOUT)
+                    data_retention = self.get_config_value('data_retention_days', Config.DATA_RETENTION_DAYS)
+                    
+                    logger.info(f"DeviceMonitor config reloaded - ping_interval: {ping_interval}s, "
+                              f"ping_timeout: {ping_timeout}s, data_retention: {data_retention} days")
+        except Exception as e:
+            logger.error(f"Error reloading DeviceMonitor configuration: {e}")

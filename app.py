@@ -35,10 +35,12 @@ def create_app():
     from api.security import security_bp
     from api.notifications import notifications_bp
     from api.automation import automation_bp
+    from api.config_management import config_management_bp
     
     app.register_blueprint(devices_bp, url_prefix='/api/devices')
     app.register_blueprint(monitoring_bp, url_prefix='/api/monitoring')
     app.register_blueprint(config_bp, url_prefix='/api/config')
+    app.register_blueprint(config_management_bp, url_prefix='/api/config-management')
     app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
     app.register_blueprint(speedtest_bp, url_prefix='/api/speedtest')
     app.register_blueprint(device_control_bp, url_prefix='/api/device-control')
@@ -69,6 +71,10 @@ def create_app():
     from services.rule_engine import rule_engine_service
     rule_engine_service.app = app
     
+    # Initialize configuration service
+    from services.configuration_service import configuration_service
+    configuration_service.app = app
+    
     # Make services accessible to other parts of the app
     app._scanner = scanner
     app.alert_manager = alert_manager
@@ -77,6 +83,8 @@ def create_app():
     app.anomaly_detection_service = anomaly_detection_service
     app.security_scanner = security_scanner
     app.rule_engine_service = rule_engine_service
+    app.configuration_service = configuration_service
+    app.socketio = socketio
     
     # Start background services in separate threads
     def start_monitoring_services():
@@ -137,6 +145,46 @@ def create_app():
             name='RuleEngine'
         )
         rule_engine_thread.start()
+        
+        # Start configuration service
+        configuration_thread = threading.Thread(
+            target=configuration_service.start_monitoring,
+            daemon=True,
+            name='ConfigurationService'
+        )
+        configuration_thread.start()
+        
+        # Register service callbacks for configuration changes
+        def register_config_callbacks():
+            time.sleep(1)  # Wait for services to initialize
+            
+            # Register scanner callback
+            def scanner_config_callback(key, old_value, new_value):
+                if key in ['network_range', 'scan_interval']:
+                    scanner.reload_config()
+            configuration_service.register_service_callback('NetworkScanner', scanner_config_callback)
+            
+            # Register monitor callback
+            def monitor_config_callback(key, old_value, new_value):
+                if key in ['ping_interval', 'ping_timeout', 'max_workers']:
+                    monitor.reload_config()
+            configuration_service.register_service_callback('DeviceMonitor', monitor_config_callback)
+            
+            # Register alert manager callback
+            def alert_config_callback(key, old_value, new_value):
+                if key.startswith('alert_'):
+                    alert_manager.reload_config()
+            configuration_service.register_service_callback('AlertManager', alert_config_callback)
+            
+            # Register bandwidth monitor callback
+            def bandwidth_config_callback(key, old_value, new_value):
+                if key in ['bandwidth_interval']:
+                    bandwidth_monitor.reload_config()
+            configuration_service.register_service_callback('BandwidthMonitor', bandwidth_config_callback)
+        
+        # Register callbacks in background
+        callback_thread = threading.Thread(target=register_config_callbacks, daemon=True)
+        callback_thread.start()
     
     # Start services in background
     services_thread = threading.Thread(target=start_monitoring_services, daemon=True)
@@ -242,6 +290,63 @@ def create_app():
         devices = Device.query.all()
         devices_data = [device.to_dict() for device in devices]
         emit('device_update', devices_data)
+    
+    @socketio.on('request_config_update')
+    def handle_config_update_request():
+        """Handle request for current configuration"""
+        try:
+            from models import Configuration
+            configs = Configuration.query.all()
+            config_data = {config.key: {
+                'value': config.value,
+                'description': config.description,
+                'version': config.version,
+                'updated_at': config.updated_at.isoformat()
+            } for config in configs}
+            emit('configuration_full_update', config_data)
+        except Exception as e:
+            emit('configuration_error', {'error': str(e)})
+    
+    @socketio.on('update_configuration')
+    def handle_configuration_update(data):
+        """Handle configuration update via WebSocket"""
+        try:
+            key = data.get('key')
+            value = data.get('value')
+            description = data.get('description')
+            user = data.get('user', 'websocket_user')
+            
+            if not key or value is None:
+                emit('configuration_error', {'error': 'Key and value are required'})
+                return
+            
+            # Use configuration service to update
+            success, message = configuration_service.set_configuration(
+                key=key,
+                value=value,
+                description=description,
+                user=user,
+                validate=True
+            )
+            
+            if success:
+                emit('configuration_update_success', {
+                    'key': key,
+                    'value': value,
+                    'message': message
+                })
+                # Broadcast to all clients
+                socketio.emit('configuration_updated', {
+                    'key': key,
+                    'value': value,
+                    'user': user,
+                    'timestamp': datetime.utcnow().isoformat()
+                })
+            else:
+                emit('configuration_error', {'error': message})
+                
+        except Exception as e:
+            emit('configuration_error', {'error': str(e)})
     
     # Error handlers
     @app.errorhandler(404)

@@ -304,3 +304,16 @@ class BandwidthMonitor:
         except Exception as e:
             logger.error(f"Error getting network summary: {e}")
             return None
+    
+    def reload_config(self):
+        """Reload configuration for hot-reload support"""
+        try:
+            logger.info("Reloading BandwidthMonitor configuration")
+            # Configuration is loaded dynamically via get_config_value calls
+            # Log current bandwidth monitoring configuration
+            if self.app:
+                with self.app.app_context():
+                    bandwidth_interval = Configuration.get_value('bandwidth_interval', '60')
+                    logger.info(f"BandwidthMonitor config reloaded - interval: {bandwidth_interval}s")
+        except Exception as e:
+            logger.error(f"Error reloading BandwidthMonitor configuration: {e}")

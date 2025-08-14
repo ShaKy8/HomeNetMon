@@ -342,6 +342,58 @@ class Configuration(db.Model):
         latest_config = cls.query.order_by(cls.updated_at.desc()).first()
         return latest_config.updated_at if latest_config else datetime.utcnow()
 
+class ConfigurationHistory(db.Model):
+    """Model for tracking configuration changes and rollback history"""
+    __tablename__ = 'configuration_history'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    config_key = db.Column(db.String(100), nullable=False, index=True)
+    old_value = db.Column(db.Text)
+    new_value = db.Column(db.Text)
+    changed_by = db.Column(db.String(100), default='system')
+    change_reason = db.Column(db.Text)
+    changed_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    
+    # Validation and rollback info
+    validated = db.Column(db.Boolean, default=True)
+    rollback_available = db.Column(db.Boolean, default=True)
+    
+    def __repr__(self):
+        return f'<ConfigurationHistory {self.config_key}: {self.old_value} -> {self.new_value}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'config_key': self.config_key,
+            'old_value': self.old_value,
+            'new_value': self.new_value,
+            'changed_by': self.changed_by,
+            'change_reason': self.change_reason,
+            'changed_at': self.changed_at.isoformat() + 'Z',
+            'validated': self.validated,
+            'rollback_available': self.rollback_available
+        }
+    
+    @classmethod
+    def log_change(cls, key, old_value, new_value, changed_by='system', reason=None, validated=True):
+        """Log a configuration change"""
+        try:
+            history = cls(
+                config_key=key,
+                old_value=str(old_value) if old_value is not None else None,
+                new_value=str(new_value) if new_value is not None else None,
+                changed_by=changed_by,
+                change_reason=reason,
+                validated=validated
+            )
+            db.session.add(history)
+            db.session.commit()
+            return history
+        except Exception as e:
+            db.session.rollback()
+            logger.error(f"Error logging configuration change: {e}")
+            return None
+
 class BandwidthData(db.Model):
     """Model for storing bandwidth usage data"""
     __tablename__ = 'bandwidth_data'

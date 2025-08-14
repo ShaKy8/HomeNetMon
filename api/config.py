@@ -54,44 +54,64 @@ def get_config_value(key):
 def update_config_value(key):
     """Update specific configuration value"""
     try:
+        from flask import current_app
         data = request.get_json()
         
         if not data or 'value' not in data:
             return jsonify({'error': 'Value is required'}), 400
         
-        # Validate certain configuration keys
-        if key == 'ping_interval':
-            try:
-                value = int(data['value'])
-                if value < 5 or value > 900:
-                    return jsonify({'error': 'Ping interval must be between 5 and 900 seconds'}), 400
-            except ValueError:
-                return jsonify({'error': 'Ping interval must be a number'}), 400
-        
-        elif key == 'scan_interval':
-            try:
-                value = int(data['value'])
-                if value < 60 or value > 3600:
-                    return jsonify({'error': 'Scan interval must be between 60 and 3600 seconds'}), 400
-            except ValueError:
-                return jsonify({'error': 'Scan interval must be a number'}), 400
-        
-        elif key == 'data_retention_days':
-            try:
-                value = int(data['value'])
-                if value < 1 or value > 365:
-                    return jsonify({'error': 'Data retention must be between 1 and 365 days'}), 400
-            except ValueError:
-                return jsonify({'error': 'Data retention days must be a number'}), 400
-        
-        # Update configuration
-        config = Configuration.set_value(
-            key=key,
-            value=data['value'],
-            description=data.get('description')
-        )
-        
-        return jsonify(config.to_dict())
+        # Use configuration service if available
+        if hasattr(current_app, 'configuration_service'):
+            config_service = current_app.configuration_service
+            success, message = config_service.set_configuration(
+                key=key,
+                value=data['value'],
+                description=data.get('description'),
+                user='api_user',
+                validate=True
+            )
+            
+            if success:
+                # Get updated configuration
+                config = Configuration.query.filter_by(key=key).first()
+                return jsonify(config.to_dict() if config else {'key': key, 'value': data['value']})
+            else:
+                return jsonify({'error': message}), 400
+        else:
+            # Fallback to legacy validation and direct database access
+            # Validate certain configuration keys
+            if key == 'ping_interval':
+                try:
+                    value = int(data['value'])
+                    if value < 5 or value > 900:
+                        return jsonify({'error': 'Ping interval must be between 5 and 900 seconds'}), 400
+                except ValueError:
+                    return jsonify({'error': 'Ping interval must be a number'}), 400
+            
+            elif key == 'scan_interval':
+                try:
+                    value = int(data['value'])
+                    if value < 60 or value > 3600:
+                        return jsonify({'error': 'Scan interval must be between 60 and 3600 seconds'}), 400
+                except ValueError:
+                    return jsonify({'error': 'Scan interval must be a number'}), 400
+            
+            elif key == 'data_retention_days':
+                try:
+                    value = int(data['value'])
+                    if value < 1 or value > 365:
+                        return jsonify({'error': 'Data retention must be between 1 and 365 days'}), 400
+                except ValueError:
+                    return jsonify({'error': 'Data retention days must be a number'}), 400
+            
+            # Update configuration
+            config = Configuration.set_value(
+                key=key,
+                value=data['value'],
+                description=data.get('description')
+            )
+            
+            return jsonify(config.to_dict())
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500

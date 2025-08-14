@@ -685,3 +685,20 @@ This is an automated message from HomeNetMon.
         except Exception as e:
             logger.error(f"Error triggering rule engine for alert: {e}")
             # Don't let rule engine errors affect alert processing
+    
+    def reload_config(self):
+        """Reload configuration for hot-reload support"""
+        try:
+            logger.info("Reloading AlertManager configuration")
+            # Configuration is loaded dynamically via get_config_value calls
+            # Log current alert configuration
+            if self.app:
+                with self.app.app_context():
+                    email_enabled = Configuration.get_value('alert_email_enabled', 'false').lower() == 'true'
+                    webhook_enabled = Configuration.get_value('alert_webhook_enabled', 'false').lower() == 'true'
+                    push_enabled = Configuration.get_value('push_notifications_enabled', 'false').lower() == 'true'
+                    
+                    logger.info(f"AlertManager config reloaded - email: {email_enabled}, "
+                              f"webhook: {webhook_enabled}, push: {push_enabled}")
+        except Exception as e:
+            logger.error(f"Error reloading AlertManager configuration: {e}")
