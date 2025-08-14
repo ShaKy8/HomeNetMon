@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_
-from models import db, Device, MonitoringData, Alert, BandwidthData
+from models import db, Device, MonitoringData, Alert
 import logging
 
 health_bp = Blueprint('health', __name__)
@@ -75,15 +75,11 @@ def get_health_overview():
         # Network performance trends
         performance_trends = get_performance_trends(last_24h)
         
-        # Bandwidth data (if available)
-        latest_bandwidth = BandwidthData.query\
-            .order_by(BandwidthData.timestamp.desc())\
-            .first()
-        
+        # Bandwidth data (placeholder - BandwidthData model not implemented yet)
         bandwidth_usage = {
-            'download_mbps': round(latest_bandwidth.download_speed / 1000000, 2) if latest_bandwidth else 0,
-            'upload_mbps': round(latest_bandwidth.upload_speed / 1000000, 2) if latest_bandwidth else 0,
-            'timestamp': latest_bandwidth.timestamp.isoformat() + 'Z' if latest_bandwidth else None
+            'download_mbps': 0,
+            'upload_mbps': 0,
+            'timestamp': None
         }
         
         return jsonify({

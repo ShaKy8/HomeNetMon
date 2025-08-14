@@ -58,7 +58,8 @@
       "Bash(git remote set-head:*)",
       "Bash(echo $?)",
       "Bash(mtr:*)",
-      "Bash(time curl:*)"
+      "Bash(time curl:*)",
+      "Bash(git commit:*)"
     ],
     "deny": []
   }
