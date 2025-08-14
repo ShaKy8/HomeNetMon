@@ -44,6 +44,7 @@ def create_app():
     from api.automation import automation_bp
     from api.config_management import config_management_bp
     from api.system import system_bp
+    from api.health import health_bp
     
     app.register_blueprint(devices_bp, url_prefix='/api/devices')
     app.register_blueprint(monitoring_bp, url_prefix='/api/monitoring')
@@ -57,6 +58,7 @@ def create_app():
     app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
     app.register_blueprint(automation_bp, url_prefix='/api/automation')
     app.register_blueprint(system_bp, url_prefix='/api/system')
+    app.register_blueprint(health_bp, url_prefix='/api/health')
     
     # Initialize monitoring services
     scanner = NetworkScanner(app)
@@ -242,6 +244,10 @@ def create_app():
     def security_dashboard():
         return render_template('security_dashboard.html')
     
+    @app.route('/health-overview')
+    def health_overview():
+        return render_template('health_overview.html')
+    
     # Redirect routes for common URL variations (underscored URLs redirect to hyphenated ones)
     @app.route('/ai_dashboard')
     def ai_dashboard_underscore_redirect():
@@ -250,6 +256,10 @@ def create_app():
     @app.route('/security_dashboard')  
     def security_dashboard_underscore_redirect():
         return redirect(url_for('security_dashboard'))
+    
+    @app.route('/health_overview')  
+    def health_overview_underscore_redirect():
+        return redirect(url_for('health_overview'))
     
     @app.route('/topology')
     def topology():
@@ -366,6 +376,70 @@ def create_app():
                 
         except Exception as e:
             emit('configuration_error', {'error': str(e)})
+    
+    @socketio.on('request_health_update')
+    def handle_health_update_request():
+        """Handle request for health overview update"""
+        try:
+            from api.health import calculate_health_score, get_recent_network_activity
+            from models import Device, MonitoringData, Alert
+            from datetime import timedelta
+            
+            # Get current health data
+            now = datetime.utcnow()
+            online_threshold = now - timedelta(minutes=10)
+            
+            total_devices = Device.query.filter_by(is_monitored=True).count()
+            devices_online = Device.query.filter(
+                Device.is_monitored == True,
+                Device.last_seen >= online_threshold
+            ).count()
+            
+            # Quick health score calculation
+            health_score = calculate_health_score(
+                devices_online, total_devices, 50.0, 0, 95.0  # Simplified for real-time
+            )
+            
+            emit('health_update', {
+                'health_score': health_score,
+                'network_status': {
+                    'devices_online': devices_online,
+                    'devices_offline': total_devices - devices_online,
+                    'total_devices': total_devices
+                },
+                'timestamp': now.isoformat() + 'Z'
+            })
+            
+        except Exception as e:
+            emit('health_error', {'error': str(e)})
+    
+    @socketio.on('request_topology_update')
+    def handle_topology_update_request():
+        """Handle request for network topology update"""
+        try:
+            from models import Device
+            
+            devices = Device.query.filter_by(is_monitored=True).all()
+            online_threshold = datetime.utcnow() - timedelta(minutes=10)
+            
+            topology_data = []
+            for device in devices:
+                status = 'online' if device.last_seen and device.last_seen >= online_threshold else 'offline'
+                topology_data.append({
+                    'id': device.id,
+                    'ip_address': device.ip_address,
+                    'name': device.display_name,
+                    'type': device.device_type or 'unknown',
+                    'status': status
+                })
+            
+            emit('topology_update', {
+                'devices': topology_data,
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
+            })
+            
+        except Exception as e:
+            emit('topology_error', {'error': str(e)})
     
     # Error handlers
     @app.errorhandler(404)
