@@ -2,6 +2,9 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 from models import db, Device, MonitoringData, Alert
 from monitoring.monitor import DeviceMonitor
+import logging
+
+logger = logging.getLogger(__name__)
 
 devices_bp = Blueprint('devices', __name__)
 
@@ -144,18 +147,31 @@ def update_device(device_id):
         device = Device.query.get_or_404(device_id)
         data = request.get_json()
         
+        # DEBUG: Log incoming update request
+        logger.info(f"🔧 SERVER: Updating device {device_id}")
+        logger.info(f"🔧 SERVER: Device current state - ID: {device.id}, Name: {device.display_name}, Monitored: {device.is_monitored}")
+        logger.info(f"🔧 SERVER: Update data received: {data}")
+        
         if not data:
             return jsonify({'error': 'No data provided'}), 400
         
         # Update allowed fields
         allowed_fields = ['custom_name', 'device_type', 'device_group', 'is_monitored', 'hostname']
+        updated_fields = {}
         
         for field in allowed_fields:
             if field in data:
+                old_value = getattr(device, field, None)
                 setattr(device, field, data[field])
+                updated_fields[field] = {'old': old_value, 'new': data[field]}
         
         device.updated_at = datetime.utcnow()
         db.session.commit()
+        
+        # DEBUG: Log successful update
+        logger.info(f"✅ SERVER: Device {device_id} updated successfully")
+        logger.info(f"✅ SERVER: Updated fields: {updated_fields}")
+        logger.info(f"✅ SERVER: Device new state - ID: {device.id}, Name: {device.display_name}, Monitored: {device.is_monitored}")
         
         return jsonify(device.to_dict())
         

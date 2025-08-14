@@ -221,6 +221,14 @@
 <script>
     let anomalyCharts = {};
     let currentTimeFilter = 24; // Default 24 hours
+    
+    // State management to prevent duplicate API calls
+    let loadingStates = {
+        aiStatus: false,
+        anomalyStatistics: false,
+        anomalyAlerts: false,
+        aiSettings: false
+    };
 
     document.addEventListener('DOMContentLoaded', function() {
         loadAIData();
@@ -230,18 +238,35 @@
         document.getElementById('run-detection').addEventListener('click', runManualDetection);
         document.getElementById('ai-settings-form').addEventListener('submit', updateAISettings);
         
-        // Time filter buttons
+        // Time filter buttons with debouncing
+        let filterDebounceTimer = null;
         document.querySelectorAll('.time-filter').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                // Update active button
-                document.querySelectorAll('.time-filter').forEach(b => b.classList.remove('btn-secondary'));
-                document.querySelectorAll('.time-filter').forEach(b => b.classList.add('btn-outline-secondary'));
+                // Prevent rapid clicking
+                if (filterDebounceTimer) {
+                    clearTimeout(filterDebounceTimer);
+                }
+                
+                // Update active button immediately for responsive UI
+                document.querySelectorAll('.time-filter').forEach(b => {
+                    b.classList.remove('btn-secondary');
+                    b.classList.add('btn-outline-secondary');
+                });
                 e.target.classList.remove('btn-outline-secondary');
                 e.target.classList.add('btn-secondary');
                 
-                currentTimeFilter = parseInt(e.target.dataset.hours);
-                loadAnomalyAlerts();
-                loadAnomalyStatistics();
+                const newTimeFilter = parseInt(e.target.dataset.hours);
+                
+                // Debounce the actual data loading
+                filterDebounceTimer = setTimeout(() => {
+                    currentTimeFilter = newTimeFilter;
+                    Promise.all([
+                        loadAnomalyAlerts(),
+                        loadAnomalyStatistics()
+                    ]).catch(error => {
+                        console.error('Error updating time filter:', error);
+                    });
+                }, 300); // 300ms debounce
             });
         });
         
@@ -286,7 +311,14 @@
     }
     
     async function loadAnomalyStatistics() {
+        // Prevent duplicate calls
+        if (loadingStates.anomalyStatistics) {
+            return;
+        }
+        
         try {
+            loadingStates.anomalyStatistics = true;
+            
             const response = await fetch(`/api/anomaly/statistics?hours=${currentTimeFilter}`);
             const data = await response.json();
             
@@ -305,16 +337,25 @@
                 updateAnomalyDistributionChart(stats.by_type);
                 updateSeverityChart(stats.by_severity);
                 
-                // Update affected devices
+                // Update affected devices - ensure clean update
                 updateAffectedDevicesList(stats.most_affected_devices);
             }
         } catch (error) {
             console.error('Error loading anomaly statistics:', error);
+        } finally {
+            loadingStates.anomalyStatistics = false;
         }
     }
     
     async function loadAnomalyAlerts() {
+        // Prevent duplicate calls
+        if (loadingStates.anomalyAlerts) {
+            return;
+        }
+        
         try {
+            loadingStates.anomalyAlerts = true;
+            
             const response = await fetch(`/api/anomaly/alerts?hours=${currentTimeFilter}&limit=20`);
             const data = await response.json();
             
@@ -323,6 +364,8 @@
             }
         } catch (error) {
             console.error('Error loading anomaly alerts:', error);
+        } finally {
+            loadingStates.anomalyAlerts = false;
         }
     }
     
@@ -560,10 +603,18 @@
     function updateAnomalyAlertsTable(alerts) {
         const container = document.getElementById('anomaly-alerts-table');
         
+        // Always clear container first
+        container.innerHTML = '';
+        
         if (!alerts || alerts.length === 0) {
             container.innerHTML = '<div class="text-muted text-center py-4">No anomaly alerts found for the selected time period.</div>';
             return;
         }
+        
+        // Remove duplicates by alert ID (in case of race conditions)
+        const uniqueAlerts = alerts.filter((alert, index, self) => 
+            index === self.findIndex(a => a.id === alert.id)
+        );
         
         const table = `
             <div class="table-responsive">
@@ -579,8 +630,8 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${alerts.map(alert => `
-                            <tr>
+                        ${uniqueAlerts.map((alert, index) => `
+                            <tr data-alert-id="${alert.id}" data-device="${alert.device_name}">
                                 <td>
                                     <span class="fw-bold">${alert.device_name}</span>
                                 </td>
@@ -597,7 +648,7 @@
                                     <small>${(alert.confidence * 100).toFixed(1)}%</small>
                                 </td>
                                 <td>
-                                    <small>${alert.message}</small>
+                                    <small class="text-truncate" style="max-width: 200px;" title="${alert.message}">${alert.message}</small>
                                 </td>
                                 <td>
                                     <small>${new Date(alert.created_at).toLocaleString()}</small>
@@ -615,15 +666,32 @@
     function updateAffectedDevicesList(devices) {
         const container = document.getElementById('affected-devices-list');
         
+        // Always clear existing content first to prevent duplicates
+        container.innerHTML = '';
+        
         if (!devices || devices.length === 0) {
             container.innerHTML = '<div class="text-muted">No affected devices in the selected time period.</div>';
             return;
         }
         
-        const list = devices.map(([deviceName, count]) => `
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <span>${deviceName}</span>
-                <span class="badge bg-warning">${count} anomalies</span>
+        // Create unique device entries to prevent duplicates
+        const uniqueDevices = new Map();
+        devices.forEach(([deviceName, count]) => {
+            // Use device name as key to ensure uniqueness
+            const key = deviceName.toLowerCase().trim();
+            if (!uniqueDevices.has(key) || uniqueDevices.get(key)[1] < count) {
+                uniqueDevices.set(key, [deviceName, count]);
+            }
+        });
+        
+        // Convert back to array and sort by count descending
+        const sortedDevices = Array.from(uniqueDevices.values())
+            .sort((a, b) => b[1] - a[1]);
+        
+        const list = sortedDevices.map(([deviceName, count]) => `
+            <div class="d-flex justify-content-between align-items-center mb-2" data-device="${deviceName}">
+                <span class="fw-medium">${deviceName}</span>
+                <span class="badge bg-warning">${count} ${count === 1 ? 'anomaly' : 'anomalies'}</span>
             </div>
         `).join('');
         
