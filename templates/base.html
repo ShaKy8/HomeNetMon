@@ -515,9 +515,11 @@
                     <i class="bi bi-gear me-1"></i>System Info
                 </button>
             </div>
-            <div>
-                <small class="text-muted">{{ version_info.build_author }}</small>
-            </div>
+        </div>
+        
+        <!-- Attribution -->
+        <div class="text-center mt-2 pt-2 border-top">
+            <small class="text-muted d-block">{{ version_info.build_author }}</small>
         </div>
     </div>
 
@@ -1041,8 +1043,8 @@
         }
         
         function showDetailedSystemInfo() {
-            // Open detailed system info in new tab or overlay
-            window.open('/api/system/info', '_blank');
+            // Open formatted system info page in new tab
+            window.open('/system-info', '_blank');
         }
         
         // Action functions for keyboard shortcuts

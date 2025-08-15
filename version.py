@@ -19,7 +19,7 @@ VERSION_BUILD = "stable"
 
 # Build information
 BUILD_DATE = "2025-08-14"
-BUILD_AUTHOR = "HomeNetMon Development Team"
+BUILD_AUTHOR = "Envisioned & Designed by ShaKy8 • Coded by Claude Code"
 
 def get_version_string() -> str:
     """Get the full version string"""

@@ -1,0 +1,490 @@
+{% extends "base.html" %}
+
+{% block title %}System Information - HomeNetMon{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-gear text-primary me-2"></i>System Information
+                    </h1>
+                    <p class="text-muted mb-0">Detailed system and application information</p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-secondary btn-sm me-2" onclick="refreshSystemInfo()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                    <button class="btn btn-outline-primary btn-sm" onclick="copySystemInfo()">
+                        <i class="bi bi-clipboard me-1"></i>Copy JSON
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading indicator -->
+            <div id="loading-indicator" class="text-center py-5">
+                <div class="spinner-border text-primary" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p class="mt-2 text-muted">Loading system information...</p>
+            </div>
+
+            <!-- System Info Content -->
+            <div id="system-info-content" style="display: none;">
+                <!-- Application Information -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-primary text-white">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-info-circle me-2"></i>Application Information
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <table class="table table-borderless">
+                                            <tbody>
+                                                <tr>
+                                                    <th width="40%">Application:</th>
+                                                    <td id="app-name">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Version:</th>
+                                                    <td id="app-version">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Release:</th>
+                                                    <td id="app-release">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Build Date:</th>
+                                                    <td id="app-build-date">-</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <table class="table table-borderless">
+                                            <tbody>
+                                                <tr>
+                                                    <th width="40%">Author:</th>
+                                                    <td id="app-author">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>License:</th>
+                                                    <td id="app-license">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Repository:</th>
+                                                    <td id="app-repository">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Documentation:</th>
+                                                    <td id="app-docs">-</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                                <div class="row mt-3">
+                                    <div class="col-12">
+                                        <h6>Description:</h6>
+                                        <p id="app-description" class="text-muted">-</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Version & Features -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-info text-white">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-tag me-2"></i>Version Details
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-borderless">
+                                    <tbody>
+                                        <tr>
+                                            <th width="50%">Full Version:</th>
+                                            <td id="version-full">-</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Major.Minor.Patch:</th>
+                                            <td id="version-components">-</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Build Type:</th>
+                                            <td id="version-build">-</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Build Author:</th>
+                                            <td id="version-author">-</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-success text-white">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-star me-2"></i>Key Features
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <ul id="app-features" class="list-unstyled mb-0">
+                                    <!-- Features will be populated here -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- System Statistics -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-warning text-dark">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-cpu me-2"></i>System Statistics
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>System Information</h6>
+                                        <table class="table table-borderless table-sm">
+                                            <tbody>
+                                                <tr>
+                                                    <th width="40%">Platform:</th>
+                                                    <td id="sys-platform">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>System:</th>
+                                                    <td id="sys-system">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Release:</th>
+                                                    <td id="sys-release">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Machine:</th>
+                                                    <td id="sys-machine">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Processor:</th>
+                                                    <td id="sys-processor">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Uptime:</th>
+                                                    <td id="sys-uptime">-</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Resources</h6>
+                                        <table class="table table-borderless table-sm">
+                                            <tbody>
+                                                <tr>
+                                                    <th width="40%">CPU Cores:</th>
+                                                    <td id="sys-cpu-count">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Total Memory:</th>
+                                                    <td id="sys-memory-total">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Available Memory:</th>
+                                                    <td id="sys-memory-available">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Memory Usage:</th>
+                                                    <td id="sys-memory-percent">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Disk Total:</th>
+                                                    <td id="sys-disk-total">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Disk Free:</th>
+                                                    <td id="sys-disk-free">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Disk Usage:</th>
+                                                    <td id="sys-disk-percent">-</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Process Information -->
+                <div class="row mb-4">
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-secondary text-white">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-app me-2"></i>Process Information
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-borderless table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <th width="50%">Process ID:</th>
+                                            <td id="proc-pid">-</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Started:</th>
+                                            <td id="proc-started">-</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Threads:</th>
+                                            <td id="proc-threads">-</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Memory Usage:</th>
+                                            <td id="proc-memory">-</td>
+                                        </tr>
+                                        <tr>
+                                            <th>CPU Usage:</th>
+                                            <td id="proc-cpu">-</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="card h-100">
+                            <div class="card-header bg-dark text-white">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-code-slash me-2"></i>Python Environment
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <table class="table table-borderless table-sm">
+                                    <tbody>
+                                        <tr>
+                                            <th width="50%">Python Version:</th>
+                                            <td id="python-version">-</td>
+                                        </tr>
+                                        <tr>
+                                            <th>Python Build:</th>
+                                            <td id="python-build">-</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                                <h6 class="mt-3">Technologies</h6>
+                                <ul id="app-technologies" class="list-unstyled mb-0">
+                                    <!-- Technologies will be populated here -->
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Attribution & Credits -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-light">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-people me-2"></i>Credits & Attribution
+                                </h5>
+                            </div>
+                            <div class="card-body text-center">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="p-3">
+                                            <i class="bi bi-lightbulb text-warning fs-3 mb-2"></i>
+                                            <h6 class="fw-bold">Envisioned & Designed</h6>
+                                            <p class="text-primary fw-bold mb-0">ShaKy8</p>
+                                            <small class="text-muted">System Architecture & User Experience</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="p-3">
+                                            <i class="bi bi-code-slash text-info fs-3 mb-2"></i>
+                                            <h6 class="fw-bold">Coded & Developed</h6>
+                                            <p class="text-success fw-bold mb-0">Claude Code</p>
+                                            <small class="text-muted">Implementation & Technical Development</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="mt-3 pt-3 border-top">
+                                    <small class="text-muted">
+                                        <i class="bi bi-heart text-danger me-1"></i>
+                                        Built with passion for home network monitoring and security
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Hidden textarea for copying JSON data -->
+<textarea id="json-data" style="position: absolute; left: -9999px; opacity: 0;"></textarea>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let systemData = null;
+
+function loadSystemInfo() {
+    document.getElementById('loading-indicator').style.display = 'block';
+    document.getElementById('system-info-content').style.display = 'none';
+
+    fetch('/api/system/info')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                systemData = data;
+                populateSystemInfo(data);
+                document.getElementById('loading-indicator').style.display = 'none';
+                document.getElementById('system-info-content').style.display = 'block';
+            } else {
+                throw new Error(data.error || 'Failed to load system information');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading system info:', error);
+            document.getElementById('loading-indicator').innerHTML = 
+                '<div class="alert alert-danger">Error loading system information: ' + error.message + '</div>';
+        });
+}
+
+function populateSystemInfo(data) {
+    // Application Information
+    document.getElementById('app-name').textContent = data.application?.name || '-';
+    document.getElementById('app-version').textContent = data.version?.full_version || '-';
+    document.getElementById('app-release').textContent = data.version?.release_name || '-';
+    document.getElementById('app-build-date').textContent = data.version?.build_date || '-';
+    document.getElementById('app-author').textContent = data.application?.author || '-';
+    document.getElementById('app-license').textContent = data.application?.license || '-';
+    
+    const repoElement = document.getElementById('app-repository');
+    if (data.application?.repository) {
+        repoElement.innerHTML = `<a href="${data.application.repository}" target="_blank" class="text-decoration-none">${data.application.repository}</a>`;
+    } else {
+        repoElement.textContent = '-';
+    }
+    
+    document.getElementById('app-docs').textContent = data.application?.documentation || '-';
+    document.getElementById('app-description').textContent = data.application?.description || '-';
+
+    // Version Details
+    document.getElementById('version-full').textContent = data.version?.full_version || '-';
+    document.getElementById('version-components').textContent = 
+        `${data.version?.version_major || 0}.${data.version?.version_minor || 0}.${data.version?.version_patch || 0}`;
+    document.getElementById('version-build').textContent = data.version?.version_build || '-';
+    document.getElementById('version-author').textContent = data.version?.build_author || '-';
+
+    // Features
+    const featuresElement = document.getElementById('app-features');
+    featuresElement.innerHTML = '';
+    if (data.application?.features) {
+        data.application.features.forEach(feature => {
+            const li = document.createElement('li');
+            li.innerHTML = `<i class="bi bi-check-circle text-success me-2"></i>${feature}`;
+            li.className = 'mb-1';
+            featuresElement.appendChild(li);
+        });
+    }
+
+    // System Information
+    document.getElementById('sys-platform').textContent = data.system?.system?.platform || '-';
+    document.getElementById('sys-system').textContent = data.system?.system?.system || '-';
+    document.getElementById('sys-release').textContent = data.system?.system?.release || '-';
+    document.getElementById('sys-machine').textContent = data.system?.system?.machine || '-';
+    document.getElementById('sys-processor').textContent = data.system?.system?.processor || '-';
+    document.getElementById('sys-uptime').textContent = data.system?.system?.system_uptime || '-';
+
+    // Resources
+    document.getElementById('sys-cpu-count').textContent = 
+        `${data.system?.system?.cpu_count || 0} (${data.system?.system?.cpu_count_logical || 0} logical)`;
+    document.getElementById('sys-memory-total').textContent = 
+        `${data.system?.system?.total_memory_gb?.toFixed(2) || 0} GB`;
+    document.getElementById('sys-memory-available').textContent = 
+        `${data.system?.system?.available_memory_gb?.toFixed(2) || 0} GB`;
+    document.getElementById('sys-memory-percent').textContent = 
+        `${data.system?.system?.memory_percent?.toFixed(1) || 0}%`;
+    document.getElementById('sys-disk-total').textContent = 
+        `${data.system?.system?.disk_total_gb?.toFixed(2) || 0} GB`;
+    document.getElementById('sys-disk-free').textContent = 
+        `${data.system?.system?.disk_free_gb?.toFixed(2) || 0} GB`;
+    document.getElementById('sys-disk-percent').textContent = 
+        `${data.system?.system?.disk_percent?.toFixed(1) || 0}%`;
+
+    // Process Information
+    document.getElementById('proc-pid').textContent = data.system?.process?.pid || '-';
+    document.getElementById('proc-started').textContent = 
+        data.system?.process?.started ? new Date(data.system.process.started).toLocaleString() : '-';
+    document.getElementById('proc-threads').textContent = data.system?.process?.threads || '-';
+    document.getElementById('proc-memory').textContent = 
+        `${data.system?.process?.memory_usage_mb?.toFixed(2) || 0} MB`;
+    document.getElementById('proc-cpu').textContent = 
+        `${data.system?.process?.cpu_percent?.toFixed(1) || 0}%`;
+
+    // Python Environment
+    document.getElementById('python-version').textContent = data.system?.system?.python_version || '-';
+    document.getElementById('python-build').textContent = 
+        data.system?.system?.python_build ? data.system.system.python_build.join('.') : '-';
+
+    // Technologies
+    const techElement = document.getElementById('app-technologies');
+    techElement.innerHTML = '';
+    if (data.application?.technologies) {
+        data.application.technologies.forEach(tech => {
+            const li = document.createElement('li');
+            li.innerHTML = `<i class="bi bi-gear-fill text-primary me-2"></i>${tech}`;
+            li.className = 'mb-1 small';
+            techElement.appendChild(li);
+        });
+    }
+}
+
+function refreshSystemInfo() {
+    loadSystemInfo();
+    showToast('System information refreshed', 'success');
+}
+
+function copySystemInfo() {
+    if (systemData) {
+        const jsonText = JSON.stringify(systemData, null, 2);
+        const textarea = document.getElementById('json-data');
+        textarea.value = jsonText;
+        textarea.select();
+        document.execCommand('copy');
+        showToast('System information copied to clipboard', 'success');
+    } else {
+        showToast('No system information to copy', 'warning');
+    }
+}
+
+// Load system info when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadSystemInfo();
+});
+</script>
+{% endblock %}

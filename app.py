@@ -248,6 +248,10 @@ def create_app():
     def health_overview():
         return render_template('health_overview.html')
     
+    @app.route('/system-info')
+    def system_info():
+        return render_template('system_info.html')
+    
     # Redirect routes for common URL variations (underscored URLs redirect to hyphenated ones)
     @app.route('/ai_dashboard')
     def ai_dashboard_underscore_redirect():
