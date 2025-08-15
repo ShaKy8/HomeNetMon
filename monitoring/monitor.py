@@ -462,6 +462,10 @@ class DeviceMonitor:
             logger.error(f"Error force monitoring device {device_id}: {e}")
             return None
     
+    def queue_immediate_ping(self, device_id):
+        """Queue an immediate ping for a device (alias for force_monitor_device)"""
+        return self.force_monitor_device(device_id)
+    
     def _trigger_rule_engine_for_status_change(self, device, previous_status, current_status, response_time):
         """Trigger rule engine evaluation for device status changes"""
         try:

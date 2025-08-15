@@ -2,7 +2,27 @@
 
 A comprehensive, self-hosted network monitoring solution designed for home networks. Monitor device availability, track performance metrics, receive alerts, and gain insights into your network's health through an intuitive web dashboard.
 
-![HomeNetMon Dashboard](https://via.placeholder.com/800x400?text=HomeNetMon+Dashboard)
+## Screenshots
+
+### 🏠 Main Dashboard
+![Main Dashboard](screenshots/01_dashboard.png)
+*Real-time device monitoring with status grid and network overview*
+
+### 📊 Monitored Hosts
+![Monitored Hosts](screenshots/02_monitored_hosts.png)
+*Comprehensive device management with MAC addresses, vendor information, and bulk operations*
+
+### 📈 Analytics Dashboard  
+![Analytics Dashboard](screenshots/03_analytics.png)
+*Network performance analytics, health scores, and usage insights*
+
+### 🏥 Health Overview
+![Health Overview](screenshots/04_health_overview.png)
+*Network health monitoring with real-time metrics and performance trends*
+
+### 🚨 Alert Management
+![Alert Management](screenshots/05_alerts.png)
+*Active alert monitoring, notifications, and alert history management*
 
 ## Features
 

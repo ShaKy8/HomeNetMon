@@ -1,0 +1,699 @@
+<!DOCTYPE html>
+<html lang="en" data-bs-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NOC - Network Operations Center | HomeNetMon</title>
+    
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    
+    <!-- Chart.js for real-time charts -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Socket.IO for real-time updates -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    
+    <!-- NOC-specific CSS -->
+    <style>
+        /* NOC Dark Theme */
+        :root {
+            --noc-bg-primary: #0a0e27;
+            --noc-bg-secondary: #1a1f3a;
+            --noc-bg-tertiary: #2a2f4a;
+            --noc-accent-cyan: #00ffff;
+            --noc-accent-green: #00ff41;
+            --noc-accent-red: #ff0040;
+            --noc-accent-yellow: #ffff00;
+            --noc-text-primary: #ffffff;
+            --noc-text-secondary: #a0a0a0;
+            --noc-border: #3a3f5a;
+        }
+        
+        body {
+            background: linear-gradient(135deg, var(--noc-bg-primary) 0%, var(--noc-bg-secondary) 100%);
+            font-family: 'Courier New', monospace;
+            color: var(--noc-text-primary);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+        }
+        
+        /* Header */
+        .noc-header {
+            background: var(--noc-bg-secondary);
+            border-bottom: 2px solid var(--noc-accent-cyan);
+            padding: 10px 20px;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            box-shadow: 0 2px 20px rgba(0, 255, 255, 0.3);
+        }
+        
+        .noc-clock {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: var(--noc-accent-cyan);
+            text-shadow: 0 0 10px var(--noc-accent-cyan);
+        }
+        
+        .network-status {
+            font-size: 1.2rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+        
+        .status-online { 
+            color: var(--noc-accent-green); 
+            text-shadow: 0 0 10px var(--noc-accent-green);
+        }
+        .status-degraded { 
+            color: var(--noc-accent-yellow); 
+            text-shadow: 0 0 10px var(--noc-accent-yellow);
+        }
+        .status-critical { 
+            color: var(--noc-accent-red); 
+            text-shadow: 0 0 10px var(--noc-accent-red);
+        }
+        
+        /* Main Content */
+        .noc-content {
+            margin-top: 80px;
+            padding: 20px;
+            height: calc(100vh - 80px);
+        }
+        
+        /* Status Panels */
+        .noc-panel {
+            background: var(--noc-bg-secondary);
+            border: 1px solid var(--noc-border);
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            transition: all 0.3s ease;
+        }
+        
+        .noc-panel:hover {
+            border-color: var(--noc-accent-cyan);
+            box-shadow: 0 4px 30px rgba(0, 255, 255, 0.2);
+        }
+        
+        /* Health Score Display */
+        .health-score-display {
+            text-align: center;
+            position: relative;
+        }
+        
+        .health-score-number {
+            font-size: 4rem;
+            font-weight: bold;
+            text-shadow: 0 0 20px currentColor;
+            margin: 0;
+            animation: pulse 2s ease-in-out infinite alternate;
+        }
+        
+        .health-score-excellent { color: var(--noc-accent-green); }
+        .health-score-good { color: var(--noc-accent-cyan); }
+        .health-score-fair { color: var(--noc-accent-yellow); }
+        .health-score-poor { color: var(--noc-accent-red); }
+        
+        @keyframes pulse {
+            from { opacity: 0.8; }
+            to { opacity: 1; }
+        }
+        
+        /* Device Grid */
+        .device-tile {
+            background: var(--noc-bg-tertiary);
+            border: 2px solid var(--noc-border);
+            border-radius: 8px;
+            padding: 15px;
+            margin: 10px;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .device-tile.status-up {
+            border-color: var(--noc-accent-green);
+            box-shadow: 0 0 15px rgba(0, 255, 65, 0.3);
+        }
+        
+        .device-tile.status-down {
+            border-color: var(--noc-accent-red);
+            box-shadow: 0 0 15px rgba(255, 0, 64, 0.3);
+            animation: blink 2s ease-in-out infinite;
+        }
+        
+        .device-tile.status-warning {
+            border-color: var(--noc-accent-yellow);
+            box-shadow: 0 0 15px rgba(255, 255, 0, 0.3);
+        }
+        
+        @keyframes blink {
+            0%, 50% { opacity: 1; }
+            51%, 100% { opacity: 0.5; }
+        }
+        
+        .device-name {
+            font-size: 0.9rem;
+            font-weight: bold;
+            color: var(--noc-text-primary);
+            margin-bottom: 5px;
+        }
+        
+        .device-ip {
+            font-size: 0.8rem;
+            color: var(--noc-text-secondary);
+            font-family: monospace;
+        }
+        
+        .device-response-time {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-top: 8px;
+        }
+        
+        /* Alerts Panel */
+        .alerts-feed {
+            height: 300px;
+            overflow-y: auto;
+            border: 1px solid var(--noc-border);
+            border-radius: 5px;
+            padding: 10px;
+            background: var(--noc-bg-primary);
+        }
+        
+        .alert-item {
+            background: var(--noc-bg-tertiary);
+            border-left: 4px solid;
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            animation: slideIn 0.5s ease-out;
+        }
+        
+        .alert-critical { border-left-color: var(--noc-accent-red); }
+        .alert-warning { border-left-color: var(--noc-accent-yellow); }
+        .alert-info { border-left-color: var(--noc-accent-cyan); }
+        
+        @keyframes slideIn {
+            from { transform: translateX(100%); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        
+        /* Statistics Gauges */
+        .stat-gauge {
+            text-align: center;
+            padding: 15px;
+        }
+        
+        .stat-value {
+            font-size: 2rem;
+            font-weight: bold;
+            text-shadow: 0 0 10px currentColor;
+        }
+        
+        .stat-label {
+            font-size: 0.9rem;
+            color: var(--noc-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* Network Map Placeholder */
+        .network-map {
+            height: 250px;
+            background: var(--noc-bg-primary);
+            border: 1px solid var(--noc-border);
+            border-radius: 8px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .map-node {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            border: 2px solid;
+            animation: mapPulse 3s ease-in-out infinite;
+        }
+        
+        .map-node.online { 
+            background: var(--noc-accent-green); 
+            border-color: var(--noc-accent-green);
+            box-shadow: 0 0 10px var(--noc-accent-green);
+        }
+        .map-node.offline { 
+            background: var(--noc-accent-red); 
+            border-color: var(--noc-accent-red);
+            box-shadow: 0 0 10px var(--noc-accent-red);
+        }
+        
+        @keyframes mapPulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.2); }
+        }
+        
+        /* Scrollbar Styling */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        
+        ::-webkit-scrollbar-track {
+            background: var(--noc-bg-primary);
+        }
+        
+        ::-webkit-scrollbar-thumb {
+            background: var(--noc-accent-cyan);
+            border-radius: 4px;
+        }
+        
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--noc-accent-green);
+        }
+        
+        /* Full Screen Mode */
+        .fullscreen-btn {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: var(--noc-bg-secondary);
+            border: 1px solid var(--noc-accent-cyan);
+            color: var(--noc-accent-cyan);
+            padding: 8px 12px;
+            border-radius: 5px;
+            cursor: pointer;
+            z-index: 1001;
+            transition: all 0.3s ease;
+        }
+        
+        .fullscreen-btn:hover {
+            background: var(--noc-accent-cyan);
+            color: var(--noc-bg-primary);
+        }
+        
+        /* Responsive adjustments */
+        @media (max-width: 1200px) {
+            .health-score-number { font-size: 3rem; }
+            .noc-panel { padding: 15px; }
+        }
+        
+        @media (max-width: 768px) {
+            .health-score-number { font-size: 2.5rem; }
+            .device-tile { margin: 5px; padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Header -->
+    <div class="noc-header">
+        <div class="row align-items-center">
+            <div class="col-md-3">
+                <div class="noc-clock" id="noc-clock">--:--:--</div>
+            </div>
+            <div class="col-md-6 text-center">
+                <h2 class="mb-0">
+                    <i class="bi bi-hdd-network me-2"></i>
+                    NETWORK OPERATIONS CENTER
+                </h2>
+            </div>
+            <div class="col-md-3 text-end">
+                <div class="network-status" id="network-status">
+                    <span class="status-indicator">INITIALIZING</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Full Screen Button -->
+    <button class="fullscreen-btn" onclick="toggleFullscreen()">
+        <i class="bi bi-fullscreen"></i>
+    </button>
+    
+    <!-- Main Content -->
+    <div class="noc-content">
+        <div class="row">
+            <!-- Left Column - Main Status -->
+            <div class="col-lg-4">
+                <!-- Health Score Panel -->
+                <div class="noc-panel">
+                    <h5 class="text-center mb-3">
+                        <i class="bi bi-heart-pulse me-2"></i>NETWORK HEALTH
+                    </h5>
+                    <div class="health-score-display">
+                        <div class="health-score-number" id="health-score">--</div>
+                        <div class="health-score-label">HEALTH SCORE</div>
+                    </div>
+                </div>
+                
+                <!-- Quick Stats -->
+                <div class="noc-panel">
+                    <h5 class="mb-3">
+                        <i class="bi bi-speedometer2 me-2"></i>NETWORK METRICS
+                    </h5>
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="stat-gauge">
+                                <div class="stat-value text-success" id="devices-online">--</div>
+                                <div class="stat-label">Online</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stat-gauge">
+                                <div class="stat-value text-danger" id="devices-offline">--</div>
+                                <div class="stat-label">Offline</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stat-gauge">
+                                <div class="stat-value text-info" id="avg-response-time">--</div>
+                                <div class="stat-label">Avg Response</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="stat-gauge">
+                                <div class="stat-value text-warning" id="active-alerts">--</div>
+                                <div class="stat-label">Active Alerts</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Network Map -->
+                <div class="noc-panel">
+                    <h5 class="mb-3">
+                        <i class="bi bi-diagram-3 me-2"></i>NETWORK TOPOLOGY
+                    </h5>
+                    <div class="network-map" id="network-map">
+                        <!-- Network nodes will be dynamically added here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Center Column - Device Grid -->
+            <div class="col-lg-5">
+                <div class="noc-panel">
+                    <h5 class="mb-3">
+                        <i class="bi bi-hdd-stack me-2"></i>CRITICAL DEVICES
+                    </h5>
+                    <div class="row" id="device-grid">
+                        <!-- Device tiles will be dynamically added here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Right Column - Alerts and Activity -->
+            <div class="col-lg-3">
+                <!-- Active Alerts -->
+                <div class="noc-panel">
+                    <h5 class="mb-3">
+                        <i class="bi bi-exclamation-triangle me-2"></i>ACTIVE ALERTS
+                    </h5>
+                    <div class="alerts-feed" id="alerts-feed">
+                        <!-- Alerts will be dynamically added here -->
+                    </div>
+                </div>
+                
+                <!-- Activity Feed -->
+                <div class="noc-panel">
+                    <h5 class="mb-3">
+                        <i class="bi bi-activity me-2"></i>RECENT ACTIVITY
+                    </h5>
+                    <div class="alerts-feed" id="activity-feed">
+                        <!-- Activity will be dynamically added here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- JavaScript -->
+    <script>
+        // NOC Dashboard JavaScript
+        let socket;
+        let nocData = {
+            healthScore: 0,
+            devicesOnline: 0,
+            devicesOffline: 0,
+            avgResponseTime: 0,
+            activeAlerts: 0,
+            devices: [],
+            alerts: []
+        };
+        
+        // Initialize NOC Dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeClock();
+            initializeWebSocket();
+            loadInitialData();
+            
+            // Auto-refresh every 30 seconds
+            setInterval(loadInitialData, 30000);
+        });
+        
+        // Clock functionality
+        function initializeClock() {
+            function updateClock() {
+                const now = new Date();
+                const timeString = now.toLocaleTimeString('en-US', { 
+                    hour12: false,
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit'
+                });
+                document.getElementById('noc-clock').textContent = timeString;
+            }
+            
+            updateClock();
+            setInterval(updateClock, 1000);
+        }
+        
+        // WebSocket for real-time updates
+        function initializeWebSocket() {
+            socket = io();
+            
+            socket.on('connect', function() {
+                console.log('NOC: Connected to WebSocket');
+            });
+            
+            socket.on('device_status_update', function(data) {
+                updateDeviceStatus(data);
+            });
+            
+            socket.on('monitoring_summary', function(data) {
+                updateNetworkMetrics(data);
+            });
+        }
+        
+        // Load initial data
+        async function loadInitialData() {
+            try {
+                // Load health overview data
+                const healthResponse = await fetch('/api/health/overview');
+                const healthData = await healthResponse.json();
+                
+                if (healthData.success) {
+                    updateHealthScore(healthData.health_score, healthData.network_status);
+                    updateNetworkStatus(healthData.health_score);
+                }
+                
+                // Load device data
+                const devicesResponse = await fetch('/api/devices?monitored=true');
+                const devicesData = await devicesResponse.json();
+                
+                if (devicesData.devices) {
+                    nocData.devices = devicesData.devices;
+                    updateDeviceGrid();
+                    updateNetworkMap();
+                }
+                
+                // Load alerts
+                const alertsResponse = await fetch('/api/monitoring/alerts?resolved=false&limit=20');
+                const alertsData = await alertsResponse.json();
+                
+                if (alertsData.alerts) {
+                    nocData.alerts = alertsData.alerts;
+                    updateAlertsPanel();
+                }
+                
+            } catch (error) {
+                console.error('NOC: Error loading data:', error);
+            }
+        }
+        
+        // Update health score display
+        function updateHealthScore(score, networkStatus) {
+            const scoreElement = document.getElementById('health-score');
+            scoreElement.textContent = score.toFixed(1);
+            
+            // Update score color class
+            scoreElement.className = 'health-score-number ';
+            if (score >= 90) scoreElement.className += 'health-score-excellent';
+            else if (score >= 75) scoreElement.className += 'health-score-good';
+            else if (score >= 60) scoreElement.className += 'health-score-fair';
+            else scoreElement.className += 'health-score-poor';
+            
+            // Update network metrics
+            document.getElementById('devices-online').textContent = networkStatus.devices_online;
+            document.getElementById('devices-offline').textContent = networkStatus.devices_offline;
+            document.getElementById('avg-response-time').textContent = networkStatus.avg_response_time_ms + 'ms';
+        }
+        
+        // Update network status indicator
+        function updateNetworkStatus(healthScore) {
+            const statusElement = document.getElementById('network-status');
+            const indicator = statusElement.querySelector('.status-indicator');
+            
+            if (healthScore >= 90) {
+                indicator.textContent = 'OPTIMAL';
+                indicator.className = 'status-indicator status-online';
+            } else if (healthScore >= 75) {
+                indicator.textContent = 'GOOD';
+                indicator.className = 'status-indicator status-online';
+            } else if (healthScore >= 60) {
+                indicator.textContent = 'DEGRADED';
+                indicator.className = 'status-indicator status-degraded';
+            } else {
+                indicator.textContent = 'CRITICAL';
+                indicator.className = 'status-indicator status-critical';
+            }
+        }
+        
+        // Update device grid
+        function updateDeviceGrid() {
+            const grid = document.getElementById('device-grid');
+            
+            // Show critical/important devices only (first 12)
+            const criticalDevices = nocData.devices
+                .filter(device => device.is_monitored)
+                .sort((a, b) => {
+                    // Prioritize offline devices, then by importance
+                    if (a.status === 'down' && b.status !== 'down') return -1;
+                    if (b.status === 'down' && a.status !== 'down') return 1;
+                    return 0;
+                })
+                .slice(0, 12);
+            
+            grid.innerHTML = criticalDevices.map(device => `
+                <div class="col-4 mb-2">
+                    <div class="device-tile status-${device.status}" data-device-id="${device.id}">
+                        <div class="device-name">${device.display_name}</div>
+                        <div class="device-ip">${device.ip_address}</div>
+                        <div class="device-response-time ${getResponseTimeClass(device.latest_response_time)}">
+                            ${device.latest_response_time ? device.latest_response_time + 'ms' : 'N/A'}
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        // Update network map
+        function updateNetworkMap() {
+            const mapContainer = document.getElementById('network-map');
+            mapContainer.innerHTML = '';
+            
+            // Create network nodes (simplified visualization)
+            const onlineDevices = nocData.devices.filter(d => d.status === 'up').length;
+            const totalDevices = nocData.devices.length;
+            
+            // Add nodes in a circular pattern
+            for (let i = 0; i < Math.min(totalDevices, 20); i++) {
+                const device = nocData.devices[i];
+                const node = document.createElement('div');
+                node.className = `map-node ${device.status === 'up' ? 'online' : 'offline'}`;
+                
+                // Position nodes in a circle
+                const angle = (i / Math.min(totalDevices, 20)) * 2 * Math.PI;
+                const radius = 100;
+                const centerX = 120;
+                const centerY = 120;
+                const x = centerX + radius * Math.cos(angle);
+                const y = centerY + radius * Math.sin(angle);
+                
+                node.style.left = x + 'px';
+                node.style.top = y + 'px';
+                node.title = device.display_name;
+                
+                mapContainer.appendChild(node);
+            }
+        }
+        
+        // Update alerts panel
+        function updateAlertsPanel() {
+            const alertsPanel = document.getElementById('alerts-feed');
+            const activeAlertsCount = document.getElementById('active-alerts');
+            
+            activeAlertsCount.textContent = nocData.alerts.length;
+            
+            alertsPanel.innerHTML = nocData.alerts.map(alert => `
+                <div class="alert-item alert-${alert.severity}">
+                    <div class="fw-bold">${alert.alert_type.replace('_', ' ').toUpperCase()}</div>
+                    <div class="small">${alert.device?.display_name || 'System'}</div>
+                    <div class="small text-muted">${new Date(alert.created_at).toLocaleTimeString()}</div>
+                </div>
+            `).join('');
+        }
+        
+        // Helper functions
+        function getResponseTimeClass(responseTime) {
+            if (!responseTime) return 'text-muted';
+            if (responseTime < 50) return 'text-success';
+            if (responseTime < 200) return 'text-warning';
+            return 'text-danger';
+        }
+        
+        function updateDeviceStatus(deviceData) {
+            // Update specific device in the grid
+            const deviceTile = document.querySelector(`[data-device-id="${deviceData.device_id}"]`);
+            if (deviceTile) {
+                deviceTile.className = `device-tile status-${deviceData.status}`;
+                const responseTimeElement = deviceTile.querySelector('.device-response-time');
+                if (responseTimeElement) {
+                    responseTimeElement.textContent = deviceData.response_time ? 
+                        deviceData.response_time + 'ms' : 'N/A';
+                    responseTimeElement.className = 'device-response-time ' + 
+                        getResponseTimeClass(deviceData.response_time);
+                }
+            }
+        }
+        
+        function updateNetworkMetrics(data) {
+            if (data.devices_up !== undefined) {
+                document.getElementById('devices-online').textContent = data.devices_up;
+            }
+            if (data.devices_down !== undefined) {
+                document.getElementById('devices-offline').textContent = data.devices_down;
+            }
+        }
+        
+        // Full screen functionality
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen();
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        
+        // Keyboard shortcuts
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'F11') {
+                event.preventDefault();
+                toggleFullscreen();
+            }
+            if (event.key === 'Escape' && document.fullscreenElement) {
+                document.exitFullscreen();
+            }
+        });
+    </script>
+</body>
+</html>

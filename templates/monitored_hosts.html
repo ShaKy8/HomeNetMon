@@ -1,0 +1,566 @@
+{% extends "base.html" %}
+
+{% block title %}Monitored Hosts - HomeNetMon{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Header -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h3 mb-0">
+                        <i class="bi bi-hdd-network text-primary me-2"></i>Monitored Hosts
+                    </h1>
+                    <p class="text-muted mb-0">Devices actively being monitored for availability and performance</p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-primary btn-sm me-2" onclick="refreshMonitoredHosts()">
+                        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                    </button>
+                    <button class="btn btn-outline-success btn-sm me-2" onclick="exportMonitoredHosts()">
+                        <i class="bi bi-download me-1"></i>Export CSV
+                    </button>
+                    <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#bulkMonitoringModal">
+                        <i class="bi bi-gear me-1"></i>Bulk Actions
+                    </button>
+                </div>
+            </div>
+
+            <!-- Status Overview Cards -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="card-title mb-0" id="total-monitored">-</h5>
+                                    <small>Total Monitored</small>
+                                </div>
+                                <i class="bi bi-hdd-network fs-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="card-title mb-0" id="hosts-online">-</h5>
+                                    <small>Online</small>
+                                </div>
+                                <i class="bi bi-check-circle fs-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-danger text-white">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="card-title mb-0" id="hosts-offline">-</h5>
+                                    <small>Offline</small>
+                                </div>
+                                <i class="bi bi-x-circle fs-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-dark">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="card-title mb-0" id="hosts-warning">-</h5>
+                                    <small>Warning</small>
+                                </div>
+                                <i class="bi bi-exclamation-triangle fs-2"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Filters and Search -->
+            <div class="row mb-3">
+                <div class="col-md-8">
+                    <div class="input-group">
+                        <span class="input-group-text"><i class="bi bi-search"></i></span>
+                        <input type="text" class="form-control" id="host-search" placeholder="Search by name, IP, MAC, vendor, or device type..." onkeyup="filterHosts()">
+                    </div>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" id="status-filter" onchange="filterHosts()">
+                        <option value="">All Status</option>
+                        <option value="up">Online</option>
+                        <option value="down">Offline</option>
+                        <option value="warning">Warning</option>
+                        <option value="unknown">Unknown</option>
+                    </select>
+                </div>
+                <div class="col-md-2">
+                    <select class="form-select" id="type-filter" onchange="filterHosts()">
+                        <option value="">All Types</option>
+                        <option value="router">Router</option>
+                        <option value="computer">Computer</option>
+                        <option value="phone">Phone</option>
+                        <option value="iot">IoT Device</option>
+                        <option value="camera">Camera</option>
+                        <option value="smart_home">Smart Home</option>
+                        <option value="unknown">Unknown</option>
+                    </select>
+                </div>
+            </div>
+
+            <!-- Monitored Hosts Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-table me-2"></i>Monitored Hosts
+                        <span id="filtered-count" class="badge bg-secondary ms-2">0</span>
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <!-- Loading indicator -->
+                    <div id="loading-indicator" class="text-center py-4">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2 text-muted">Loading monitored hosts...</p>
+                    </div>
+
+                    <!-- Hosts table -->
+                    <div class="table-responsive" id="hosts-table-container" style="display: none;">
+                        <table class="table table-hover align-middle" id="hosts-table">
+                            <thead class="table-light">
+                                <tr>
+                                    <th width="50">
+                                        <input type="checkbox" id="select-all" class="form-check-input" onchange="toggleSelectAll()">
+                                    </th>
+                                    <th width="60">Status</th>
+                                    <th>Name</th>
+                                    <th>IP Address</th>
+                                    <th>Device Type</th>
+                                    <th>Last Seen</th>
+                                    <th width="100">Response Time</th>
+                                    <th width="100">Uptime %</th>
+                                    <th width="80">Alerts</th>
+                                    <th width="80">Monitoring</th>
+                                    <th width="120">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="hosts-tbody">
+                                <!-- Hosts will be populated here -->
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Empty state -->
+                    <div id="empty-state" class="text-center py-5" style="display: none;">
+                        <i class="bi bi-hdd-network text-muted" style="font-size: 3rem;"></i>
+                        <h5 class="text-muted mt-3">No Monitored Hosts Found</h5>
+                        <p class="text-muted">No devices are currently being monitored, or none match your filters.</p>
+                        <a href="/settings" class="btn btn-primary">Configure Monitoring</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Monitoring Actions Modal -->
+<div class="modal fade" id="bulkMonitoringModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Bulk Monitoring Actions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">Select devices in the table below, then choose an action:</p>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-success" onclick="bulkEnableMonitoring()">
+                        <i class="bi bi-check-circle me-2"></i>Enable Monitoring for Selected
+                    </button>
+                    <button class="btn btn-warning" onclick="bulkDisableMonitoring()">
+                        <i class="bi bi-x-circle me-2"></i>Disable Monitoring for Selected
+                    </button>
+                    <button class="btn btn-primary" onclick="bulkPingDevices()">
+                        <i class="bi bi-wifi me-2"></i>Ping Selected Devices
+                    </button>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <span id="selected-count">0</span> devices selected
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+let monitoredHosts = [];
+let filteredHosts = [];
+
+// Status color mapping
+const statusColors = {
+    'up': 'success',
+    'down': 'danger', 
+    'warning': 'warning',
+    'unknown': 'secondary'
+};
+
+const statusIcons = {
+    'up': 'check-circle-fill',
+    'down': 'x-circle-fill',
+    'warning': 'exclamation-triangle-fill',
+    'unknown': 'question-circle-fill'
+};
+
+// Load monitored hosts data
+async function loadMonitoredHosts() {
+    try {
+        document.getElementById('loading-indicator').style.display = 'block';
+        document.getElementById('hosts-table-container').style.display = 'none';
+        document.getElementById('empty-state').style.display = 'none';
+
+        const response = await fetch('/api/devices?monitored=true');
+        const data = await response.json();
+        
+        if (data.devices) {
+            monitoredHosts = data.devices || [];
+            updateStatusCards();
+            filterHosts(); // This will render the table
+        } else {
+            throw new Error('Failed to load monitored hosts');
+        }
+    } catch (error) {
+        console.error('Error loading monitored hosts:', error);
+        document.getElementById('loading-indicator').innerHTML = 
+            '<div class="alert alert-danger">Error loading monitored hosts: ' + error.message + '</div>';
+    }
+}
+
+// Update status overview cards
+function updateStatusCards() {
+    const total = monitoredHosts.length;
+    const online = monitoredHosts.filter(h => h.status === 'up').length;
+    const offline = monitoredHosts.filter(h => h.status === 'down').length;
+    const warning = monitoredHosts.filter(h => h.status === 'warning').length;
+
+    document.getElementById('total-monitored').textContent = total;
+    document.getElementById('hosts-online').textContent = online;
+    document.getElementById('hosts-offline').textContent = offline;
+    document.getElementById('hosts-warning').textContent = warning;
+}
+
+// Filter hosts based on search and filter criteria
+function filterHosts() {
+    const searchTerm = document.getElementById('host-search').value.toLowerCase();
+    const statusFilter = document.getElementById('status-filter').value;
+    const typeFilter = document.getElementById('type-filter').value;
+
+    filteredHosts = monitoredHosts.filter(host => {
+        const matchesSearch = !searchTerm || 
+            host.display_name.toLowerCase().includes(searchTerm) ||
+            host.ip_address.toLowerCase().includes(searchTerm) ||
+            (host.hostname && host.hostname.toLowerCase().includes(searchTerm)) ||
+            (host.mac_address && host.mac_address.toLowerCase().includes(searchTerm)) ||
+            (host.vendor && host.vendor.toLowerCase().includes(searchTerm)) ||
+            (host.device_type && host.device_type.toLowerCase().includes(searchTerm));
+        
+        const matchesStatus = !statusFilter || host.status === statusFilter;
+        const matchesType = !typeFilter || host.device_type === typeFilter;
+
+        return matchesSearch && matchesStatus && matchesType;
+    });
+
+    renderHostsTable();
+}
+
+// Render the hosts table
+function renderHostsTable() {
+    const tbody = document.getElementById('hosts-tbody');
+    const filteredCount = document.getElementById('filtered-count');
+    
+    filteredCount.textContent = filteredHosts.length;
+
+    if (filteredHosts.length === 0) {
+        document.getElementById('loading-indicator').style.display = 'none';
+        document.getElementById('hosts-table-container').style.display = 'none';
+        document.getElementById('empty-state').style.display = 'block';
+        return;
+    }
+
+    // Show table and hide other states
+    document.getElementById('loading-indicator').style.display = 'none';
+    document.getElementById('hosts-table-container').style.display = 'block';
+    document.getElementById('empty-state').style.display = 'none';
+
+    tbody.innerHTML = filteredHosts.map(host => {
+        const statusClass = statusColors[host.status] || 'secondary';
+        const statusIcon = statusIcons[host.status] || 'question-circle-fill';
+        const lastSeen = host.last_seen ? new Date(host.last_seen + 'Z').toLocaleString() : 'Never';
+        const responseTime = host.latest_response_time ? `${host.latest_response_time}ms` : '-';
+        const uptime = host.uptime_percentage !== null ? `${host.uptime_percentage.toFixed(1)}%` : '-';
+        const alertBadge = host.active_alerts > 0 ? 
+            `<span class="badge bg-danger">${host.active_alerts}</span>` : 
+            '<span class="text-muted">-</span>';
+
+        return `
+            <tr data-device-id="${host.id}">
+                <td>
+                    <input type="checkbox" class="form-check-input device-checkbox" value="${host.id}" onchange="updateSelectedCount()">
+                </td>
+                <td>
+                    <i class="bi bi-${statusIcon} text-${statusClass}" title="${host.status.charAt(0).toUpperCase() + host.status.slice(1)}"></i>
+                </td>
+                <td>
+                    <div class="fw-bold">${host.display_name}</div>
+                    ${host.hostname && host.hostname !== host.display_name ? `<small class="text-muted d-block">${host.hostname}</small>` : ''}
+                    ${host.mac_address ? `<small class="text-muted d-block">
+                        MAC: <code class="text-muted">${host.mac_address}</code>${host.vendor ? ` • ${host.vendor}` : ' • Unknown Vendor'}
+                    </small>` : ''}
+                </td>
+                <td><code>${host.ip_address}</code></td>
+                <td>
+                    <span class="badge bg-secondary">${host.device_type || 'Unknown'}</span>
+                </td>
+                <td>
+                    <small>${lastSeen}</small>
+                </td>
+                <td>
+                    <span class="${host.latest_response_time > 1000 ? 'text-warning' : 'text-success'}">${responseTime}</span>
+                </td>
+                <td>
+                    <div class="d-flex align-items-center">
+                        <div class="progress flex-fill me-2" style="height: 8px;">
+                            <div class="progress-bar bg-${host.uptime_percentage >= 95 ? 'success' : host.uptime_percentage >= 80 ? 'warning' : 'danger'}" 
+                                 style="width: ${host.uptime_percentage || 0}%"></div>
+                        </div>
+                        <small>${uptime}</small>
+                    </div>
+                </td>
+                <td>${alertBadge}</td>
+                <td>
+                    <div class="form-check form-switch">
+                        <input class="form-check-input" type="checkbox" ${host.is_monitored ? 'checked' : ''} 
+                               onchange="toggleMonitoring(${host.id}, this.checked)">
+                    </div>
+                </td>
+                <td>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button class="btn btn-outline-primary" onclick="pingDevice(${host.id})" title="Ping">
+                            <i class="bi bi-wifi"></i>
+                        </button>
+                        <button class="btn btn-outline-info" onclick="viewDevice(${host.id})" title="Details">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Toggle select all checkboxes
+function toggleSelectAll() {
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.device-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+    
+    updateSelectedCount();
+}
+
+// Update selected device count
+function updateSelectedCount() {
+    const selected = document.querySelectorAll('.device-checkbox:checked').length;
+    document.getElementById('selected-count').textContent = selected;
+}
+
+// Toggle monitoring for a device
+async function toggleMonitoring(deviceId, enabled) {
+    try {
+        const response = await fetch(`/api/devices/${deviceId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_monitored: enabled })
+        });
+        
+        if (response.ok) {
+            showToast(`Monitoring ${enabled ? 'enabled' : 'disabled'} for device`, 'success');
+            // Update local data
+            const host = monitoredHosts.find(h => h.id === deviceId);
+            if (host) {
+                host.is_monitored = enabled;
+            }
+        } else {
+            throw new Error('Failed to update monitoring status');
+        }
+    } catch (error) {
+        showToast('Error updating monitoring status: ' + error.message, 'error');
+        // Revert the switch
+        setTimeout(() => loadMonitoredHosts(), 500);
+    }
+}
+
+// Refresh monitored hosts data
+function refreshMonitoredHosts() {
+    loadMonitoredHosts();
+    showToast('Refreshing monitored hosts...', 'info');
+}
+
+// Export monitored hosts to CSV
+function exportMonitoredHosts() {
+    const csv = [
+        ['Name', 'Hostname', 'IP Address', 'MAC Address', 'Vendor', 'Status', 'Device Type', 'Last Seen', 'Response Time', 'Uptime %', 'Alerts', 'Monitoring Enabled']
+    ];
+    
+    filteredHosts.forEach(host => {
+        csv.push([
+            host.display_name,
+            host.hostname || '',
+            host.ip_address,
+            host.mac_address || '',
+            host.vendor || 'Unknown Vendor',
+            host.status,
+            host.device_type || 'Unknown',
+            host.last_seen ? new Date(host.last_seen + 'Z').toLocaleString() : 'Never',
+            host.latest_response_time ? `${host.latest_response_time}ms` : '-',
+            host.uptime_percentage !== null ? `${host.uptime_percentage.toFixed(1)}%` : '-',
+            host.active_alerts || 0,
+            host.is_monitored ? 'Yes' : 'No'
+        ]);
+    });
+    
+    const csvContent = csv.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `monitored_hosts_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    showToast('Monitored hosts exported to CSV', 'success');
+}
+
+// Bulk operations
+function bulkEnableMonitoring() {
+    bulkUpdateMonitoring(true);
+}
+
+function bulkDisableMonitoring() {
+    bulkUpdateMonitoring(false);
+}
+
+async function bulkUpdateMonitoring(enabled) {
+    const selectedIds = Array.from(document.querySelectorAll('.device-checkbox:checked')).map(cb => parseInt(cb.value));
+    
+    if (selectedIds.length === 0) {
+        showToast('No devices selected', 'warning');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/devices/bulk-update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                device_ids: selectedIds,
+                is_monitored: enabled 
+            })
+        });
+        
+        if (response.ok) {
+            showToast(`Monitoring ${enabled ? 'enabled' : 'disabled'} for ${selectedIds.length} devices`, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('bulkMonitoringModal')).hide();
+            loadMonitoredHosts();
+        } else {
+            throw new Error('Bulk update failed');
+        }
+    } catch (error) {
+        showToast('Error performing bulk update: ' + error.message, 'error');
+    }
+}
+
+async function bulkPingDevices() {
+    const selectedIds = Array.from(document.querySelectorAll('.device-checkbox:checked')).map(cb => parseInt(cb.value));
+    
+    if (selectedIds.length === 0) {
+        showToast('No devices selected', 'warning');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/devices/bulk-ping', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ device_ids: selectedIds })
+        });
+        
+        if (response.ok) {
+            showToast(`Pinging ${selectedIds.length} devices...`, 'info');
+            bootstrap.Modal.getInstance(document.getElementById('bulkMonitoringModal')).hide();
+        } else {
+            throw new Error('Bulk ping failed');
+        }
+    } catch (error) {
+        showToast('Error pinging devices: ' + error.message, 'error');
+    }
+}
+
+// Individual device actions
+async function pingDevice(deviceId) {
+    try {
+        const response = await fetch(`/api/devices/${deviceId}/ping`, { method: 'POST' });
+        if (response.ok) {
+            showToast('Ping initiated', 'info');
+        }
+    } catch (error) {
+        showToast('Error pinging device', 'error');
+    }
+}
+
+function viewDevice(deviceId) {
+    window.open(`/device/${deviceId}`, '_blank');
+}
+
+// Real-time updates via WebSocket
+if (typeof socket !== 'undefined') {
+    socket.on('device_status_update', function(devices) {
+        // Update local data and refresh display
+        devices.forEach(device => {
+            const existingHost = monitoredHosts.find(h => h.id === device.id);
+            if (existingHost && device.is_monitored) {
+                Object.assign(existingHost, device);
+            }
+        });
+        updateStatusCards();
+        filterHosts(); // Re-render table with updated data
+    });
+}
+
+// Load data when page loads
+document.addEventListener('DOMContentLoaded', function() {
+    loadMonitoredHosts();
+    
+    // Auto-refresh every 30 seconds
+    setInterval(loadMonitoredHosts, 30000);
+});
+</script>
+{% endblock %}

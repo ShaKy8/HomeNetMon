@@ -88,6 +88,7 @@ def create_app():
     
     # Make services accessible to other parts of the app
     app._scanner = scanner
+    app._monitor = monitor
     app.alert_manager = alert_manager
     app.bandwidth_monitor = bandwidth_monitor
     app.speed_test_service = speed_test_service
@@ -251,6 +252,15 @@ def create_app():
     @app.route('/system-info')
     def system_info():
         return render_template('system_info.html')
+    
+    @app.route('/monitored-hosts')
+    def monitored_hosts():
+        return render_template('monitored_hosts.html')
+    
+    @app.route('/noc')
+    def noc_view():
+        """Network Operations Center - Full-screen monitoring dashboard"""
+        return render_template('noc_view.html')
     
     # Redirect routes for common URL variations (underscored URLs redirect to hyphenated ones)
     @app.route('/ai_dashboard')

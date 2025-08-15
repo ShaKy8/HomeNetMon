@@ -433,3 +433,156 @@ def get_devices_summary():
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@devices_bp.route('/monitored', methods=['GET'])
+def get_monitored_devices():
+    """Get only devices that are being monitored"""
+    try:
+        # Get all monitored devices
+        devices = Device.query.filter_by(is_monitored=True)\
+                             .order_by(Device.ip_address)\
+                             .all()
+        
+        # Convert to dict format with additional monitoring data
+        devices_data = []
+        for device in devices:
+            device_dict = device.to_dict()
+            
+            # Add latest monitoring data
+            latest_data = MonitoringData.query.filter_by(device_id=device.id)\
+                                             .order_by(MonitoringData.timestamp.desc())\
+                                             .first()
+            
+            device_dict['latest_response_time'] = latest_data.response_time if latest_data else None
+            device_dict['latest_check'] = latest_data.timestamp.isoformat() if latest_data else None
+            
+            # Add active alerts count
+            device_dict['active_alerts'] = Alert.query.filter_by(
+                device_id=device.id, 
+                resolved=False
+            ).count()
+            
+            devices_data.append(device_dict)
+        
+        return jsonify({
+            'success': True,
+            'devices': devices_data,
+            'count': len(devices_data)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error getting monitored devices: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@devices_bp.route('/bulk-update', methods=['POST'])
+def bulk_update_devices():
+    """Bulk update device properties"""
+    try:
+        data = request.get_json()
+        device_ids = data.get('device_ids', [])
+        updates = {}
+        
+        # Extract update fields
+        if 'is_monitored' in data:
+            updates['is_monitored'] = data['is_monitored']
+        if 'device_group' in data:
+            updates['device_group'] = data['device_group']
+        if 'device_type' in data:
+            updates['device_type'] = data['device_type']
+        
+        if not device_ids or not updates:
+            return jsonify({
+                'success': False,
+                'error': 'device_ids and at least one update field required'
+            }), 400
+        
+        # Perform bulk update
+        updated_count = Device.query.filter(Device.id.in_(device_ids))\
+                                  .update(updates, synchronize_session='fetch')
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'updated_count': updated_count,
+            'message': f'Updated {updated_count} devices'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        logger.error(f"Error in bulk update: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@devices_bp.route('/bulk-ping', methods=['POST'])
+def bulk_ping_devices():
+    """Trigger ping for multiple devices"""
+    try:
+        data = request.get_json()
+        device_ids = data.get('device_ids', [])
+        
+        if not device_ids:
+            return jsonify({
+                'success': False,
+                'error': 'device_ids required'
+            }), 400
+        
+        # Get devices
+        devices = Device.query.filter(Device.id.in_(device_ids)).all()
+        
+        if not devices:
+            return jsonify({
+                'success': False,
+                'error': 'No valid devices found'
+            }), 404
+        
+        # Trigger ping via device monitor
+        from flask import current_app
+        if hasattr(current_app, '_monitor'):
+            monitor = current_app._monitor
+            for device in devices:
+                # Queue immediate ping for each device
+                monitor.queue_immediate_ping(device.id)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Ping initiated for {len(devices)} devices',
+            'device_count': len(devices)
+        })
+        
+    except Exception as e:
+        logger.error(f"Error in bulk ping: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@devices_bp.route('/<int:device_id>/ping', methods=['POST'])
+def ping_single_device(device_id):
+    """Trigger ping for a single device"""
+    try:
+        device = Device.query.get_or_404(device_id)
+        
+        # Trigger ping via device monitor
+        from flask import current_app
+        if hasattr(current_app, '_monitor'):
+            monitor = current_app._monitor
+            monitor.queue_immediate_ping(device.id)
+        
+        return jsonify({
+            'success': True,
+            'message': f'Ping initiated for {device.display_name}',
+            'device_id': device_id
+        })
+        
+    except Exception as e:
+        logger.error(f"Error pinging device {device_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500

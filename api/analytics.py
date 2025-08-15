@@ -5,6 +5,9 @@ from models import db, Device, MonitoringData, Alert
 from collections import defaultdict
 import statistics
 
+# Import health score calculation function for consistency
+from api.health import calculate_health_score
+
 analytics_bp = Blueprint('analytics', __name__)
 
 @analytics_bp.route('/network-health-score', methods=['GET'])
@@ -40,11 +43,12 @@ def get_network_health_score():
         success_rate = (successful_pings / total_pings * 100) if total_pings > 0 else 0
         uptime_percentage = (devices_up / total_devices * 100)
         
-        # Calculate weighted health score (0-100)
-        health_score = (
-            uptime_percentage * 0.4 +  # 40% weight on device availability
-            success_rate * 0.3 +       # 30% weight on ping success rate
-            max(0, (2000 - avg_response) / 2000 * 100) * 0.3  # 30% weight on response time
+        # Get active alerts count for standardized health score calculation
+        active_alerts = Alert.query.filter_by(resolved=False).count()
+        
+        # Use standardized health score calculation (consistent with Health Overview)
+        health_score = calculate_health_score(
+            devices_up, total_devices, avg_response, active_alerts, success_rate
         )
         
         # Determine health status
@@ -71,13 +75,15 @@ def get_network_health_score():
             'metrics': {
                 'total_devices': total_devices,
                 'devices_up': devices_up,
+                'devices_online': devices_up,  # Alias for consistency with Health Overview
                 'uptime_percentage': round(uptime_percentage, 1),
                 'avg_response_time': round(avg_response, 2),
                 'success_rate': round(success_rate, 1),
                 'total_pings': total_pings,
-                'successful_pings': successful_pings
+                'successful_pings': successful_pings,
+                'active_alerts': active_alerts
             },
-            'recommendations': generate_health_recommendations(health_score, avg_response, success_rate)
+            'recommendations': generate_health_recommendations(health_score, avg_response, success_rate, active_alerts)
         })
         
     except Exception as e:
@@ -309,12 +315,15 @@ def get_network_trends():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-def generate_health_recommendations(health_score, avg_response, success_rate):
+def generate_health_recommendations(health_score, avg_response, success_rate, active_alerts=0):
     """Generate health improvement recommendations"""
     recommendations = []
     
     if health_score < 60:
         recommendations.append("⚠️ Network health is below acceptable levels. Immediate attention required.")
+    
+    if active_alerts > 0:
+        recommendations.append(f"🚨 {active_alerts} active alert{'s' if active_alerts > 1 else ''} detected. Review alerts page for details.")
     
     if avg_response > 1000:
         recommendations.append("🐌 High response times detected. Check network congestion or device issues.")
@@ -325,9 +334,9 @@ def generate_health_recommendations(health_score, avg_response, success_rate):
     if success_rate < 70:
         recommendations.append("🔧 Consider checking network infrastructure and device configurations.")
     
-    if health_score >= 90:
+    if health_score >= 90 and active_alerts == 0:
         recommendations.append("✅ Excellent network performance! Keep up the great monitoring.")
-    elif health_score >= 75:
+    elif health_score >= 75 and active_alerts <= 2:
         recommendations.append("👍 Good network health. Minor optimizations could improve performance.")
     
     if len(recommendations) == 0:
