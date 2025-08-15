@@ -18,6 +18,7 @@ class AlertManager:
         self.is_running = False
         self._stop_event = threading.Event()
         self.rule_engine_service = None
+        self.correlation_service = None
         self.alert_thresholds = {
             'device_down_minutes_critical': 10,   # Alert if critical device down for 10+ minutes
             'device_down_minutes_regular': 20,    # Alert if regular device down for 20+ minutes  
@@ -114,24 +115,33 @@ class AlertManager:
                         if not existing_alert:
                             device_type = "critical" if self.is_critical_device(device) else "regular"
                             
-                            # Create new alert
-                            alert = Alert(
-                                device_id=device.id,
-                                alert_type='device_down',
-                                severity='critical' if self.is_critical_device(device) else 'warning',
-                                message=f"{device_type.title()} device {device.display_name} ({device.ip_address}) has been down for over {threshold_minutes} minutes with {consecutive_failures_required}+ consecutive monitoring failures"
-                            )
+                            # Check correlation before creating alert
+                            message = f"{device_type.title()} device {device.display_name} ({device.ip_address}) has been down for over {threshold_minutes} minutes with {consecutive_failures_required}+ consecutive monitoring failures"
                             
-                            db.session.add(alert)
-                            db.session.commit()
+                            if self._should_create_alert('device_down', device.id, message):
+                                # Create new alert
+                                alert = Alert(
+                                    device_id=device.id,
+                                    alert_type='device_down',
+                                    severity='critical' if self.is_critical_device(device) else 'warning',
+                                    message=message
+                                )
+                                
+                                # Calculate priority score
+                                alert.calculate_and_update_priority(self.app)
+                                
+                                db.session.add(alert)
+                                db.session.commit()
+                                
+                                # Send notifications
+                                self.send_alert_notifications(alert)
+                                
+                                # Trigger rule engine for device down event
+                                self._trigger_rule_engine_for_alert(alert, device, 'device_down')
                             
-                            # Send notifications
-                            self.send_alert_notifications(alert)
-                            
-                            # Trigger rule engine for device down event
-                            self._trigger_rule_engine_for_alert(alert, device, 'device_down')
-                            
-                            logger.warning(f"ALERT CREATED: Device down alert for {device.display_name} (threshold: {threshold_minutes}min, type: {device_type}, last_seen: {device.last_seen}, cutoff: {cutoff_time})")
+                                logger.warning(f"ALERT CREATED: Device down alert for {device.display_name} (threshold: {threshold_minutes}min, type: {device_type}, last_seen: {device.last_seen}, cutoff: {cutoff_time})")
+                            else:
+                                logger.debug(f"ALERT SUPPRESSED: Device down alert for {device.display_name} due to correlation rules")
                         
             except Exception as e:
                 logger.error(f"Error checking device down alerts: {e}")
@@ -188,6 +198,9 @@ class AlertManager:
                             message=f"Device {device.display_name} ({device.ip_address}) has high latency: {avg_latency:.0f}ms average"
                         )
                         
+                        # Calculate priority score
+                        alert.calculate_and_update_priority(self.app)
+                        
                         db.session.add(alert)
                         db.session.commit()
                         
@@ -242,6 +255,9 @@ class AlertManager:
                                 severity='info',
                                 message=f"Device {device.display_name} ({device.ip_address}) is back online after being down"
                             )
+                            
+                            # Calculate priority score
+                            recovery_alert.calculate_and_update_priority(self.app)
                             
                             db.session.add(recovery_alert)
                             db.session.commit()
@@ -611,6 +627,9 @@ This is an automated message from HomeNetMon.
                 # Always resolve alerts (even when paused)
                 self.resolve_alerts()
                 
+                # Run alert correlation and escalation
+                self.run_alert_correlation()
+                
                 # Periodic cleanup (every 10 cycles)
                 if hasattr(self, '_cleanup_counter'):
                     self._cleanup_counter += 1
@@ -686,6 +705,47 @@ This is an automated message from HomeNetMon.
             logger.error(f"Error triggering rule engine for alert: {e}")
             # Don't let rule engine errors affect alert processing
     
+    def _should_create_alert(self, alert_type: str, device_id: int, message: str) -> bool:
+        """Check if alert should be created based on correlation rules"""
+        try:
+            # Initialize correlation service if not already done
+            if not self.correlation_service:
+                from services.alert_correlation import AlertCorrelationService
+                self.correlation_service = AlertCorrelationService(self.app)
+            
+            # Check if alert should be suppressed
+            should_suppress = self.correlation_service.should_suppress_alert(alert_type, device_id, message)
+            return not should_suppress
+            
+        except Exception as e:
+            logger.error(f"Error checking alert correlation: {e}")
+            # If correlation check fails, allow the alert to be created
+            return True
+    
+    def run_alert_correlation(self):
+        """Run alert correlation and escalation checks"""
+        try:
+            if not self.correlation_service:
+                from services.alert_correlation import AlertCorrelationService
+                self.correlation_service = AlertCorrelationService(self.app)
+            
+            self.correlation_service.correlate_and_escalate_alerts()
+            
+        except Exception as e:
+            logger.error(f"Error running alert correlation: {e}")
+    
+    def cleanup_duplicate_alerts(self):
+        """Clean up duplicate alerts (one-time operation)"""
+        try:
+            if not self.correlation_service:
+                from services.alert_correlation import AlertCorrelationService
+                self.correlation_service = AlertCorrelationService(self.app)
+            
+            self.correlation_service.cleanup_duplicate_alerts()
+            
+        except Exception as e:
+            logger.error(f"Error cleaning up duplicate alerts: {e}")
+
     def reload_config(self):
         """Reload configuration for hot-reload support"""
         try:

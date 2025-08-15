@@ -40,10 +40,10 @@ def get_health_overview():
         avg_response_time = round(float(avg_response_time) if avg_response_time else 0, 2)
         
         # Alert counts
-        active_alerts = Alert.query.filter_by(status='active').count()
+        active_alerts = Alert.query.filter_by(resolved=False).count()
         critical_alerts = Alert.query.filter(
             and_(
-                Alert.status == 'active',
+                Alert.resolved == False,
                 Alert.severity == 'critical'
             )
         ).count()
@@ -137,7 +137,7 @@ def get_health_score():
         avg_response_time = float(avg_response_time) if avg_response_time else 0
         
         # Active alerts
-        active_alerts = Alert.query.filter_by(status='active').count()
+        active_alerts = Alert.query.filter_by(resolved=False).count()
         
         # Uptime (simplified)
         uptime_percentage = 95.0  # Placeholder for quick response
@@ -178,7 +178,7 @@ def get_network_topology():
                 .order_by(MonitoringData.timestamp.desc())\
                 .first()
             
-            response_time = latest_data.response_time if latest_data and latest_data.response_time > 0 else None
+            response_time = latest_data.response_time if latest_data and latest_data.response_time is not None and latest_data.response_time > 0 else None
             
             topology_data.append({
                 'id': device.id,
@@ -289,18 +289,18 @@ def get_performance_trends(since_time):
     try:
         # Response time trend (hourly averages)
         response_trend = db.session.query(
-            func.date_trunc('hour', MonitoringData.timestamp).label('hour'),
+            func.strftime('%Y-%m-%d %H:00:00', MonitoringData.timestamp).label('hour'),
             func.avg(MonitoringData.response_time).label('avg_response')
         ).filter(
             MonitoringData.timestamp >= since_time,
             MonitoringData.response_time > 0
         ).group_by(
-            func.date_trunc('hour', MonitoringData.timestamp)
+            func.strftime('%Y-%m-%d %H:00:00', MonitoringData.timestamp)
         ).order_by('hour').all()
         
         response_data = [
             {
-                'timestamp': hour.isoformat() + 'Z',
+                'timestamp': hour.replace(' ', 'T') + 'Z',  # Convert to ISO format
                 'value': round(float(avg_response), 2)
             }
             for hour, avg_response in response_trend

@@ -34,6 +34,63 @@ class PushNotificationService:
             self.server is not None
         )
     
+    def test_connectivity(self) -> Dict[str, Any]:
+        """Test network connectivity to ntfy server"""
+        try:
+            import socket
+            from urllib.parse import urlparse
+            
+            # Parse server URL
+            parsed = urlparse(self.server)
+            host = parsed.hostname or 'ntfy.sh'
+            port = parsed.port or 443
+            
+            result = {
+                'server': self.server,
+                'host': host,
+                'port': port,
+                'reachable': False,
+                'dns_resolved': False,
+                'socket_connected': False,
+                'http_status': None,
+                'error': None
+            }
+            
+            # Test DNS resolution
+            try:
+                socket.gethostbyname(host)
+                result['dns_resolved'] = True
+            except socket.gaierror as e:
+                result['error'] = f"DNS resolution failed: {e}"
+                return result
+            
+            # Test socket connection
+            try:
+                sock = socket.create_connection((host, port), timeout=5)
+                sock.close()
+                result['socket_connected'] = True
+            except (socket.timeout, OSError) as e:
+                result['error'] = f"Socket connection failed: {e}"
+                return result
+            
+            # Test HTTP request
+            try:
+                response = requests.get(self.server, timeout=5)
+                result['http_status'] = response.status_code
+                result['reachable'] = True
+            except Exception as e:
+                result['error'] = f"HTTP request failed: {e}"
+                return result
+                
+            return result
+            
+        except Exception as e:
+            return {
+                'server': self.server,
+                'reachable': False,
+                'error': f"Connectivity test failed: {e}"
+            }
+
     def send_notification(
         self,
         title: str,
@@ -41,7 +98,8 @@ class PushNotificationService:
         priority: str = "default",
         tags: Optional[str] = None,
         click_url: Optional[str] = None,
-        icon_url: Optional[str] = None
+        icon_url: Optional[str] = None,
+        retry_count: int = 3
     ) -> bool:
         """Send a push notification
         
@@ -62,59 +120,87 @@ class PushNotificationService:
         if not self.is_configured():
             logger.debug("Push notifications not configured, skipping")
             return False
-            
-        try:
-            # Build notification URL
-            url = f"{self.server.rstrip('/')}/{self.topic}"
-            
-            # Build headers with proper UTF-8 encoding
-            # Ensure all header values are properly encoded for HTTP transmission
-            headers = {
-                "Title": title.encode('utf-8').decode('latin-1') if any(ord(c) > 127 for c in title) else title,
-                "Priority": priority,
-                "Content-Type": "text/plain; charset=utf-8"
-            }
-            
-            if tags:
-                headers["Tags"] = tags.encode('utf-8').decode('latin-1') if any(ord(c) > 127 for c in tags) else tags
+        
+        # Try sending with retry logic
+        for attempt in range(retry_count):
+            try:
+                # Build notification URL
+                url = f"{self.server.rstrip('/')}/{self.topic}"
                 
-            if click_url:
-                headers["Click"] = click_url
+                # Build headers with proper UTF-8 encoding
+                # Ensure all header values are properly encoded for HTTP transmission
+                headers = {
+                    "Title": title.encode('utf-8').decode('latin-1') if any(ord(c) > 127 for c in title) else title,
+                    "Priority": priority,
+                    "Content-Type": "text/plain; charset=utf-8"
+                }
                 
-            if icon_url:
-                headers["Icon"] = icon_url
-            
-            # Authentication if configured
-            auth = None
-            if self.username and self.password:
-                auth = (self.username, self.password)
-            
-            # Send notification with proper UTF-8 handling
-            response = requests.post(
-                url,
-                data=message.encode('utf-8'),
-                headers=headers,
-                auth=auth,
-                timeout=10
-            )
-            
-            if response.status_code == 200:
-                logger.info(f"Push notification sent successfully: {title}")
-                self._log_notification(title, message, priority, tags, 'success')
-                return True
-            else:
-                logger.error(f"Failed to send push notification: HTTP {response.status_code}")
-                self._log_notification(title, message, priority, tags, 'failed', f"HTTP {response.status_code}")
-                return False
+                if tags:
+                    headers["Tags"] = tags.encode('utf-8').decode('latin-1') if any(ord(c) > 127 for c in tags) else tags
+                    
+                if click_url:
+                    headers["Click"] = click_url
+                    
+                if icon_url:
+                    headers["Icon"] = icon_url
                 
-        except requests.RequestException as e:
-            logger.error(f"Error sending push notification: {e}")
-            self._log_notification(title, message, priority, tags, 'failed', str(e))
-            return False
-        except Exception as e:
-            logger.error(f"Unexpected error sending push notification: {e}")
-            self._log_notification(title, message, priority, tags, 'failed', str(e))
-            return False
+                # Authentication if configured
+                auth = None
+                if self.username and self.password:
+                    auth = (self.username, self.password)
+                
+                # Send notification with proper UTF-8 handling and shorter timeout
+                response = requests.post(
+                    url,
+                    data=message.encode('utf-8'),
+                    headers=headers,
+                    auth=auth,
+                    timeout=5  # Reduced timeout for faster failure detection
+                )
+                
+                if response.status_code == 200:
+                    logger.info(f"Push notification sent successfully: {title} (attempt {attempt + 1})")
+                    self._log_notification(title, message, priority, tags, 'success')
+                    return True
+                else:
+                    error_msg = f"HTTP {response.status_code}"
+                    if attempt == retry_count - 1:  # Last attempt
+                        logger.error(f"Failed to send push notification after {retry_count} attempts: {error_msg}")
+                        self._log_notification(title, message, priority, tags, 'failed', error_msg)
+                        return False
+                    else:
+                        logger.debug(f"Push notification attempt {attempt + 1} failed: {error_msg}, retrying...")
+                        
+            except requests.RequestException as e:
+                error_msg = str(e)
+                if "Network is unreachable" in error_msg or "Connection refused" in error_msg:
+                    # Network connectivity issue - don't spam logs with retries
+                    if attempt == 0:  # Only log on first attempt
+                        logger.warning(f"Push notification failed due to network connectivity: {error_msg}")
+                    self._log_notification(title, message, priority, tags, 'failed', f"Network unreachable (attempt {attempt + 1})")
+                    return False  # Don't retry network connectivity issues
+                elif attempt == retry_count - 1:  # Last attempt
+                    logger.error(f"Failed to send push notification after {retry_count} attempts: {error_msg}")
+                    self._log_notification(title, message, priority, tags, 'failed', error_msg)
+                    return False
+                else:
+                    logger.debug(f"Push notification attempt {attempt + 1} failed: {error_msg}, retrying...")
+                    
+            except Exception as e:
+                error_msg = str(e)
+                if attempt == retry_count - 1:  # Last attempt
+                    logger.error(f"Unexpected error sending push notification after {retry_count} attempts: {error_msg}")
+                    self._log_notification(title, message, priority, tags, 'failed', error_msg)
+                    return False
+                else:
+                    logger.debug(f"Push notification attempt {attempt + 1} failed: {error_msg}, retrying...")
+            
+            # Exponential backoff between retries (0.5s, 1s, 2s)
+            if attempt < retry_count - 1:
+                import time
+                time.sleep(0.5 * (2 ** attempt))
+        
+        return False
     
     def send_device_down_alert(self, device_name: str, ip_address: str, dashboard_url: str = None) -> bool:
         """Send notification when a device goes down"""

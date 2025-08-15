@@ -474,24 +474,47 @@ def test_push_config():
                 'error': 'Push notifications not configured. Please set topic and enable notifications.'
             }), 400
         
+        # Test connectivity first
+        connectivity = push_service.test_connectivity()
+        
+        response = {
+            'connectivity': connectivity,
+            'configured': push_service.is_configured(),
+            'config': {
+                'enabled': push_service.enabled,
+                'server': push_service.server,
+                'topic': push_service.topic
+            }
+        }
+        
+        if not connectivity.get('reachable', False):
+            response.update({
+                'success': False,
+                'error': f"Cannot reach notification server: {connectivity.get('error', 'Unknown error')}",
+                'recommendation': 'Check network connectivity and firewall settings'
+            })
+            return jsonify(response), 400
+        
         # Send test notification
         success = push_service.send_test_notification()
         
         if success:
-            return jsonify({
+            response.update({
                 'success': True,
                 'message': 'Test notification sent successfully! Check your mobile device.'
             })
+            return jsonify(response)
         else:
-            return jsonify({
+            response.update({
                 'success': False,
-                'error': 'Failed to send test notification. Check your configuration.'
-            }), 400
+                'error': 'Failed to send test notification despite connectivity test passing.'
+            })
+            return jsonify(response), 400
             
     except Exception as e:
         return jsonify({
             'success': False,
-            'error': f'Error sending test notification: {str(e)}'
+            'error': f'Error testing push notifications: {str(e)}'
         }), 500
 
 @config_bp.route('/restart-services', methods=['POST'])

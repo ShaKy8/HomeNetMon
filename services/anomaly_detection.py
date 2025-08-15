@@ -406,6 +406,9 @@ class AnomalyDetectionEngine:
                 created_at=anomaly.detected_at
             )
             
+            # Calculate priority score
+            alert.calculate_and_update_priority(self.app)
+            
             db.session.add(alert)
             db.session.commit()
             

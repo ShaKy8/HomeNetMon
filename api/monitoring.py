@@ -453,6 +453,35 @@ def delete_all_alerts():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@monitoring_bp.route('/alerts/cleanup-duplicates', methods=['POST'])
+def cleanup_duplicate_alerts():
+    """Clean up duplicate alerts using correlation service"""
+    try:
+        from flask import current_app
+        
+        if not hasattr(current_app, 'alert_manager'):
+            return jsonify({'error': 'Alert manager not available'}), 500
+        
+        # Get counts before cleanup
+        before_count = Alert.query.filter_by(resolved=False).count()
+        
+        # Run cleanup
+        current_app.alert_manager.cleanup_duplicate_alerts()
+        
+        # Get counts after cleanup
+        after_count = Alert.query.filter_by(resolved=False).count()
+        cleaned_count = before_count - after_count
+        
+        return jsonify({
+            'message': f'Successfully cleaned up {cleaned_count} duplicate alerts',
+            'before_count': before_count,
+            'after_count': after_count,
+            'cleaned_count': cleaned_count
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @monitoring_bp.route('/status', methods=['GET'])
 def get_monitoring_status():
     """Get overall monitoring system status"""
@@ -1209,6 +1238,114 @@ def get_device_bandwidth_rankings():
             'count': len(devices),
             'period_hours': hours,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/alerts/priority-summary', methods=['GET'])
+def get_alert_priority_summary():
+    """Get priority summary of all active alerts"""
+    try:
+        from services.alert_priority import AlertPriorityScorer
+        
+        # Get active alerts
+        active_alerts = Alert.query.filter_by(resolved=False).all()
+        
+        # Calculate priority summary
+        scorer = AlertPriorityScorer(current_app._get_current_object())
+        summary = scorer.get_priority_summary(active_alerts)
+        
+        return jsonify(summary)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/alerts/recalculate-priorities', methods=['POST'])
+def recalculate_alert_priorities():
+    """Recalculate priorities for all active alerts"""
+    try:
+        from services.alert_priority import AlertPriorityScorer
+        
+        # Get active alerts
+        active_alerts = Alert.query.filter_by(resolved=False).all()
+        
+        scorer = AlertPriorityScorer(current_app._get_current_object())
+        updated_count = 0
+        
+        for alert in active_alerts:
+            score, level, breakdown = scorer.calculate_priority_score(alert)
+            alert.priority_score = score
+            alert.priority_level = level
+            alert.priority_breakdown = json.dumps(breakdown)
+            updated_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'message': f'Recalculated priorities for {updated_count} alerts',
+            'updated_count': updated_count
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/alerts/by-priority', methods=['GET'])
+def get_alerts_by_priority():
+    """Get alerts sorted by priority score"""
+    try:
+        # Get query parameters
+        limit = request.args.get('limit', 50, type=int)
+        resolved = request.args.get('resolved', 'false').lower() == 'true'
+        min_priority = request.args.get('min_priority', 0, type=int)
+        
+        # Build query
+        query = Alert.query
+        
+        if not resolved:
+            query = query.filter_by(resolved=False)
+        
+        if min_priority > 0:
+            query = query.filter(Alert.priority_score >= min_priority)
+        
+        # Order by priority score (highest first), then by creation time
+        alerts = query.order_by(
+            Alert.priority_score.desc(),
+            Alert.created_at.desc()
+        ).limit(limit).all()
+        
+        return jsonify([alert.to_dict() for alert in alerts])
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/alerts/<int:alert_id>/priority', methods=['GET'])
+def get_alert_priority_details(alert_id):
+    """Get detailed priority breakdown for a specific alert"""
+    try:
+        alert = Alert.query.get(alert_id)
+        
+        if not alert:
+            return jsonify({'error': 'Alert not found'}), 404
+        
+        # Recalculate current priority (in case factors have changed)
+        from services.alert_priority import AlertPriorityScorer
+        scorer = AlertPriorityScorer(current_app._get_current_object())
+        current_score, current_level, current_breakdown = scorer.calculate_priority_score(alert)
+        
+        return jsonify({
+            'alert_id': alert.id,
+            'stored_priority': {
+                'score': alert.priority_score,
+                'level': alert.priority_level,
+                'breakdown': json.loads(alert.priority_breakdown) if alert.priority_breakdown else None
+            },
+            'current_priority': {
+                'score': current_score,
+                'level': current_level,
+                'breakdown': current_breakdown
+            }
         })
         
     except Exception as e:

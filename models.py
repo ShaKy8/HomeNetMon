@@ -253,6 +253,11 @@ class Alert(db.Model):
     resolved = db.Column(db.Boolean, default=False)
     resolved_at = db.Column(db.DateTime)
     
+    # Priority scoring fields
+    priority_score = db.Column(db.Integer, default=50)  # 0-100 priority score
+    priority_level = db.Column(db.String(20), default='MEDIUM')  # CRITICAL, HIGH, MEDIUM, LOW, MINIMAL
+    priority_breakdown = db.Column(db.Text)  # JSON string of priority calculation breakdown
+    
     def __repr__(self):
         return f'<Alert {self.alert_type} for {self.device.ip_address}>'
     
@@ -266,6 +271,27 @@ class Alert(db.Model):
         self.resolved = True
         self.resolved_at = datetime.utcnow()
         db.session.commit()
+    
+    def calculate_and_update_priority(self, app=None):
+        """Calculate and update the priority score for this alert"""
+        try:
+            from services.alert_priority import AlertPriorityScorer
+            
+            scorer = AlertPriorityScorer(app)
+            score, level, breakdown = scorer.calculate_priority_score(self)
+            
+            self.priority_score = score
+            self.priority_level = level
+            self.priority_breakdown = json.dumps(breakdown)
+            
+            return score, level, breakdown
+            
+        except Exception as e:
+            # Fallback to default values if calculation fails
+            self.priority_score = 50
+            self.priority_level = 'MEDIUM'
+            self.priority_breakdown = json.dumps({'error': str(e)})
+            return 50, 'MEDIUM', {'error': str(e)}
     
     def to_dict(self):
         return {
@@ -282,6 +308,9 @@ class Alert(db.Model):
             'acknowledged_by': self.acknowledged_by,
             'resolved': self.resolved,
             'resolved_at': (self.resolved_at.isoformat() + 'Z') if self.resolved_at else None,
+            'priority_score': self.priority_score,
+            'priority_level': self.priority_level,
+            'priority_breakdown': json.loads(self.priority_breakdown) if self.priority_breakdown else None,
         }
 
 class Configuration(db.Model):
