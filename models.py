@@ -593,6 +593,109 @@ class NotificationHistory(db.Model):
             print(f"Error logging notification: {e}")
             return None
 
+class AlertSuppression(db.Model):
+    """Model for alert suppression rules"""
+    __tablename__ = 'alert_suppressions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(255), nullable=False)
+    description = db.Column(db.Text)
+    enabled = db.Column(db.Boolean, default=True)
+    
+    # Suppression criteria
+    device_id = db.Column(db.Integer, db.ForeignKey('devices.id'), nullable=True)  # Specific device or null for all
+    alert_type = db.Column(db.String(50), nullable=True)  # Specific alert type or null for all
+    severity = db.Column(db.String(20), nullable=True)  # Specific severity or null for all
+    
+    # Time-based suppression
+    start_time = db.Column(db.DateTime, nullable=True)  # Start of suppression window
+    end_time = db.Column(db.DateTime, nullable=True)    # End of suppression window
+    daily_start_hour = db.Column(db.Integer, nullable=True)  # Daily recurring start hour (0-23)
+    daily_end_hour = db.Column(db.Integer, nullable=True)    # Daily recurring end hour (0-23)
+    
+    # Suppression type
+    suppression_type = db.Column(db.String(20), default='silence')  # 'silence', 'reduce_priority', 'delay'
+    priority_reduction = db.Column(db.Integer, default=0)  # Points to reduce from priority score
+    delay_minutes = db.Column(db.Integer, default=0)      # Minutes to delay alert creation
+    
+    # Metadata
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    created_by = db.Column(db.String(100), default='user')
+    
+    # Relationships
+    device = db.relationship('Device', backref=db.backref('suppressions', lazy=True))
+    
+    def __repr__(self):
+        return f'<AlertSuppression {self.name} ({"enabled" if self.enabled else "disabled"})>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'name': self.name,
+            'description': self.description,
+            'enabled': self.enabled,
+            'device_id': self.device_id,
+            'device_name': self.device.display_name if self.device else 'All devices',
+            'alert_type': self.alert_type or 'All alert types',
+            'severity': self.severity or 'All severities',
+            'start_time': self.start_time.isoformat() + 'Z' if self.start_time else None,
+            'end_time': self.end_time.isoformat() + 'Z' if self.end_time else None,
+            'daily_start_hour': self.daily_start_hour,
+            'daily_end_hour': self.daily_end_hour,
+            'suppression_type': self.suppression_type,
+            'priority_reduction': self.priority_reduction,
+            'delay_minutes': self.delay_minutes,
+            'created_at': self.created_at.isoformat() + 'Z',
+            'updated_at': self.updated_at.isoformat() + 'Z',
+            'created_by': self.created_by
+        }
+    
+    def is_currently_active(self) -> bool:
+        """Check if this suppression rule is currently active"""
+        if not self.enabled:
+            return False
+            
+        now = datetime.utcnow()
+        current_hour = now.hour
+        
+        # Check absolute time window
+        if self.start_time and self.end_time:
+            if not (self.start_time <= now <= self.end_time):
+                return False
+        
+        # Check daily recurring time window
+        if self.daily_start_hour is not None and self.daily_end_hour is not None:
+            if self.daily_start_hour <= self.daily_end_hour:
+                # Normal case: 9-17 (9 AM to 5 PM)
+                if not (self.daily_start_hour <= current_hour < self.daily_end_hour):
+                    return False
+            else:
+                # Overnight case: 22-6 (10 PM to 6 AM)
+                if not (current_hour >= self.daily_start_hour or current_hour < self.daily_end_hour):
+                    return False
+        
+        return True
+    
+    def matches_alert(self, device_id: int, alert_type: str, severity: str) -> bool:
+        """Check if this suppression rule matches the given alert criteria"""
+        if not self.is_currently_active():
+            return False
+            
+        # Check device match
+        if self.device_id is not None and self.device_id != device_id:
+            return False
+            
+        # Check alert type match
+        if self.alert_type is not None and self.alert_type != alert_type:
+            return False
+            
+        # Check severity match
+        if self.severity is not None and self.severity != severity:
+            return False
+            
+        return True
+
 class AutomationRule(db.Model):
     """Model for storing user-defined automation rules"""
     __tablename__ = 'automation_rules'

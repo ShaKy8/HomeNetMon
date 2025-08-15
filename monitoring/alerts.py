@@ -118,12 +118,13 @@ class AlertManager:
                             # Check correlation before creating alert
                             message = f"{device_type.title()} device {device.display_name} ({device.ip_address}) has been down for over {threshold_minutes} minutes with {consecutive_failures_required}+ consecutive monitoring failures"
                             
-                            if self._should_create_alert('device_down', device.id, message):
+                            severity = 'critical' if self.is_critical_device(device) else 'warning'
+                            if self._should_create_alert('device_down', device.id, message, severity):
                                 # Create new alert
                                 alert = Alert(
                                     device_id=device.id,
                                     alert_type='device_down',
-                                    severity='critical' if self.is_critical_device(device) else 'warning',
+                                    severity=severity,
                                     message=message
                                 )
                                 
@@ -705,15 +706,20 @@ This is an automated message from HomeNetMon.
             logger.error(f"Error triggering rule engine for alert: {e}")
             # Don't let rule engine errors affect alert processing
     
-    def _should_create_alert(self, alert_type: str, device_id: int, message: str) -> bool:
-        """Check if alert should be created based on correlation rules"""
+    def _should_create_alert(self, alert_type: str, device_id: int, message: str, severity: str = 'warning') -> bool:
+        """Check if alert should be created based on correlation rules and suppressions"""
         try:
+            # Check suppression rules first
+            if self._is_alert_suppressed(device_id, alert_type, severity):
+                logger.debug(f"Alert suppressed: {alert_type} for device {device_id} (severity: {severity})")
+                return False
+            
             # Initialize correlation service if not already done
             if not self.correlation_service:
                 from services.alert_correlation import AlertCorrelationService
                 self.correlation_service = AlertCorrelationService(self.app)
             
-            # Check if alert should be suppressed
+            # Check if alert should be suppressed by correlation rules
             should_suppress = self.correlation_service.should_suppress_alert(alert_type, device_id, message)
             return not should_suppress
             
@@ -721,6 +727,30 @@ This is an automated message from HomeNetMon.
             logger.error(f"Error checking alert correlation: {e}")
             # If correlation check fails, allow the alert to be created
             return True
+    
+    def _is_alert_suppressed(self, device_id: int, alert_type: str, severity: str) -> bool:
+        """Check if alert is suppressed by suppression rules"""
+        try:
+            if not self.app:
+                return False
+                
+            with self.app.app_context():
+                from models import AlertSuppression
+                
+                # Get all enabled suppression rules
+                suppressions = AlertSuppression.query.filter_by(enabled=True).all()
+                
+                # Check if any suppression rule matches this alert
+                for suppression in suppressions:
+                    if suppression.matches_alert(device_id, alert_type, severity):
+                        logger.info(f"Alert suppressed by rule '{suppression.name}': {alert_type} for device {device_id}")
+                        return True
+                
+                return False
+                
+        except Exception as e:
+            logger.error(f"Error checking alert suppression: {e}")
+            return False
     
     def run_alert_correlation(self):
         """Run alert correlation and escalation checks"""

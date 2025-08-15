@@ -1350,3 +1350,352 @@ def get_alert_priority_details(alert_id):
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/alerts/bulk-acknowledge', methods=['POST'])
+def bulk_acknowledge_alerts():
+    """Acknowledge multiple alerts at once"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'alert_ids' not in data:
+            return jsonify({'error': 'alert_ids list is required'}), 400
+        
+        alert_ids = data['alert_ids']
+        acknowledged_by = data.get('acknowledged_by', 'bulk_operation')
+        
+        if not isinstance(alert_ids, list):
+            return jsonify({'error': 'alert_ids must be a list'}), 400
+        
+        # Find alerts to acknowledge
+        alerts = Alert.query.filter(
+            Alert.id.in_(alert_ids),
+            Alert.acknowledged == False
+        ).all()
+        
+        acknowledged_count = 0
+        for alert in alerts:
+            alert.acknowledge(acknowledged_by)
+            acknowledged_count += 1
+        
+        return jsonify({
+            'success': True,
+            'message': f'Acknowledged {acknowledged_count} alerts',
+            'acknowledged_count': acknowledged_count,
+            'requested_count': len(alert_ids)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/alerts/bulk-resolve', methods=['POST'])
+def bulk_resolve_alerts():
+    """Resolve multiple alerts at once"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'alert_ids' not in data:
+            return jsonify({'error': 'alert_ids list is required'}), 400
+        
+        alert_ids = data['alert_ids']
+        
+        if not isinstance(alert_ids, list):
+            return jsonify({'error': 'alert_ids must be a list'}), 400
+        
+        # Find alerts to resolve
+        alerts = Alert.query.filter(
+            Alert.id.in_(alert_ids),
+            Alert.resolved == False
+        ).all()
+        
+        resolved_count = 0
+        for alert in alerts:
+            alert.resolve()
+            resolved_count += 1
+        
+        return jsonify({
+            'success': True,
+            'message': f'Resolved {resolved_count} alerts',
+            'resolved_count': resolved_count,
+            'requested_count': len(alert_ids)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/alerts/bulk-delete', methods=['POST'])
+def bulk_delete_alerts():
+    """Delete multiple alerts at once (for resolved alerts only)"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'alert_ids' not in data:
+            return jsonify({'error': 'alert_ids list is required'}), 400
+        
+        alert_ids = data['alert_ids']
+        force = data.get('force', False)  # Allow forcing deletion of unresolved alerts
+        
+        if not isinstance(alert_ids, list):
+            return jsonify({'error': 'alert_ids must be a list'}), 400
+        
+        # Build query - only allow deletion of resolved alerts unless force=true
+        query = Alert.query.filter(Alert.id.in_(alert_ids))
+        if not force:
+            query = query.filter(Alert.resolved == True)
+        
+        alerts_to_delete = query.all()
+        
+        if not alerts_to_delete:
+            return jsonify({
+                'success': True,
+                'message': 'No alerts found to delete (only resolved alerts can be deleted unless force=true)',
+                'deleted_count': 0,
+                'requested_count': len(alert_ids)
+            })
+        
+        deleted_count = len(alerts_to_delete)
+        
+        # Delete alerts
+        for alert in alerts_to_delete:
+            db.session.delete(alert)
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Deleted {deleted_count} alerts',
+            'deleted_count': deleted_count,
+            'requested_count': len(alert_ids)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/alerts/bulk-update-priority', methods=['POST'])
+def bulk_update_alert_priority():
+    """Update priority for multiple alerts at once"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'alert_ids' not in data:
+            return jsonify({'error': 'alert_ids list is required'}), 400
+        
+        alert_ids = data['alert_ids']
+        
+        if not isinstance(alert_ids, list):
+            return jsonify({'error': 'alert_ids must be a list'}), 400
+        
+        # Find alerts to update
+        alerts = Alert.query.filter(Alert.id.in_(alert_ids)).all()
+        
+        from services.alert_priority import AlertPriorityScorer
+        scorer = AlertPriorityScorer(current_app._get_current_object())
+        
+        updated_count = 0
+        for alert in alerts:
+            score, level, breakdown = scorer.calculate_priority_score(alert)
+            alert.priority_score = score
+            alert.priority_level = level
+            alert.priority_breakdown = json.dumps(breakdown)
+            updated_count += 1
+        
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Updated priority for {updated_count} alerts',
+            'updated_count': updated_count,
+            'requested_count': len(alert_ids)
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/alerts/suppressions', methods=['GET'])
+def get_alert_suppressions():
+    """Get all alert suppression rules"""
+    try:
+        from models import AlertSuppression
+        
+        suppressions = AlertSuppression.query.order_by(AlertSuppression.created_at.desc()).all()
+        
+        return jsonify({
+            'success': True,
+            'suppressions': [suppression.to_dict() for suppression in suppressions],
+            'count': len(suppressions)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/alerts/suppressions', methods=['POST'])
+def create_alert_suppression():
+    """Create a new alert suppression rule"""
+    try:
+        from models import AlertSuppression
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        if not data.get('name'):
+            return jsonify({'error': 'Name is required'}), 400
+        
+        # Parse datetime fields if provided
+        start_time = None
+        end_time = None
+        
+        if data.get('start_time'):
+            try:
+                start_time = datetime.fromisoformat(data['start_time'].replace('Z', '+00:00')).replace(tzinfo=None)
+            except ValueError:
+                return jsonify({'error': 'Invalid start_time format. Use ISO format.'}), 400
+        
+        if data.get('end_time'):
+            try:
+                end_time = datetime.fromisoformat(data['end_time'].replace('Z', '+00:00')).replace(tzinfo=None)
+            except ValueError:
+                return jsonify({'error': 'Invalid end_time format. Use ISO format.'}), 400
+        
+        suppression = AlertSuppression(
+            name=data['name'],
+            description=data.get('description', ''),
+            enabled=data.get('enabled', True),
+            device_id=data.get('device_id'),
+            alert_type=data.get('alert_type'),
+            severity=data.get('severity'),
+            start_time=start_time,
+            end_time=end_time,
+            daily_start_hour=data.get('daily_start_hour'),
+            daily_end_hour=data.get('daily_end_hour'),
+            suppression_type=data.get('suppression_type', 'silence'),
+            priority_reduction=data.get('priority_reduction', 0),
+            delay_minutes=data.get('delay_minutes', 0),
+            created_by=data.get('created_by', 'api_user')
+        )
+        
+        db.session.add(suppression)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Alert suppression rule created successfully',
+            'suppression': suppression.to_dict()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/alerts/suppressions/<int:suppression_id>', methods=['PUT'])
+def update_alert_suppression(suppression_id):
+    """Update an alert suppression rule"""
+    try:
+        from models import AlertSuppression
+        
+        suppression = AlertSuppression.query.get(suppression_id)
+        if not suppression:
+            return jsonify({'error': 'Suppression rule not found'}), 404
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        # Update fields
+        if 'name' in data:
+            suppression.name = data['name']
+        if 'description' in data:
+            suppression.description = data['description']
+        if 'enabled' in data:
+            suppression.enabled = data['enabled']
+        if 'device_id' in data:
+            suppression.device_id = data['device_id']
+        if 'alert_type' in data:
+            suppression.alert_type = data['alert_type']
+        if 'severity' in data:
+            suppression.severity = data['severity']
+        if 'suppression_type' in data:
+            suppression.suppression_type = data['suppression_type']
+        if 'priority_reduction' in data:
+            suppression.priority_reduction = data['priority_reduction']
+        if 'delay_minutes' in data:
+            suppression.delay_minutes = data['delay_minutes']
+        if 'daily_start_hour' in data:
+            suppression.daily_start_hour = data['daily_start_hour']
+        if 'daily_end_hour' in data:
+            suppression.daily_end_hour = data['daily_end_hour']
+        
+        # Handle datetime fields
+        if 'start_time' in data:
+            if data['start_time']:
+                try:
+                    suppression.start_time = datetime.fromisoformat(data['start_time'].replace('Z', '+00:00')).replace(tzinfo=None)
+                except ValueError:
+                    return jsonify({'error': 'Invalid start_time format. Use ISO format.'}), 400
+            else:
+                suppression.start_time = None
+        
+        if 'end_time' in data:
+            if data['end_time']:
+                try:
+                    suppression.end_time = datetime.fromisoformat(data['end_time'].replace('Z', '+00:00')).replace(tzinfo=None)
+                except ValueError:
+                    return jsonify({'error': 'Invalid end_time format. Use ISO format.'}), 400
+            else:
+                suppression.end_time = None
+        
+        suppression.updated_at = datetime.utcnow()
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Alert suppression rule updated successfully',
+            'suppression': suppression.to_dict()
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/alerts/suppressions/<int:suppression_id>', methods=['DELETE'])
+def delete_alert_suppression(suppression_id):
+    """Delete an alert suppression rule"""
+    try:
+        from models import AlertSuppression
+        
+        suppression = AlertSuppression.query.get(suppression_id)
+        if not suppression:
+            return jsonify({'error': 'Suppression rule not found'}), 404
+        
+        db.session.delete(suppression)
+        db.session.commit()
+        
+        return jsonify({
+            'success': True,
+            'message': 'Alert suppression rule deleted successfully'
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/alerts/suppressions/active', methods=['GET'])
+def get_active_suppressions():
+    """Get currently active suppression rules"""
+    try:
+        from models import AlertSuppression
+        
+        all_suppressions = AlertSuppression.query.filter_by(enabled=True).all()
+        active_suppressions = [s for s in all_suppressions if s.is_currently_active()]
+        
+        return jsonify({
+            'success': True,
+            'active_suppressions': [suppression.to_dict() for suppression in active_suppressions],
+            'count': len(active_suppressions)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

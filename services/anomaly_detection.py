@@ -32,34 +32,88 @@ class AnomalyDetectionEngine:
         self.detection_interval = 300  # 5 minutes
         self.rule_engine_service = None
         
-        # Configuration
-        self.min_data_points = 20  # Minimum data points needed for baseline
+        # Load configuration from database or use defaults
+        self.load_configuration()
+    
+    def load_configuration(self):
+        """Load anomaly detection configuration from database or use defaults"""
+        try:
+            if self.app:
+                with self.app.app_context():
+                    from models import Configuration
+                    
+                    # Configuration - More conservative settings to reduce false positives
+                    self.min_data_points = int(Configuration.get_value('anomaly_min_data_points', '50'))
+                    self.baseline_hours = int(Configuration.get_value('anomaly_baseline_hours', '168'))  # 7 days
+                    self.anomaly_threshold = float(Configuration.get_value('anomaly_threshold', '3.0'))
+                    
+                    # Load detection settings
+                    self.detection_settings = {
+                        'response_time': {
+                            'enabled': Configuration.get_value('anomaly_response_time_enabled', 'true').lower() == 'true',
+                            'threshold_multiplier': float(Configuration.get_value('anomaly_response_time_threshold', '2.5')),
+                            'min_change_threshold': float(Configuration.get_value('anomaly_response_time_min_change', '100')),
+                            'severity_thresholds': {
+                                'low': float(Configuration.get_value('anomaly_response_time_low_threshold', '2.0')),
+                                'medium': float(Configuration.get_value('anomaly_response_time_medium_threshold', '2.5')),
+                                'high': float(Configuration.get_value('anomaly_response_time_high_threshold', '3.5')),
+                                'critical': float(Configuration.get_value('anomaly_response_time_critical_threshold', '5.0'))
+                            }
+                        },
+                        'uptime_pattern': {
+                            'enabled': Configuration.get_value('anomaly_uptime_pattern_enabled', 'true').lower() == 'true',
+                            'unexpected_down_threshold': float(Configuration.get_value('anomaly_uptime_down_threshold', '0.9')),
+                            'unexpected_up_threshold': float(Configuration.get_value('anomaly_uptime_up_threshold', '0.9'))
+                        },
+                        'connectivity_pattern': {
+                            'enabled': Configuration.get_value('anomaly_connectivity_pattern_enabled', 'true').lower() == 'true',
+                            'unusual_pattern_threshold': float(Configuration.get_value('anomaly_connectivity_threshold', '1.5'))
+                        }
+                    }
+            else:
+                # Fallback to hardcoded defaults if no app context
+                self._load_default_configuration()
+                
+        except Exception as e:
+            logger.error(f"Error loading anomaly detection configuration: {e}")
+            # Fallback to defaults
+            self._load_default_configuration()
+    
+    def _load_default_configuration(self):
+        """Load default configuration values"""
+        # Configuration - More conservative settings to reduce false positives
+        self.min_data_points = 50  # Increased minimum data points for more stable baselines
         self.baseline_hours = 168  # 7 days for baseline calculation
-        self.anomaly_threshold = 2.5  # Standard deviations for anomaly detection
+        self.anomaly_threshold = 3.0  # Increased standard deviations for anomaly detection
         
-        # Anomaly detection settings per metric
+        # Anomaly detection settings per metric - Tuned to reduce false positives
         self.detection_settings = {
             'response_time': {
                 'enabled': True,
-                'threshold_multiplier': 2.0,
-                'min_change_threshold': 50,  # ms
+                'threshold_multiplier': 2.5,  # Increased from 2.0 - more conservative
+                'min_change_threshold': 100,  # Increased from 50ms - only alert on significant changes
                 'severity_thresholds': {
-                    'low': 1.5,
-                    'medium': 2.0, 
-                    'high': 3.0,
-                    'critical': 4.0
+                    'low': 2.0,      # Increased from 1.5
+                    'medium': 2.5,   # Increased from 2.0 
+                    'high': 3.5,     # Increased from 3.0
+                    'critical': 5.0  # Increased from 4.0
                 }
             },
             'uptime_pattern': {
                 'enabled': True,
-                'unexpected_down_threshold': 0.8,  # Confidence threshold
-                'unexpected_up_threshold': 0.8
+                'unexpected_down_threshold': 0.9,  # Increased from 0.8 - more conservative
+                'unexpected_up_threshold': 0.9     # Increased from 0.8 - more conservative
             },
             'connectivity_pattern': {
                 'enabled': True,
-                'unusual_pattern_threshold': 0.7
+                'unusual_pattern_threshold': 1.5  # Increased from 0.7 - requires 150% change (vs 70%) to trigger
             }
         }
+    
+    def reload_configuration(self):
+        """Reload configuration from database for hot-reload support"""
+        logger.info("Reloading anomaly detection configuration")
+        self.load_configuration()
     
     def start_monitoring(self):
         """Start the anomaly detection monitoring loop"""
@@ -177,6 +231,11 @@ class AnomalyDetectionEngine:
         if baseline_std == 0:
             return None  # No variation in baseline
         
+        # Check baseline stability - if coefficient of variation is too high, baseline is too variable
+        baseline_cv = baseline_std / baseline_mean if baseline_mean > 0 else float('inf')
+        if baseline_cv > 1.0:  # Coefficient of variation > 100% indicates unstable baseline
+            return None
+        
         # Get recent response times
         recent_query = db.session.query(MonitoringData.response_time).filter(
             and_(
@@ -288,16 +347,22 @@ class AnomalyDetectionEngine:
         
         threshold = self.detection_settings['connectivity_pattern']['unusual_pattern_threshold']
         
+        # Add minimum baseline frequency requirement to reduce noise
+        min_baseline_freq = 2.0  # connections/hour - ignore devices with very low baseline activity
+        if baseline_freq < min_baseline_freq:
+            return None
+        
         # Check for significant changes in connection frequency
-        if freq_ratio < (1 - threshold) or freq_ratio > (1 + threshold):
-            if freq_ratio < 0.5:
+        # threshold of 1.5 means we need 150% increase or 50% decrease to trigger
+        if freq_ratio < (1.0 / threshold) or freq_ratio > threshold:
+            if freq_ratio < 0.3:  # More than 70% decrease
                 severity = 'medium'
                 message = f"Unusually low connection frequency ({recent_freq:.1f} vs baseline {baseline_freq:.1f} connections/hour)"
-            elif freq_ratio > 2.0:
+            elif freq_ratio > 3.0:  # More than 300% increase  
                 severity = 'low'
                 message = f"Unusually high connection frequency ({recent_freq:.1f} vs baseline {baseline_freq:.1f} connections/hour)"
             else:
-                return None
+                return None  # Not significant enough change
             
             confidence = min(abs(freq_ratio - 1.0), 1.0)
             

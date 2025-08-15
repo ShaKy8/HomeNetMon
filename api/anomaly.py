@@ -273,3 +273,185 @@ def get_device_baseline(device_id):
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+@anomaly_bp.route('/configuration', methods=['GET'])
+def get_anomaly_configuration():
+    """Get current anomaly detection configuration"""
+    try:
+        from models import Configuration
+        
+        config = {
+            'general': {
+                'min_data_points': int(Configuration.get_value('anomaly_min_data_points', '50')),
+                'baseline_hours': int(Configuration.get_value('anomaly_baseline_hours', '168')),
+                'anomaly_threshold': float(Configuration.get_value('anomaly_threshold', '3.0'))
+            },
+            'response_time': {
+                'enabled': Configuration.get_value('anomaly_response_time_enabled', 'true').lower() == 'true',
+                'threshold_multiplier': float(Configuration.get_value('anomaly_response_time_threshold', '2.5')),
+                'min_change_threshold': float(Configuration.get_value('anomaly_response_time_min_change', '100')),
+                'severity_thresholds': {
+                    'low': float(Configuration.get_value('anomaly_response_time_low_threshold', '2.0')),
+                    'medium': float(Configuration.get_value('anomaly_response_time_medium_threshold', '2.5')),
+                    'high': float(Configuration.get_value('anomaly_response_time_high_threshold', '3.5')),
+                    'critical': float(Configuration.get_value('anomaly_response_time_critical_threshold', '5.0'))
+                }
+            },
+            'uptime_pattern': {
+                'enabled': Configuration.get_value('anomaly_uptime_pattern_enabled', 'true').lower() == 'true',
+                'unexpected_down_threshold': float(Configuration.get_value('anomaly_uptime_down_threshold', '0.9')),
+                'unexpected_up_threshold': float(Configuration.get_value('anomaly_uptime_up_threshold', '0.9'))
+            },
+            'connectivity_pattern': {
+                'enabled': Configuration.get_value('anomaly_connectivity_pattern_enabled', 'true').lower() == 'true',
+                'unusual_pattern_threshold': float(Configuration.get_value('anomaly_connectivity_threshold', '1.5'))
+            }
+        }
+        
+        return jsonify({
+            'success': True,
+            'configuration': config
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@anomaly_bp.route('/configuration', methods=['PUT'])
+def update_anomaly_configuration():
+    """Update anomaly detection configuration"""
+    try:
+        from models import Configuration
+        from flask import current_app
+        
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No configuration data provided'}), 400
+        
+        updated_keys = []
+        
+        # Update general configuration
+        if 'general' in data:
+            general = data['general']
+            if 'min_data_points' in general:
+                Configuration.set_value('anomaly_min_data_points', str(int(general['min_data_points'])), 
+                                      'Minimum data points needed for anomaly baseline')
+                updated_keys.append('anomaly_min_data_points')
+            
+            if 'baseline_hours' in general:
+                Configuration.set_value('anomaly_baseline_hours', str(int(general['baseline_hours'])), 
+                                      'Hours of historical data for anomaly baseline')
+                updated_keys.append('anomaly_baseline_hours')
+            
+            if 'anomaly_threshold' in general:
+                Configuration.set_value('anomaly_threshold', str(float(general['anomaly_threshold'])), 
+                                      'Standard deviations threshold for anomaly detection')
+                updated_keys.append('anomaly_threshold')
+        
+        # Update response time configuration
+        if 'response_time' in data:
+            rt = data['response_time']
+            if 'enabled' in rt:
+                Configuration.set_value('anomaly_response_time_enabled', str(rt['enabled']).lower(), 
+                                      'Enable response time anomaly detection')
+                updated_keys.append('anomaly_response_time_enabled')
+            
+            if 'threshold_multiplier' in rt:
+                Configuration.set_value('anomaly_response_time_threshold', str(float(rt['threshold_multiplier'])), 
+                                      'Response time threshold multiplier')
+                updated_keys.append('anomaly_response_time_threshold')
+            
+            if 'min_change_threshold' in rt:
+                Configuration.set_value('anomaly_response_time_min_change', str(float(rt['min_change_threshold'])), 
+                                      'Minimum response time change (ms) to trigger anomaly')
+                updated_keys.append('anomaly_response_time_min_change')
+            
+            if 'severity_thresholds' in rt:
+                st = rt['severity_thresholds']
+                for severity in ['low', 'medium', 'high', 'critical']:
+                    if severity in st:
+                        Configuration.set_value(f'anomaly_response_time_{severity}_threshold', 
+                                              str(float(st[severity])), 
+                                              f'Response time {severity} severity threshold')
+                        updated_keys.append(f'anomaly_response_time_{severity}_threshold')
+        
+        # Update uptime pattern configuration
+        if 'uptime_pattern' in data:
+            up = data['uptime_pattern']
+            if 'enabled' in up:
+                Configuration.set_value('anomaly_uptime_pattern_enabled', str(up['enabled']).lower(), 
+                                      'Enable uptime pattern anomaly detection')
+                updated_keys.append('anomaly_uptime_pattern_enabled')
+            
+            if 'unexpected_down_threshold' in up:
+                Configuration.set_value('anomaly_uptime_down_threshold', str(float(up['unexpected_down_threshold'])), 
+                                      'Threshold for unexpected downtime detection')
+                updated_keys.append('anomaly_uptime_down_threshold')
+            
+            if 'unexpected_up_threshold' in up:
+                Configuration.set_value('anomaly_uptime_up_threshold', str(float(up['unexpected_up_threshold'])), 
+                                      'Threshold for unexpected uptime detection')
+                updated_keys.append('anomaly_uptime_up_threshold')
+        
+        # Update connectivity pattern configuration
+        if 'connectivity_pattern' in data:
+            cp = data['connectivity_pattern']
+            if 'enabled' in cp:
+                Configuration.set_value('anomaly_connectivity_pattern_enabled', str(cp['enabled']).lower(), 
+                                      'Enable connectivity pattern anomaly detection')
+                updated_keys.append('anomaly_connectivity_pattern_enabled')
+            
+            if 'unusual_pattern_threshold' in cp:
+                Configuration.set_value('anomaly_connectivity_threshold', str(float(cp['unusual_pattern_threshold'])), 
+                                      'Threshold for unusual connectivity patterns')
+                updated_keys.append('anomaly_connectivity_threshold')
+        
+        # Reload configuration in the anomaly detection service
+        if hasattr(current_app, 'anomaly_detection_service') and updated_keys:
+            current_app.anomaly_detection_service.reload_configuration()
+        
+        return jsonify({
+            'success': True,
+            'message': f'Updated {len(updated_keys)} configuration settings',
+            'updated_keys': updated_keys
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@anomaly_bp.route('/test-thresholds', methods=['POST'])
+def test_anomaly_thresholds():
+    """Test anomaly detection with current thresholds on a specific device"""
+    try:
+        data = request.get_json()
+        device_id = data.get('device_id') if data else request.args.get('device_id', type=int)
+        
+        if not device_id:
+            return jsonify({'error': 'device_id is required'}), 400
+        
+        device = Device.query.get(device_id)
+        if not device:
+            return jsonify({'error': 'Device not found'}), 404
+        
+        # Run anomaly detection on this specific device
+        anomalies = anomaly_detection_service.detect_device_anomalies(device)
+        
+        return jsonify({
+            'success': True,
+            'device_id': device_id,
+            'device_name': device.display_name,
+            'anomalies_detected': len(anomalies),
+            'anomalies': [
+                {
+                    'type': anomaly.anomaly_type,
+                    'severity': anomaly.severity,
+                    'confidence': anomaly.confidence,
+                    'message': anomaly.message,
+                    'baseline_value': anomaly.baseline_value,
+                    'current_value': anomaly.current_value,
+                    'threshold': anomaly.threshold
+                } for anomaly in anomalies
+            ]
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
