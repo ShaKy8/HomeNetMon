@@ -59,8 +59,13 @@
       "Bash(echo $?)",
       "Bash(mtr:*)",
       "Bash(time curl:*)",
-      "Bash(git commit:*)"
+      "Bash(git commit:*)",
+      "Bash(lsof:*)"
     ],
-    "deny": []
+    "deny": [],
+    "additionalDirectories": [
+      "/home/kyle/.config/systemd/user"
+    ],
+    "defaultMode": "acceptEdits"
   }
 }

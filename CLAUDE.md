@@ -196,3 +196,5 @@ WebSocket events for real-time updates:
 - Extensible architecture supports additional monitoring features
 - Optimized for home networks (typically <100 devices)
 - All major features implemented including real-time monitoring, alerting, and web dashboard
+- never bind anything to 127.0.0.1
+- never bind anything to localhost
