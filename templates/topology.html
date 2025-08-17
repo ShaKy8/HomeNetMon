@@ -20,68 +20,144 @@
                 <i class="bi bi-diagram-3 me-2"></i>Network Topology
             </h5>
             <div class="d-flex align-items-center flex-wrap">
-                <!-- Device Status Filters -->
-                <div class="btn-group btn-group-sm me-3 mb-2" role="group" aria-label="Status Filters">
-                    <button type="button" class="btn btn-outline-light active" id="filter-all" title="Show All Devices">
-                        <i class="bi bi-circle-fill me-1"></i>All
+                <!-- Filter Controls -->
+                <div class="d-flex flex-wrap align-items-center me-3">
+                    <!-- Status Filters -->
+                    <div class="filter-group me-4 mb-2">
+                        <label class="filter-group-label text-muted fw-bold small mb-1 d-block">STATUS:</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="status-online" checked>
+                                <label class="form-check-label small" for="status-online">
+                                    <i class="bi bi-check-circle-fill me-1" style="color: #28a745;"></i>Online
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="status-offline" checked>
+                                <label class="form-check-label small" for="status-offline">
+                                    <i class="bi bi-x-circle-fill me-1" style="color: #dc3545;"></i>Offline
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="status-warning" checked>
+                                <label class="form-check-label small" for="status-warning">
+                                    <i class="bi bi-exclamation-triangle-fill me-1" style="color: #ffc107;"></i>Warning
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="status-unknown" checked>
+                                <label class="form-check-label small" for="status-unknown">
+                                    <i class="bi bi-question-circle-fill me-1" style="color: #6c757d;"></i>Unknown
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Device Type Filters -->
+                    <div class="filter-group mb-2">
+                        <label class="filter-group-label text-muted fw-bold small mb-1 d-block">DEVICE TYPES:</label>
+                        <div class="d-flex flex-wrap gap-2">
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="type-router" checked>
+                                <label class="form-check-label small" for="type-router">
+                                    <i class="bi bi-router me-1"></i>Router
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="type-computer" checked>
+                                <label class="form-check-label small" for="type-computer">
+                                    <i class="bi bi-pc-display me-1"></i>Computer
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="type-apple" checked>
+                                <label class="form-check-label small" for="type-apple">
+                                    <i class="bi bi-apple me-1"></i>Apple
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="type-phone" checked>
+                                <label class="form-check-label small" for="type-phone">
+                                    <i class="bi bi-phone me-1"></i>Mobile
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="type-smart_home" checked>
+                                <label class="form-check-label small" for="type-smart_home">
+                                    <i class="bi bi-house-gear me-1"></i>Smart
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="type-iot" checked>
+                                <label class="form-check-label small" for="type-iot">
+                                    <i class="bi bi-cpu me-1"></i>IoT
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="type-camera" checked>
+                                <label class="form-check-label small" for="type-camera">
+                                    <i class="bi bi-camera-video me-1"></i>Camera
+                                </label>
+                            </div>
+                            <div class="form-check form-check-inline">
+                                <input class="form-check-input" type="checkbox" id="type-unknown" checked>
+                                <label class="form-check-label small" for="type-unknown">
+                                    <i class="bi bi-question-circle me-1"></i>Unknown
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Filter Actions -->
+                <div class="filter-actions me-3 mb-2">
+                    <button type="button" class="btn btn-outline-secondary btn-sm me-1" id="select-all-filters" title="Select All Filters">
+                        <i class="bi bi-check-square me-1"></i>All
                     </button>
-                    <button type="button" class="btn btn-outline-light active" id="filter-online" title="Show Online Devices">
-                        <i class="bi bi-check-circle-fill me-1" style="color: #28a745;"></i>Online
-                    </button>
-                    <button type="button" class="btn btn-outline-light active" id="filter-offline" title="Show Offline Devices">
-                        <i class="bi bi-x-circle-fill me-1" style="color: #dc3545;"></i>Offline
-                    </button>
-                    <button type="button" class="btn btn-outline-light active" id="filter-warning" title="Show Warning Devices">
-                        <i class="bi bi-exclamation-triangle-fill me-1" style="color: #ffc107;"></i>Warning
-                    </button>
-                    <button type="button" class="btn btn-outline-light active" id="filter-unknown" title="Show Unknown Devices">
-                        <i class="bi bi-question-circle-fill me-1" style="color: #6c757d;"></i>Unknown
+                    <button type="button" class="btn btn-outline-secondary btn-sm" id="clear-all-filters" title="Clear All Filters">
+                        <i class="bi bi-square me-1"></i>None
                     </button>
                 </div>
                 
-                <!-- Device Type Filters -->
-                <div class="btn-group btn-group-sm me-3 mb-2" role="group" aria-label="Device Type Filters">
-                    <button type="button" class="btn btn-outline-light active" id="filter-type-all" title="Show All Device Types">
-                        <i class="bi bi-diagram-3 me-1"></i>All Types
+                <!-- Ping Controls (Promoted to main level) -->
+                <div class="ping-controls me-3 mb-2">
+                    <button type="button" class="btn btn-success btn-sm me-1" id="ping-visible-devices" title="Test connectivity for visible devices">
+                        <i class="bi bi-broadcast me-1"></i>Ping Visible
                     </button>
-                    <button type="button" class="btn btn-outline-light active" id="filter-type-router" title="Show Routers & Network Infrastructure">
-                        <i class="bi bi-router me-1"></i>Router
-                    </button>
-                    <button type="button" class="btn btn-outline-light active" id="filter-type-computer" title="Show Computers & Servers">
-                        <i class="bi bi-pc-display me-1"></i>Computer
-                    </button>
-                    <button type="button" class="btn btn-outline-light active" id="filter-type-apple" title="Show Apple Devices">
-                        <i class="bi bi-apple me-1"></i>Apple
-                    </button>
-                    <button type="button" class="btn btn-outline-light active" id="filter-type-phone" title="Show Mobile Devices">
-                        <i class="bi bi-phone me-1"></i>Mobile
-                    </button>
-                    <button type="button" class="btn btn-outline-light active" id="filter-type-smart_home" title="Show Smart Home Devices">
-                        <i class="bi bi-house-gear me-1"></i>Smart Home
-                    </button>
-                    <button type="button" class="btn btn-outline-light active" id="filter-type-iot" title="Show IoT Devices">
-                        <i class="bi bi-cpu me-1"></i>IoT
-                    </button>
-                    <button type="button" class="btn btn-outline-light active" id="filter-type-camera" title="Show Cameras & Security Devices">
-                        <i class="bi bi-camera-video me-1"></i>Camera
-                    </button>
-                    <button type="button" class="btn btn-outline-light active" id="filter-type-unknown" title="Show Unknown Device Types">
-                        <i class="bi bi-question-circle me-1"></i>Unknown
-                    </button>
+                    <div class="btn-group btn-group-sm" role="group">
+                        <button type="button" class="btn btn-outline-success dropdown-toggle" id="ping-more-options" title="More ping options" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-three-dots"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item" href="#" id="ping-all-devices">
+                                <i class="bi bi-broadcast me-2"></i>Ping All Monitored Devices
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" href="#" id="ping-by-type-router">
+                                <i class="bi bi-router me-2"></i>Ping All Routers
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" id="ping-by-type-camera">
+                                <i class="bi bi-camera-video me-2"></i>Ping All Cameras
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" id="ping-by-type-apple">
+                                <i class="bi bi-apple me-2"></i>Ping All Apple Devices
+                            </a></li>
+                        </ul>
+                    </div>
                 </div>
                 
                 <!-- Layout Controls -->
-                <div class="btn-group btn-group-sm me-2" role="group" aria-label="Layout Controls">
-                    <button type="button" class="btn btn-outline-light" id="graph-layout-force" title="Force Layout">
+                <div class="btn-group btn-group-sm" role="group" aria-label="Layout Controls">
+                    <button type="button" class="btn btn-outline-light" id="graph-layout-force" title="Force-directed Layout">
                         <i class="bi bi-arrows-move"></i>
                     </button>
-                    <button type="button" class="btn btn-outline-light" id="graph-layout-circle" title="Circle Layout">
+                    <button type="button" class="btn btn-outline-light" id="graph-layout-circle" title="Circular Layout">
                         <i class="bi bi-circle"></i>
                     </button>
                     <button type="button" class="btn btn-outline-light active" id="graph-layout-grid" title="Grid Layout">
                         <i class="bi bi-grid"></i>
                     </button>
-                    <button type="button" class="btn btn-outline-light" id="graph-auto-arrange" title="Auto-Arrange (Smart Layout)">
+                    <button type="button" class="btn btn-outline-light" id="graph-auto-arrange" title="Smart Auto-Arrange">
                         <i class="bi bi-magic"></i>
                     </button>
                     <button type="button" class="btn btn-outline-light" id="graph-refresh" title="Refresh Data">
@@ -91,68 +167,80 @@
                         <i class="bi bi-arrow-counterclockwise"></i>
                     </button>
                 </div>
-                
-                <!-- Ping Controls -->
-                <div class="btn-group btn-group-sm" role="group" aria-label="Ping Controls">
-                    <button type="button" class="btn btn-outline-light dropdown-toggle" id="graph-ping-all" title="Ping Devices" data-bs-toggle="dropdown" aria-expanded="false">
-                        <i class="bi bi-broadcast"></i>
-                    </button>
-                    <ul class="dropdown-menu dropdown-menu-end">
-                        <li><a class="dropdown-item" href="#" id="ping-visible-devices">
-                            <i class="bi bi-eye me-2"></i>Ping Visible Devices
-                        </a></li>
-                        <li><a class="dropdown-item" href="#" id="ping-all-devices">
-                            <i class="bi bi-broadcast me-2"></i>Ping All Monitored
-                        </a></li>
-                        <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item" href="#" id="ping-by-type-router">
-                            <i class="bi bi-router me-2"></i>Ping All Routers
-                        </a></li>
-                        <li><a class="dropdown-item" href="#" id="ping-by-type-camera">
-                            <i class="bi bi-camera-video me-2"></i>Ping All Cameras
-                        </a></li>
-                        <li><a class="dropdown-item" href="#" id="ping-by-type-apple">
-                            <i class="bi bi-apple me-2"></i>Ping All Apple Devices
-                        </a></li>
-                    </ul>
-                </div>
             </div>
         </div>
     </div>
     
-    <!-- Ping Progress Container -->
-    <div id="ping-progress-container" class="border-top" style="display: none;">
-        <div class="px-3 py-2 bg-light">
-            <div class="d-flex justify-content-between align-items-center mb-2">
-                <h6 class="mb-0">
-                    <i class="bi bi-broadcast me-2"></i>
-                    <span id="ping-operation-title">Pinging Devices</span>
-                </h6>
-                <div class="d-flex align-items-center">
-                    <span id="ping-progress-text" class="me-2">0 / 0 devices</span>
-                    <button type="button" class="btn btn-sm btn-outline-secondary" id="ping-cancel-btn" title="Cancel Ping Operation">
-                        <i class="bi bi-x"></i>
-                    </button>
-                </div>
-            </div>
-            <div class="progress mb-2" style="height: 8px;">
-                <div id="ping-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
-                     role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
-                </div>
-            </div>
-            <div class="d-flex justify-content-between">
-                <small class="text-success">
-                    <i class="bi bi-check-circle"></i> 
-                    <span id="ping-success-count">0</span> successful
-                </small>
-                <small class="text-danger">
-                    <i class="bi bi-x-circle"></i> 
-                    <span id="ping-fail-count">0</span> failed
-                </small>
+    <!-- Filter Summary -->
+    <div id="filter-summary-container" class="border-bottom bg-light px-3 py-2" style="display: none;">
+        <div class="d-flex justify-content-between align-items-center">
+            <div class="filter-summary-text">
                 <small class="text-muted">
-                    <i class="bi bi-clock"></i> 
-                    <span id="ping-current-device">Ready</span>
+                    <i class="bi bi-funnel me-1"></i>
+                    <span id="filter-summary-text">Showing all devices</span>
                 </small>
+            </div>
+            <button type="button" class="btn btn-outline-secondary btn-sm" id="reset-filters" title="Reset all filters">
+                <i class="bi bi-arrow-counterclockwise me-1"></i>Reset Filters
+            </button>
+        </div>
+    </div>
+    
+    <!-- Ping Progress Modal -->
+    <div id="ping-progress-modal" class="modal fade" tabindex="-1" aria-labelledby="pingProgressModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h6 class="modal-title" id="pingProgressModalLabel">
+                        <i class="bi bi-broadcast me-2"></i>
+                        <span id="ping-operation-title">Testing Network Connectivity</span>
+                    </h6>
+                    <button type="button" class="btn-close" id="ping-cancel-btn" aria-label="Cancel"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span id="ping-progress-text" class="text-muted">0 / 0 devices</span>
+                            <span id="ping-current-device" class="text-primary">Preparing...</span>
+                        </div>
+                        <div class="progress" style="height: 12px;">
+                            <div id="ping-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                                 role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="row text-center">
+                        <div class="col-4">
+                            <div class="bg-success bg-opacity-10 rounded p-2">
+                                <div class="text-success fs-4 fw-bold" id="ping-success-count">0</div>
+                                <small class="text-success">
+                                    <i class="bi bi-check-circle me-1"></i>Successful
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="bg-danger bg-opacity-10 rounded p-2">
+                                <div class="text-danger fs-4 fw-bold" id="ping-fail-count">0</div>
+                                <small class="text-danger">
+                                    <i class="bi bi-x-circle me-1"></i>Failed
+                                </small>
+                            </div>
+                        </div>
+                        <div class="col-4">
+                            <div class="bg-info bg-opacity-10 rounded p-2">
+                                <div class="text-info fs-4 fw-bold" id="ping-remaining-count">0</div>
+                                <small class="text-info">
+                                    <i class="bi bi-clock me-1"></i>Remaining
+                                </small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" id="ping-cancel-secondary-btn">Cancel Operation</button>
+                    <button type="button" class="btn btn-primary" id="ping-close-btn" style="display: none;">Close</button>
+                </div>
             </div>
         </div>
     </div>
@@ -449,6 +537,39 @@
 .toast {
     transition: all 0.3s ease-in-out;
 }
+
+/* Filter group styling */
+.filter-group {
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    padding: 0.75rem;
+    background-color: rgba(255, 255, 255, 0.05);
+}
+
+.filter-group-label {
+    font-size: 0.75rem;
+    letter-spacing: 0.05em;
+    margin-bottom: 0.5rem !important;
+}
+
+.form-check-inline {
+    margin-right: 1rem;
+}
+
+.form-check-label.small {
+    font-size: 0.875rem;
+    cursor: pointer;
+}
+
+/* Filter summary styling */
+#filter-summary-container {
+    transition: all 0.3s ease-in-out;
+}
+
+/* Ping controls styling */
+.ping-controls .btn-success {
+    font-weight: 500;
+}
 </style>
 {% endblock %}
 
@@ -472,25 +593,23 @@ class NetworkGraph {
         this.nodeGroup = null;
         this.linkGroup = null;
         
-        // Filter state management
+        // Filter state management with checkbox approach
         this.activeFilters = {
-            // Status filters
-            all: true,
-            up: true,      // online devices
-            down: true,    // offline devices  
-            warning: true, // warning devices
-            unknown: true,  // unknown devices
+            // Status filters (map to checkbox IDs)
+            up: true,      // status-online
+            down: true,    // status-offline
+            warning: true, // status-warning
+            unknown: true, // status-unknown
             
-            // Device type filters
-            typeAll: true,
-            typeRouter: true,
-            typeComputer: true,
-            typeApple: true,
-            typePhone: true,
-            typeSmartHome: true,
-            typeIot: true,
-            typeCamera: true,
-            typeUnknown: true
+            // Device type filters (map to checkbox IDs)
+            router: true,     // type-router
+            computer: true,   // type-computer
+            apple: true,      // type-apple
+            phone: true,      // type-phone
+            smart_home: true, // type-smart_home
+            iot: true,        // type-iot
+            camera: true,     // type-camera
+            'unknown-type': true  // type-unknown (renamed to avoid conflict)
         };
         this.allNodesData = []; // Store original unfiltered data
         this.allLinksData = []; // Store original unfiltered links
@@ -582,30 +701,12 @@ class NetworkGraph {
         // Filter nodes based on active filters (both status and device type)
         this.nodes = this.allNodesData.filter(node => {
             // Check status filter
-            const statusMap = {
-                'up': 'up',
-                'down': 'down', 
-                'warning': 'warning',
-                'unknown': 'unknown'
-            };
-            
-            const statusFilterKey = statusMap[node.status] || 'unknown';
+            const statusFilterKey = node.status || 'unknown';
             const statusMatch = this.activeFilters[statusFilterKey];
             
             // Check device type filter
-            const deviceTypeMap = {
-                'router': 'typeRouter',
-                'computer': 'typeComputer',
-                'apple': 'typeApple',
-                'phone': 'typePhone',
-                'smart_home': 'typeSmartHome',
-                'iot': 'typeIot',
-                'camera': 'typeCamera',
-                'unknown': 'typeUnknown'
-            };
-            
             const deviceType = node.device_type || 'unknown';
-            const typeFilterKey = deviceTypeMap[deviceType] || 'typeUnknown';
+            const typeFilterKey = deviceType === 'unknown' ? 'unknown-type' : deviceType;
             const typeMatch = this.activeFilters[typeFilterKey];
             
             // Both status and device type must match (AND logic)
@@ -631,6 +732,9 @@ class NetworkGraph {
         
         // Update statistics with filtered data
         this.updateFilteredStats();
+        
+        // Update filter summary
+        this.updateFilterSummary();
     }
     
     updateFilteredStats() {
@@ -663,52 +767,79 @@ class NetworkGraph {
         console.log('TopologyFilter: Device Type Stats', typeStats);
     }
     
-    updateFilterUI() {
-        // Update button states to reflect current filter settings
-        const statusButtons = {
-            'filter-all': this.activeFilters.all,
-            'filter-online': this.activeFilters.up,
-            'filter-offline': this.activeFilters.down,
-            'filter-warning': this.activeFilters.warning,
-            'filter-unknown': this.activeFilters.unknown
-        };
+    updateFilterSummary() {
+        const totalDevices = this.allNodesData.length;
+        const visibleDevices = this.nodes.length;
+        const summaryContainer = document.getElementById('filter-summary-container');
+        const summaryText = document.getElementById('filter-summary-text');
         
-        const typeButtons = {
-            'filter-type-all': this.activeFilters.typeAll,
-            'filter-type-router': this.activeFilters.typeRouter,
-            'filter-type-computer': this.activeFilters.typeComputer,
-            'filter-type-apple': this.activeFilters.typeApple,
-            'filter-type-phone': this.activeFilters.typePhone,
-            'filter-type-smart_home': this.activeFilters.typeSmartHome,
-            'filter-type-iot': this.activeFilters.typeIot,
-            'filter-type-camera': this.activeFilters.typeCamera,
-            'filter-type-unknown': this.activeFilters.typeUnknown
-        };
+        if (visibleDevices === totalDevices) {
+            // All devices visible, hide summary
+            summaryContainer.style.display = 'none';
+            summaryText.textContent = 'Showing all devices';
+            return;
+        }
         
-        // Update status filter buttons
-        for (const [buttonId, isActive] of Object.entries(statusButtons)) {
-            const button = document.getElementById(buttonId);
-            if (button) {
-                if (isActive) {
-                    button.classList.add('active');
-                } else {
-                    button.classList.remove('active');
-                }
+        // Some filters are active, show summary
+        summaryContainer.style.display = 'block';
+        
+        // Build filter description
+        const activeStatusFilters = [];
+        const activeTypeFilters = [];
+        
+        // Check which status filters are active
+        if (this.activeFilters.up && !this.activeFilters.down && !this.activeFilters.warning && !this.activeFilters.unknown) {
+            activeStatusFilters.push('Online');
+        } else if (!this.activeFilters.up && this.activeFilters.down && !this.activeFilters.warning && !this.activeFilters.unknown) {
+            activeStatusFilters.push('Offline');
+        } else if (!this.activeFilters.up && !this.activeFilters.down && this.activeFilters.warning && !this.activeFilters.unknown) {
+            activeStatusFilters.push('Warning');
+        } else if (!this.activeFilters.up && !this.activeFilters.down && !this.activeFilters.warning && this.activeFilters.unknown) {
+            activeStatusFilters.push('Unknown');
+        } else {
+            // Multiple status filters, just show count
+            const statusCount = [this.activeFilters.up, this.activeFilters.down, this.activeFilters.warning, this.activeFilters.unknown].filter(Boolean).length;
+            if (statusCount < 4) {
+                activeStatusFilters.push(`${statusCount} status types`);
             }
         }
         
-        // Update device type filter buttons
-        for (const [buttonId, isActive] of Object.entries(typeButtons)) {
-            const button = document.getElementById(buttonId);
-            if (button) {
-                if (isActive) {
-                    button.classList.add('active');
-                } else {
-                    button.classList.remove('active');
-                }
-            }
+        // Check which device type filters are active
+        const typeMap = {
+            router: 'Routers',
+            computer: 'Computers', 
+            apple: 'Apple devices',
+            phone: 'Mobile devices',
+            smart_home: 'Smart home',
+            iot: 'IoT devices',
+            camera: 'Cameras',
+            'unknown-type': 'Unknown types'
+        };
+        
+        const activeTypes = Object.entries(this.activeFilters)
+            .filter(([key, value]) => value && typeMap[key])
+            .map(([key]) => typeMap[key]);
+            
+        if (activeTypes.length === 1) {
+            activeTypeFilters.push(activeTypes[0]);
+        } else if (activeTypes.length > 1 && activeTypes.length < 8) {
+            activeTypeFilters.push(`${activeTypes.length} device types`);
         }
+        
+        // Build summary text
+        let summaryParts = [];
+        if (activeStatusFilters.length > 0) {
+            summaryParts.push(activeStatusFilters[0]);
+        }
+        if (activeTypeFilters.length > 0) {
+            summaryParts.push(activeTypeFilters[0]);
+        }
+        
+        const filterDesc = summaryParts.length > 0 ? ` (${summaryParts.join(', ')})` : '';
+        summaryText.textContent = `Showing ${visibleDevices} of ${totalDevices} devices${filterDesc}`;
     }
+    
+    // updateFilterUI method removed - now using checkbox synchronization instead
     
     
     render() {
@@ -905,159 +1036,117 @@ class NetworkGraph {
         this.simulation.alpha(0.3).restart();
     }
     
-    // Initialize filter event handlers
+    // Initialize filter event handlers with new checkbox approach
     initializeFilterHandlers() {
-        // Status filter buttons
-        const statusFilterButtons = {
-            'filter-all': 'all',
-            'filter-online': 'up',
-            'filter-offline': 'down',
-            'filter-warning': 'warning',
-            'filter-unknown': 'unknown'
+        // Status filter checkboxes
+        const statusCheckboxes = {
+            'status-online': 'up',
+            'status-offline': 'down',
+            'status-warning': 'warning',
+            'status-unknown': 'unknown'
         };
         
-        // Device type filter buttons
-        const typeFilterButtons = {
-            'filter-type-all': 'typeAll',
-            'filter-type-router': 'typeRouter',
-            'filter-type-computer': 'typeComputer',
-            'filter-type-apple': 'typeApple',
-            'filter-type-phone': 'typePhone',
-            'filter-type-smart_home': 'typeSmartHome',
-            'filter-type-iot': 'typeIot',
-            'filter-type-camera': 'typeCamera',
-            'filter-type-unknown': 'typeUnknown'
+        // Device type filter checkboxes
+        const typeCheckboxes = {
+            'type-router': 'router',
+            'type-computer': 'computer',
+            'type-apple': 'apple',
+            'type-phone': 'phone',
+            'type-smart_home': 'smart_home',
+            'type-iot': 'iot',
+            'type-camera': 'camera',
+            'type-unknown': 'unknown-type'
         };
         
-        // Add event listeners to status filter buttons
-        Object.entries(statusFilterButtons).forEach(([buttonId, filterKey]) => {
-            const button = document.getElementById(buttonId);
-            if (button) {
-                button.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    this.handleStatusFilterClick(filterKey);
+        // Add event listeners to status checkboxes
+        Object.entries(statusCheckboxes).forEach(([checkboxId, filterKey]) => {
+            const checkbox = document.getElementById(checkboxId);
+            if (checkbox) {
+                checkbox.addEventListener('change', (e) => {
+                    this.activeFilters[filterKey] = e.target.checked;
+                    this.applyFilters();
                 });
             }
         });
         
-        // Add event listeners to device type filter buttons
-        Object.entries(typeFilterButtons).forEach(([buttonId, filterKey]) => {
-            const button = document.getElementById(buttonId);
-            if (button) {
-                button.addEventListener('click', (e) => {
-                    e.preventDefault();
-                    this.handleTypeFilterClick(filterKey);
+        // Add event listeners to device type checkboxes
+        Object.entries(typeCheckboxes).forEach(([checkboxId, filterKey]) => {
+            const checkbox = document.getElementById(checkboxId);
+            if (checkbox) {
+                checkbox.addEventListener('change', (e) => {
+                    this.activeFilters[filterKey] = e.target.checked;
+                    this.applyFilters();
                 });
             }
         });
         
-        console.log('Topology: Filter event handlers initialized');
+        // Select All / Clear All buttons
+        document.getElementById('select-all-filters')?.addEventListener('click', () => {
+            this.selectAllFilters();
+        });
+        
+        document.getElementById('clear-all-filters')?.addEventListener('click', () => {
+            this.clearAllFilters();
+        });
+        
+        // Reset filters button
+        document.getElementById('reset-filters')?.addEventListener('click', () => {
+            this.resetFilters();
+        });
+        
+        console.log('Topology: Checkbox filter handlers initialized');
     }
     
-    handleStatusFilterClick(filterKey) {
-        // Handle "All" button specially
-        if (filterKey === 'all') {
-            const isCurrentlyActive = this.activeFilters.all;
-            if (isCurrentlyActive) {
-                // Turn off all status filters
-                this.activeFilters.all = false;
-                this.activeFilters.up = false;
-                this.activeFilters.down = false;
-                this.activeFilters.warning = false;
-                this.activeFilters.unknown = false;
-            } else {
-                // Turn on all status filters
-                this.activeFilters.all = true;
-                this.activeFilters.up = true;
-                this.activeFilters.down = true;
-                this.activeFilters.warning = true;
-                this.activeFilters.unknown = true;
-            }
-        } else {
-            // Toggle individual filter
-            this.activeFilters[filterKey] = !this.activeFilters[filterKey];
-            
-            // Update "all" filter state based on individual filter states
-            const individualFilters = ['up', 'down', 'warning', 'unknown'];
-            const allIndividualActive = individualFilters.every(key => this.activeFilters[key]);
-            const anyIndividualActive = individualFilters.some(key => this.activeFilters[key]);
-            
-            this.activeFilters.all = allIndividualActive;
-            
-            // If no individual filters are active, activate all
-            if (!anyIndividualActive) {
-                this.activeFilters.all = true;
-                this.activeFilters.up = true;
-                this.activeFilters.down = true;
-                this.activeFilters.warning = true;
-                this.activeFilters.unknown = true;
-            }
-        }
+    selectAllFilters() {
+        // Check all checkboxes
+        Object.keys(this.activeFilters).forEach(key => {
+            this.activeFilters[key] = true;
+        });
         
-        // Apply filters and update UI
+        // Update UI checkboxes
+        this.syncCheckboxes();
         this.applyFilters();
-        this.updateFilteredStats();
-        this.updateFilterUI();
-        this.render();
     }
     
-    handleTypeFilterClick(filterKey) {
-        // Handle "All Types" button specially
-        if (filterKey === 'typeAll') {
-            const isCurrentlyActive = this.activeFilters.typeAll;
-            if (isCurrentlyActive) {
-                // Turn off all type filters
-                this.activeFilters.typeAll = false;
-                this.activeFilters.typeRouter = false;
-                this.activeFilters.typeComputer = false;
-                this.activeFilters.typeApple = false;
-                this.activeFilters.typePhone = false;
-                this.activeFilters.typeSmartHome = false;
-                this.activeFilters.typeIot = false;
-                this.activeFilters.typeCamera = false;
-                this.activeFilters.typeUnknown = false;
-            } else {
-                // Turn on all type filters
-                this.activeFilters.typeAll = true;
-                this.activeFilters.typeRouter = true;
-                this.activeFilters.typeComputer = true;
-                this.activeFilters.typeApple = true;
-                this.activeFilters.typePhone = true;
-                this.activeFilters.typeSmartHome = true;
-                this.activeFilters.typeIot = true;
-                this.activeFilters.typeCamera = true;
-                this.activeFilters.typeUnknown = true;
-            }
-        } else {
-            // Toggle individual type filter
-            this.activeFilters[filterKey] = !this.activeFilters[filterKey];
-            
-            // Update "typeAll" filter state based on individual filter states
-            const individualTypeFilters = ['typeRouter', 'typeComputer', 'typeApple', 'typePhone', 'typeSmartHome', 'typeIot', 'typeCamera', 'typeUnknown'];
-            const allIndividualActive = individualTypeFilters.every(key => this.activeFilters[key]);
-            const anyIndividualActive = individualTypeFilters.some(key => this.activeFilters[key]);
-            
-            this.activeFilters.typeAll = allIndividualActive;
-            
-            // If no individual type filters are active, activate all
-            if (!anyIndividualActive) {
-                this.activeFilters.typeAll = true;
-                this.activeFilters.typeRouter = true;
-                this.activeFilters.typeComputer = true;
-                this.activeFilters.typeApple = true;
-                this.activeFilters.typePhone = true;
-                this.activeFilters.typeSmartHome = true;
-                this.activeFilters.typeIot = true;
-                this.activeFilters.typeCamera = true;
-                this.activeFilters.typeUnknown = true;
-            }
-        }
+    clearAllFilters() {
+        // Uncheck all checkboxes
+        Object.keys(this.activeFilters).forEach(key => {
+            this.activeFilters[key] = false;
+        });
         
-        // Apply filters and update UI
+        // Update UI checkboxes
+        this.syncCheckboxes();
         this.applyFilters();
-        this.updateFilteredStats();
-        this.updateFilterUI();
-        this.render();
+    }
+    
+    resetFilters() {
+        // Reset to all filters active
+        this.selectAllFilters();
+    }
+    
+    syncCheckboxes() {
+        // Sync checkbox UI with filter state
+        const checkboxMap = {
+            'status-online': 'up',
+            'status-offline': 'down',
+            'status-warning': 'warning',
+            'status-unknown': 'unknown',
+            'type-router': 'router',
+            'type-computer': 'computer',
+            'type-apple': 'apple',
+            'type-phone': 'phone',
+            'type-smart_home': 'smart_home',
+            'type-iot': 'iot',
+            'type-camera': 'camera',
+            'type-unknown': 'unknown-type'
+        };
+        
+        Object.entries(checkboxMap).forEach(([checkboxId, filterKey]) => {
+            const checkbox = document.getElementById(checkboxId);
+            if (checkbox) {
+                checkbox.checked = this.activeFilters[filterKey];
+            }
+        });
     }
     
     autoArrange() {
@@ -1363,36 +1452,45 @@ class NetworkGraph {
     }
     
     async executePingOperation(devices, operationTitle) {
-        const progressContainer = document.getElementById('ping-progress-container');
+        // Show modal
+        const modal = new bootstrap.Modal(document.getElementById('ping-progress-modal'));
         const progressBar = document.getElementById('ping-progress-bar');
         const progressText = document.getElementById('ping-progress-text');
         const titleElement = document.getElementById('ping-operation-title');
         const successCount = document.getElementById('ping-success-count');
         const failCount = document.getElementById('ping-fail-count');
+        const remainingCount = document.getElementById('ping-remaining-count');
         const currentDevice = document.getElementById('ping-current-device');
         const cancelBtn = document.getElementById('ping-cancel-btn');
+        const cancelSecondaryBtn = document.getElementById('ping-cancel-secondary-btn');
+        const closeBtn = document.getElementById('ping-close-btn');
         
-        // Initialize progress UI
+        // Initialize modal UI
         titleElement.textContent = operationTitle;
-        progressContainer.style.display = 'block';
         progressBar.style.width = '0%';
+        progressBar.className = 'progress-bar progress-bar-striped progress-bar-animated';
         progressText.textContent = `0 / ${devices.length} devices`;
         successCount.textContent = '0';
         failCount.textContent = '0';
-        currentDevice.textContent = 'Starting...';
+        remainingCount.textContent = devices.length.toString();
+        currentDevice.textContent = 'Preparing...';
+        cancelSecondaryBtn.style.display = 'inline-block';
+        closeBtn.style.display = 'none';
+        
+        modal.show();
         
         let cancelled = false;
         let completed = 0;
         let successful = 0;
         let failed = 0;
         
-        // Cancel button handler
+        // Cancel button handlers
         const cancelHandler = () => {
             cancelled = true;
             currentDevice.textContent = 'Cancelling...';
-            cancelBtn.removeEventListener('click', cancelHandler);
         };
         cancelBtn.addEventListener('click', cancelHandler);
+        cancelSecondaryBtn.addEventListener('click', cancelHandler);
         
         // Process devices one by one for better UX
         for (let i = 0; i < devices.length && !cancelled; i++) {
@@ -1431,6 +1529,7 @@ class NetworkGraph {
             }
             
             completed++;
+            const remaining = devices.length - completed;
             
             // Update progress
             const progress = (completed / devices.length) * 100;
@@ -1438,27 +1537,39 @@ class NetworkGraph {
             progressText.textContent = `${completed} / ${devices.length} devices`;
             successCount.textContent = successful.toString();
             failCount.textContent = failed.toString();
+            remainingCount.textContent = remaining.toString();
         }
         
-        // Clean up
+        // Clean up handlers
         cancelBtn.removeEventListener('click', cancelHandler);
+        cancelSecondaryBtn.removeEventListener('click', cancelHandler);
         
+        // Update final state
         if (cancelled) {
             currentDevice.textContent = 'Operation cancelled';
             progressBar.classList.remove('progress-bar-animated');
             progressBar.classList.add('bg-warning');
         } else {
-            currentDevice.textContent = 'Completed';
+            currentDevice.textContent = 'Completed successfully!';
             progressBar.classList.remove('progress-bar-animated');
             progressBar.classList.add(successful === devices.length ? 'bg-success' : 'bg-info');
             
             // Show completion notification
             this.showPingCompletionNotification(successful, failed, devices.length);
-            
-            // Auto-hide progress after 5 seconds
+        }
+        
+        // Show close button, hide cancel
+        cancelSecondaryBtn.style.display = 'none';
+        closeBtn.style.display = 'inline-block';
+        closeBtn.onclick = () => modal.hide();
+        
+        // Auto-close after 10 seconds if successful
+        if (!cancelled && successful > 0) {
             setTimeout(() => {
-                progressContainer.style.display = 'none';
-            }, 5000);
+                if (modal._isShown) {
+                    modal.hide();
+                }
+            }, 10000);
         }
     }
     
@@ -1648,7 +1759,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setActiveGraphButton('graph-auto-arrange');
     });
     
-    // Ping operations
+    // Ping operations with new button structure
     document.getElementById('ping-visible-devices').addEventListener('click', (e) => {
         e.preventDefault();
         networkGraph.pingDevices('visible');
