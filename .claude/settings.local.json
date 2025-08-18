@@ -60,7 +60,15 @@
       "Bash(mtr:*)",
       "Bash(time curl:*)",
       "Bash(git commit:*)",
-      "Bash(lsof:*)"
+      "Bash(lsof:*)",
+      "Bash(cat:*)",
+      "Bash(sed:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_install",
+      "Bash(git checkout:*)",
+      "Bash(git rm:*)",
+      "Bash(git reset:*)",
+      "Bash(git stash:*)"
     ],
     "deny": [],
     "additionalDirectories": [
