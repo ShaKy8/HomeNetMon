@@ -18,9 +18,15 @@ def get_devices():
         device_type = request.args.get('type')
         status = request.args.get('status')
         monitored_only = request.args.get('monitored', 'false').lower() == 'true'
+        network_filter = request.args.get('network_filter', 'true').lower() == 'true'  # Default to true for network filtering
         
         # Build query
         query = Device.query
+        
+        # Apply network range filtering if requested (default behavior)
+        if network_filter:
+            from api.monitoring import filter_devices_by_network_range
+            query = filter_devices_by_network_range(query)
         
         if group:
             query = query.filter(Device.device_group == group)

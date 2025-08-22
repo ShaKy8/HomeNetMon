@@ -4,6 +4,11 @@ from sqlalchemy import func
 from models import db, Device, MonitoringData, Alert, BandwidthData
 from monitoring.monitor import DeviceMonitor
 import ipaddress
+import subprocess
+import threading
+from concurrent.futures import ThreadPoolExecutor
+from functools import lru_cache
+import time
 
 monitoring_bp = Blueprint('monitoring', __name__)
 
@@ -208,12 +213,53 @@ def get_monitoring_statistics():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+@lru_cache(maxsize=1)
+def _cached_live_ping_scan(network_range_str, cache_key):
+    """Cached live ping scan to avoid repeated scans"""
+    try:
+        # Use fping for fast network-wide ping
+        result = subprocess.run(
+            ['fping', '-g', network_range_str, '-q', '-a'],
+            capture_output=True, text=True, timeout=30
+        )
+        
+        if result.returncode in [0, 1]:  # 0 = all responded, 1 = some responded
+            online_ips = [ip.strip() for ip in result.stdout.split('\n') if ip.strip()]
+            return len(online_ips), online_ips
+        else:
+            return 0, []
+    except (subprocess.TimeoutExpired, subprocess.CalledProcessError, FileNotFoundError):
+        # Fallback: no live ping data available
+        return 0, []
+
+def get_live_network_stats(network_range):
+    """Get live network statistics using fping"""
+    # Create cache key based on current time (cache for 30 seconds)
+    cache_key = int(time.time() // 30)  # 30-second cache buckets
+    
+    # Clear cache if it's getting too old
+    if hasattr(_cached_live_ping_scan, 'cache_info'):
+        _cached_live_ping_scan.cache_clear()
+    
+    online_count, online_ips = _cached_live_ping_scan(network_range, cache_key)
+    return {
+        'live_devices_online': online_count,
+        'live_scan_available': online_count > 0,
+        'online_ips': online_ips
+    }
+
 @monitoring_bp.route('/quick-stats', methods=['GET'])
 def get_quick_stats():
-    """Get quick statistics for sidebar display"""
+    """Get quick statistics for sidebar display with optional live ping data"""
     try:
         # Get current network range
         network_range = get_current_network_range()
+        
+        # Get live network data (with caching)
+        include_live = request.args.get('live', 'true').lower() == 'true'
+        live_stats = {}
+        if include_live:
+            live_stats = get_live_network_stats(network_range)
         
         # Filter devices by current network range
         base_query = Device.query
@@ -242,6 +288,18 @@ def get_quick_stats():
         
         devices_down = monitored_devices - devices_up
         
+        # Use live ping results if available and higher than database count
+        if include_live and live_stats.get('live_scan_available'):
+            live_devices_online = live_stats['live_devices_online']
+            # If live scan shows more devices online, use that count
+            if live_devices_online > devices_up:
+                devices_up = live_devices_online
+                # Adjust total devices to reflect reality
+                if live_devices_online > total_devices:
+                    total_devices = live_devices_online
+                # Recalculate devices down based on discovered devices
+                devices_down = max(0, total_devices - devices_up)
+        
         # Get active alerts count (for devices in current network only)
         # Get device IDs in current network
         current_network_device_ids = [d.id for d in filtered_query.all()]
@@ -253,7 +311,7 @@ def get_quick_stats():
         else:
             active_alerts = 0
         
-        return jsonify({
+        result = {
             'total_devices': total_devices,
             'devices_up': devices_up, 
             'devices_down': devices_down,
@@ -261,7 +319,17 @@ def get_quick_stats():
             'monitored_devices': monitored_devices,
             'network_range': network_range,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
-        })
+        }
+        
+        # Include live stats info if requested
+        if include_live:
+            result.update({
+                'live_scan_enabled': True,
+                'live_devices_online': live_stats.get('live_devices_online', 0),
+                'data_source': 'database_plus_live' if live_stats.get('live_scan_available') else 'database_only'
+            })
+        
+        return jsonify(result)
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500

@@ -8,8 +8,9 @@ import sys
 import platform
 import psutil
 import os
+import subprocess
 from datetime import datetime
-from typing import Dict, Any
+from typing import Dict, Any, Optional, Tuple
 
 # Semantic Versioning for HomeNetMon
 VERSION_MAJOR = 2
@@ -17,31 +18,182 @@ VERSION_MINOR = 3
 VERSION_PATCH = 1
 VERSION_BUILD = "stable"
 
-# Build information
+# Build information (fallback values when Git is not available)
 BUILD_DATE = "2025-08-14"
 BUILD_AUTHOR = "Envisioned & Designed by ShaKy8 • Coded by Claude Code"
 
+# Git repository information
+def get_git_info() -> Dict[str, Any]:
+    """Get Git repository information including commit hash, branch, and tag info"""
+    git_info = {
+        'commit_hash': None,
+        'commit_short': None,
+        'branch': None,
+        'tag': None,
+        'is_dirty': False,
+        'commit_date': None,
+        'commit_author': None,
+        'available': False
+    }
+    
+    try:
+        # Check if we're in a git repository
+        subprocess.run(['git', 'rev-parse', '--git-dir'], 
+                      capture_output=True, check=True, timeout=5)
+        git_info['available'] = True
+        
+        # Get commit hash
+        result = subprocess.run(['git', 'rev-parse', 'HEAD'], 
+                              capture_output=True, text=True, check=True, timeout=5)
+        git_info['commit_hash'] = result.stdout.strip()
+        git_info['commit_short'] = git_info['commit_hash'][:8] if git_info['commit_hash'] else None
+        
+        # Get current branch
+        result = subprocess.run(['git', 'branch', '--show-current'], 
+                              capture_output=True, text=True, check=True, timeout=5)
+        git_info['branch'] = result.stdout.strip() or None
+        
+        # Get latest tag (if any)
+        try:
+            result = subprocess.run(['git', 'describe', '--tags', '--exact-match', 'HEAD'], 
+                                  capture_output=True, text=True, check=True, timeout=5)
+            git_info['tag'] = result.stdout.strip()
+        except subprocess.CalledProcessError:
+            # Try to get the latest tag
+            try:
+                result = subprocess.run(['git', 'describe', '--tags', '--abbrev=0'], 
+                                      capture_output=True, text=True, check=True, timeout=5)
+                git_info['tag'] = result.stdout.strip()
+            except subprocess.CalledProcessError:
+                pass
+        
+        # Check if repository is dirty
+        result = subprocess.run(['git', 'status', '--porcelain'], 
+                              capture_output=True, text=True, check=True, timeout=5)
+        git_info['is_dirty'] = bool(result.stdout.strip())
+        
+        # Get commit date and author
+        try:
+            result = subprocess.run(['git', 'log', '-1', '--format=%ci'], 
+                                  capture_output=True, text=True, check=True, timeout=5)
+            git_info['commit_date'] = result.stdout.strip()
+        except subprocess.CalledProcessError:
+            pass
+            
+        try:
+            result = subprocess.run(['git', 'log', '-1', '--format=%an'], 
+                                  capture_output=True, text=True, check=True, timeout=5)
+            git_info['commit_author'] = result.stdout.strip()
+        except subprocess.CalledProcessError:
+            pass
+            
+    except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
+        # Git not available or not a git repository
+        pass
+    
+    return git_info
+
+def parse_git_version(tag: str) -> Optional[Tuple[int, int, int, str]]:
+    """Parse a version tag into components (major, minor, patch, build)"""
+    import re
+    
+    # Match patterns like v2.3.1, 2.3.1-stable, v2.3.1-beta, etc.
+    pattern = r'^v?(\d+)\.(\d+)\.(\d+)(?:[-.](.+))?$'
+    match = re.match(pattern, tag)
+    
+    if match:
+        major, minor, patch, build = match.groups()
+        return int(major), int(minor), int(patch), build or 'stable'
+    
+    return None
+
+def get_dynamic_version() -> Dict[str, Any]:
+    """Get version information from Git if available, fallback to hardcoded values"""
+    git_info = get_git_info()
+    
+    # Start with hardcoded defaults
+    version_info = {
+        'major': VERSION_MAJOR,
+        'minor': VERSION_MINOR,
+        'patch': VERSION_PATCH,
+        'build': VERSION_BUILD,
+        'source': 'hardcoded'
+    }
+    
+    # Try to get version from Git tag
+    if git_info['available'] and git_info['tag']:
+        parsed = parse_git_version(git_info['tag'])
+        if parsed:
+            version_info.update({
+                'major': parsed[0],
+                'minor': parsed[1], 
+                'patch': parsed[2],
+                'build': parsed[3],
+                'source': 'git-tag'
+            })
+    
+    return version_info
+
 def get_version_string() -> str:
     """Get the full version string"""
-    return f"{VERSION_MAJOR}.{VERSION_MINOR}.{VERSION_PATCH}"
+    version_info = get_dynamic_version()
+    return f"{version_info['major']}.{version_info['minor']}.{version_info['patch']}"
 
 def get_version_info() -> Dict[str, Any]:
     """Get comprehensive version and build information"""
-    return {
+    version_info = get_dynamic_version()
+    git_info = get_git_info()
+    
+    # Determine build date - use Git commit date if available, otherwise fallback
+    build_date = BUILD_DATE
+    if git_info['available'] and git_info['commit_date']:
+        try:
+            # Parse Git date and format it consistently
+            from datetime import datetime
+            git_date = datetime.fromisoformat(git_info['commit_date'].replace(' ', 'T').replace(' +', '+').replace(' -', '-'))
+            build_date = git_date.strftime('%Y-%m-%d')
+        except (ValueError, TypeError):
+            pass
+    elif git_info['available']:
+        # If we have Git but no commit date, use current date for development builds
+        build_date = datetime.now().strftime('%Y-%m-%d')
+    
+    result = {
         'version': get_version_string(),
-        'version_major': VERSION_MAJOR,
-        'version_minor': VERSION_MINOR, 
-        'version_patch': VERSION_PATCH,
-        'version_build': VERSION_BUILD,
-        'build_date': BUILD_DATE,
+        'version_major': version_info['major'],
+        'version_minor': version_info['minor'], 
+        'version_patch': version_info['patch'],
+        'version_build': version_info['build'],
+        'version_source': version_info['source'],
+        'build_date': build_date,
         'build_author': BUILD_AUTHOR,
-        'full_version': f"{get_version_string()}-{VERSION_BUILD}",
-        'release_name': get_release_name()
+        'full_version': f"{get_version_string()}-{version_info['build']}",
+        'release_name': get_release_name(version_info['major'], version_info['minor'], version_info['patch'])
     }
+    
+    # Add Git information if available
+    if git_info['available']:
+        result['git'] = {
+            'commit_hash': git_info['commit_hash'],
+            'commit_short': git_info['commit_short'],
+            'branch': git_info['branch'],
+            'tag': git_info['tag'],
+            'is_dirty': git_info['is_dirty'],
+            'commit_date': git_info['commit_date'],
+            'commit_author': git_info['commit_author']
+        }
+    
+    return result
 
-def get_release_name() -> str:
+def get_release_name(major: int = None, minor: int = None, patch: int = None) -> str:
     """Get a friendly release name for this version"""
+    # Use dynamic version if not provided
+    if major is None or minor is None or patch is None:
+        version_info = get_dynamic_version()
+        major, minor, patch = version_info['major'], version_info['minor'], version_info['patch']
+    
     release_names = {
+        (2, 3, 2): "Network Guardian Pro",
         (2, 3, 1): "Network Guardian",
         (2, 3, 0): "Smart Monitor", 
         (2, 2, 0): "Alert Master",
@@ -49,8 +201,16 @@ def get_release_name() -> str:
         (2, 0, 0): "Advanced Core"
     }
     
-    version_key = (VERSION_MAJOR, VERSION_MINOR, VERSION_PATCH)
-    return release_names.get(version_key, "Development Build")
+    version_key = (major, minor, patch)
+    git_info = get_git_info()
+    
+    # For development builds, show branch info
+    base_name = release_names.get(version_key, "Development Build")
+    if git_info['available'] and git_info['branch'] and git_info['branch'] != 'main':
+        if not git_info['tag']:  # Only for non-tagged builds
+            base_name += f" ({git_info['branch']})"
+    
+    return base_name
 
 def get_system_info() -> Dict[str, Any]:
     """Get comprehensive system information"""

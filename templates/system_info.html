@@ -126,6 +126,10 @@
                                             <td id="version-build">-</td>
                                         </tr>
                                         <tr>
+                                            <th>Version Source:</th>
+                                            <td id="version-source">-</td>
+                                        </tr>
+                                        <tr>
                                             <th>Build Author:</th>
                                             <td id="version-author">-</td>
                                         </tr>
@@ -145,6 +149,67 @@
                                 <ul id="app-features" class="list-unstyled mb-0">
                                     <!-- Features will be populated here -->
                                 </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Git Information (if available) -->
+                <div id="git-info-section" class="row mb-4" style="display: none;">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header bg-dark text-white">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-git me-2"></i>Git Repository Information
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <table class="table table-borderless table-sm">
+                                            <tbody>
+                                                <tr>
+                                                    <th width="40%">Commit Hash:</th>
+                                                    <td id="git-commit-hash" class="font-monospace">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Short Hash:</th>
+                                                    <td id="git-commit-short" class="font-monospace">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Branch:</th>
+                                                    <td id="git-branch">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Tag:</th>
+                                                    <td id="git-tag">-</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <table class="table table-borderless table-sm">
+                                            <tbody>
+                                                <tr>
+                                                    <th width="40%">Status:</th>
+                                                    <td id="git-status">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Commit Date:</th>
+                                                    <td id="git-commit-date">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Commit Author:</th>
+                                                    <td id="git-commit-author">-</td>
+                                                </tr>
+                                                <tr>
+                                                    <th>Repository:</th>
+                                                    <td id="git-repository">Available</td>
+                                                </tr>
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -398,7 +463,72 @@ function populateSystemInfo(data) {
     document.getElementById('version-components').textContent = 
         `${data.version?.version_major || 0}.${data.version?.version_minor || 0}.${data.version?.version_patch || 0}`;
     document.getElementById('version-build').textContent = data.version?.version_build || '-';
+    
+    // Version source with badge styling
+    const versionSource = data.version?.version_source || 'unknown';
+    const sourceElement = document.getElementById('version-source');
+    let sourceBadgeClass = 'badge bg-secondary';
+    let sourceText = versionSource;
+    
+    if (versionSource === 'git-tag') {
+        sourceBadgeClass = 'badge bg-success';
+        sourceText = 'Git Tag';
+    } else if (versionSource === 'hardcoded') {
+        sourceBadgeClass = 'badge bg-warning text-dark';
+        sourceText = 'Hardcoded';
+    }
+    
+    sourceElement.innerHTML = `<span class="${sourceBadgeClass}">${sourceText}</span>`;
     document.getElementById('version-author').textContent = data.version?.build_author || '-';
+    
+    // Git Information (if available)
+    if (data.version?.git) {
+        const git = data.version.git;
+        document.getElementById('git-info-section').style.display = 'block';
+        
+        document.getElementById('git-commit-hash').textContent = git.commit_hash || '-';
+        document.getElementById('git-commit-short').textContent = git.commit_short || '-';
+        
+        // Branch with styling
+        const branchElement = document.getElementById('git-branch');
+        if (git.branch) {
+            const branchClass = git.branch === 'main' ? 'badge bg-primary' : 'badge bg-info';
+            branchElement.innerHTML = `<span class="${branchClass}">${git.branch}</span>`;
+        } else {
+            branchElement.textContent = '-';
+        }
+        
+        // Tag with styling
+        const tagElement = document.getElementById('git-tag');
+        if (git.tag) {
+            tagElement.innerHTML = `<span class="badge bg-success">${git.tag}</span>`;
+        } else {
+            tagElement.innerHTML = '<span class="text-muted">No tag</span>';
+        }
+        
+        // Status with styling
+        const statusElement = document.getElementById('git-status');
+        const statusClass = git.is_dirty ? 'text-warning' : 'text-success';
+        const statusText = git.is_dirty ? 'Modified' : 'Clean';
+        const statusIcon = git.is_dirty ? 'bi-exclamation-triangle' : 'bi-check-circle';
+        statusElement.innerHTML = `<i class="bi ${statusIcon} ${statusClass} me-1"></i><span class="${statusClass}">${statusText}</span>`;
+        
+        // Commit date
+        if (git.commit_date) {
+            try {
+                const date = new Date(git.commit_date.replace(' ', 'T'));
+                document.getElementById('git-commit-date').textContent = date.toLocaleString();
+            } catch {
+                document.getElementById('git-commit-date').textContent = git.commit_date;
+            }
+        } else {
+            document.getElementById('git-commit-date').textContent = '-';
+        }
+        
+        document.getElementById('git-commit-author').textContent = git.commit_author || '-';
+    } else {
+        document.getElementById('git-info-section').style.display = 'none';
+    }
 
     // Features
     const featuresElement = document.getElementById('app-features');

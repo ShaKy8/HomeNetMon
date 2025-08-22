@@ -2344,10 +2344,10 @@
                     const pythonVersion = systemData.system.system.python_version;
                     document.getElementById('about-runtime').textContent = `Python ${pythonVersion}`;
                     
-                    // Update device count
-                    const deviceResponse = await fetch('/api/devices');
-                    const deviceData = await deviceResponse.json();
-                    document.getElementById('about-devices').textContent = deviceData.devices ? deviceData.devices.length : '-';
+                    // Update device count (use network-filtered count from quick-stats)
+                    const quickStatsResponse = await fetch('/api/monitoring/quick-stats');
+                    const quickStatsData = await quickStatsResponse.json();
+                    document.getElementById('about-devices').textContent = quickStatsData.total_devices || '-';
                     
                     // Update uptime (simplified calculation from process start time)
                     const started = new Date(systemData.system.process.started);
