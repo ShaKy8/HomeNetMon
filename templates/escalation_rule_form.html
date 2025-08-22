@@ -1,0 +1,1435 @@
+{% extends "base_with_quickstats.html" %}
+
+{% block title %}{{ 'Edit' if rule_id else 'Create' }} Escalation Rule - HomeNetMon{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Wizard-specific styles */
+.wizard-container {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+.wizard-steps {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    position: relative;
+}
+
+.wizard-steps::before {
+    content: '';
+    position: absolute;
+    top: 20px;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background-color: #dee2e6;
+    z-index: 1;
+}
+
+.wizard-step {
+    background: white;
+    border: 2px solid #dee2e6;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    z-index: 2;
+    font-weight: bold;
+    color: #6c757d;
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.wizard-step.active {
+    border-color: #007bff;
+    background-color: #007bff;
+    color: white;
+}
+
+.wizard-step.completed {
+    border-color: #28a745;
+    background-color: #28a745;
+    color: white;
+}
+
+.wizard-step-label {
+    position: absolute;
+    top: 50px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 0.875rem;
+    font-weight: 500;
+    white-space: nowrap;
+}
+
+.wizard-content {
+    min-height: 400px;
+    padding: 2rem;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.wizard-step-content {
+    display: none;
+}
+
+.wizard-step-content.active {
+    display: block;
+}
+
+.condition-builder {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 1rem;
+    margin: 1rem 0;
+    background: #f8f9fa;
+}
+
+.condition-group {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 1rem;
+    margin: 0.5rem 0;
+}
+
+.condition-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0.5rem 0;
+    padding: 0.5rem;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+.action-builder {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+.action-item {
+    background: white;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 1rem;
+    margin: 0.5rem 0;
+    position: relative;
+}
+
+.action-item .remove-action {
+    position: absolute;
+    top: 0.5rem;
+    right: 0.5rem;
+}
+
+.escalation-level-badge {
+    background-color: #007bff;
+    color: white;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    margin-right: 0.5rem;
+}
+
+.config-field {
+    margin: 0.5rem 0;
+}
+
+.validation-error {
+    border-color: #dc3545 !important;
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25) !important;
+}
+
+.validation-feedback {
+    color: #dc3545;
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.template-card {
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 1rem;
+    margin: 0.5rem 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.template-card:hover {
+    border-color: #007bff;
+    background-color: #f8f9fa;
+}
+
+.template-card.selected {
+    border-color: #007bff;
+    background-color: #e3f2fd;
+}
+
+.wizard-navigation {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #dee2e6;
+}
+
+.preview-section {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 6px;
+    padding: 1rem;
+    margin: 1rem 0;
+}
+
+@media (max-width: 768px) {
+    .wizard-steps {
+        flex-wrap: wrap;
+    }
+    
+    .wizard-step-label {
+        position: static;
+        transform: none;
+        margin-top: 0.5rem;
+        text-align: center;
+    }
+    
+    .condition-item,
+    .action-item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb Navigation -->
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="bi bi-house"></i> Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('escalation_rules') }}"><i class="bi bi-arrow-up-right-circle"></i> Escalation Rules</a></li>
+        <li class="breadcrumb-item active" aria-current="page">{{ 'Edit Rule' if rule_id else 'Create Rule' }}</li>
+    </ol>
+</nav>
+
+<div class="wizard-container">
+    <!-- Header -->
+    <div class="text-center mb-4">
+        <h1><i class="bi bi-{{ 'pencil' if rule_id else 'plus-circle' }}"></i> {{ 'Edit' if rule_id else 'Create' }} Escalation Rule</h1>
+        <p class="text-muted">{{ 'Modify' if rule_id else 'Set up automated escalation workflows for notifications and alerts' }}</p>
+    </div>
+    
+    <!-- Wizard Steps -->
+    <div class="wizard-steps">
+        <div class="wizard-step active" data-step="1" onclick="goToStep(1)">
+            1
+            <div class="wizard-step-label">Basic Info</div>
+        </div>
+        <div class="wizard-step" data-step="2" onclick="goToStep(2)">
+            2
+            <div class="wizard-step-label">Trigger Conditions</div>
+        </div>
+        <div class="wizard-step" data-step="3" onclick="goToStep(3)">
+            3
+            <div class="wizard-step-label">Actions</div>
+        </div>
+        <div class="wizard-step" data-step="4" onclick="goToStep(4)">
+            4
+            <div class="wizard-step-label">Timing</div>
+        </div>
+        <div class="wizard-step" data-step="5" onclick="goToStep(5)">
+            5
+            <div class="wizard-step-label">Review</div>
+        </div>
+    </div>
+    
+    <!-- Wizard Content -->
+    <div class="wizard-content">
+        <form id="escalation-rule-form">
+            <!-- Step 1: Basic Information -->
+            <div class="wizard-step-content active" data-step="1">
+                <h3><i class="bi bi-info-circle"></i> Basic Information</h3>
+                <p class="text-muted">Provide basic details about your escalation rule.</p>
+                
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label for="rule-name" class="form-label">Rule Name <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="rule-name" required placeholder="e.g., Critical Alert Escalation">
+                            <div class="form-text">Choose a descriptive name for this escalation rule</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="rule-description" class="form-label">Description</label>
+                            <textarea class="form-control" id="rule-description" rows="3" placeholder="Describe when and how this rule should be used..."></textarea>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="rule-priority" class="form-label">Priority <span class="text-danger">*</span></label>
+                            <select class="form-select" id="rule-priority" required>
+                                <option value="">Select Priority</option>
+                                <option value="1">1 - Highest (Critical systems)</option>
+                                <option value="2">2 - High (Important services)</option>
+                                <option value="3">3 - Medium (Standard alerts)</option>
+                                <option value="4">4 - Low (Informational)</option>
+                                <option value="5">5 - Lowest (Background tasks)</option>
+                            </select>
+                            <div class="form-text">Lower numbers = higher priority</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="rule-enabled" checked>
+                                <label class="form-check-label" for="rule-enabled">
+                                    Enable Rule
+                                </label>
+                            </div>
+                            <div class="form-text">Rule will be active immediately when saved</div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label for="rule-created-by" class="form-label">Created By</label>
+                            <input type="text" class="form-control" id="rule-created-by" placeholder="Your name or identifier">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Template Selection -->
+                <div class="mb-4" id="template-selection">
+                    <h5><i class="bi bi-files"></i> Quick Start with Template</h5>
+                    <p class="text-muted">Choose a pre-configured template to get started quickly, or continue with a blank rule.</p>
+                    <div id="template-list">
+                        <!-- Templates will be loaded here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 2: Trigger Conditions -->
+            <div class="wizard-step-content" data-step="2">
+                <h3><i class="bi bi-gear"></i> Trigger Conditions</h3>
+                <p class="text-muted">Define when this escalation rule should be triggered.</p>
+                
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label for="trigger-type" class="form-label">Trigger Type <span class="text-danger">*</span></label>
+                            <select class="form-select" id="trigger-type" required onchange="updateTriggerFields()">
+                                <option value="">Select Trigger Type</option>
+                            </select>
+                            <div class="form-text" id="trigger-type-description"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-3">
+                            <label class="form-label">Apply to Specific Types</label>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="filter-device-types" onchange="toggleFilterSection('device-types')">
+                                <label class="form-check-label" for="filter-device-types">
+                                    Filter by Device Types
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="filter-notification-types" onchange="toggleFilterSection('notification-types')">
+                                <label class="form-check-label" for="filter-notification-types">
+                                    Filter by Notification Types
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="filter-severity-levels" onchange="toggleFilterSection('severity-levels')">
+                                <label class="form-check-label" for="filter-severity-levels">
+                                    Filter by Severity Levels
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Filter Sections -->
+                <div class="filter-section" id="device-types-section" style="display: none;">
+                    <label class="form-label">Device Types</label>
+                    <div class="row" id="device-types-checkboxes">
+                        <!-- Device type checkboxes will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="filter-section" id="notification-types-section" style="display: none;">
+                    <label class="form-label">Notification Types</label>
+                    <div class="row" id="notification-types-checkboxes">
+                        <!-- Notification type checkboxes will be populated here -->
+                    </div>
+                </div>
+                
+                <div class="filter-section" id="severity-levels-section" style="display: none;">
+                    <label class="form-label">Severity Levels</label>
+                    <div class="row" id="severity-levels-checkboxes">
+                        <div class="col-md-2"><div class="form-check"><input class="form-check-input" type="checkbox" value="critical"><label class="form-check-label">Critical</label></div></div>
+                        <div class="col-md-2"><div class="form-check"><input class="form-check-input" type="checkbox" value="high"><label class="form-check-label">High</label></div></div>
+                        <div class="col-md-2"><div class="form-check"><input class="form-check-input" type="checkbox" value="medium"><label class="form-check-label">Medium</label></div></div>
+                        <div class="col-md-2"><div class="form-check"><input class="form-check-input" type="checkbox" value="low"><label class="form-check-label">Low</label></div></div>
+                        <div class="col-md-2"><div class="form-check"><input class="form-check-input" type="checkbox" value="info"><label class="form-check-label">Info</label></div></div>
+                    </div>
+                </div>
+                
+                <!-- Advanced Conditions -->
+                <div class="condition-builder">
+                    <h5><i class="bi bi-sliders"></i> Advanced Conditions</h5>
+                    <p class="text-muted">Add specific conditions for when this rule should trigger.</p>
+                    
+                    <div id="conditions-container">
+                        <!-- Conditions will be built here -->
+                    </div>
+                    
+                    <button type="button" class="btn btn-outline-primary btn-sm" onclick="addCondition()">
+                        <i class="bi bi-plus"></i> Add Condition
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Step 3: Actions -->
+            <div class="wizard-step-content" data-step="3">
+                <h3><i class="bi bi-lightning"></i> Escalation Actions</h3>
+                <p class="text-muted">Configure what actions should be taken when escalating.</p>
+                
+                <div class="action-builder">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5><i class="bi bi-list-task"></i> Action Sequence</h5>
+                        <div class="dropdown">
+                            <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="bi bi-plus"></i> Add Action
+                            </button>
+                            <ul class="dropdown-menu" id="action-types-menu">
+                                <!-- Action types will be populated here -->
+                            </ul>
+                        </div>
+                    </div>
+                    
+                    <div id="actions-container">
+                        <!-- Actions will be built here -->
+                    </div>
+                    
+                    <div class="alert alert-info" id="no-actions-message">
+                        <i class="bi bi-info-circle"></i> No actions configured yet. Add at least one action to proceed.
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 4: Timing Configuration -->
+            <div class="wizard-step-content" data-step="4">
+                <h3><i class="bi bi-clock"></i> Timing Configuration</h3>
+                <p class="text-muted">Configure when and how often escalations should occur.</p>
+                
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="delay-minutes" class="form-label">Initial Delay</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="delay-minutes" min="0" max="1440" value="0">
+                                <span class="input-group-text">minutes</span>
+                            </div>
+                            <div class="form-text">Wait time before first escalation</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="escalation-interval" class="form-label">Escalation Interval</label>
+                            <div class="input-group">
+                                <input type="number" class="form-control" id="escalation-interval" min="1" max="1440" value="60" required>
+                                <span class="input-group-text">minutes</span>
+                            </div>
+                            <div class="form-text">Time between escalation levels</div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="mb-3">
+                            <label for="max-escalations" class="form-label">Maximum Escalations</label>
+                            <input type="number" class="form-control" id="max-escalations" min="1" max="10" value="3" required>
+                            <div class="form-text">Stop after this many escalations</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Timing Visualization -->
+                <div class="preview-section">
+                    <h5><i class="bi bi-diagram-3"></i> Escalation Timeline</h5>
+                    <p class="text-muted">Preview of when escalations will occur:</p>
+                    <div id="timeline-preview">
+                        <!-- Timeline will be generated here -->
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Step 5: Review and Save -->
+            <div class="wizard-step-content" data-step="5">
+                <h3><i class="bi bi-check-circle"></i> Review and Save</h3>
+                <p class="text-muted">Review your escalation rule configuration before saving.</p>
+                
+                <div id="review-content">
+                    <!-- Review content will be generated here -->
+                </div>
+                
+                <div class="d-flex justify-content-center gap-3 mt-4">
+                    <button type="button" class="btn btn-outline-secondary" onclick="testRuleConfiguration()">
+                        <i class="bi bi-play"></i> Test Configuration
+                    </button>
+                    <button type="submit" class="btn btn-success" id="save-rule-btn">
+                        <i class="bi bi-check"></i> {{ 'Update Rule' if rule_id else 'Create Rule' }}
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+    
+    <!-- Wizard Navigation -->
+    <div class="wizard-navigation">
+        <button type="button" class="btn btn-outline-secondary" id="prev-btn" onclick="previousStep()" disabled>
+            <i class="bi bi-chevron-left"></i> Previous
+        </button>
+        
+        <div class="wizard-progress">
+            <span id="step-indicator">Step 1 of 5</span>
+        </div>
+        
+        <button type="button" class="btn btn-primary" id="next-btn" onclick="nextStep()">
+            Next <i class="bi bi-chevron-right"></i>
+        </button>
+    </div>
+</div>
+
+<!-- Test Configuration Modal -->
+<div class="modal fade" id="testConfigModal" tabindex="-1" aria-labelledby="testConfigModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="testConfigModalLabel">Test Rule Configuration</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Test your rule with sample data to verify it works as expected.</p>
+                
+                <div class="mb-3">
+                    <label for="test-context" class="form-label">Test Context (JSON)</label>
+                    <textarea class="form-control" id="test-context" rows="10" placeholder='{"notification_type": "device_down", "device_type": "router", "severity": "critical"}'></textarea>
+                    <div class="form-text">Provide sample data that would trigger this rule</div>
+                </div>
+                
+                <div id="test-results" style="display: none;">
+                    <h6>Test Results:</h6>
+                    <div id="test-results-content"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="runRuleTest()">Run Test</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentStep = 1;
+let maxStep = 1;
+let ruleData = {};
+let triggerTypes = {};
+let actionTypes = {};
+let conditions = [];
+let actions = [];
+let isEditMode = {{ 'true' if rule_id else 'false' }};
+let ruleId = {{ rule_id if rule_id else 'null' }};
+
+// Initialize the form
+document.addEventListener('DOMContentLoaded', function() {
+    loadFormData();
+    updateStepDisplay();
+    
+    // Handle form submission
+    document.getElementById('escalation-rule-form').addEventListener('submit', handleFormSubmit);
+    
+    // Check for URL parameters (template or duplicate)
+    const urlParams = new URLSearchParams(window.location.search);
+    if (urlParams.has('template')) {
+        loadTemplate(urlParams.get('template'));
+    } else if (urlParams.has('duplicate_from')) {
+        loadRuleForDuplication(urlParams.get('duplicate_from'));
+    }
+});
+
+async function loadFormData() {
+    try {
+        // Load trigger types
+        const triggerResponse = await fetch('/api/escalation/trigger-types');
+        triggerTypes = await triggerResponse.json();
+        
+        const triggerSelect = document.getElementById('trigger-type');
+        Object.entries(triggerTypes).forEach(([key, value]) => {
+            const option = document.createElement('option');
+            option.value = key;
+            option.textContent = value.name;
+            triggerSelect.appendChild(option);
+        });
+        
+        // Load action types
+        const actionResponse = await fetch('/api/escalation/action-types');
+        actionTypes = await actionResponse.json();
+        
+        const actionMenu = document.getElementById('action-types-menu');
+        Object.entries(actionTypes).forEach(([key, value]) => {
+            const item = document.createElement('li');
+            item.innerHTML = `<a class="dropdown-item" href="#" onclick="addAction('${key}')">${value.name}</a>`;
+            actionMenu.appendChild(item);
+        });
+        
+        // Load templates
+        await loadTemplates();
+        
+        // If editing, load existing rule data
+        if (isEditMode && ruleId) {
+            await loadExistingRule(ruleId);
+        }
+        
+    } catch (error) {
+        console.error('Error loading form data:', error);
+        showToast('Error loading form data', 'error');
+    }
+}
+
+async function loadTemplates() {
+    try {
+        const response = await fetch('/api/escalation/rules/templates');
+        const data = await response.json();
+        
+        const templateList = document.getElementById('template-list');
+        templateList.innerHTML = '';
+        
+        data.templates.forEach(template => {
+            const card = document.createElement('div');
+            card.className = 'template-card';
+            card.onclick = () => selectTemplate(template);
+            
+            card.innerHTML = `
+                <h6>${template.name}</h6>
+                <p class="text-muted mb-2">${template.description}</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-info">Trigger: ${template.template.trigger_type.replace('_', ' ')}</small>
+                    <small class="text-success">${template.template.escalation_actions.length} actions</small>
+                </div>
+            `;
+            
+            templateList.appendChild(card);
+        });
+        
+        // Add "blank rule" option
+        const blankCard = document.createElement('div');
+        blankCard.className = 'template-card';
+        blankCard.onclick = () => selectTemplate(null);
+        blankCard.innerHTML = `
+            <h6><i class="bi bi-plus-circle"></i> Start with Blank Rule</h6>
+            <p class="text-muted mb-0">Create a custom escalation rule from scratch</p>
+        `;
+        templateList.appendChild(blankCard);
+        
+    } catch (error) {
+        console.error('Error loading templates:', error);
+    }
+}
+
+function selectTemplate(template) {
+    // Remove selection from other templates
+    document.querySelectorAll('.template-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    // Mark this template as selected
+    event.target.closest('.template-card').classList.add('selected');
+    
+    if (template) {
+        // Pre-fill form with template data
+        populateFormFromTemplate(template.template);
+    }
+}
+
+function populateFormFromTemplate(templateData) {
+    // Basic info
+    document.getElementById('rule-name').value = templateData.name || '';
+    document.getElementById('rule-description').value = templateData.description || '';
+    document.getElementById('rule-priority').value = templateData.priority || 3;
+    
+    // Trigger
+    document.getElementById('trigger-type').value = templateData.trigger_type || '';
+    updateTriggerFields();
+    
+    // Timing
+    document.getElementById('delay-minutes').value = templateData.delay_minutes || 0;
+    document.getElementById('escalation-interval').value = templateData.escalation_interval_minutes || 60;
+    document.getElementById('max-escalations').value = templateData.max_escalations || 3;
+    
+    // Filters
+    if (templateData.applies_to_device_types) {
+        document.getElementById('filter-device-types').checked = true;
+        toggleFilterSection('device-types');
+        // Set selected device types...
+    }
+    
+    if (templateData.applies_to_notification_types) {
+        document.getElementById('filter-notification-types').checked = true;
+        toggleFilterSection('notification-types');
+        // Set selected notification types...
+    }
+    
+    if (templateData.applies_to_severity_levels) {
+        document.getElementById('filter-severity-levels').checked = true;
+        toggleFilterSection('severity-levels');
+        // Set selected severity levels...
+    }
+    
+    // Actions
+    actions = templateData.escalation_actions || [];
+    updateActionsDisplay();
+    
+    // Conditions
+    if (templateData.trigger_conditions) {
+        conditions = Object.entries(templateData.trigger_conditions).map(([key, value]) => ({
+            field: key,
+            operator: typeof value === 'object' ? Object.keys(value)[0] : 'equals',
+            value: typeof value === 'object' ? Object.values(value)[0] : value
+        }));
+        updateConditionsDisplay();
+    }
+}
+
+async function loadExistingRule(ruleId) {
+    try {
+        const response = await fetch(`/api/escalation/rules/${ruleId}`);
+        const rule = await response.json();
+        
+        // Populate form with existing rule data
+        document.getElementById('rule-name').value = rule.name;
+        document.getElementById('rule-description').value = rule.description || '';
+        document.getElementById('rule-priority').value = rule.priority;
+        document.getElementById('rule-enabled').checked = rule.enabled;
+        document.getElementById('rule-created-by').value = rule.created_by || '';
+        
+        document.getElementById('trigger-type').value = rule.trigger_type;
+        updateTriggerFields();
+        
+        document.getElementById('delay-minutes').value = rule.delay_minutes;
+        document.getElementById('escalation-interval').value = rule.escalation_interval_minutes;
+        document.getElementById('max-escalations').value = rule.max_escalations;
+        
+        // Load filters
+        if (rule.applies_to_device_types) {
+            document.getElementById('filter-device-types').checked = true;
+            toggleFilterSection('device-types');
+            // Set selected device types...
+        }
+        
+        if (rule.applies_to_notification_types) {
+            document.getElementById('filter-notification-types').checked = true;
+            toggleFilterSection('notification-types');
+            // Set selected notification types...
+        }
+        
+        if (rule.applies_to_severity_levels) {
+            document.getElementById('filter-severity-levels').checked = true;
+            toggleFilterSection('severity-levels');
+            // Set selected severity levels...
+        }
+        
+        // Load conditions and actions
+        if (rule.trigger_conditions) {
+            conditions = Object.entries(rule.trigger_conditions).map(([key, value]) => ({
+                field: key,
+                operator: typeof value === 'object' ? Object.keys(value)[0] : 'equals',
+                value: typeof value === 'object' ? Object.values(value)[0] : value
+            }));
+            updateConditionsDisplay();
+        }
+        
+        actions = rule.escalation_actions || [];
+        updateActionsDisplay();
+        
+    } catch (error) {
+        console.error('Error loading existing rule:', error);
+        showToast('Error loading rule data', 'error');
+    }
+}
+
+function updateTriggerFields() {
+    const triggerType = document.getElementById('trigger-type').value;
+    const description = document.getElementById('trigger-type-description');
+    
+    if (triggerType && triggerTypes[triggerType]) {
+        description.textContent = triggerTypes[triggerType].description;
+    } else {
+        description.textContent = '';
+    }
+}
+
+function toggleFilterSection(sectionName) {
+    const checkbox = document.getElementById(`filter-${sectionName}`);
+    const section = document.getElementById(`${sectionName}-section`);
+    
+    if (checkbox.checked) {
+        section.style.display = 'block';
+        // Load options if needed
+        if (sectionName === 'device-types') {
+            loadDeviceTypes();
+        } else if (sectionName === 'notification-types') {
+            loadNotificationTypes();
+        }
+    } else {
+        section.style.display = 'none';
+    }
+}
+
+async function loadDeviceTypes() {
+    // Implementation for loading device types from API
+    try {
+        const response = await fetch('/api/devices/types');
+        const data = await response.json();
+        
+        const container = document.getElementById('device-types-checkboxes');
+        container.innerHTML = '';
+        
+        data.types.forEach(type => {
+            const div = document.createElement('div');
+            div.className = 'col-md-3';
+            div.innerHTML = `
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="${type}" id="device-type-${type}">
+                    <label class="form-check-label" for="device-type-${type}">${type}</label>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    } catch (error) {
+        console.error('Error loading device types:', error);
+    }
+}
+
+async function loadNotificationTypes() {
+    // Implementation for loading notification types from API
+    try {
+        const response = await fetch('/api/notifications/types');
+        const data = await response.json();
+        
+        const container = document.getElementById('notification-types-checkboxes');
+        container.innerHTML = '';
+        
+        data.types.forEach(type => {
+            const div = document.createElement('div');
+            div.className = 'col-md-3';
+            div.innerHTML = `
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" value="${type}" id="notification-type-${type}">
+                    <label class="form-check-label" for="notification-type-${type}">${data.descriptions[type] || type}</label>
+                </div>
+            `;
+            container.appendChild(div);
+        });
+    } catch (error) {
+        console.error('Error loading notification types:', error);
+    }
+}
+
+function addCondition() {
+    const condition = {
+        field: '',
+        operator: 'equals',
+        value: ''
+    };
+    
+    conditions.push(condition);
+    updateConditionsDisplay();
+}
+
+function updateConditionsDisplay() {
+    const container = document.getElementById('conditions-container');
+    container.innerHTML = '';
+    
+    conditions.forEach((condition, index) => {
+        const conditionDiv = document.createElement('div');
+        conditionDiv.className = 'condition-item';
+        
+        conditionDiv.innerHTML = `
+            <select class="form-select form-select-sm" onchange="updateCondition(${index}, 'field', this.value)">
+                <option value="">Select Field</option>
+                <option value="failure_count" ${condition.field === 'failure_count' ? 'selected' : ''}>Failure Count</option>
+                <option value="duration_minutes" ${condition.field === 'duration_minutes' ? 'selected' : ''}>Duration (minutes)</option>
+                <option value="error_message" ${condition.field === 'error_message' ? 'selected' : ''}>Error Message</option>
+                <option value="failure_rate" ${condition.field === 'failure_rate' ? 'selected' : ''}>Failure Rate</option>
+            </select>
+            
+            <select class="form-select form-select-sm" onchange="updateCondition(${index}, 'operator', this.value)">
+                <option value="equals" ${condition.operator === 'equals' ? 'selected' : ''}>Equals</option>
+                <option value="greater_than" ${condition.operator === 'greater_than' ? 'selected' : ''}>Greater Than</option>
+                <option value="less_than" ${condition.operator === 'less_than' ? 'selected' : ''}>Less Than</option>
+                <option value="contains" ${condition.operator === 'contains' ? 'selected' : ''}>Contains</option>
+            </select>
+            
+            <input type="text" class="form-control form-control-sm" placeholder="Value" 
+                   value="${condition.value}" onchange="updateCondition(${index}, 'value', this.value)">
+            
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeCondition(${index})">
+                <i class="bi bi-trash"></i>
+            </button>
+        `;
+        
+        container.appendChild(conditionDiv);
+    });
+}
+
+function updateCondition(index, field, value) {
+    conditions[index][field] = value;
+}
+
+function removeCondition(index) {
+    conditions.splice(index, 1);
+    updateConditionsDisplay();
+}
+
+function addAction(actionType) {
+    const action = {
+        action_type: actionType,
+        config: {}
+    };
+    
+    actions.push(action);
+    updateActionsDisplay();
+}
+
+function updateActionsDisplay() {
+    const container = document.getElementById('actions-container');
+    const noActionsMessage = document.getElementById('no-actions-message');
+    
+    container.innerHTML = '';
+    
+    if (actions.length === 0) {
+        noActionsMessage.style.display = 'block';
+        return;
+    }
+    
+    noActionsMessage.style.display = 'none';
+    
+    actions.forEach((action, index) => {
+        const actionDiv = document.createElement('div');
+        actionDiv.className = 'action-item';
+        
+        const actionTypeInfo = actionTypes[action.action_type];
+        
+        actionDiv.innerHTML = `
+            <button type="button" class="btn btn-sm btn-outline-danger remove-action" onclick="removeAction(${index})">
+                <i class="bi bi-x"></i>
+            </button>
+            
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6><span class="escalation-level-badge">Level ${index + 1}</span>${actionTypeInfo.name}</h6>
+            </div>
+            
+            <p class="text-muted mb-3">${actionTypeInfo.description}</p>
+            
+            <div id="action-config-${index}">
+                ${generateActionConfigFields(action, index)}
+            </div>
+        `;
+        
+        container.appendChild(actionDiv);
+    });
+}
+
+function generateActionConfigFields(action, index) {
+    const actionType = actionTypes[action.action_type];
+    let html = '';
+    
+    Object.entries(actionType.config_schema).forEach(([field, description]) => {
+        const value = action.config[field] || '';
+        
+        if (field === 'to' && (action.action_type === 'email' || action.action_type === 'sms')) {
+            html += `
+                <div class="config-field">
+                    <label class="form-label">${field.charAt(0).toUpperCase() + field.slice(1)}</label>
+                    <textarea class="form-control form-control-sm" rows="2" 
+                              placeholder="${description}" 
+                              onchange="updateActionConfig(${index}, '${field}', this.value)">${Array.isArray(value) ? value.join(', ') : value}</textarea>
+                    <div class="form-text">Separate multiple entries with commas</div>
+                </div>
+            `;
+        } else if (field === 'priority') {
+            html += `
+                <div class="config-field">
+                    <label class="form-label">${field.charAt(0).toUpperCase() + field.slice(1)}</label>
+                    <select class="form-select form-select-sm" onchange="updateActionConfig(${index}, '${field}', this.value)">
+                        <option value="normal" ${value === 'normal' ? 'selected' : ''}>Normal</option>
+                        <option value="high" ${value === 'high' ? 'selected' : ''}>High</option>
+                        <option value="urgent" ${value === 'urgent' ? 'selected' : ''}>Urgent</option>
+                    </select>
+                </div>
+            `;
+        } else {
+            html += `
+                <div class="config-field">
+                    <label class="form-label">${field.charAt(0).toUpperCase() + field.slice(1)}</label>
+                    <input type="text" class="form-control form-control-sm" 
+                           placeholder="${description}" 
+                           value="${value}"
+                           onchange="updateActionConfig(${index}, '${field}', this.value)">
+                </div>
+            `;
+        }
+    });
+    
+    return html;
+}
+
+function updateActionConfig(index, field, value) {
+    if (!actions[index].config) {
+        actions[index].config = {};
+    }
+    
+    // Handle array fields (email/SMS recipients)
+    if (field === 'to' && (actions[index].action_type === 'email' || actions[index].action_type === 'sms')) {
+        actions[index].config[field] = value.split(',').map(v => v.trim()).filter(v => v);
+    } else {
+        actions[index].config[field] = value;
+    }
+}
+
+function removeAction(index) {
+    actions.splice(index, 1);
+    updateActionsDisplay();
+}
+
+// Wizard navigation functions
+function goToStep(step) {
+    if (step <= maxStep && step >= 1 && step <= 5) {
+        if (validateCurrentStep()) {
+            currentStep = step;
+            updateStepDisplay();
+        }
+    }
+}
+
+function nextStep() {
+    if (validateCurrentStep() && currentStep < 5) {
+        currentStep++;
+        maxStep = Math.max(maxStep, currentStep);
+        updateStepDisplay();
+        
+        if (currentStep === 5) {
+            generateReviewContent();
+        } else if (currentStep === 4) {
+            updateTimelinePreview();
+        }
+    }
+}
+
+function previousStep() {
+    if (currentStep > 1) {
+        currentStep--;
+        updateStepDisplay();
+    }
+}
+
+function updateStepDisplay() {
+    // Update step indicators
+    document.querySelectorAll('.wizard-step').forEach((step, index) => {
+        const stepNum = index + 1;
+        step.classList.remove('active', 'completed');
+        
+        if (stepNum === currentStep) {
+            step.classList.add('active');
+        } else if (stepNum < currentStep || stepNum <= maxStep) {
+            step.classList.add('completed');
+        }
+    });
+    
+    // Update step content
+    document.querySelectorAll('.wizard-step-content').forEach((content, index) => {
+        const stepNum = index + 1;
+        content.classList.remove('active');
+        
+        if (stepNum === currentStep) {
+            content.classList.add('active');
+        }
+    });
+    
+    // Update navigation
+    document.getElementById('prev-btn').disabled = currentStep === 1;
+    document.getElementById('next-btn').style.display = currentStep === 5 ? 'none' : 'block';
+    document.getElementById('step-indicator').textContent = `Step ${currentStep} of 5`;
+}
+
+function validateCurrentStep() {
+    const step = currentStep;
+    let isValid = true;
+    
+    // Clear previous validation errors
+    document.querySelectorAll('.validation-error').forEach(el => {
+        el.classList.remove('validation-error');
+    });
+    document.querySelectorAll('.validation-feedback').forEach(el => {
+        el.remove();
+    });
+    
+    if (step === 1) {
+        // Validate basic information
+        const name = document.getElementById('rule-name');
+        const priority = document.getElementById('rule-priority');
+        
+        if (!name.value.trim()) {
+            showValidationError(name, 'Rule name is required');
+            isValid = false;
+        }
+        
+        if (!priority.value) {
+            showValidationError(priority, 'Priority is required');
+            isValid = false;
+        }
+    } else if (step === 2) {
+        // Validate trigger conditions
+        const triggerType = document.getElementById('trigger-type');
+        
+        if (!triggerType.value) {
+            showValidationError(triggerType, 'Trigger type is required');
+            isValid = false;
+        }
+    } else if (step === 3) {
+        // Validate actions
+        if (actions.length === 0) {
+            showToast('At least one action is required', 'error');
+            isValid = false;
+        }
+        
+        // Validate action configurations
+        actions.forEach((action, index) => {
+            const requiredFields = Object.keys(actionTypes[action.action_type].config_schema);
+            requiredFields.forEach(field => {
+                if (!action.config[field]) {
+                    showToast(`${actionTypes[action.action_type].name} action ${index + 1} is missing ${field}`, 'error');
+                    isValid = false;
+                }
+            });
+        });
+    } else if (step === 4) {
+        // Validate timing
+        const interval = document.getElementById('escalation-interval');
+        const maxEscalations = document.getElementById('max-escalations');
+        
+        if (!interval.value || interval.value < 1) {
+            showValidationError(interval, 'Escalation interval must be at least 1 minute');
+            isValid = false;
+        }
+        
+        if (!maxEscalations.value || maxEscalations.value < 1) {
+            showValidationError(maxEscalations, 'Maximum escalations must be at least 1');
+            isValid = false;
+        }
+    }
+    
+    return isValid;
+}
+
+function showValidationError(element, message) {
+    element.classList.add('validation-error');
+    
+    const feedback = document.createElement('div');
+    feedback.className = 'validation-feedback';
+    feedback.textContent = message;
+    
+    element.parentNode.appendChild(feedback);
+}
+
+function updateTimelinePreview() {
+    const delay = parseInt(document.getElementById('delay-minutes').value) || 0;
+    const interval = parseInt(document.getElementById('escalation-interval').value) || 60;
+    const maxEscalations = parseInt(document.getElementById('max-escalations').value) || 3;
+    
+    const preview = document.getElementById('timeline-preview');
+    let html = '<div class="timeline">';
+    
+    for (let i = 0; i < maxEscalations; i++) {
+        const time = delay + (i * interval);
+        const hours = Math.floor(time / 60);
+        const minutes = time % 60;
+        const timeStr = hours > 0 ? `${hours}h ${minutes}m` : `${minutes}m`;
+        
+        html += `
+            <div class="d-flex align-items-center mb-2">
+                <div class="badge bg-primary me-3">Level ${i + 1}</div>
+                <div class="flex-grow-1">
+                    <strong>After ${timeStr}</strong>
+                    ${i < actions.length ? ` - ${actionTypes[actions[i].action_type].name}` : ' - No action configured'}
+                </div>
+            </div>
+        `;
+    }
+    
+    html += '</div>';
+    preview.innerHTML = html;
+}
+
+function generateReviewContent() {
+    const review = document.getElementById('review-content');
+    
+    // Collect all form data
+    const formData = {
+        name: document.getElementById('rule-name').value,
+        description: document.getElementById('rule-description').value,
+        priority: document.getElementById('rule-priority').value,
+        enabled: document.getElementById('rule-enabled').checked,
+        created_by: document.getElementById('rule-created-by').value,
+        trigger_type: document.getElementById('trigger-type').value,
+        delay_minutes: parseInt(document.getElementById('delay-minutes').value),
+        escalation_interval_minutes: parseInt(document.getElementById('escalation-interval').value),
+        max_escalations: parseInt(document.getElementById('max-escalations').value),
+        trigger_conditions: {},
+        escalation_actions: actions,
+        applies_to_device_types: null,
+        applies_to_notification_types: null,
+        applies_to_severity_levels: null
+    };
+    
+    // Build conditions object
+    conditions.forEach(condition => {
+        if (condition.field && condition.value) {
+            if (condition.operator === 'equals') {
+                formData.trigger_conditions[condition.field] = condition.value;
+            } else {
+                formData.trigger_conditions[condition.field] = {
+                    [condition.operator]: condition.value
+                };
+            }
+        }
+    });
+    
+    // Collect filter selections
+    if (document.getElementById('filter-device-types').checked) {
+        const selected = Array.from(document.querySelectorAll('#device-types-checkboxes input:checked')).map(cb => cb.value);
+        if (selected.length > 0) formData.applies_to_device_types = selected;
+    }
+    
+    if (document.getElementById('filter-notification-types').checked) {
+        const selected = Array.from(document.querySelectorAll('#notification-types-checkboxes input:checked')).map(cb => cb.value);
+        if (selected.length > 0) formData.applies_to_notification_types = selected;
+    }
+    
+    if (document.getElementById('filter-severity-levels').checked) {
+        const selected = Array.from(document.querySelectorAll('#severity-levels-checkboxes input:checked')).map(cb => cb.value);
+        if (selected.length > 0) formData.applies_to_severity_levels = selected;
+    }
+    
+    // Store form data for submission
+    ruleData = formData;
+    
+    // Generate review HTML
+    let html = `
+        <div class="row">
+            <div class="col-md-6">
+                <h5><i class="bi bi-info-circle"></i> Basic Information</h5>
+                <table class="table table-sm">
+                    <tr><td><strong>Name:</strong></td><td>${formData.name}</td></tr>
+                    <tr><td><strong>Priority:</strong></td><td>P${formData.priority}</td></tr>
+                    <tr><td><strong>Status:</strong></td><td>${formData.enabled ? 'Enabled' : 'Disabled'}</td></tr>
+                    ${formData.description ? `<tr><td><strong>Description:</strong></td><td>${formData.description}</td></tr>` : ''}
+                </table>
+                
+                <h5><i class="bi bi-gear"></i> Trigger Configuration</h5>
+                <table class="table table-sm">
+                    <tr><td><strong>Type:</strong></td><td>${triggerTypes[formData.trigger_type]?.name || formData.trigger_type}</td></tr>
+                    ${Object.keys(formData.trigger_conditions).length > 0 ? 
+                        `<tr><td><strong>Conditions:</strong></td><td>${Object.keys(formData.trigger_conditions).length} conditions</td></tr>` : ''}
+                </table>
+            </div>
+            
+            <div class="col-md-6">
+                <h5><i class="bi bi-clock"></i> Timing Configuration</h5>
+                <table class="table table-sm">
+                    <tr><td><strong>Initial Delay:</strong></td><td>${formData.delay_minutes} minutes</td></tr>
+                    <tr><td><strong>Interval:</strong></td><td>${formData.escalation_interval_minutes} minutes</td></tr>
+                    <tr><td><strong>Max Levels:</strong></td><td>${formData.max_escalations}</td></tr>
+                </table>
+                
+                <h5><i class="bi bi-lightning"></i> Actions (${actions.length})</h5>
+                <div class="list-group list-group-flush">
+    `;
+    
+    actions.forEach((action, index) => {
+        html += `
+            <div class="list-group-item border-0 px-0">
+                <strong>Level ${index + 1}:</strong> ${actionTypes[action.action_type].name}
+            </div>
+        `;
+    });
+    
+    html += `
+                </div>
+            </div>
+        </div>
+    `;
+    
+    review.innerHTML = html;
+}
+
+async function handleFormSubmit(event) {
+    event.preventDefault();
+    
+    if (!validateCurrentStep()) {
+        return;
+    }
+    
+    try {
+        const submitBtn = document.getElementById('save-rule-btn');
+        const originalText = submitBtn.innerHTML;
+        submitBtn.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
+        submitBtn.disabled = true;
+        
+        const url = isEditMode ? `/api/escalation/rules/${ruleId}` : '/api/escalation/rules';
+        const method = isEditMode ? 'PUT' : 'POST';
+        
+        const response = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(ruleData)
+        });
+        
+        if (response.ok) {
+            const result = await response.json();
+            showToast(`Rule ${isEditMode ? 'updated' : 'created'} successfully!`, 'success');
+            
+            // Redirect to rules list after a brief delay
+            setTimeout(() => {
+                window.location.href = '/escalation-rules';
+            }, 1500);
+        } else {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to save rule');
+        }
+        
+    } catch (error) {
+        console.error('Error saving rule:', error);
+        showToast('Error saving rule: ' + error.message, 'error');
+        
+        // Reset button
+        const submitBtn = document.getElementById('save-rule-btn');
+        submitBtn.innerHTML = originalText;
+        submitBtn.disabled = false;
+    }
+}
+
+function testRuleConfiguration() {
+    const modal = new bootstrap.Modal(document.getElementById('testConfigModal'));
+    
+    // Pre-fill test context based on trigger type
+    const triggerType = document.getElementById('trigger-type').value;
+    let sampleContext = {};
+    
+    if (triggerType === 'notification_failure') {
+        sampleContext = {
+            notification_type: 'device_down',
+            device_type: 'router',
+            failure_count: 3,
+            error_message: 'Connection timeout'
+        };
+    } else if (triggerType === 'alert_unresolved') {
+        sampleContext = {
+            severity: 'critical',
+            device_type: 'router',
+            duration_minutes: 30
+        };
+    } else if (triggerType === 'device_offline') {
+        sampleContext = {
+            device_type: 'camera',
+            offline_duration_minutes: 15
+        };
+    }
+    
+    document.getElementById('test-context').value = JSON.stringify(sampleContext, null, 2);
+    modal.show();
+}
+
+async function runRuleTest() {
+    try {
+        const testContext = JSON.parse(document.getElementById('test-context').value);
+        
+        const response = await fetch(`/api/escalation/rules/${ruleId || 'test'}/test`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                context: testContext,
+                rule_config: ruleData
+            })
+        });
+        
+        const result = await response.json();
+        
+        let resultHtml = '';
+        if (result.matches) {
+            resultHtml = `
+                <div class="alert alert-success">
+                    <i class="bi bi-check-circle"></i> Rule would trigger for this context
+                </div>
+                <h6>Execution Plan:</h6>
+                <ul>
+                    <li>Initial delay: ${result.would_execute.delay_minutes} minutes</li>
+                    <li>Maximum escalations: ${result.would_execute.max_escalations}</li>
+                    <li>Interval: ${result.would_execute.escalation_interval_minutes} minutes</li>
+                    <li>Actions: ${result.would_execute.actions.length} configured</li>
+                </ul>
+            `;
+        } else {
+            resultHtml = `
+                <div class="alert alert-warning">
+                    <i class="bi bi-exclamation-triangle"></i> Rule would NOT trigger for this context
+                </div>
+                <p>Check your trigger conditions and filters.</p>
+            `;
+        }
+        
+        document.getElementById('test-results').style.display = 'block';
+        document.getElementById('test-results-content').innerHTML = resultHtml;
+        
+    } catch (error) {
+        console.error('Error running test:', error);
+        showToast('Error running rule test: ' + error.message, 'error');
+    }
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
+    toast.style.top = '20px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 5000);
+}
+</script>
+{% endblock %}

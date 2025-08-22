@@ -1,0 +1,433 @@
+<!-- Performance Widget - Reusable component for embedding performance metrics -->
+<!-- Usage: {% include 'widgets/performance_widget.html' with widget_id='unique-id', widget_size='small|medium|large' %} -->
+
+{% set widget_id = widget_id or 'performance-widget' %}
+{% set widget_size = widget_size or 'medium' %}
+
+<div class="performance-widget {{ widget_size }}" id="{{ widget_id }}">
+    <!-- Network Health Overview Card -->
+    <div class="card performance-overview-card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="card-title mb-0">
+                <i class="bi bi-speedometer2 text-primary"></i> 
+                Network Performance
+            </h6>
+            <div class="d-flex gap-2">
+                <button class="btn btn-sm btn-outline-secondary refresh-performance-widget" 
+                        data-widget-id="{{ widget_id }}" title="Refresh">
+                    <i class="bi bi-arrow-clockwise"></i>
+                </button>
+                <a href="/performance-dashboard" class="btn btn-sm btn-outline-primary" title="View Full Dashboard">
+                    <i class="bi bi-box-arrow-up-right"></i>
+                </a>
+            </div>
+        </div>
+        <div class="card-body">
+            <div class="row g-2">
+                <!-- Health Score -->
+                <div class="col-6">
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="bi bi-heart-pulse text-primary"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="{{ widget_id }}-health-score">--</div>
+                            <div class="metric-label">Health Score</div>
+                            <div class="metric-grade" id="{{ widget_id }}-health-grade">--</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Network Uptime -->
+                <div class="col-6">
+                    <div class="metric-card">
+                        <div class="metric-icon">
+                            <i class="bi bi-graph-up text-success"></i>
+                        </div>
+                        <div class="metric-content">
+                            <div class="metric-value" id="{{ widget_id }}-uptime">--</div>
+                            <div class="metric-label">Network Uptime</div>
+                            <div class="metric-progress">
+                                <div class="progress" style="height: 3px;">
+                                    <div class="progress-bar bg-success" id="{{ widget_id }}-uptime-bar" style="width: 0%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Performance Status Indicators -->
+            <div class="performance-status-indicators mt-3">
+                <div class="row g-2">
+                    <div class="col-3">
+                        <div class="status-indicator">
+                            <div class="status-count excellent" id="{{ widget_id }}-excellent-count">0</div>
+                            <div class="status-label">Excellent</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="status-indicator">
+                            <div class="status-count good" id="{{ widget_id }}-good-count">0</div>
+                            <div class="status-label">Good</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="status-indicator">
+                            <div class="status-count fair" id="{{ widget_id }}-fair-count">0</div>
+                            <div class="status-label">Fair</div>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="status-indicator">
+                            <div class="status-count poor" id="{{ widget_id }}-poor-count">0</div>
+                            <div class="status-label">Poor</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Mini Performance Chart (for medium/large widgets) -->
+            {% if widget_size in ['medium', 'large'] %}
+            <div class="mini-performance-chart mt-3">
+                <h6 class="chart-title">
+                    <i class="bi bi-bar-chart"></i> Performance Trend
+                    <small class="text-muted">(Last 6 Hours)</small>
+                </h6>
+                <canvas id="{{ widget_id }}-mini-chart" height="100"></canvas>
+                <div id="{{ widget_id }}-chart-loading" class="text-center py-2" style="display: none;">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- Last Updated -->
+            <div class="widget-footer mt-2">
+                <small class="text-muted">
+                    <i class="bi bi-clock"></i> 
+                    Last updated: <span id="{{ widget_id }}-last-updated">--</span>
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Performance Widget Styles -->
+<style>
+.performance-widget .metric-card {
+    display: flex;
+    align-items: center;
+    padding: 0.5rem;
+    background: var(--bs-light);
+    border-radius: 0.375rem;
+    transition: background-color 0.2s;
+}
+
+.performance-widget .metric-card:hover {
+    background: var(--bs-gray-200);
+}
+
+.performance-widget .metric-icon {
+    font-size: 1.25rem;
+    margin-right: 0.75rem;
+    opacity: 0.8;
+}
+
+.performance-widget .metric-content {
+    flex: 1;
+}
+
+.performance-widget .metric-value {
+    font-size: 1.25rem;
+    font-weight: 600;
+    line-height: 1;
+    color: var(--bs-dark);
+}
+
+.performance-widget .metric-label {
+    font-size: 0.75rem;
+    color: var(--bs-secondary);
+    margin: 0.125rem 0;
+}
+
+.performance-widget .metric-grade {
+    font-size: 0.7rem;
+    font-weight: 500;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+    display: inline-block;
+}
+
+.performance-widget .status-indicator {
+    text-align: center;
+    padding: 0.25rem;
+}
+
+.performance-widget .status-count {
+    font-size: 1rem;
+    font-weight: 600;
+    border-radius: 50%;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0 auto 0.25rem;
+    color: white;
+    font-size: 0.75rem;
+}
+
+.performance-widget .status-count.excellent { background-color: var(--bs-success); }
+.performance-widget .status-count.good { background-color: var(--bs-info); }
+.performance-widget .status-count.fair { background-color: var(--bs-warning); }
+.performance-widget .status-count.poor { background-color: var(--bs-danger); }
+
+.performance-widget .status-label {
+    font-size: 0.65rem;
+    color: var(--bs-secondary);
+}
+
+.performance-widget .chart-title {
+    font-size: 0.8rem;
+    margin-bottom: 0.5rem;
+    color: var(--bs-dark);
+}
+
+.performance-widget .widget-footer {
+    border-top: 1px solid var(--bs-border-color);
+    padding-top: 0.5rem;
+    text-align: center;
+}
+
+/* Size variants */
+.performance-widget.small .metric-value {
+    font-size: 1rem;
+}
+
+.performance-widget.small .status-count {
+    width: 20px;
+    height: 20px;
+    font-size: 0.65rem;
+}
+
+.performance-widget.large .metric-value {
+    font-size: 1.5rem;
+}
+
+.performance-widget.large .status-count {
+    width: 28px;
+    height: 28px;
+    font-size: 0.85rem;
+}
+
+/* Grade colors */
+.performance-widget .metric-grade.grade-a { background: var(--bs-success); color: white; }
+.performance-widget .metric-grade.grade-b { background: var(--bs-info); color: white; }
+.performance-widget .metric-grade.grade-c { background: var(--bs-warning); color: white; }
+.performance-widget .metric-grade.grade-d { background: var(--bs-danger); color: white; }
+.performance-widget .metric-grade.grade-f { background: var(--bs-secondary); color: white; }
+
+/* Loading state */
+.performance-widget.loading .metric-value,
+.performance-widget.loading .status-count {
+    background: var(--bs-gray-300);
+    color: transparent;
+    border-radius: 0.25rem;
+    animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+</style>
+
+<!-- Performance Widget JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    initializePerformanceWidget('{{ widget_id }}', '{{ widget_size }}');
+});
+
+function initializePerformanceWidget(widgetId, widgetSize) {
+    const widget = document.getElementById(widgetId);
+    if (!widget) {
+        console.error(`Performance widget ${widgetId} not found`);
+        return;
+    }
+    
+    console.log(`🔧 Initializing performance widget: ${widgetId} (${widgetSize})`);
+    
+    // Load initial data
+    loadPerformanceWidgetData(widgetId);
+    
+    // Setup refresh button
+    const refreshBtn = widget.querySelector('.refresh-performance-widget');
+    if (refreshBtn) {
+        refreshBtn.addEventListener('click', function() {
+            loadPerformanceWidgetData(widgetId, true);
+        });
+    }
+    
+    // Create mini chart for medium/large widgets
+    if (widgetSize !== 'small') {
+        createPerformanceMiniChart(widgetId);
+    }
+    
+    // Setup periodic refresh (every 30 seconds)
+    setInterval(() => loadPerformanceWidgetData(widgetId), 30000);
+    
+    // Listen for global performance updates
+    if (window.socket) {
+        socket.on('performance_metrics_update', function(data) {
+            updatePerformanceWidget(widgetId, data);
+        });
+    }
+}
+
+function loadPerformanceWidgetData(widgetId, showLoading = false) {
+    const widget = document.getElementById(widgetId);
+    if (!widget) return;
+    
+    if (showLoading) {
+        widget.classList.add('loading');
+    }
+    
+    fetch('/api/performance/summary?hours=1')
+        .then(response => response.json())
+        .then(data => {
+            updatePerformanceWidgetDisplay(widgetId, data);
+        })
+        .catch(error => {
+            console.error(`Error loading performance widget data for ${widgetId}:`, error);
+        })
+        .finally(() => {
+            if (showLoading) {
+                widget.classList.remove('loading');
+            }
+        });
+}
+
+function updatePerformanceWidgetDisplay(widgetId, data) {
+    const networkHealth = data.network_health || {};
+    const deviceBreakdown = data.device_status_breakdown || {};
+    
+    // Update health score
+    const healthScore = networkHealth.avg_health_score || 0;
+    document.getElementById(`${widgetId}-health-score`).textContent = healthScore.toFixed(1);
+    
+    // Update health grade
+    const gradeElement = document.getElementById(`${widgetId}-health-grade`);
+    const grade = getPerformanceGrade(healthScore);
+    gradeElement.textContent = grade;
+    gradeElement.className = `metric-grade grade-${grade.toLowerCase().charAt(0)}`;
+    
+    // Update uptime
+    const uptime = networkHealth.avg_uptime_percentage || 0;
+    document.getElementById(`${widgetId}-uptime`).textContent = uptime.toFixed(1) + '%';
+    document.getElementById(`${widgetId}-uptime-bar`).style.width = uptime + '%';
+    
+    // Update status indicators
+    document.getElementById(`${widgetId}-excellent-count`).textContent = deviceBreakdown.excellent || 0;
+    document.getElementById(`${widgetId}-good-count`).textContent = deviceBreakdown.good || 0;
+    document.getElementById(`${widgetId}-fair-count`).textContent = deviceBreakdown.fair || 0;
+    document.getElementById(`${widgetId}-poor-count`).textContent = deviceBreakdown.poor || 0;
+    
+    // Update last updated time
+    document.getElementById(`${widgetId}-last-updated`).textContent = 
+        new Date().toLocaleTimeString();
+}
+
+function createPerformanceMiniChart(widgetId) {
+    const canvas = document.getElementById(`${widgetId}-mini-chart`);
+    if (!canvas) return;
+    
+    const ctx = canvas.getContext('2d');
+    
+    // Generate sample performance trend data (last 6 hours)
+    const labels = [];
+    const healthData = [];
+    const now = new Date();
+    
+    for (let i = 5; i >= 0; i--) {
+        const time = new Date(now.getTime() - i * 60 * 60 * 1000);
+        labels.push(time.getHours() + ':00');
+        // Sample health scores with slight variation
+        healthData.push(88 + Math.random() * 8);
+    }
+    
+    // Create mini chart
+    const chart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                data: healthData,
+                borderColor: CHART_COLORS.primary,
+                backgroundColor: CHART_COLORS.primary + '20',
+                tension: 0.4,
+                fill: true,
+                pointRadius: 2,
+                pointHoverRadius: 4,
+                borderWidth: 2
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    displayColors: false,
+                    callbacks: {
+                        label: function(context) {
+                            return `Health Score: ${context.parsed.y.toFixed(1)}`;
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: {
+                    display: true,
+                    grid: { display: false },
+                    ticks: { 
+                        font: { size: 10 },
+                        maxTicksLimit: 4
+                    }
+                },
+                y: {
+                    display: false,
+                    min: 80,
+                    max: 100
+                }
+            },
+            elements: {
+                point: { hoverRadius: 4 }
+            }
+        }
+    });
+    
+    // Store chart instance for updates
+    window[`${widgetId}_chart`] = chart;
+}
+
+function updatePerformanceWidget(widgetId, data) {
+    if (data.type === 'network_summary') {
+        updatePerformanceWidgetDisplay(widgetId, data.data);
+    }
+}
+
+function getPerformanceGrade(score) {
+    if (score >= 95) return 'A+';
+    if (score >= 90) return 'A';
+    if (score >= 85) return 'B+';
+    if (score >= 80) return 'B';
+    if (score >= 75) return 'C+';
+    if (score >= 70) return 'C';
+    if (score >= 65) return 'D+';
+    if (score >= 60) return 'D';
+    return 'F';
+}
+</script>

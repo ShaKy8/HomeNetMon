@@ -1,0 +1,138 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: homenetmon
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: serviceaccount
+automountServiceAccountToken: true
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: homenetmon
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: rbac
+rules:
+# ConfigMap access for dynamic configuration
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+# Secret access for credential management
+- apiGroups: [""]
+  resources: ["secrets"]
+  verbs: ["get", "list", "watch"]
+# Pod access for health checks and metrics
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch"]
+# Service access for service discovery
+- apiGroups: [""]
+  resources: ["services", "endpoints"]
+  verbs: ["get", "list", "watch"]
+# Event creation for logging
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: homenetmon
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: rbac
+subjects:
+- kind: ServiceAccount
+  name: homenetmon
+  namespace: homenetmon
+roleRef:
+  kind: Role
+  name: homenetmon
+  apiGroup: rbac.authorization.k8s.io
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: homenetmon-cluster
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: rbac
+rules:
+# Node access for system monitoring
+- apiGroups: [""]
+  resources: ["nodes"]
+  verbs: ["get", "list", "watch"]
+# Node metrics access
+- apiGroups: ["metrics.k8s.io"]
+  resources: ["nodes", "pods"]
+  verbs: ["get", "list"]
+# Custom resource access for network policies
+- apiGroups: ["networking.k8s.io"]
+  resources: ["networkpolicies"]
+  verbs: ["get", "list", "watch"]
+
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: homenetmon-cluster
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: rbac
+subjects:
+- kind: ServiceAccount
+  name: homenetmon
+  namespace: homenetmon
+roleRef:
+  kind: ClusterRole
+  name: homenetmon-cluster
+  apiGroup: rbac.authorization.k8s.io
+
+---
+# Security Context Constraints for OpenShift (optional)
+apiVersion: security.openshift.io/v1
+kind: SecurityContextConstraints
+metadata:
+  name: homenetmon-scc
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: security
+allowHostDirVolumePlugin: false
+allowHostIPC: false
+allowHostNetwork: false
+allowHostPID: false
+allowHostPorts: false
+allowPrivilegedContainer: false
+allowedCapabilities:
+- NET_RAW  # Required for ping functionality
+- NET_ADMIN  # Required for network monitoring
+defaultAddCapabilities: null
+fsGroup:
+  type: MustRunAs
+  ranges:
+  - min: 1000
+    max: 1000
+readOnlyRootFilesystem: false
+requiredDropCapabilities:
+- ALL
+runAsUser:
+  type: MustRunAsNonRoot
+seLinuxContext:
+  type: MustRunAs
+users:
+- system:serviceaccount:homenetmon:homenetmon
+volumes:
+- configMap
+- downwardAPI
+- emptyDir
+- persistentVolumeClaim
+- projected
+- secret

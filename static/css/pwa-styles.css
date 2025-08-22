@@ -1,0 +1,487 @@
+/* HomeNetMon PWA Styles - Mobile and offline UI enhancements */
+
+/* PWA Installation Prompt */
+.install-prompt {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--bs-primary);
+    color: white;
+    padding: 20px;
+    border-radius: 12px;
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    z-index: 9999;
+    max-width: 90vw;
+    width: 400px;
+    animation: slideUp 0.3s ease-out;
+}
+
+.install-prompt-content h3 {
+    margin: 0 0 10px 0;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.install-prompt-content p {
+    margin: 0 0 15px 0;
+    opacity: 0.9;
+    font-size: 0.95rem;
+}
+
+.install-prompt-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: flex-end;
+}
+
+.install-prompt-actions .btn {
+    border: none;
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.install-prompt-actions .btn-primary {
+    background: rgba(255, 255, 255, 0.2);
+    color: white;
+}
+
+.install-prompt-actions .btn-primary:hover {
+    background: rgba(255, 255, 255, 0.3);
+}
+
+.install-prompt-actions .btn-secondary {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+}
+
+.install-prompt-actions .btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+/* PWA Notifications */
+.pwa-notification {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    background: white;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    padding: 16px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 300px;
+    max-width: 90vw;
+    z-index: 9998;
+    transform: translateX(400px);
+    transition: transform 0.3s ease-out;
+    border-left: 4px solid var(--bs-primary);
+}
+
+.pwa-notification.show {
+    transform: translateX(0);
+}
+
+.pwa-notification.success {
+    border-left-color: var(--bs-success);
+}
+
+.pwa-notification.warning {
+    border-left-color: var(--bs-warning);
+}
+
+.pwa-notification.error {
+    border-left-color: var(--bs-danger);
+}
+
+.pwa-notification.info {
+    border-left-color: var(--bs-info);
+}
+
+.notification-content {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    flex: 1;
+}
+
+.notification-content strong {
+    font-weight: 600;
+    font-size: 0.95rem;
+    color: var(--bs-gray-800);
+}
+
+.notification-content span {
+    font-size: 0.85rem;
+    color: var(--bs-gray-600);
+}
+
+.notification-close {
+    background: none;
+    border: none;
+    font-size: 1.2rem;
+    color: var(--bs-gray-500);
+    cursor: pointer;
+    padding: 0;
+    margin-left: 15px;
+    width: 20px;
+    height: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    transition: background-color 0.2s;
+}
+
+.notification-close:hover {
+    background-color: var(--bs-gray-200);
+    color: var(--bs-gray-700);
+}
+
+/* Connection Status Indicator */
+.connection-status {
+    position: fixed;
+    top: 70px;
+    right: 20px;
+    background: var(--bs-success);
+    color: white;
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    z-index: 9997;
+    transition: all 0.3s;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.connection-status.offline {
+    background: var(--bs-warning);
+    animation: pulse 2s infinite;
+}
+
+/* Offline Mode Styles */
+body.offline {
+    /* Add subtle visual indication of offline mode */
+    --bs-primary: #6c757d;
+}
+
+body.offline .navbar {
+    background-color: var(--bs-warning) !important;
+}
+
+body.offline .navbar-brand::after {
+    content: " (Offline)";
+    font-size: 0.8rem;
+    opacity: 0.8;
+}
+
+body.offline .btn-primary {
+    background-color: var(--bs-secondary);
+    border-color: var(--bs-secondary);
+}
+
+body.offline .card-header {
+    background-color: rgba(108, 117, 125, 0.1);
+}
+
+/* Offline Banner */
+.offline-banner {
+    background: linear-gradient(135deg, var(--bs-warning), #ffc107);
+    color: var(--bs-gray-800);
+    padding: 8px 16px;
+    text-align: center;
+    font-size: 0.85rem;
+    font-weight: 500;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    position: sticky;
+    top: 0;
+    z-index: 1000;
+}
+
+.offline-banner .offline-icon {
+    margin-right: 8px;
+}
+
+/* PWA Mobile Optimizations */
+@media (max-width: 768px) {
+    .install-prompt {
+        bottom: 10px;
+        left: 10px;
+        right: 10px;
+        transform: none;
+        width: auto;
+        max-width: none;
+    }
+    
+    .pwa-notification {
+        top: 10px;
+        left: 10px;
+        right: 10px;
+        min-width: auto;
+        max-width: none;
+        transform: translateY(-100px);
+    }
+    
+    .pwa-notification.show {
+        transform: translateY(0);
+    }
+    
+    .connection-status {
+        top: 60px;
+        right: 10px;
+        font-size: 0.7rem;
+        padding: 4px 8px;
+    }
+    
+    /* Mobile-specific offline styles */
+    body.offline .navbar-toggler {
+        border-color: var(--bs-warning);
+    }
+}
+
+/* Responsive PWA Features */
+@media (display-mode: standalone) {
+    /* Styles for when app is running as PWA */
+    body {
+        padding-top: env(safe-area-inset-top);
+        padding-bottom: env(safe-area-inset-bottom);
+    }
+    
+    .navbar {
+        padding-top: calc(env(safe-area-inset-top) / 2);
+    }
+    
+    /* Hide browser-specific elements when in PWA mode */
+    .browser-only {
+        display: none !important;
+    }
+}
+
+@media (display-mode: fullscreen) {
+    /* Additional styles for fullscreen PWA */
+    body {
+        padding-top: env(safe-area-inset-top, 20px);
+    }
+}
+
+/* Dark mode PWA styles */
+@media (prefers-color-scheme: dark) {
+    .pwa-notification {
+        background: var(--bs-gray-800);
+        color: white;
+        border-left-color: var(--bs-primary);
+    }
+    
+    .notification-content strong {
+        color: white;
+    }
+    
+    .notification-content span {
+        color: var(--bs-gray-300);
+    }
+    
+    .notification-close {
+        color: var(--bs-gray-400);
+    }
+    
+    .notification-close:hover {
+        background-color: var(--bs-gray-700);
+        color: var(--bs-gray-200);
+    }
+    
+    .install-prompt {
+        background: var(--bs-gray-800);
+        color: white;
+    }
+}
+
+/* Animations */
+@keyframes slideUp {
+    from {
+        transform: translateX(-50%) translateY(100px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+    }
+}
+
+@keyframes pulse {
+    0%, 100% {
+        opacity: 1;
+    }
+    50% {
+        opacity: 0.7;
+    }
+}
+
+/* Loading states for offline data */
+.loading-offline {
+    position: relative;
+}
+
+.loading-offline::after {
+    content: "";
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.loading-offline::before {
+    content: "Loading from cache...";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: var(--bs-primary);
+    color: white;
+    padding: 8px 16px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    z-index: 1;
+}
+
+/* Sync indicators */
+.sync-indicator {
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    background: var(--bs-info);
+    color: white;
+    padding: 8px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    z-index: 9996;
+    transform: translateY(100px);
+    transition: transform 0.3s;
+}
+
+.sync-indicator.show {
+    transform: translateY(0);
+}
+
+.sync-indicator .spinner {
+    width: 12px;
+    height: 12px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-top: 2px solid white;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+/* Utility classes for PWA */
+.pwa-only {
+    display: none;
+}
+
+@media (display-mode: standalone) {
+    .pwa-only {
+        display: block !important;
+    }
+    
+    .no-pwa {
+        display: none !important;
+    }
+}
+
+/* Enhanced touch targets for mobile */
+@media (hover: none) and (pointer: coarse) {
+    .btn {
+        min-height: 44px;
+        min-width: 44px;
+        padding: 12px 16px;
+    }
+    
+    .btn-sm {
+        min-height: 36px;
+        min-width: 36px;
+        padding: 8px 12px;
+    }
+    
+    .form-control {
+        min-height: 44px;
+        padding: 12px 16px;
+    }
+}
+
+/* Network status badges */
+.network-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.network-status-badge.online {
+    background-color: rgba(25, 135, 84, 0.1);
+    color: var(--bs-success);
+}
+
+.network-status-badge.offline {
+    background-color: rgba(255, 193, 7, 0.1);
+    color: var(--bs-warning);
+}
+
+.network-status-badge.error {
+    background-color: rgba(220, 53, 69, 0.1);
+    color: var(--bs-danger);
+}
+
+/* Enhanced focus states for accessibility */
+.btn:focus,
+.form-control:focus,
+.nav-link:focus {
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+    outline: none;
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .pwa-notification {
+        border: 2px solid currentColor;
+    }
+    
+    .install-prompt {
+        border: 2px solid white;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .pwa-notification,
+    .install-prompt,
+    .sync-indicator {
+        transition: none;
+        animation: none;
+    }
+    
+    .loading-offline::after,
+    .spinner {
+        animation: none;
+    }
+}

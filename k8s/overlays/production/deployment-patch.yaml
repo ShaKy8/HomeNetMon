@@ -1,0 +1,187 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homenetmon-app
+  namespace: homenetmon
+spec:
+  replicas: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 2
+      maxUnavailable: 1
+  template:
+    metadata:
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5000"
+        prometheus.io/path: "/metrics"
+        config.linkerd.io/proxy-cpu-limit: "200m"
+        config.linkerd.io/proxy-memory-limit: "256Mi"
+    spec:
+      containers:
+      - name: homenetmon
+        env:
+        - name: FLASK_ENV
+          value: "production"
+        - name: DEBUG
+          value: "false"
+        - name: LOG_LEVEL
+          value: "INFO"
+        - name: MONITORING_ENABLED
+          value: "true"
+        - name: METRICS_ENABLED
+          value: "true"
+        - name: PROFILING_ENABLED
+          value: "false"
+        - name: CACHE_TTL
+          value: "3600"
+        - name: SESSION_TIMEOUT
+          value: "7200"
+        - name: MAX_CONNECTIONS
+          value: "1000"
+        - name: CONNECTION_POOL_SIZE
+          value: "50"
+        - name: WORKER_PROCESSES
+          value: "4"
+        - name: WORKER_CONNECTIONS
+          value: "1000"
+        - name: MAX_MONITORED_DEVICES
+          value: "10000"
+        - name: BATCH_SIZE
+          value: "100"
+        - name: QUEUE_SIZE
+          value: "1000"
+        
+        # Production resource limits
+        resources:
+          requests:
+            memory: "1Gi"
+            cpu: "500m"
+          limits:
+            memory: "2Gi"
+            cpu: "1000m"
+            
+        # Production health checks
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5000
+            scheme: HTTP
+          initialDelaySeconds: 120
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+          successThreshold: 1
+          
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 5000
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          successThreshold: 1
+          
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 5000
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 18
+          successThreshold: 1
+          
+        # Security context for production
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 1000
+          runAsGroup: 1000
+          capabilities:
+            add:
+            - NET_RAW
+            - NET_ADMIN
+            drop:
+            - ALL
+            
+        # Volume mounts optimized for production
+        volumeMounts:
+        - name: data
+          mountPath: /app/data
+        - name: logs
+          mountPath: /app/logs
+        - name: tmp
+          mountPath: /tmp
+        - name: cache
+          mountPath: /app/cache
+          
+      # Production nginx sidecar
+      - name: nginx
+        env:
+        - name: NGINX_WORKER_PROCESSES
+          value: "auto"
+        - name: NGINX_WORKER_CONNECTIONS
+          value: "1024"
+        - name: NGINX_KEEPALIVE_TIMEOUT
+          value: "65"
+        
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+            
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          runAsNonRoot: true
+          runAsUser: 101
+          runAsGroup: 101
+          capabilities:
+            drop:
+            - ALL
+            
+      volumes:
+      - name: cache
+        emptyDir:
+          sizeLimit: 1Gi
+          
+      # Production affinity rules
+      affinity:
+        podAntiAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchExpressions:
+              - key: app.kubernetes.io/name
+                operator: In
+                values:
+                - homenetmon
+            topologyKey: kubernetes.io/hostname
+        nodeAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            preference:
+              matchExpressions:
+              - key: node-type
+                operator: In
+                values:
+                - compute-optimized
+                
+      # Production tolerations
+      tolerations:
+      - key: "homenetmon.io/dedicated"
+        operator: "Equal"
+        value: "true"
+        effect: "NoSchedule"
+      - key: "node.kubernetes.io/memory-pressure"
+        operator: "Exists"
+        effect: "NoSchedule"
+        tolerationSeconds: 300

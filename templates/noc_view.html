@@ -58,6 +58,17 @@
             font-weight: bold;
             color: var(--noc-accent-cyan);
             text-shadow: 0 0 10px var(--noc-accent-cyan);
+            line-height: 1.2;
+        }
+        
+        .noc-clock small,
+        .noc-clock .noc-date {
+            font-size: 0.7rem;
+            opacity: 0.8;
+            display: block;
+            margin-top: 2px;
+            color: var(--noc-accent-cyan);
+            font-weight: normal;
         }
         
         .network-status {
@@ -117,6 +128,81 @@
             animation: pulse 2s ease-in-out infinite alternate;
         }
         
+        /* Enhanced Health Score Panel */
+        .health-score-panel-enhanced {
+            border: 2px solid var(--noc-accent-cyan);
+            background: linear-gradient(135deg, var(--noc-bg-secondary) 0%, rgba(0, 255, 255, 0.05) 100%);
+            box-shadow: 0 8px 40px rgba(0, 255, 255, 0.3);
+        }
+        
+        .health-score-display-enhanced {
+            text-align: center;
+            position: relative;
+            padding: 20px;
+        }
+        
+        .health-score-number-enhanced {
+            font-size: 6rem;
+            font-weight: bold;
+            text-shadow: 0 0 30px currentColor;
+            margin: 0;
+            animation: pulse 2s ease-in-out infinite alternate;
+            line-height: 1;
+        }
+        
+        .health-score-label-enhanced {
+            font-size: 1.2rem;
+            color: var(--noc-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            margin-top: 10px;
+        }
+        
+        .health-summary-text {
+            font-size: 0.9rem;
+            color: var(--noc-text-secondary);
+            margin-top: 8px;
+            font-style: italic;
+        }
+        
+        .health-trend-indicator {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .trend-arrow {
+            font-size: 2.5rem;
+            text-shadow: 0 0 10px currentColor;
+            animation: trendPulse 2s ease-in-out infinite;
+        }
+        
+        .trend-arrow.trend-up {
+            color: var(--noc-accent-green) !important;
+            transform: rotate(0deg);
+        }
+        
+        .trend-arrow.trend-down {
+            color: var(--noc-accent-red) !important;
+            transform: rotate(180deg);
+        }
+        
+        .trend-arrow.trend-stable {
+            color: var(--noc-accent-cyan) !important;
+            transform: rotate(90deg);
+        }
+        
+        @keyframes trendPulse {
+            0%, 100% { 
+                opacity: 0.8; 
+                transform: scale(1) rotate(var(--rotation, 0deg)); 
+            }
+            50% { 
+                opacity: 1; 
+                transform: scale(1.1) rotate(var(--rotation, 0deg)); 
+            }
+        }
+        
         .health-score-excellent { color: var(--noc-accent-green); }
         .health-score-good { color: var(--noc-accent-cyan); }
         .health-score-fair { color: var(--noc-accent-yellow); }
@@ -138,6 +224,389 @@
             transition: all 0.3s ease;
             position: relative;
             overflow: hidden;
+            cursor: pointer;
+            min-height: 120px;
+        }
+        
+        /* Device Type Icons */
+        .device-type-icon {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            font-size: 1.2rem;
+            opacity: 0.7;
+            color: var(--noc-accent-cyan);
+        }
+        
+        .device-type-icon.router { color: var(--noc-accent-cyan); }
+        .device-type-icon.computer { color: var(--noc-accent-green); }
+        .device-type-icon.mobile { color: var(--noc-accent-yellow); }
+        .device-type-icon.iot { color: var(--noc-text-secondary); }
+        .device-type-icon.server { color: var(--noc-accent-red); }
+        .device-type-icon.printer { color: var(--noc-text-secondary); }
+        
+        /* Device Priority Indicators */
+        .device-priority-indicator {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            border: 1px solid var(--noc-border);
+        }
+        
+        .device-priority-indicator.critical {
+            background: var(--noc-accent-red);
+            box-shadow: 0 0 8px var(--noc-accent-red);
+            animation: criticalPulse 1.5s ease-in-out infinite;
+        }
+        
+        .device-priority-indicator.normal {
+            background: var(--noc-accent-green);
+        }
+        
+        .device-priority-indicator.monitoring {
+            background: var(--noc-accent-cyan);
+        }
+        
+        /* Quick Action Buttons */
+        .device-quick-actions {
+            position: absolute;
+            bottom: 5px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 4px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .device-tile:hover .device-quick-actions {
+            opacity: 1;
+        }
+        
+        .quick-action-btn {
+            background: var(--noc-bg-secondary);
+            border: 1px solid var(--noc-accent-cyan);
+            color: var(--noc-accent-cyan);
+            border-radius: 4px;
+            padding: 2px 6px;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        
+        .quick-action-btn:hover {
+            background: var(--noc-accent-cyan);
+            color: var(--noc-bg-primary);
+        }
+        
+        /* Last Alert Indicator */
+        .device-last-alert {
+            position: absolute;
+            top: 25px;
+            right: 8px;
+            font-size: 0.6rem;
+            padding: 2px 4px;
+            border-radius: 3px;
+            background: var(--noc-accent-red);
+            color: white;
+            opacity: 0.9;
+        }
+        
+        @keyframes criticalPulse {
+            0%, 100% { opacity: 0.8; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+        
+        /* Device Controls */
+        .device-controls .btn-group {
+            gap: 2px;
+        }
+        
+        .device-type-filter {
+            border-top: 1px solid var(--noc-border);
+            padding-top: 15px;
+            animation: slideDown 0.3s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from { 
+                opacity: 0; 
+                transform: translateY(-10px); 
+                max-height: 0;
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+                max-height: 100px;
+            }
+        }
+        
+        /* Device Groups */
+        .device-group {
+            border: 1px solid var(--noc-border);
+            border-radius: 6px;
+            margin-bottom: 15px;
+            background: var(--noc-bg-primary);
+        }
+        
+        .device-group-header {
+            padding: 10px 15px;
+            background: var(--noc-bg-secondary);
+            border-bottom: 1px solid var(--noc-border);
+            cursor: pointer;
+            display: flex;
+            justify-content: between;
+            align-items: center;
+            transition: background-color 0.3s ease;
+        }
+        
+        .device-group-header:hover {
+            background: var(--noc-bg-tertiary);
+        }
+        
+        .device-group-content {
+            padding: 15px;
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.3s ease-out;
+        }
+        
+        .device-group.expanded .device-group-content {
+            max-height: 500px;
+        }
+        
+        .device-group-toggle {
+            transition: transform 0.3s ease;
+        }
+        
+        .device-group.expanded .device-group-toggle {
+            transform: rotate(180deg);
+        }
+        
+        /* Show More Button */
+        #show-more-devices {
+            border-color: var(--noc-accent-cyan);
+            color: var(--noc-accent-cyan);
+            transition: all 0.3s ease;
+        }
+        
+        #show-more-devices:hover {
+            background-color: var(--noc-accent-cyan);
+            color: var(--noc-bg-primary);
+            transform: translateY(-2px);
+        }
+        
+        /* Advanced Search Panel */
+        .advanced-search-panel {
+            background: var(--noc-bg-primary);
+            border: 1px solid var(--noc-border);
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 15px;
+            animation: slideDown 0.3s ease-out;
+        }
+        
+        .advanced-search-panel .form-control,
+        .advanced-search-panel .form-select {
+            background-color: var(--noc-bg-secondary) !important;
+            border-color: var(--noc-border) !important;
+            color: var(--noc-text-primary) !important;
+        }
+        
+        .advanced-search-panel .form-control:focus,
+        .advanced-search-panel .form-select:focus {
+            border-color: var(--noc-accent-cyan) !important;
+            box-shadow: 0 0 0 0.2rem rgba(0, 255, 255, 0.25) !important;
+        }
+        
+        .advanced-search-panel .input-group-text {
+            background-color: var(--noc-bg-secondary) !important;
+            border-color: var(--noc-border) !important;
+            color: var(--noc-accent-cyan) !important;
+        }
+        
+        /* Quick Filter Buttons */
+        .quick-filters .btn {
+            margin: 2px;
+            transition: all 0.3s ease;
+        }
+        
+        .quick-filter-btn.active {
+            background-color: var(--noc-accent-cyan);
+            border-color: var(--noc-accent-cyan);
+            color: var(--noc-bg-primary);
+        }
+        
+        .quick-filter-btn:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 2px 8px rgba(0, 255, 255, 0.3);
+        }
+        
+        /* Search Results */
+        .search-results-summary {
+            padding: 8px 12px;
+            background: rgba(0, 255, 255, 0.1);
+            border-radius: 4px;
+            border-left: 3px solid var(--noc-accent-cyan);
+        }
+        
+        .search-highlight {
+            background: rgba(255, 255, 0, 0.3);
+            padding: 1px 3px;
+            border-radius: 2px;
+            font-weight: bold;
+        }
+        
+        /* Search Loading State */
+        .search-loading {
+            position: relative;
+        }
+        
+        .search-loading::after {
+            content: "";
+            position: absolute;
+            right: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 16px;
+            height: 16px;
+            border: 2px solid var(--noc-border);
+            border-top: 2px solid var(--noc-accent-cyan);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        /* Toggle Search Button */
+        #toggle-search {
+            border-color: var(--noc-accent-cyan);
+            color: var(--noc-accent-cyan);
+            transition: all 0.3s ease;
+        }
+        
+        #toggle-search:hover,
+        #toggle-search.active {
+            background-color: var(--noc-accent-cyan);
+            color: var(--noc-bg-primary);
+        }
+        
+        /* Skeleton Loading States */
+        .skeleton {
+            background: linear-gradient(90deg, 
+                var(--noc-bg-tertiary) 25%, 
+                var(--noc-bg-secondary) 50%, 
+                var(--noc-bg-tertiary) 75%
+            );
+            background-size: 200% 100%;
+            animation: skeletonLoading 1.5s infinite;
+        }
+        
+        @keyframes skeletonLoading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        
+        .skeleton-device-tile {
+            min-height: 120px;
+            border-radius: 8px;
+            margin: 10px;
+        }
+        
+        .skeleton-text {
+            height: 1rem;
+            border-radius: 4px;
+            margin: 8px 0;
+        }
+        
+        .skeleton-text.small {
+            height: 0.8rem;
+            width: 60%;
+        }
+        
+        .skeleton-text.large {
+            height: 1.5rem;
+            width: 80%;
+        }
+        
+        .skeleton-health-score {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            margin: 0 auto;
+        }
+        
+        /* Loading overlays */
+        .loading-overlay {
+            position: relative;
+        }
+        
+        .loading-overlay::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 100;
+            border-radius: inherit;
+        }
+        
+        .loading-overlay::after {
+            content: "";
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 24px;
+            height: 24px;
+            border: 2px solid var(--noc-border);
+            border-top: 2px solid var(--noc-accent-cyan);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            z-index: 101;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        /* Data staleness indicators */
+        .data-stale {
+            opacity: 0.7;
+            position: relative;
+        }
+        
+        .data-stale::before {
+            content: "⚠";
+            position: absolute;
+            top: 5px;
+            right: 5px;
+            color: var(--noc-accent-yellow);
+            font-size: 0.8rem;
+            z-index: 10;
+        }
+        
+        .device-tile.status-transition {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        
+        .device-tile:hover,
+        .device-tile:focus {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 20px rgba(0, 255, 255, 0.4);
+            border-color: var(--noc-accent-cyan);
+            outline: none;
+        }
+        
+        .device-tile:focus {
+            box-shadow: 0 4px 20px rgba(0, 255, 255, 0.6), 0 0 0 3px rgba(0, 255, 255, 0.3);
         }
         
         .device-tile.status-up {
@@ -200,9 +669,124 @@
             animation: slideIn 0.5s ease-out;
         }
         
-        .alert-critical { border-left-color: var(--noc-accent-red); }
-        .alert-warning { border-left-color: var(--noc-accent-yellow); }
-        .alert-info { border-left-color: var(--noc-accent-cyan); }
+        .alert-critical { 
+            border-left-color: var(--noc-accent-red); 
+            background: linear-gradient(135deg, var(--noc-bg-tertiary) 0%, rgba(255, 0, 64, 0.1) 100%);
+        }
+        .alert-warning { 
+            border-left-color: var(--noc-accent-yellow);
+            background: linear-gradient(135deg, var(--noc-bg-tertiary) 0%, rgba(255, 255, 0, 0.1) 100%);
+        }
+        .alert-info { 
+            border-left-color: var(--noc-accent-cyan);
+            background: linear-gradient(135deg, var(--noc-bg-tertiary) 0%, rgba(0, 255, 255, 0.1) 100%);
+        }
+        
+        .alert-item.acknowledged {
+            opacity: 0.6;
+            border-left-style: dashed;
+        }
+        
+        .alert-item.acknowledged::after {
+            content: "✓ ACK";
+            position: absolute;
+            right: 8px;
+            top: 8px;
+            font-size: 0.7rem;
+            color: var(--noc-accent-green);
+            font-weight: bold;
+        }
+        
+        /* Critical Alert Banner */
+        .critical-alert-banner {
+            margin-bottom: 15px;
+            animation: criticalFlash 2s ease-in-out infinite;
+        }
+        
+        .critical-alert-banner .alert {
+            background: linear-gradient(135deg, var(--noc-accent-red), rgba(255, 0, 64, 0.7));
+            border: 2px solid var(--noc-accent-red);
+            box-shadow: 0 0 20px rgba(255, 0, 64, 0.5);
+            color: var(--noc-text-primary);
+        }
+        
+        @keyframes criticalFlash {
+            0%, 50% { 
+                box-shadow: 0 0 20px rgba(255, 0, 64, 0.5); 
+            }
+            51%, 100% { 
+                box-shadow: 0 0 30px rgba(255, 0, 64, 0.8); 
+            }
+        }
+        
+        /* Alert Sound Toggle */
+        .alert-sound-toggle button {
+            border-color: var(--noc-accent-cyan);
+            color: var(--noc-accent-cyan);
+        }
+        
+        .alert-sound-toggle button:hover {
+            background-color: var(--noc-accent-cyan);
+            color: var(--noc-bg-primary);
+        }
+        
+        .alert-sound-toggle button.sound-disabled {
+            opacity: 0.5;
+        }
+        
+        .alert-sound-toggle button.sound-disabled i::after {
+            content: "";
+            position: absolute;
+            width: 2px;
+            height: 20px;
+            background: var(--noc-accent-red);
+            transform: rotate(45deg);
+            top: 50%;
+            left: 50%;
+            margin-left: -1px;
+            margin-top: -10px;
+        }
+        
+        .alert-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .alert-severity-section {
+            margin-bottom: 16px;
+        }
+        
+        .alert-severity-header {
+            font-size: 0.75rem;
+            font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 8px;
+            padding: 4px 8px;
+            border-radius: 3px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .alert-severity-header.critical {
+            background: rgba(255, 0, 64, 0.2);
+            color: var(--noc-accent-red);
+            border: 1px solid var(--noc-accent-red);
+        }
+        
+        .alert-severity-header.warning {
+            background: rgba(255, 255, 0, 0.2);
+            color: var(--noc-accent-yellow);
+            border: 1px solid var(--noc-accent-yellow);
+        }
+        
+        .alert-severity-header.info {
+            background: rgba(0, 255, 255, 0.2);
+            color: var(--noc-accent-cyan);
+            border: 1px solid var(--noc-accent-cyan);
+        }
         
         @keyframes slideIn {
             from { transform: translateX(100%); opacity: 0; }
@@ -245,6 +829,13 @@
             border-radius: 50%;
             border: 2px solid;
             animation: mapPulse 3s ease-in-out infinite;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .map-node:hover {
+            transform: scale(1.3);
+            z-index: 10;
         }
         
         .map-node.online { 
@@ -301,15 +892,241 @@
             color: var(--noc-bg-primary);
         }
         
-        /* Responsive adjustments */
-        @media (max-width: 1200px) {
-            .health-score-number { font-size: 3rem; }
-            .noc-panel { padding: 15px; }
+        /* Mobile-First Responsive Design */
+        
+        /* Extra small devices (phones, less than 576px) */
+        @media (max-width: 575.98px) {
+            .noc-header {
+                padding: 8px 15px;
+                position: relative;
+            }
+            
+            .noc-header .row {
+                align-items: center !important;
+            }
+            
+            .noc-header .col-md-3,
+            .noc-header .col-md-6 {
+                text-align: center !important;
+                margin-bottom: 5px;
+            }
+            
+            .noc-header h2 {
+                font-size: 1.2rem;
+                margin: 0;
+            }
+            
+            .network-status {
+                font-size: 0.9rem;
+            }
+            
+            .noc-content {
+                margin-top: 120px;
+                padding: 10px;
+                height: calc(100vh - 120px);
+            }
+            
+            /* Enhanced Health Score - Mobile */
+            .health-score-number-enhanced {
+                font-size: 4rem !important;
+            }
+            
+            .health-score-panel-enhanced {
+                margin-bottom: 15px;
+            }
+            
+            /* Device Grid - Mobile Card Layout */
+            .device-tile {
+                margin: 5px 0;
+                padding: 12px;
+                min-height: 100px;
+                border-radius: 12px;
+                background: linear-gradient(135deg, var(--noc-bg-tertiary) 0%, var(--noc-bg-secondary) 100%);
+            }
+            
+            .device-tile .device-name {
+                font-size: 0.95rem;
+                font-weight: bold;
+            }
+            
+            .device-tile .device-ip {
+                font-size: 0.75rem;
+            }
+            
+            .device-quick-actions {
+                position: static;
+                transform: none;
+                opacity: 1;
+                margin-top: 8px;
+                justify-content: center;
+            }
+            
+            .quick-action-btn {
+                padding: 4px 8px;
+                font-size: 0.8rem;
+                min-width: 32px;
+            }
+            
+            /* Mobile swipe indicators */
+            .device-tile::after {
+                content: "Tap for details";
+                position: absolute;
+                bottom: 2px;
+                right: 8px;
+                font-size: 0.5rem;
+                color: var(--noc-text-secondary);
+                opacity: 0.6;
+            }
+            
+            /* Alerts Panel - Mobile */
+            .alerts-feed {
+                height: 200px;
+            }
+            
+            .alert-item {
+                font-size: 0.8rem;
+                padding: 6px 10px;
+            }
+            
+            /* Critical Alert Banner - Mobile */
+            .critical-alert-banner .alert {
+                padding: 8px 12px;
+                font-size: 0.85rem;
+            }
+            
+            .critical-alert-banner .btn {
+                padding: 4px 8px;
+                font-size: 0.75rem;
+            }
+            
+            /* Hide certain elements on mobile */
+            .fullscreen-btn {
+                display: none;
+            }
+            
+            .noc-clock .noc-date {
+                display: none;
+            }
+            
+            /* Touch-friendly controls */
+            .btn-group-sm .btn {
+                padding: 6px 12px;
+                font-size: 0.8rem;
+            }
+            
+            .device-controls .btn-group {
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+            
+            /* Mobile navigation hints */
+            .device-grid-container::before {
+                content: "← Swipe to see more →";
+                display: block;
+                text-align: center;
+                color: var(--noc-text-secondary);
+                font-size: 0.7rem;
+                margin-bottom: 10px;
+                opacity: 0.7;
+            }
         }
         
-        @media (max-width: 768px) {
-            .health-score-number { font-size: 2.5rem; }
-            .device-tile { margin: 5px; padding: 10px; }
+        /* Small devices (landscape phones, 576px and up) */
+        @media (min-width: 576px) and (max-width: 767.98px) {
+            .noc-content {
+                margin-top: 90px;
+                padding: 15px;
+            }
+            
+            .health-score-number-enhanced {
+                font-size: 5rem;
+            }
+            
+            .device-tile {
+                min-height: 110px;
+                margin: 8px 5px;
+            }
+            
+            .device-quick-actions {
+                opacity: 0;
+            }
+            
+            .device-tile:hover .device-quick-actions,
+            .device-tile:focus .device-quick-actions {
+                opacity: 1;
+            }
+        }
+        
+        /* Medium devices (tablets, 768px and up) */
+        @media (min-width: 768px) and (max-width: 991.98px) {
+            .health-score-number-enhanced {
+                font-size: 5.5rem;
+            }
+            
+            .noc-panel {
+                padding: 18px;
+            }
+            
+            .device-tile {
+                min-height: 115px;
+            }
+        }
+        
+        /* Large devices (desktops, 992px and up) */
+        @media (min-width: 992px) and (max-width: 1199.98px) {
+            .health-score-number-enhanced {
+                font-size: 6rem;
+            }
+            
+            .noc-panel {
+                padding: 20px;
+            }
+        }
+        
+        /* Extra large devices (large desktops, 1200px and up) */
+        @media (min-width: 1200px) {
+            .health-score-number-enhanced {
+                font-size: 6rem;
+            }
+        }
+        
+        /* Portrait orientation specific adjustments */
+        @media (orientation: portrait) and (max-width: 768px) {
+            .health-score-panel-enhanced .row {
+                text-align: center;
+            }
+            
+            .health-trend-indicator {
+                margin-top: 10px;
+            }
+            
+            .device-tile .col-4 {
+                margin-bottom: 10px;
+            }
+        }
+        
+        /* Landscape orientation specific adjustments */
+        @media (orientation: landscape) and (max-height: 600px) {
+            .noc-content {
+                height: calc(100vh - 60px);
+                margin-top: 60px;
+            }
+            
+            .noc-header {
+                padding: 5px 15px;
+            }
+            
+            .health-score-number-enhanced {
+                font-size: 4rem !important;
+            }
+            
+            .noc-panel {
+                padding: 10px;
+            }
+            
+            .alerts-feed {
+                height: 150px;
+            }
         }
     </style>
 </head>
@@ -327,8 +1144,9 @@
                 </h2>
             </div>
             <div class="col-md-3 text-end">
-                <div class="network-status" id="network-status">
-                    <span class="status-indicator">INITIALIZING</span>
+                <div class="network-status" id="network-status" role="status" aria-live="polite">
+                    <span class="status-indicator" aria-label="Network status">INITIALIZING</span>
+                    <span class="visually-hidden" id="network-status-description">Network status is initializing</span>
                 </div>
             </div>
         </div>
@@ -342,52 +1160,64 @@
     <!-- Main Content -->
     <div class="noc-content">
         <div class="row">
-            <!-- Left Column - Main Status -->
+            <!-- Top Row - Prominent Health Score -->
+            <div class="col-12 mb-4">
+                <div class="row">
+                    <!-- Enhanced Health Score Panel (Larger) -->
+                    <div class="col-lg-6">
+                        <div class="noc-panel health-score-panel-enhanced">
+                            <h4 class="text-center mb-3">
+                                <i class="bi bi-heart-pulse me-2"></i>NETWORK HEALTH
+                            </h4>
+                            <div class="health-score-display-enhanced" role="region" aria-labelledby="health-score-heading">
+                                <div class="d-flex align-items-center justify-content-center">
+                                    <div class="health-score-number-enhanced" id="health-score" 
+                                         aria-label="Network health score out of 100" 
+                                         role="status" aria-live="polite">--</div>
+                                    <div class="health-trend-indicator ms-3" id="health-trend">
+                                        <i class="bi bi-arrow-up text-success trend-arrow" id="trend-arrow" style="display: none;"></i>
+                                    </div>
+                                </div>
+                                <div class="health-score-label-enhanced" id="health-score-heading">HEALTH SCORE</div>
+                                <div class="health-summary-text" id="health-summary">
+                                    Network operational status
+                                </div>
+                                <div class="visually-hidden" id="health-score-description">
+                                    Network health score indicates overall system performance and availability
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Network Summary (Moved from left column) -->
+                    <div class="col-lg-6">
+                        <div class="noc-panel">
+                            <h5 class="mb-3">
+                                <i class="bi bi-speedometer2 me-2"></i>NETWORK SUMMARY
+                            </h5>
+                            <div class="row">
+                                <div class="col-6">
+                                    <div class="stat-gauge">
+                                        <div class="stat-value text-info" id="noc-avg-response-time">--</div>
+                                        <div class="stat-label">Avg Response</div>
+                                    </div>
+                                </div>
+                                <div class="col-6">
+                                    <div class="stat-gauge">
+                                        <div class="stat-value text-secondary" id="noc-last-update">--</div>
+                                        <div class="stat-label">Last Update</div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="row">
+            <!-- Left Column - Network Map -->
             <div class="col-lg-4">
-                <!-- Health Score Panel -->
-                <div class="noc-panel">
-                    <h5 class="text-center mb-3">
-                        <i class="bi bi-heart-pulse me-2"></i>NETWORK HEALTH
-                    </h5>
-                    <div class="health-score-display">
-                        <div class="health-score-number" id="health-score">--</div>
-                        <div class="health-score-label">HEALTH SCORE</div>
-                    </div>
-                </div>
-                
-                <!-- Quick Stats -->
-                <div class="noc-panel">
-                    <h5 class="mb-3">
-                        <i class="bi bi-speedometer2 me-2"></i>NETWORK METRICS
-                    </h5>
-                    <div class="row">
-                        <div class="col-6">
-                            <div class="stat-gauge">
-                                <div class="stat-value text-success" id="devices-online">--</div>
-                                <div class="stat-label">Online</div>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="stat-gauge">
-                                <div class="stat-value text-danger" id="devices-offline">--</div>
-                                <div class="stat-label">Offline</div>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="stat-gauge">
-                                <div class="stat-value text-info" id="avg-response-time">--</div>
-                                <div class="stat-label">Avg Response</div>
-                            </div>
-                        </div>
-                        <div class="col-6">
-                            <div class="stat-gauge">
-                                <div class="stat-value text-warning" id="active-alerts">--</div>
-                                <div class="stat-label">Active Alerts</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                
                 <!-- Network Map -->
                 <div class="noc-panel">
                     <h5 class="mb-3">
@@ -402,11 +1232,127 @@
             <!-- Center Column - Device Grid -->
             <div class="col-lg-5">
                 <div class="noc-panel">
-                    <h5 class="mb-3">
-                        <i class="bi bi-hdd-stack me-2"></i>CRITICAL DEVICES
-                    </h5>
-                    <div class="row" id="device-grid">
-                        <!-- Device tiles will be dynamically added here -->
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">
+                            <i class="bi bi-hdd-stack me-2"></i>DEVICES
+                            <span class="badge bg-secondary ms-2" id="device-count">0</span>
+                        </h5>
+                        <div class="device-controls">
+                            <div class="btn-group btn-group-sm" role="group">
+                                <input type="checkbox" class="btn-check" id="show-critical-only" checked>
+                                <label class="btn btn-outline-danger" for="show-critical-only">Critical</label>
+                                
+                                <input type="checkbox" class="btn-check" id="show-all-devices">
+                                <label class="btn btn-outline-secondary" for="show-all-devices">All</label>
+                                
+                                <button class="btn btn-outline-info btn-sm" id="toggle-search" title="Toggle search">
+                                    <i class="bi bi-search"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Advanced Search Interface -->
+                    <div class="advanced-search-panel" id="advanced-search-panel" style="display: none;">
+                        <div class="row mb-3">
+                            <div class="col-md-8">
+                                <div class="input-group input-group-sm">
+                                    <span class="input-group-text bg-dark border-secondary">
+                                        <i class="bi bi-search text-info"></i>
+                                    </span>
+                                    <input type="text" 
+                                           class="form-control bg-dark border-secondary text-light" 
+                                           id="device-search" 
+                                           placeholder="Search devices by name, IP, MAC, or type..."
+                                           autocomplete="off">
+                                    <button class="btn btn-outline-secondary" id="clear-search" title="Clear search">
+                                        <i class="bi bi-x"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-4">
+                                <select class="form-select form-select-sm bg-dark border-secondary text-light" id="search-sort">
+                                    <option value="priority">Sort by Priority</option>
+                                    <option value="name">Sort by Name</option>
+                                    <option value="status">Sort by Status</option>
+                                    <option value="response_time">Sort by Response Time</option>
+                                    <option value="last_seen">Sort by Last Seen</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <!-- Quick Filter Buttons -->
+                        <div class="quick-filters mb-3">
+                            <div class="btn-group btn-group-sm flex-wrap" role="group">
+                                <button class="btn btn-outline-danger quick-filter-btn" data-filter="down">
+                                    <i class="bi bi-x-circle me-1"></i>Offline
+                                </button>
+                                <button class="btn btn-outline-warning quick-filter-btn" data-filter="warning">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>Warning
+                                </button>
+                                <button class="btn btn-outline-success quick-filter-btn" data-filter="up">
+                                    <i class="bi bi-check-circle me-1"></i>Online
+                                </button>
+                                <button class="btn btn-outline-primary quick-filter-btn" data-filter="favorites">
+                                    <i class="bi bi-star-fill me-1"></i>Favorites
+                                </button>
+                                <button class="btn btn-outline-info quick-filter-btn" data-filter="recent">
+                                    <i class="bi bi-clock me-1"></i>Recent
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <!-- Search Results Summary -->
+                        <div class="search-results-summary" id="search-results-summary" style="display: none;">
+                            <small class="text-muted">
+                                <span id="search-results-count">0</span> results found
+                                <span id="search-results-terms" class="ms-2"></span>
+                            </small>
+                        </div>
+                    </div>
+                    
+                    <!-- Device Type Filter -->
+                    <div class="device-type-filter mb-3" id="device-type-filter" style="display: none;">
+                        <div class="btn-group btn-group-sm flex-wrap" role="group">
+                            <input type="checkbox" class="btn-check" id="filter-router" checked>
+                            <label class="btn btn-outline-info" for="filter-router">
+                                <i class="bi bi-router me-1"></i>Network
+                            </label>
+                            
+                            <input type="checkbox" class="btn-check" id="filter-computer" checked>
+                            <label class="btn btn-outline-success" for="filter-computer">
+                                <i class="bi bi-pc-display me-1"></i>Computers
+                            </label>
+                            
+                            <input type="checkbox" class="btn-check" id="filter-mobile" checked>
+                            <label class="btn btn-outline-warning" for="filter-mobile">
+                                <i class="bi bi-phone me-1"></i>Mobile
+                            </label>
+                            
+                            <input type="checkbox" class="btn-check" id="filter-iot" checked>
+                            <label class="btn btn-outline-secondary" for="filter-iot">
+                                <i class="bi bi-cpu me-1"></i>IoT
+                            </label>
+                        </div>
+                    </div>
+                    
+                    <!-- Device Grid -->
+                    <div class="device-grid-container">
+                        <div class="row" id="device-grid">
+                            <!-- Device tiles will be dynamically added here -->
+                        </div>
+                        
+                        <!-- Show More Button -->
+                        <div class="text-center mt-3" id="show-more-container" style="display: none;">
+                            <button class="btn btn-outline-secondary btn-sm" id="show-more-devices">
+                                <i class="bi bi-chevron-down me-1"></i>Show More Devices
+                            </button>
+                        </div>
+                        
+                        <!-- Device Groups (Expandable Sections) -->
+                        <div class="device-groups" id="device-groups" style="display: none;">
+                            <!-- Groups will be dynamically added here -->
+                        </div>
                     </div>
                 </div>
             </div>
@@ -415,10 +1361,49 @@
             <div class="col-lg-3">
                 <!-- Active Alerts -->
                 <div class="noc-panel">
-                    <h5 class="mb-3">
-                        <i class="bi bi-exclamation-triangle me-2"></i>ACTIVE ALERTS
-                    </h5>
-                    <div class="alerts-feed" id="alerts-feed">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <h5 class="mb-0">
+                            <i class="bi bi-exclamation-triangle me-2"></i>ACTIVE ALERTS
+                            <span class="badge bg-danger ms-2" id="critical-alert-count" style="display: none;">0</span>
+                            <span class="badge bg-warning ms-1" id="warning-alert-count" style="display: none;">0</span>
+                        </h5>
+                        <div class="alert-sound-toggle">
+                            <button class="btn btn-outline-secondary btn-sm" id="alert-sound-toggle" title="Toggle alert sounds">
+                                <i class="bi bi-volume-up" id="sound-icon"></i>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Critical Alert Banner (only shown when critical alerts exist) -->
+                    <div class="critical-alert-banner" id="critical-alert-banner" style="display: none;">
+                        <div class="alert alert-danger d-flex align-items-center" role="alert">
+                            <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                            <div class="flex-grow-1">
+                                <strong>CRITICAL ALERT:</strong> <span id="critical-alert-text">Network issues detected</span>
+                            </div>
+                            <button class="btn btn-outline-light btn-sm" id="view-critical-btn">View All</button>
+                        </div>
+                    </div>
+                    
+                    <div class="alert-controls mb-2">
+                        <div class="btn-group btn-group-sm" role="group">
+                            <input type="checkbox" class="btn-check" id="filter-critical" checked>
+                            <label class="btn btn-outline-danger" for="filter-critical">Critical</label>
+                            
+                            <input type="checkbox" class="btn-check" id="filter-warning" checked>
+                            <label class="btn btn-outline-warning" for="filter-warning">Warning</label>
+                            
+                            <input type="checkbox" class="btn-check" id="filter-info" checked>
+                            <label class="btn btn-outline-info" for="filter-info">Info</label>
+                            
+                            <input type="checkbox" class="btn-check" id="show-acknowledged">
+                            <label class="btn btn-outline-secondary" for="show-acknowledged">Acknowledged</label>
+                        </div>
+                        <button class="btn btn-outline-secondary btn-sm ms-2" id="acknowledge-all-btn" title="Acknowledge all visible alerts">
+                            <i class="bi bi-check-all"></i>
+                        </button>
+                    </div>
+                    <div class="alerts-feed" id="alerts-feed" role="log" aria-live="polite" aria-label="Active alerts feed">
                         <!-- Alerts will be dynamically added here -->
                     </div>
                 </div>
@@ -436,10 +1421,159 @@
         </div>
     </div>
     
+    <!-- NOC Device Details Modal -->
+    <div class="modal fade" id="nocDeviceModal" data-bs-theme="dark" tabindex="-1" aria-labelledby="nocDeviceModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content" style="background: var(--noc-bg-secondary); border: 1px solid var(--noc-accent-cyan);">
+                <div class="modal-header" style="border-bottom: 1px solid var(--noc-accent-cyan);">
+                    <h5 class="modal-title" id="nocDeviceModalLabel">
+                        <i class="bi bi-hdd-network me-2"></i>Device Details
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row">
+                        <!-- Device Information -->
+                        <div class="col-md-8">
+                            <div class="noc-panel mb-3">
+                                <h6 class="text-uppercase mb-3" style="color: var(--noc-accent-cyan); letter-spacing: 1px;">
+                                    <i class="bi bi-info-circle me-2"></i>Device Information
+                                </h6>
+                                <div class="row">
+                                    <div class="col-sm-4"><strong>Name:</strong></div>
+                                    <div class="col-sm-8" id="modal-device-name">--</div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-sm-4"><strong>IP Address:</strong></div>
+                                    <div class="col-sm-8" id="modal-device-ip">--</div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-sm-4"><strong>MAC Address:</strong></div>
+                                    <div class="col-sm-8" id="modal-device-mac">--</div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-sm-4"><strong>Vendor:</strong></div>
+                                    <div class="col-sm-8" id="modal-device-vendor">--</div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-sm-4"><strong>Device Type:</strong></div>
+                                    <div class="col-sm-8" id="modal-device-type">--</div>
+                                </div>
+                                <div class="row mt-2">
+                                    <div class="col-sm-4"><strong>Status:</strong></div>
+                                    <div class="col-sm-8">
+                                        <span id="modal-device-status" class="badge">--</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Monitoring Controls -->
+                        <div class="col-md-4">
+                            <div class="noc-panel mb-3">
+                                <h6 class="text-uppercase mb-3" style="color: var(--noc-accent-green); letter-spacing: 1px;">
+                                    <i class="bi bi-activity me-2"></i>Monitoring
+                                </h6>
+                                <div class="form-check form-switch mb-3">
+                                    <input class="form-check-input" type="checkbox" id="modal-monitoring-toggle" style="background-color: var(--noc-bg-primary); border-color: var(--noc-accent-cyan);">
+                                    <label class="form-check-label" for="modal-monitoring-toggle">
+                                        Enable Monitoring
+                                    </label>
+                                </div>
+                                <div class="d-grid gap-2">
+                                    <button type="button" class="btn btn-outline-info btn-sm" id="modal-ping-btn">
+                                        <i class="bi bi-wifi me-1"></i>Ping Device
+                                    </button>
+                                    <button type="button" class="btn btn-outline-warning btn-sm" id="modal-wake-btn">
+                                        <i class="bi bi-power me-1"></i>Wake on LAN
+                                    </button>
+                                    <button type="button" class="btn btn-outline-success btn-sm" id="modal-scan-btn">
+                                        <i class="bi bi-search me-1"></i>Port Scan
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Performance Metrics -->
+                    <div class="noc-panel">
+                        <h6 class="text-uppercase mb-3" style="color: var(--noc-accent-yellow); letter-spacing: 1px;">
+                            <i class="bi bi-speedometer2 me-2"></i>Performance Metrics
+                        </h6>
+                        <div class="row text-center">
+                            <div class="col-3">
+                                <div class="stat-value" id="modal-response-time" style="color: var(--noc-accent-cyan);">--</div>
+                                <div class="stat-label">Response Time</div>
+                            </div>
+                            <div class="col-3">
+                                <div class="stat-value" id="modal-uptime" style="color: var(--noc-accent-green);">--</div>
+                                <div class="stat-label">Uptime %</div>
+                            </div>
+                            <div class="col-3">
+                                <div class="stat-value" id="modal-last-seen" style="color: var(--noc-accent-yellow);">--</div>
+                                <div class="stat-label">Last Seen</div>
+                            </div>
+                            <div class="col-3">
+                                <div class="stat-value" id="modal-alerts-count" style="color: var(--noc-accent-red);">--</div>
+                                <div class="stat-label">Active Alerts</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid var(--noc-accent-cyan);">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-outline-primary" id="modal-view-details-btn">
+                        <i class="bi bi-box-arrow-up-right me-1"></i>View Full Details
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Action Results Modal -->
+    <div class="modal fade" id="actionResultsModal" data-bs-theme="dark" tabindex="-1" aria-labelledby="actionResultsModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content" style="background: var(--noc-bg-secondary); border: 1px solid var(--noc-accent-cyan);">
+                <div class="modal-header" style="border-bottom: 1px solid var(--noc-accent-cyan);">
+                    <h5 class="modal-title" id="actionResultsModalLabel">
+                        <i class="bi bi-terminal me-2"></i>Action Results
+                    </h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="mb-3">
+                        <strong>Action:</strong> <span id="results-action-type" class="text-info">--</span><br>
+                        <strong>Device:</strong> <span id="results-device-name" class="text-warning">--</span><br>
+                        <strong>Timestamp:</strong> <span id="results-timestamp" class="text-muted">--</span>
+                    </div>
+                    
+                    <div class="noc-panel">
+                        <h6 class="text-uppercase mb-3" style="color: var(--noc-accent-green); letter-spacing: 1px;">
+                            <i class="bi bi-code-square me-2"></i>Results
+                        </h6>
+                        <pre id="results-content" style="background: var(--noc-bg-primary); color: var(--noc-text-primary); padding: 15px; border-radius: 8px; border: 1px solid var(--noc-border); max-height: 400px; overflow-y: auto; font-size: 0.9rem;"></pre>
+                    </div>
+                </div>
+                <div class="modal-footer" style="border-top: 1px solid var(--noc-accent-cyan);">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-outline-info" id="copy-results-btn">
+                        <i class="bi bi-clipboard me-1"></i>Copy Results
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Bootstrap 5 JavaScript Bundle -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
     <!-- JavaScript -->
     <script>
         // NOC Dashboard JavaScript
         let socket;
+        let deviceModal = null;
+        let actionResultsModal = null;
+        let currentDeviceId = null;
         let nocData = {
             healthScore: 0,
             devicesOnline: 0,
@@ -452,148 +1586,768 @@
         
         // Initialize NOC Dashboard
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('NOC: DOM Content Loaded - Starting initialization');
+            
             initializeClock();
             initializeWebSocket();
             loadInitialData();
+            initializeAlertHandlers();
+            initializeDeviceControls();
+            initializeMobileFeatures();
             
-            // Auto-refresh every 30 seconds
+            // Load alert sound preference
+            const savedSoundSetting = localStorage.getItem('nocAlertSoundEnabled');
+            if (savedSoundSetting !== null) {
+                alertSoundEnabled = savedSoundSetting === 'true';
+                // Update UI to reflect loaded setting
+                const soundIcon = document.getElementById('sound-icon');
+                const soundToggleBtn = document.getElementById('alert-sound-toggle');
+                if (!alertSoundEnabled) {
+                    soundIcon.className = 'bi bi-volume-mute';
+                    soundToggleBtn.classList.add('sound-disabled');
+                    soundToggleBtn.title = 'Enable alert sounds';
+                }
+            }
+            
+            // Initialize modals
+            try {
+                const deviceModalElement = document.getElementById('nocDeviceModal');
+                const resultsModalElement = document.getElementById('actionResultsModal');
+                
+                if (deviceModalElement && typeof bootstrap !== 'undefined') {
+                    deviceModal = new bootstrap.Modal(deviceModalElement);
+                    setupModalEventHandlers();
+                    console.log('NOC: Device modal initialized successfully');
+                } else {
+                    console.error('NOC: Failed to initialize device modal - modal element or Bootstrap not found');
+                }
+                
+                if (resultsModalElement && typeof bootstrap !== 'undefined') {
+                    actionResultsModal = new bootstrap.Modal(resultsModalElement);
+                    setupResultsModalEventHandlers();
+                    console.log('NOC: Action results modal initialized successfully');
+                } else {
+                    console.error('NOC: Failed to initialize results modal - modal element or Bootstrap not found');
+                }
+            } catch (error) {
+                console.error('NOC: Error initializing modals:', error);
+            }
+            
+            // Auto-refresh every 30 seconds to ensure data stays current
             setInterval(loadInitialData, 30000);
+            
+            // Additional refresh every 10 seconds for critical sections
+            setInterval(function() {
+                // Quick health check refresh
+                fetch('/api/health/overview')
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            updateHealthScore(data.health_score, data.network_status);
+                            updateNetworkStatus(data.health_score);
+                        }
+                    })
+                    .catch(error => console.log('NOC: Quick health refresh failed:', error));
+            }, 10000);
         });
         
         // Clock functionality
         function initializeClock() {
+            console.log('NOC: Initializing clock...');
+            
             function updateClock() {
-                const now = new Date();
-                const timeString = now.toLocaleTimeString('en-US', { 
-                    hour12: false,
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    second: '2-digit'
-                });
-                document.getElementById('noc-clock').textContent = timeString;
+                try {
+                    const clockElement = document.getElementById('noc-clock');
+                    if (!clockElement) {
+                        console.error('NOC: Clock element not found!');
+                        return;
+                    }
+                    
+                    const now = new Date();
+                    const timeString = now.toLocaleTimeString('en-US', { 
+                        hour12: false,
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                    const dateString = now.toLocaleDateString('en-US', {
+                        year: 'numeric',
+                        month: '2-digit',
+                        day: '2-digit'
+                    });
+                    
+                    const displayContent = `${timeString}<br><small class="noc-date">${dateString}</small>`;
+                    clockElement.innerHTML = displayContent;
+                    
+                    console.log(`NOC: Clock updated - ${timeString} ${dateString}`);
+                } catch (error) {
+                    console.error('NOC: Error updating clock:', error);
+                }
             }
             
+            // Initial update
             updateClock();
-            setInterval(updateClock, 1000);
+            
+            // Set interval for continuous updates
+            const clockInterval = setInterval(updateClock, 1000);
+            console.log('NOC: Clock interval started');
+            
+            // Store interval ID for cleanup if needed
+            window.nocClockInterval = clockInterval;
         }
         
         // WebSocket for real-time updates
         function initializeWebSocket() {
-            socket = io();
+            try {
+                console.log('NOC: Initializing WebSocket connection...');
+                socket = io({
+                    autoConnect: true,
+                    reconnection: true,
+                    reconnectionDelay: 1000,
+                    reconnectionAttempts: 5,
+                    timeout: 20000
+                });
+                
+                socket.on('connect', function() {
+                    console.log('NOC: Connected to WebSocket successfully');
+                    
+                    // Update network status to show we're connected
+                    const networkStatus = document.getElementById('network-status').querySelector('.status-indicator');
+                    if (networkStatus && networkStatus.textContent === 'INITIALIZING') {
+                        // Don't override if we already have a proper status
+                        loadInitialData(); // Refresh data on reconnect
+                    }
+                });
+                
+                socket.on('disconnect', function(reason) {
+                    console.log('NOC: WebSocket disconnected:', reason);
+                });
+                
+                socket.on('connect_error', function(error) {
+                    console.error('NOC: WebSocket connection error:', error);
+                });
+                
+                socket.on('reconnect', function(attemptNumber) {
+                    console.log('NOC: WebSocket reconnected after', attemptNumber, 'attempts');
+                    loadInitialData(); // Refresh data after reconnection
+                });
+                
+                socket.on('device_status_update', function(data) {
+                    console.log('NOC: Received device status update:', data.device_id);
+                    updateDeviceStatus(data);
+                });
+                
+                socket.on('monitoring_summary', function(data) {
+                    console.log('NOC: Received monitoring summary update');
+                    updateNetworkMetrics(data);
+                });
+                
+            } catch (error) {
+                console.error('NOC: Failed to initialize WebSocket:', error);
+                // Continue without WebSocket - the page will still work with periodic updates
+            }
+        }
+        
+        // Show skeleton loading states
+        function showLoadingStates() {
+            // Show skeleton health score
+            const healthScore = document.getElementById('health-score');
+            if (healthScore) {
+                healthScore.innerHTML = '<div class="skeleton skeleton-health-score"></div>';
+            }
             
-            socket.on('connect', function() {
-                console.log('NOC: Connected to WebSocket');
-            });
+            // Show skeleton device grid
+            const deviceGrid = document.getElementById('device-grid');
+            if (deviceGrid) {
+                deviceGrid.innerHTML = Array(6).fill(0).map(() => 
+                    `<div class="col-4 col-lg-3 col-xl-2 mb-2">
+                        <div class="skeleton skeleton-device-tile">
+                            <div class="skeleton-text large"></div>
+                            <div class="skeleton-text small"></div>
+                            <div class="skeleton-text"></div>
+                        </div>
+                    </div>`
+                ).join('');
+            }
             
-            socket.on('device_status_update', function(data) {
-                updateDeviceStatus(data);
-            });
-            
-            socket.on('monitoring_summary', function(data) {
-                updateNetworkMetrics(data);
-            });
+            // Show skeleton alerts
+            const alertsFeed = document.getElementById('alerts-feed');
+            if (alertsFeed) {
+                alertsFeed.innerHTML = Array(3).fill(0).map(() => 
+                    `<div class="alert-item">
+                        <div class="skeleton-text large"></div>
+                        <div class="skeleton-text small"></div>
+                    </div>`
+                ).join('');
+            }
         }
         
         // Load initial data
         async function loadInitialData() {
             try {
+                console.log('NOC: Loading initial data...');
+                
+                // Show loading states immediately
+                showLoadingStates();
+                
                 // Load health overview data
                 const healthResponse = await fetch('/api/health/overview');
                 const healthData = await healthResponse.json();
                 
                 if (healthData.success) {
+                    console.log('NOC: Health data loaded successfully:', healthData.health_score);
                     updateHealthScore(healthData.health_score, healthData.network_status);
                     updateNetworkStatus(healthData.health_score);
+                } else {
+                    console.error('NOC: Health data request failed:', healthData);
                 }
                 
                 // Load device data
                 const devicesResponse = await fetch('/api/devices?monitored=true');
                 const devicesData = await devicesResponse.json();
                 
-                if (devicesData.devices) {
+                if (devicesData.devices && Array.isArray(devicesData.devices)) {
+                    console.log('NOC: Device data loaded successfully:', devicesData.devices.length, 'devices');
                     nocData.devices = devicesData.devices;
                     updateDeviceGrid();
                     updateNetworkMap();
+                } else {
+                    console.error('NOC: Device data request failed or invalid format:', devicesData);
                 }
                 
                 // Load alerts
                 const alertsResponse = await fetch('/api/monitoring/alerts?resolved=false&limit=20');
                 const alertsData = await alertsResponse.json();
                 
-                if (alertsData.alerts) {
+                if (alertsData.alerts && Array.isArray(alertsData.alerts)) {
+                    console.log('NOC: Alerts data loaded successfully:', alertsData.alerts.length, 'alerts');
                     nocData.alerts = alertsData.alerts;
                     updateAlertsPanel();
+                } else {
+                    console.error('NOC: Alerts data request failed or invalid format:', alertsData);
                 }
+                
+                console.log('NOC: Initial data loading completed');
                 
             } catch (error) {
                 console.error('NOC: Error loading data:', error);
+                
+                // Fallback: Show error message on NOC page
+                const healthScore = document.getElementById('health-score');
+                if (healthScore) {
+                    healthScore.textContent = 'ERR';
+                    healthScore.className = 'health-score-number health-score-poor';
+                }
+                
+                const networkStatus = document.getElementById('network-status').querySelector('.status-indicator');
+                if (networkStatus) {
+                    networkStatus.textContent = 'DATA ERROR';
+                    networkStatus.className = 'status-indicator status-critical';
+                }
             }
         }
+        
+        // Update NOC network summary
+        function updateNOCSummary() {
+            try {
+                // Update timestamp
+                const now = new Date();
+                const timestampElement = document.getElementById('noc-last-update');
+                if (timestampElement) {
+                    timestampElement.textContent = now.toLocaleTimeString('en-US', {
+                        hour12: false,
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                    });
+                }
+                
+            } catch (error) {
+                console.error('NOC Summary update error:', error);
+            }
+        }
+        
+        // Health score trend tracking
+        let healthScoreHistory = [];
+        const HEALTH_HISTORY_LENGTH = 5;
         
         // Update health score display
         function updateHealthScore(score, networkStatus) {
             const scoreElement = document.getElementById('health-score');
+            const description = document.getElementById('health-score-description');
+            const summaryElement = document.getElementById('health-summary');
+            
             scoreElement.textContent = score.toFixed(1);
             
-            // Update score color class
-            scoreElement.className = 'health-score-number ';
-            if (score >= 90) scoreElement.className += 'health-score-excellent';
-            else if (score >= 75) scoreElement.className += 'health-score-good';
-            else if (score >= 60) scoreElement.className += 'health-score-fair';
-            else scoreElement.className += 'health-score-poor';
+            // Update score color class and accessibility info
+            let healthCategory, ariaLabel, summaryText;
+            scoreElement.className = 'health-score-number-enhanced ';
             
-            // Update network metrics
-            document.getElementById('devices-online').textContent = networkStatus.devices_online;
-            document.getElementById('devices-offline').textContent = networkStatus.devices_offline;
-            document.getElementById('avg-response-time').textContent = networkStatus.avg_response_time_ms + 'ms';
-        }
-        
-        // Update network status indicator
-        function updateNetworkStatus(healthScore) {
-            const statusElement = document.getElementById('network-status');
-            const indicator = statusElement.querySelector('.status-indicator');
+            // Calculate device status for summary
+            const devicesDown = nocData.devices.filter(d => d.status === 'down').length;
+            const devicesWarning = nocData.devices.filter(d => d.status === 'warning').length;
+            const devicesTotal = nocData.devices.length;
+            const devicesOnline = devicesTotal - devicesDown - devicesWarning;
             
-            if (healthScore >= 90) {
-                indicator.textContent = 'OPTIMAL';
-                indicator.className = 'status-indicator status-online';
-            } else if (healthScore >= 75) {
-                indicator.textContent = 'GOOD';
-                indicator.className = 'status-indicator status-online';
-            } else if (healthScore >= 60) {
-                indicator.textContent = 'DEGRADED';
-                indicator.className = 'status-indicator status-degraded';
+            if (score >= 90) {
+                scoreElement.className += 'health-score-excellent';
+                healthCategory = 'excellent';
+                ariaLabel = `Network health score ${score.toFixed(1)} out of 100, excellent condition`;
+                summaryText = `All systems operational (${devicesOnline}/${devicesTotal} devices online)`;
+            } else if (score >= 75) {
+                scoreElement.className += 'health-score-good';
+                healthCategory = 'good';
+                ariaLabel = `Network health score ${score.toFixed(1)} out of 100, good condition`;
+                summaryText = `Network stable${devicesWarning > 0 ? ` (${devicesWarning} warnings)` : ''}`;
+            } else if (score >= 60) {
+                scoreElement.className += 'health-score-fair';
+                healthCategory = 'fair';
+                ariaLabel = `Network health score ${score.toFixed(1)} out of 100, fair condition with some issues`;
+                summaryText = `Network degraded (${devicesDown} down, ${devicesWarning} warnings)`;
             } else {
-                indicator.textContent = 'CRITICAL';
-                indicator.className = 'status-indicator status-critical';
+                scoreElement.className += 'health-score-poor';
+                healthCategory = 'poor';
+                ariaLabel = `Network health score ${score.toFixed(1)} out of 100, poor condition requiring attention`;
+                summaryText = `Network critical (${devicesDown} devices down)`;
+            }
+            
+            scoreElement.setAttribute('aria-label', ariaLabel);
+            if (description) {
+                description.textContent = `${ariaLabel}. Health score indicates overall system performance and availability.`;
+            }
+            if (summaryElement) {
+                summaryElement.textContent = summaryText;
+            }
+            
+            // Update health trend indicator
+            updateHealthTrend(score);
+            
+            // Update network summary
+            updateNOCSummary();
+            
+            // Update average response time
+            const avgResponseElement = document.getElementById('noc-avg-response-time');
+            if (avgResponseElement) {
+                avgResponseElement.textContent = (networkStatus.avg_response_time_ms || 0) + 'ms';
             }
         }
         
-        // Update device grid
-        function updateDeviceGrid() {
+        // Update health trend indicator
+        function updateHealthTrend(currentScore) {
+            const trendArrow = document.getElementById('trend-arrow');
+            if (!trendArrow) return;
+            
+            // Add current score to history
+            healthScoreHistory.push(currentScore);
+            if (healthScoreHistory.length > HEALTH_HISTORY_LENGTH) {
+                healthScoreHistory.shift();
+            }
+            
+            // Calculate trend if we have enough history
+            if (healthScoreHistory.length >= 3) {
+                const recent = healthScoreHistory.slice(-3);
+                const trend = recent[2] - recent[0];
+                
+                trendArrow.style.display = 'block';
+                trendArrow.className = 'bi trend-arrow';
+                
+                if (trend > 2) {
+                    // Improving trend
+                    trendArrow.classList.add('bi-arrow-up', 'trend-up');
+                    trendArrow.style.setProperty('--rotation', '0deg');
+                    trendArrow.title = 'Health score improving';
+                } else if (trend < -2) {
+                    // Declining trend
+                    trendArrow.classList.add('bi-arrow-down', 'trend-down');
+                    trendArrow.style.setProperty('--rotation', '0deg');
+                    trendArrow.title = 'Health score declining';
+                } else {
+                    // Stable trend
+                    trendArrow.classList.add('bi-arrow-right', 'trend-stable');
+                    trendArrow.style.setProperty('--rotation', '0deg');
+                    trendArrow.title = 'Health score stable';
+                }
+            }
+        }
+        
+        // Update network status indicator with accessibility
+        function updateNetworkStatus(healthScore) {
+            const statusElement = document.getElementById('network-status');
+            const indicator = statusElement.querySelector('.status-indicator');
+            const description = document.getElementById('network-status-description');
+            
+            let statusText, statusClass, ariaLabel;
+            
+            if (healthScore >= 90) {
+                statusText = 'OPTIMAL';
+                statusClass = 'status-indicator status-online';
+                ariaLabel = 'Network status optimal, all systems operating normally';
+            } else if (healthScore >= 75) {
+                statusText = 'GOOD';
+                statusClass = 'status-indicator status-online';
+                ariaLabel = 'Network status good, minor issues detected';
+            } else if (healthScore >= 60) {
+                statusText = 'DEGRADED';
+                statusClass = 'status-indicator status-degraded';
+                ariaLabel = 'Network status degraded, performance issues detected';
+            } else {
+                statusText = 'CRITICAL';
+                statusClass = 'status-indicator status-critical';
+                ariaLabel = 'Network status critical, immediate attention required';
+            }
+            
+            indicator.textContent = statusText;
+            indicator.className = statusClass;
+            indicator.setAttribute('aria-label', ariaLabel);
+            if (description) {
+                description.textContent = ariaLabel;
+            }
+        }
+        
+        // Smart device grid update with minimal DOM manipulation
+        let lastGridDevices = [];
+        let deviceDisplayMode = 'critical'; // 'critical', 'all', 'grouped'
+        let deviceTypeFilters = {
+            router: true,
+            computer: true,
+            mobile: true,
+            iot: true
+        };
+        
+        // Search and filtering state
+        let searchQuery = '';
+        let searchFilters = {
+            status: '',
+            favorites: false,
+            recent: false
+        };
+        let searchSortBy = 'priority';
+        let searchResults = [];
+        let searchDebounceTimer = null;
+        
+        function updateDeviceGrid(forceRebuild = false) {
             const grid = document.getElementById('device-grid');
+            const deviceCountBadge = document.getElementById('device-count');
+            const showMoreContainer = document.getElementById('show-more-container');
+            const deviceGroupsContainer = document.getElementById('device-groups');
             
-            // Show critical/important devices only (first 12)
-            const criticalDevices = nocData.devices
-                .filter(device => device.is_monitored)
-                .sort((a, b) => {
-                    // Prioritize offline devices, then by importance
-                    if (a.status === 'down' && b.status !== 'down') return -1;
-                    if (b.status === 'down' && a.status !== 'down') return 1;
-                    return 0;
-                })
-                .slice(0, 12);
+            // Get filtered devices based on current settings
+            let filteredDevices = getFilteredDevices();
             
-            grid.innerHTML = criticalDevices.map(device => `
-                <div class="col-4 mb-2">
-                    <div class="device-tile status-${device.status}" data-device-id="${device.id}">
+            // Update device count
+            deviceCountBadge.textContent = filteredDevices.length;
+            
+            if (deviceDisplayMode === 'grouped') {
+                // Show grouped view
+                grid.style.display = 'none';
+                showMoreContainer.style.display = 'none';
+                deviceGroupsContainer.style.display = 'block';
+                updateDeviceGroups(filteredDevices);
+            } else {
+                // Show grid view
+                deviceGroupsContainer.style.display = 'none';
+                grid.style.display = 'flex';
+                
+                // Limit devices for critical mode
+                const displayLimit = deviceDisplayMode === 'critical' ? 12 : 24;
+                const displayDevices = filteredDevices.slice(0, displayLimit);
+                
+                // Show "Show More" button if there are more devices
+                if (filteredDevices.length > displayLimit) {
+                    showMoreContainer.style.display = 'block';
+                    const showMoreBtn = document.getElementById('show-more-devices');
+                    const remainingCount = filteredDevices.length - displayLimit;
+                    showMoreBtn.innerHTML = `<i class="bi bi-chevron-down me-1"></i>Show ${remainingCount} More Devices`;
+                } else {
+                    showMoreContainer.style.display = 'none';
+                }
+                
+                // Check if device list has changed significantly
+                const currentDeviceIds = displayDevices.map(d => d.id);
+                const lastDeviceIds = lastGridDevices.map(d => d.id);
+                const deviceListChanged = !arraysEqual(currentDeviceIds, lastDeviceIds);
+                
+                if (forceRebuild || deviceListChanged || lastGridDevices.length === 0) {
+                    // Full rebuild necessary
+                    grid.innerHTML = displayDevices.map((device, index) => createDeviceTileHTML(device, index)).join('');
+                    initializeKeyboardNavigation();
+                    announceToScreenReader(`Device grid updated, showing ${displayDevices.length} of ${filteredDevices.length} devices`);
+                } else {
+                    // Incremental update - only update changed devices
+                    displayDevices.forEach((device, index) => {
+                        const existingTile = grid.querySelector(`[data-device-id="${device.id}"]`);
+                        if (existingTile) {
+                            // Update tile index for keyboard navigation
+                            existingTile.setAttribute('data-tile-index', index);
+                            existingTile.tabIndex = index === 0 ? 0 : -1;
+                        }
+                    });
+                }
+                
+                lastGridDevices = [...displayDevices];
+            }
+        }
+        
+        // Get filtered devices based on current settings
+        function getFilteredDevices() {
+            let devices = nocData.devices.filter(device => device.is_monitored);
+            
+            // Apply search query if present
+            if (searchQuery) {
+                devices = performDeviceSearch(devices, searchQuery);
+            }
+            
+            // Apply search filters
+            if (searchFilters.status) {
+                devices = devices.filter(device => device.status === searchFilters.status);
+            }
+            
+            if (searchFilters.favorites) {
+                devices = devices.filter(device => device.is_favorite);
+            }
+            
+            if (searchFilters.recent) {
+                const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+                devices = devices.filter(device => 
+                    device.last_seen && new Date(device.last_seen) > oneHourAgo
+                );
+            }
+            
+            // Apply device type filters (only if not in search mode)
+            if (!searchQuery) {
+                devices = devices.filter(device => {
+                    const deviceTypeIcon = getDeviceTypeIcon(device.device_type);
+                    return deviceTypeFilters[deviceTypeIcon.class];
+                });
+            }
+            
+            // Apply critical/all filter (only if not in search mode)
+            if (!searchQuery && deviceDisplayMode === 'critical') {
+                devices = devices.filter(device => {
+                    const priority = getDevicePriority(device);
+                    return priority > 2 || device.is_favorite; // High priority or favorite
+                });
+            }
+            
+            // Sort devices
+            return sortDevices(devices, searchSortBy);
+        }
+        
+        // Perform device search across multiple fields
+        function performDeviceSearch(devices, query) {
+            const searchTerms = query.toLowerCase().split(' ').filter(term => term.length > 0);
+            
+            return devices.filter(device => {
+                const searchableText = [
+                    device.display_name || '',
+                    device.hostname || '',
+                    device.ip_address || '',
+                    device.mac_address || '',
+                    device.device_type || '',
+                    device.vendor || '',
+                    device.description || ''
+                ].join(' ').toLowerCase();
+                
+                return searchTerms.every(term => searchableText.includes(term));
+            });
+        }
+        
+        // Sort devices by specified criteria
+        function sortDevices(devices, sortBy) {
+            return devices.sort((a, b) => {
+                switch (sortBy) {
+                    case 'name':
+                        return (a.display_name || a.hostname || a.ip_address).localeCompare(
+                            b.display_name || b.hostname || b.ip_address
+                        );
+                    case 'status':
+                        const statusOrder = { 'down': 0, 'warning': 1, 'up': 2 };
+                        return statusOrder[a.status] - statusOrder[b.status];
+                    case 'response_time':
+                        return (a.latest_response_time || 9999) - (b.latest_response_time || 9999);
+                    case 'last_seen':
+                        const aTime = a.last_seen ? new Date(a.last_seen).getTime() : 0;
+                        const bTime = b.last_seen ? new Date(b.last_seen).getTime() : 0;
+                        return bTime - aTime;
+                    case 'priority':
+                    default:
+                        // Default priority sorting: Favorites first, then Critical alerts > Down devices > Warning > Online
+                        const favoriteA = a.is_favorite ? 1 : 0;
+                        const favoriteB = b.is_favorite ? 1 : 0;
+                        if (favoriteA !== favoriteB) return favoriteB - favoriteA;
+                        
+                        const priorityA = getDevicePriority(a);
+                        const priorityB = getDevicePriority(b);
+                        return priorityB - priorityA;
+                }
+            });
+        }
+        
+        // Update device groups view
+        function updateDeviceGroups(devices) {
+            const container = document.getElementById('device-groups');
+            
+            // Group devices by type
+            const deviceGroups = {
+                'Network Equipment': devices.filter(d => ['router', 'switch', 'ap', 'access_point'].includes(d.device_type)),
+                'Computers': devices.filter(d => ['computer', 'laptop', 'desktop', 'server'].includes(d.device_type)),
+                'Mobile Devices': devices.filter(d => ['mobile', 'tablet'].includes(d.device_type)),
+                'IoT & Smart Devices': devices.filter(d => ['iot', 'smart_device', 'camera', 'printer'].includes(d.device_type)),
+                'Other': devices.filter(d => !['router', 'switch', 'ap', 'access_point', 'computer', 'laptop', 'desktop', 'server', 'mobile', 'tablet', 'iot', 'smart_device', 'camera', 'printer'].includes(d.device_type))
+            };
+            
+            let html = '';
+            Object.entries(deviceGroups).forEach(([groupName, groupDevices]) => {
+                if (groupDevices.length === 0) return;
+                
+                const groupId = groupName.toLowerCase().replace(/[^a-z]/g, '');
+                html += `
+                    <div class="device-group" id="group-${groupId}">
+                        <div class="device-group-header" onclick="toggleDeviceGroup('${groupId}')">
+                            <div>
+                                <strong>${groupName}</strong>
+                                <span class="badge bg-secondary ms-2">${groupDevices.length}</span>
+                            </div>
+                            <i class="bi bi-chevron-down device-group-toggle"></i>
+                        </div>
+                        <div class="device-group-content">
+                            <div class="row">
+                                ${groupDevices.map((device, index) => createDeviceTileHTML(device, index)).join('')}
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        function createDeviceTileHTML(device, index) {
+            const deviceTypeIcon = getDeviceTypeIcon(device.device_type);
+            const devicePriority = getDevicePriority(device);
+            const lastAlert = getLastAlertInfo(device);
+            const priorityClass = devicePriority > 3 ? 'critical' : devicePriority > 1 ? 'normal' : 'monitoring';
+            
+            return `
+                <div class="col-4 col-lg-3 col-xl-2 mb-2">
+                    <div class="device-tile status-${device.status}" 
+                         data-device-id="${device.id}" 
+                         data-tile-index="${index}"
+                         tabindex="${index === 0 ? '0' : '-1'}"
+                         role="button"
+                         aria-label="${device.display_name} ${device.device_type || 'device'} status ${device.status}, response time ${device.latest_response_time || 'unknown'}ms"
+                         onclick="console.log('NOC: Device tile clicked:', ${device.id}); openDeviceModal(${device.id})" 
+                         title="Click for device details and monitoring controls">
+                         
+                        <!-- Device Type Icon -->
+                        <div class="device-type-icon ${deviceTypeIcon.class}" title="${device.device_type || 'Unknown device'}">
+                            <i class="bi ${deviceTypeIcon.icon}"></i>
+                        </div>
+                        
+                        <!-- Priority Indicator -->
+                        <div class="device-priority-indicator ${priorityClass}" title="Priority: ${priorityClass}"></div>
+                        
+                        <!-- Last Alert Indicator -->
+                        ${lastAlert ? `<div class="device-last-alert" title="Last alert: ${lastAlert.timeAgo}">${lastAlert.type}</div>` : ''}
+                        
                         <div class="device-name">${device.display_name}</div>
                         <div class="device-ip">${device.ip_address}</div>
-                        <div class="device-response-time ${getResponseTimeClass(device.latest_response_time)}">
+                        <div class="device-response-time ${getResponseTimeClass(device.latest_response_time)}" 
+                             aria-label="Response time">
                             ${device.latest_response_time ? device.latest_response_time + 'ms' : 'N/A'}
+                        </div>
+                        
+                        <!-- Quick Action Buttons -->
+                        <div class="device-quick-actions">
+                            <button class="quick-action-btn" 
+                                    onclick="event.stopPropagation(); performQuickAction('ping', ${device.id})"
+                                    title="Quick ping">
+                                <i class="bi bi-wifi"></i>
+                            </button>
+                            <button class="quick-action-btn" 
+                                    onclick="event.stopPropagation(); performQuickAction('wake', ${device.id})"
+                                    title="Wake on LAN">
+                                <i class="bi bi-power"></i>
+                            </button>
+                            <button class="quick-action-btn" 
+                                    onclick="event.stopPropagation(); toggleDeviceFavorite(${device.id})"
+                                    title="Toggle favorite">
+                                <i class="bi bi-star${device.is_favorite ? '-fill' : ''}"></i>
+                            </button>
+                        </div>
+                        
+                        <div class="visually-hidden">
+                            Device type: ${device.device_type || 'Unknown'}. 
+                            Status: ${device.status}. 
+                            Priority: ${priorityClass}.
+                            Last seen: ${device.last_seen ? new Date(device.last_seen).toLocaleString() : 'Never'}
+                            ${lastAlert ? `Last alert: ${lastAlert.type} ${lastAlert.timeAgo}` : 'No recent alerts'}
                         </div>
                     </div>
                 </div>
-            `).join('');
+            `;
+        }
+        
+        // Get device type icon and class
+        function getDeviceTypeIcon(deviceType) {
+            const typeMap = {
+                'router': { icon: 'bi-router', class: 'router' },
+                'switch': { icon: 'bi-hdd-rack', class: 'router' },
+                'computer': { icon: 'bi-pc-display', class: 'computer' },
+                'laptop': { icon: 'bi-laptop', class: 'computer' },
+                'desktop': { icon: 'bi-pc', class: 'computer' },
+                'server': { icon: 'bi-server', class: 'server' },
+                'mobile': { icon: 'bi-phone', class: 'mobile' },
+                'tablet': { icon: 'bi-tablet', class: 'mobile' },
+                'iot': { icon: 'bi-cpu', class: 'iot' },
+                'smart_device': { icon: 'bi-house-gear', class: 'iot' },
+                'printer': { icon: 'bi-printer', class: 'printer' },
+                'camera': { icon: 'bi-camera-video', class: 'iot' },
+                'ap': { icon: 'bi-wifi', class: 'router' },
+                'access_point': { icon: 'bi-wifi', class: 'router' }
+            };
+            
+            const deviceKey = (deviceType || 'unknown').toLowerCase().replace(/[^a-z]/g, '');
+            return typeMap[deviceKey] || { icon: 'bi-question-circle', class: 'iot' };
+        }
+        
+        // Get last alert information for a device
+        function getLastAlertInfo(device) {
+            if (!nocData.alerts || nocData.alerts.length === 0) return null;
+            
+            // Find most recent alert for this device
+            const deviceAlerts = nocData.alerts
+                .filter(alert => alert.device && alert.device.id === device.id)
+                .sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+                
+            if (deviceAlerts.length === 0) return null;
+            
+            const lastAlert = deviceAlerts[0];
+            const alertTime = new Date(lastAlert.created_at);
+            const now = new Date();
+            const diffHours = Math.floor((now - alertTime) / (1000 * 60 * 60));
+            
+            return {
+                type: lastAlert.severity.charAt(0).toUpperCase(),
+                timeAgo: diffHours < 1 ? 'now' : diffHours < 24 ? `${diffHours}h` : `${Math.floor(diffHours/24)}d`
+            };
+        }
+        
+        function arraysEqual(a, b) {
+            if (a.length !== b.length) return false;
+            return a.every((val, index) => val === b[index]);
+        }
+        
+        // Get device priority for sorting (higher priority = more important)
+        function getDevicePriority(device) {
+            // Critical alerts get highest priority
+            if (device.alerts && device.alerts.critical > 0) return 4;
+            // Down devices are next priority
+            if (device.status === 'down') return 3;
+            // Warning devices
+            if (device.status === 'warning') return 2;
+            // Online devices have lowest priority
+            return 1;
         }
         
         // Update network map
@@ -621,26 +2375,553 @@
                 
                 node.style.left = x + 'px';
                 node.style.top = y + 'px';
-                node.title = device.display_name;
+                node.title = `${device.display_name} (${device.ip_address}) - Click for details`;
+                node.setAttribute('data-device-id', device.id);
+                node.onclick = () => {
+                    console.log('NOC: Network topology node clicked:', device.id);
+                    openDeviceModal(device.id);
+                };
                 
                 mapContainer.appendChild(node);
             }
         }
         
-        // Update alerts panel
+        // Alert management state
+        let alertSoundEnabled = true;
+        let acknowledgedAlerts = new Set();
+        let alertTimers = new Map();
+        
+        // Enhanced alerts panel with priority grouping and acknowledgment
         function updateAlertsPanel() {
             const alertsPanel = document.getElementById('alerts-feed');
-            const activeAlertsCount = document.getElementById('active-alerts');
+            const criticalCountBadge = document.getElementById('critical-alert-count');
+            const warningCountBadge = document.getElementById('warning-alert-count');
+            const criticalBanner = document.getElementById('critical-alert-banner');
+            const criticalBannerText = document.getElementById('critical-alert-text');
             
-            activeAlertsCount.textContent = nocData.alerts.length;
+            // Check active filters
+            const filters = {
+                critical: document.getElementById('filter-critical')?.checked ?? true,
+                warning: document.getElementById('filter-warning')?.checked ?? true,
+                info: document.getElementById('filter-info')?.checked ?? true,
+                showAcknowledged: document.getElementById('show-acknowledged')?.checked ?? false
+            };
             
-            alertsPanel.innerHTML = nocData.alerts.map(alert => `
-                <div class="alert-item alert-${alert.severity}">
-                    <div class="fw-bold">${alert.alert_type.replace('_', ' ').toUpperCase()}</div>
-                    <div class="small">${alert.device?.display_name || 'System'}</div>
-                    <div class="small text-muted">${new Date(alert.created_at).toLocaleTimeString()}</div>
+            // Group alerts by severity with smart filtering
+            const groupedAlerts = {
+                critical: nocData.alerts.filter(a => 
+                    a.severity === 'critical' && 
+                    (filters.showAcknowledged || !a.acknowledged)
+                ),
+                warning: nocData.alerts.filter(a => 
+                    a.severity === 'warning' && 
+                    (filters.showAcknowledged || !a.acknowledged)
+                ),
+                info: nocData.alerts.filter(a => 
+                    a.severity === 'info' && 
+                    (filters.showAcknowledged || !a.acknowledged)
+                )
+            };
+            
+            // Auto-hide acknowledged alerts after 30 seconds
+            if (!filters.showAcknowledged) {
+                Object.values(groupedAlerts).forEach(alerts => {
+                    alerts.forEach(alert => {
+                        if (alert.acknowledged && alertTimers.has(alert.id)) {
+                            setTimeout(() => {
+                                acknowledgedAlerts.add(alert.id);
+                                updateAlertsPanel();
+                            }, 30000);
+                        }
+                    });
+                });
+            }
+            
+            // Update critical alert banner
+            const activeCriticalAlerts = groupedAlerts.critical.filter(a => !a.acknowledged);
+            if (activeCriticalAlerts.length > 0) {
+                criticalBanner.style.display = 'block';
+                const criticalDevice = activeCriticalAlerts[0].device?.display_name || 'System';
+                const alertCount = activeCriticalAlerts.length;
+                criticalBannerText.textContent = alertCount === 1 
+                    ? `${criticalDevice} - ${activeCriticalAlerts[0].alert_type.replace('_', ' ')}`
+                    : `${alertCount} critical issues detected`;
+                
+                // Play alert sound for new critical alerts
+                playAlertSound('critical');
+            } else {
+                criticalBanner.style.display = 'none';
+            }
+            
+            // Update severity count badges (only unacknowledged)
+            const unacknowledgedCritical = groupedAlerts.critical.filter(a => !a.acknowledged).length;
+            const unacknowledgedWarning = groupedAlerts.warning.filter(a => !a.acknowledged).length;
+            
+            if (unacknowledgedCritical > 0) {
+                criticalCountBadge.textContent = unacknowledgedCritical;
+                criticalCountBadge.style.display = 'inline';
+            } else {
+                criticalCountBadge.style.display = 'none';
+            }
+            
+            if (unacknowledgedWarning > 0) {
+                warningCountBadge.textContent = unacknowledgedWarning;
+                warningCountBadge.style.display = 'inline';
+            } else {
+                warningCountBadge.style.display = 'none';
+            }
+            
+            let html = '';
+            
+            // Build HTML for each severity level (critical first)
+            const orderedSeverities = ['critical', 'warning', 'info'];
+            orderedSeverities.forEach(severity => {
+                const alerts = groupedAlerts[severity];
+                if (!filters[severity] || alerts.length === 0) return;
+                
+                // Hide acknowledged alerts from auto-hide list
+                const visibleAlerts = alerts.filter(alert => 
+                    !acknowledgedAlerts.has(alert.id)
+                );
+                
+                if (visibleAlerts.length === 0) return;
+                
+                html += `
+                    <div class="alert-severity-section">
+                        <div class="alert-severity-header ${severity}">
+                            <span>${severity.toUpperCase()}</span>
+                            <span class="badge bg-dark">${visibleAlerts.length}</span>
+                        </div>
+                        ${visibleAlerts.map(alert => createAlertItem(alert, severity)).join('')}
+                    </div>
+                `;
+            });
+            
+            if (html === '') {
+                html = '<div class="text-center text-muted py-4"><i class="bi bi-check-circle-fill text-success me-2"></i>No active alerts</div>';
+            }
+            
+            alertsPanel.innerHTML = html;
+            
+            // Initialize alert item click handlers
+            initializeAlertHandlers();
+        }
+        
+        // Play alert sound for critical issues
+        function playAlertSound(severity) {
+            if (!alertSoundEnabled || severity !== 'critical') return;
+            
+            try {
+                // Create audio context for alert sound
+                const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+                oscillator.frequency.setValueAtTime(600, audioContext.currentTime + 0.1);
+                oscillator.frequency.setValueAtTime(800, audioContext.currentTime + 0.2);
+                
+                gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
+                gainNode.gain.setValueAtTime(0, audioContext.currentTime + 0.3);
+                
+                oscillator.start(audioContext.currentTime);
+                oscillator.stop(audioContext.currentTime + 0.3);
+                
+                // Also trigger browser notification if permitted
+                if (Notification.permission === 'granted') {
+                    new Notification('Critical Network Alert', {
+                        body: 'Critical network issue detected. Check the NOC for details.',
+                        icon: '/static/favicon.ico'
+                    });
+                }
+            } catch (error) {
+                console.log('Alert sound not available:', error);
+            }
+        }
+        
+        function createAlertItem(alert, severity) {
+            const acknowledgeBtn = alert.acknowledged ? '' : 
+                `<button class="btn btn-outline-success btn-sm float-end" onclick="acknowledgeAlert(${alert.id})" title="Acknowledge alert">
+                    <i class="bi bi-check"></i>
+                </button>`;
+                
+            return `
+                <div class="alert-item alert-${severity} ${alert.acknowledged ? 'acknowledged' : ''}" 
+                     data-alert-id="${alert.id}"
+                     role="alert"
+                     aria-label="${severity} alert: ${alert.alert_type} for ${alert.device?.display_name || 'System'}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div class="flex-grow-1">
+                            <div class="fw-bold">${alert.alert_type.replace('_', ' ').toUpperCase()}</div>
+                            <div class="small text-light">${alert.device?.display_name || 'System'}</div>
+                            <div class="small text-muted">${new Date(alert.created_at).toLocaleTimeString()}</div>
+                            ${alert.message ? `<div class="small mt-1">${alert.message}</div>` : ''}
+                        </div>
+                        ${acknowledgeBtn}
+                    </div>
                 </div>
-            `).join('');
+            `;
+        }
+        
+        function initializeAlertHandlers() {
+            // Filter button handlers
+            ['filter-critical', 'filter-warning', 'filter-info', 'show-acknowledged'].forEach(filterId => {
+                const filterBtn = document.getElementById(filterId);
+                if (filterBtn) {
+                    filterBtn.addEventListener('change', updateAlertsPanel);
+                }
+            });
+            
+            // Acknowledge all button handler
+            const acknowledgeAllBtn = document.getElementById('acknowledge-all-btn');
+            if (acknowledgeAllBtn) {
+                acknowledgeAllBtn.onclick = acknowledgeAllVisibleAlerts;
+            }
+            
+            // Alert sound toggle
+            const soundToggleBtn = document.getElementById('alert-sound-toggle');
+            if (soundToggleBtn) {
+                soundToggleBtn.onclick = toggleAlertSound;
+            }
+            
+            // Critical alert banner "View All" button
+            const viewCriticalBtn = document.getElementById('view-critical-btn');
+            if (viewCriticalBtn) {
+                viewCriticalBtn.onclick = function() {
+                    // Show critical alerts and scroll to alerts panel
+                    document.getElementById('filter-critical').checked = true;
+                    document.getElementById('filter-warning').checked = false;
+                    document.getElementById('filter-info').checked = false;
+                    updateAlertsPanel();
+                    document.getElementById('alerts-feed').scrollIntoView({ behavior: 'smooth' });
+                };
+            }
+            
+            // Request notification permission on first load
+            if (Notification.permission === 'default') {
+                Notification.requestPermission();
+            }
+        }
+        
+        // Toggle alert sound
+        function toggleAlertSound() {
+            alertSoundEnabled = !alertSoundEnabled;
+            const soundIcon = document.getElementById('sound-icon');
+            const soundToggleBtn = document.getElementById('alert-sound-toggle');
+            
+            if (alertSoundEnabled) {
+                soundIcon.className = 'bi bi-volume-up';
+                soundToggleBtn.classList.remove('sound-disabled');
+                soundToggleBtn.title = 'Disable alert sounds';
+            } else {
+                soundIcon.className = 'bi bi-volume-mute';
+                soundToggleBtn.classList.add('sound-disabled');
+                soundToggleBtn.title = 'Enable alert sounds';
+            }
+            
+            // Save preference to localStorage
+            localStorage.setItem('nocAlertSoundEnabled', alertSoundEnabled);
+        }
+        
+        // Initialize device controls
+        function initializeDeviceControls() {
+            // Display mode toggles
+            const showCriticalOnlyBtn = document.getElementById('show-critical-only');
+            const showAllDevicesBtn = document.getElementById('show-all-devices');
+            const deviceTypeFilter = document.getElementById('device-type-filter');
+            
+            showCriticalOnlyBtn.addEventListener('change', function() {
+                if (this.checked) {
+                    deviceDisplayMode = 'critical';
+                    showAllDevicesBtn.checked = false;
+                    deviceTypeFilter.style.display = 'none';
+                    updateDeviceGrid(true);
+                }
+            });
+            
+            showAllDevicesBtn.addEventListener('change', function() {
+                if (this.checked) {
+                    deviceDisplayMode = 'all';
+                    showCriticalOnlyBtn.checked = false;
+                    deviceTypeFilter.style.display = 'block';
+                    updateDeviceGrid(true);
+                }
+            });
+            
+            // Device type filters
+            ['filter-router', 'filter-computer', 'filter-mobile', 'filter-iot'].forEach(filterId => {
+                const filterBtn = document.getElementById(filterId);
+                if (filterBtn) {
+                    filterBtn.addEventListener('change', function() {
+                        const filterType = filterId.replace('filter-', '');
+                        deviceTypeFilters[filterType] = this.checked;
+                        updateDeviceGrid(true);
+                    });
+                }
+            });
+            
+            // Show more devices button
+            const showMoreBtn = document.getElementById('show-more-devices');
+            if (showMoreBtn) {
+                showMoreBtn.addEventListener('click', function() {
+                    deviceDisplayMode = 'all';
+                    showAllDevicesBtn.checked = true;
+                    showCriticalOnlyBtn.checked = false;
+                    deviceTypeFilter.style.display = 'block';
+                    updateDeviceGrid(true);
+                });
+            }
+            
+            // Initialize search interface
+            initializeSearchInterface();
+        }
+        
+        // Initialize search interface
+        function initializeSearchInterface() {
+            const toggleSearchBtn = document.getElementById('toggle-search');
+            const searchPanel = document.getElementById('advanced-search-panel');
+            const searchInput = document.getElementById('device-search');
+            const clearSearchBtn = document.getElementById('clear-search');
+            const searchSortSelect = document.getElementById('search-sort');
+            const quickFilterBtns = document.querySelectorAll('.quick-filter-btn');
+            const searchResultsSummary = document.getElementById('search-results-summary');
+            
+            // Toggle search panel
+            if (toggleSearchBtn) {
+                toggleSearchBtn.addEventListener('click', function() {
+                    const isVisible = searchPanel.style.display !== 'none';
+                    searchPanel.style.display = isVisible ? 'none' : 'block';
+                    this.classList.toggle('active', !isVisible);
+                    
+                    if (!isVisible) {
+                        // Focus search input when opened
+                        setTimeout(() => searchInput.focus(), 100);
+                    } else {
+                        // Clear search when closed
+                        clearSearch();
+                    }
+                });
+            }
+            
+            // Search input with debouncing
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    const query = this.value.trim();
+                    
+                    // Clear previous timer
+                    if (searchDebounceTimer) {
+                        clearTimeout(searchDebounceTimer);
+                    }
+                    
+                    // Add loading state
+                    this.classList.add('search-loading');
+                    
+                    // Debounce search
+                    searchDebounceTimer = setTimeout(() => {
+                        searchQuery = query;
+                        performSearch();
+                        this.classList.remove('search-loading');
+                    }, 300);
+                });
+                
+                // Clear search on Escape
+                searchInput.addEventListener('keydown', function(event) {
+                    if (event.key === 'Escape') {
+                        clearSearch();
+                    }
+                });
+            }
+            
+            // Clear search button
+            if (clearSearchBtn) {
+                clearSearchBtn.addEventListener('click', clearSearch);
+            }
+            
+            // Search sort dropdown
+            if (searchSortSelect) {
+                searchSortSelect.addEventListener('change', function() {
+                    searchSortBy = this.value;
+                    updateDeviceGrid(true);
+                    updateSearchResults();
+                });
+            }
+            
+            // Quick filter buttons
+            quickFilterBtns.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const filter = this.dataset.filter;
+                    const isActive = this.classList.contains('active');
+                    
+                    // Clear all other filters first
+                    quickFilterBtns.forEach(b => b.classList.remove('active'));
+                    
+                    if (!isActive) {
+                        // Activate this filter
+                        this.classList.add('active');
+                        applyQuickFilter(filter);
+                    } else {
+                        // Deactivate all filters
+                        clearQuickFilters();
+                    }
+                    
+                    performSearch();
+                });
+            });
+        }
+        
+        // Apply quick filter
+        function applyQuickFilter(filter) {
+            // Reset all filters first
+            searchFilters = {
+                status: '',
+                favorites: false,
+                recent: false
+            };
+            
+            switch (filter) {
+                case 'down':
+                case 'warning':
+                case 'up':
+                    searchFilters.status = filter;
+                    break;
+                case 'favorites':
+                    searchFilters.favorites = true;
+                    break;
+                case 'recent':
+                    searchFilters.recent = true;
+                    break;
+            }
+        }
+        
+        // Clear quick filters
+        function clearQuickFilters() {
+            searchFilters = {
+                status: '',
+                favorites: false,
+                recent: false
+            };
+        }
+        
+        // Perform search and update results
+        function performSearch() {
+            updateDeviceGrid(true);
+            updateSearchResults();
+        }
+        
+        // Update search results summary
+        function updateSearchResults() {
+            const searchResultsSummary = document.getElementById('search-results-summary');
+            const searchResultsCount = document.getElementById('search-results-count');
+            const searchResultsTerms = document.getElementById('search-results-terms');
+            
+            if (!searchResultsSummary) return;
+            
+            const hasActiveSearch = searchQuery || Object.values(searchFilters).some(f => f);
+            
+            if (hasActiveSearch) {
+                const filteredDevices = getFilteredDevices();
+                searchResultsCount.textContent = filteredDevices.length;
+                
+                let termsText = '';
+                if (searchQuery) {
+                    termsText += `for "${searchQuery}"`;
+                }
+                if (searchFilters.status) {
+                    termsText += ` (${searchFilters.status} devices)`;
+                }
+                if (searchFilters.favorites) {
+                    termsText += ' (favorites)';
+                }
+                if (searchFilters.recent) {
+                    termsText += ' (recently seen)';
+                }
+                
+                searchResultsTerms.textContent = termsText;
+                searchResultsSummary.style.display = 'block';
+            } else {
+                searchResultsSummary.style.display = 'none';
+            }
+        }
+        
+        // Clear search
+        function clearSearch() {
+            searchQuery = '';
+            searchFilters = {
+                status: '',
+                favorites: false,
+                recent: false
+            };
+            
+            const searchInput = document.getElementById('device-search');
+            const quickFilterBtns = document.querySelectorAll('.quick-filter-btn');
+            const searchResultsSummary = document.getElementById('search-results-summary');
+            
+            if (searchInput) {
+                searchInput.value = '';
+                searchInput.classList.remove('search-loading');
+            }
+            
+            quickFilterBtns.forEach(btn => btn.classList.remove('active'));
+            
+            if (searchResultsSummary) {
+                searchResultsSummary.style.display = 'none';
+            }
+            
+            updateDeviceGrid(true);
+        }
+        
+        // Toggle device group expansion
+        function toggleDeviceGroup(groupId) {
+            const group = document.getElementById(`group-${groupId}`);
+            if (group) {
+                group.classList.toggle('expanded');
+            }
+        }
+        
+        async function acknowledgeAlert(alertId) {
+            try {
+                // Update local state immediately
+                const alert = nocData.alerts.find(a => a.id === alertId);
+                if (alert) {
+                    alert.acknowledged = true;
+                    updateAlertsPanel();
+                    announceToScreenReader(`Alert acknowledged: ${alert.alert_type}`);
+                }
+                
+                // Send to server (if endpoint exists)
+                // await fetch(`/api/alerts/${alertId}/acknowledge`, { method: 'POST' });
+                
+            } catch (error) {
+                console.error('Error acknowledging alert:', error);
+            }
+        }
+        
+        async function acknowledgeAllVisibleAlerts() {
+            try {
+                // Get currently visible alerts based on filters
+                const filters = {
+                    critical: document.getElementById('filter-critical')?.checked ?? true,
+                    warning: document.getElementById('filter-warning')?.checked ?? true,
+                    info: document.getElementById('filter-info')?.checked ?? true
+                };
+                
+                let acknowledgedCount = 0;
+                nocData.alerts.forEach(alert => {
+                    if (!alert.acknowledged && filters[alert.severity]) {
+                        alert.acknowledged = true;
+                        acknowledgedCount++;
+                    }
+                });
+                
+                updateAlertsPanel();
+                announceToScreenReader(`${acknowledgedCount} alerts acknowledged`);
+                
+            } catch (error) {
+                console.error('Error acknowledging all alerts:', error);
+            }
         }
         
         // Helper functions
@@ -652,10 +2933,42 @@
         }
         
         function updateDeviceStatus(deviceData) {
-            // Update specific device in the grid
+            // Update specific device in the grid with smooth transitions
             const deviceTile = document.querySelector(`[data-device-id="${deviceData.device_id}"]`);
             if (deviceTile) {
-                deviceTile.className = `device-tile status-${deviceData.status}`;
+                // Add transition class for smooth animation
+                deviceTile.classList.add('status-transition');
+                
+                // Update status class with animation
+                const oldStatus = deviceTile.classList.contains('status-up') ? 'up' : 
+                                deviceTile.classList.contains('status-down') ? 'down' : 'warning';
+                const newStatus = deviceData.status;
+                
+                if (oldStatus !== newStatus) {
+                    // Status changed - animate the transition
+                    deviceTile.style.transform = 'scale(1.05)';
+                    setTimeout(() => {
+                        deviceTile.className = `device-tile status-${newStatus} status-transition`;
+                        deviceTile.style.transform = '';
+                        
+                        // Update accessibility label
+                        const deviceName = deviceTile.querySelector('.device-name')?.textContent || 'Unknown';
+                        deviceTile.setAttribute('aria-label', 
+                            `${deviceName} status ${newStatus}, response time ${deviceData.response_time || 'unknown'}ms`);
+                        
+                        // Announce status change to screen readers
+                        if (newStatus === 'down') {
+                            announceToScreenReader(`Alert: ${deviceName} is now offline`);
+                        } else if (oldStatus === 'down' && newStatus === 'up') {
+                            announceToScreenReader(`${deviceName} is back online`);
+                        }
+                    }, 150);
+                } else {
+                    // Just update the class without animation
+                    deviceTile.className = `device-tile status-${newStatus}`;
+                }
+                
+                // Update response time
                 const responseTimeElement = deviceTile.querySelector('.device-response-time');
                 if (responseTimeElement) {
                     responseTimeElement.textContent = deviceData.response_time ? 
@@ -663,16 +2976,31 @@
                     responseTimeElement.className = 'device-response-time ' + 
                         getResponseTimeClass(deviceData.response_time);
                 }
+                
+                // Update last seen in hidden accessibility text
+                const hiddenInfo = deviceTile.querySelector('.visually-hidden');
+                if (hiddenInfo) {
+                    hiddenInfo.textContent = `Device type: ${deviceData.device_type || 'Unknown'}. Status: ${newStatus}. Last seen: ${new Date().toLocaleString()}`;
+                }
+                
+                // Remove transition class after animation
+                setTimeout(() => {
+                    deviceTile.classList.remove('status-transition');
+                }, 300);
+                
+                // Update device in local data
+                const device = nocData.devices.find(d => d.id === deviceData.device_id);
+                if (device) {
+                    device.status = newStatus;
+                    device.latest_response_time = deviceData.response_time;
+                    device.last_seen = new Date().toISOString();
+                }
             }
         }
         
         function updateNetworkMetrics(data) {
-            if (data.devices_up !== undefined) {
-                document.getElementById('devices-online').textContent = data.devices_up;
-            }
-            if (data.devices_down !== undefined) {
-                document.getElementById('devices-offline').textContent = data.devices_down;
-            }
+            // Update NOC summary
+            updateNOCSummary();
         }
         
         // Full screen functionality
@@ -684,8 +3012,757 @@
             }
         }
         
+        // Device Modal Management
+        
+        
+        function setupModalEventHandlers() {
+            // Monitoring toggle
+            document.getElementById('modal-monitoring-toggle').addEventListener('change', function() {
+                if (currentDeviceId) {
+                    toggleDeviceMonitoring(currentDeviceId, this.checked);
+                }
+            });
+            
+            // Action buttons
+            document.getElementById('modal-ping-btn').addEventListener('click', function() {
+                if (currentDeviceId) performDeviceAction('ping', currentDeviceId);
+            });
+            
+            document.getElementById('modal-wake-btn').addEventListener('click', function() {
+                if (currentDeviceId) performDeviceAction('wake', currentDeviceId);
+            });
+            
+            document.getElementById('modal-scan-btn').addEventListener('click', function() {
+                if (currentDeviceId) performDeviceAction('scan', currentDeviceId);
+            });
+            
+            // View full details button
+            document.getElementById('modal-view-details-btn').addEventListener('click', function() {
+                if (currentDeviceId) {
+                    window.open(`/device/${currentDeviceId}`, '_blank');
+                }
+            });
+        }
+        
+        // Open device modal
+        async function openDeviceModal(deviceId) {
+            console.log('NOC: Opening device modal for device ID:', deviceId);
+            
+            if (!deviceModal) {
+                console.error('NOC: Device modal not initialized');
+                alert('Device modal not available. Please refresh the page.');
+                return;
+            }
+            
+            try {
+                currentDeviceId = deviceId;
+                
+                // Show loading state
+                showModalLoadingState();
+                deviceModal.show();
+                
+                // Fetch device details
+                const response = await fetch(`/api/devices/${deviceId}`);
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Update modal with device data
+                updateModalWithDeviceData(data);
+                
+            } catch (error) {
+                console.error('Error loading device details:', error);
+                showModalError('Failed to load device details: ' + error.message);
+            }
+        }
+        
+        function showModalLoadingState() {
+            document.getElementById('modal-device-name').textContent = 'Loading...';
+            document.getElementById('modal-device-ip').textContent = '--';
+            document.getElementById('modal-device-mac').textContent = '--';
+            document.getElementById('modal-device-vendor').textContent = '--';
+            document.getElementById('modal-device-type').textContent = '--';
+            document.getElementById('modal-device-status').textContent = '--';
+            document.getElementById('modal-response-time').textContent = '--';
+            document.getElementById('modal-uptime').textContent = '--';
+            document.getElementById('modal-last-seen').textContent = '--';
+            document.getElementById('modal-alerts-count').textContent = '--';
+            document.getElementById('modal-monitoring-toggle').checked = false;
+        }
+        
+        function updateModalWithDeviceData(device) {
+            // Basic device information
+            document.getElementById('modal-device-name').textContent = device.display_name || device.hostname || device.ip_address;
+            document.getElementById('modal-device-ip').textContent = device.ip_address;
+            document.getElementById('modal-device-mac').textContent = device.mac_address || 'Unknown';
+            document.getElementById('modal-device-vendor').textContent = device.vendor || 'Unknown';
+            document.getElementById('modal-device-type').textContent = device.device_type || 'Unknown';
+            
+            // Status badge
+            const statusBadge = document.getElementById('modal-device-status');
+            statusBadge.textContent = device.status.toUpperCase();
+            statusBadge.className = `badge ${getStatusBadgeClass(device.status)}`;
+            
+            // Performance metrics
+            document.getElementById('modal-response-time').textContent = 
+                device.latest_response_time ? `${device.latest_response_time}ms` : 'N/A';
+            document.getElementById('modal-uptime').textContent = 
+                device.uptime_percentage ? `${device.uptime_percentage}%` : 'N/A';
+            document.getElementById('modal-last-seen').textContent = 
+                device.last_seen ? formatTimeAgo(device.last_seen) : 'Never';
+            document.getElementById('modal-alerts-count').textContent = 
+                device.active_alerts || 0;
+            
+            // Monitoring toggle
+            document.getElementById('modal-monitoring-toggle').checked = device.is_monitored;
+        }
+        
+        function showModalError(message) {
+            document.getElementById('modal-device-name').textContent = 'Error';
+            document.getElementById('modal-device-ip').innerHTML = `<span class="text-danger">${message}</span>`;
+        }
+        
+        // Toggle device monitoring
+        async function toggleDeviceMonitoring(deviceId, isMonitored) {
+            try {
+                const response = await fetch(`/api/devices/${deviceId}`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        is_monitored: isMonitored
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Show success feedback
+                showToast(`Monitoring ${isMonitored ? 'enabled' : 'disabled'} for ${data.display_name}`, 'success');
+                
+                // Refresh the device grid to reflect changes
+                setTimeout(() => {
+                    loadInitialData();
+                }, 500);
+                
+            } catch (error) {
+                console.error('Error toggling monitoring:', error);
+                showToast('Failed to update monitoring status: ' + error.message, 'error');
+                
+                // Revert toggle state
+                document.getElementById('modal-monitoring-toggle').checked = !isMonitored;
+            }
+        }
+        
+        // Quick actions for device tiles
+        async function performQuickAction(action, deviceId) {
+            try {
+                showToast(`Performing ${action}...`, 'info');
+                
+                let endpoint;
+                let payload = {};
+                
+                switch (action) {
+                    case 'ping':
+                        endpoint = `/api/devices/${deviceId}/ping`;
+                        break;
+                    case 'wake':
+                        endpoint = `/api/device-control/wake-on-lan`;
+                        payload = { device_id: deviceId };
+                        break;
+                    default:
+                        throw new Error('Unknown quick action: ' + action);
+                }
+                
+                const requestOptions = {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                };
+                
+                if (Object.keys(payload).length > 0) {
+                    requestOptions.body = JSON.stringify(payload);
+                }
+                
+                const response = await fetch(endpoint, requestOptions);
+                const data = await response.json();
+                
+                if (data.error || !response.ok) {
+                    throw new Error(data.error || `HTTP ${response.status}`);
+                }
+                
+                showToast(`${action.charAt(0).toUpperCase() + action.slice(1)} completed`, 'success');
+                
+                // Update device status if ping was successful
+                if (action === 'ping' && data.success) {
+                    const device = nocData.devices.find(d => d.id === deviceId);
+                    if (device) {
+                        device.latest_response_time = data.response_time;
+                        device.status = 'up';
+                        updateDeviceGrid();
+                    }
+                }
+                
+            } catch (error) {
+                console.error(`Quick ${action} error:`, error);
+                showToast(`${action.charAt(0).toUpperCase() + action.slice(1)} failed: ` + error.message, 'error');
+            }
+        }
+        
+        // Toggle device favorite status
+        async function toggleDeviceFavorite(deviceId) {
+            try {
+                const device = nocData.devices.find(d => d.id === deviceId);
+                if (!device) return;
+                
+                const newFavoriteState = !device.is_favorite;
+                
+                const response = await fetch(`/api/devices/${deviceId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_favorite: newFavoriteState })
+                });
+                
+                const data = await response.json();
+                
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                
+                // Update local state
+                device.is_favorite = newFavoriteState;
+                updateDeviceGrid();
+                
+                showToast(`${device.display_name} ${newFavoriteState ? 'added to' : 'removed from'} favorites`, 'success');
+                
+            } catch (error) {
+                console.error('Toggle favorite error:', error);
+                showToast('Failed to update favorite status: ' + error.message, 'error');
+            }
+        }
+        
+        // Perform device actions (ping, wake, scan)
+        async function performDeviceAction(action, deviceId) {
+            try {
+                let endpoint;
+                let payload = {};
+                const method = 'POST';
+                
+                switch (action) {
+                    case 'ping':
+                        endpoint = `/api/devices/${deviceId}/ping`;
+                        // No payload needed for ping endpoint
+                        break;
+                    case 'wake':
+                        endpoint = `/api/device-control/wake-on-lan`;
+                        payload = { device_id: deviceId };
+                        break;
+                    case 'scan':
+                        endpoint = `/api/device-control/port-scan`;
+                        payload = { device_id: deviceId };
+                        break;
+                    default:
+                        throw new Error('Unknown action: ' + action);
+                }
+                
+                showToast(`Performing ${action}...`, 'info');
+                
+                const requestOptions = {
+                    method: method,
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                };
+                
+                // Add payload for device-control endpoints
+                if (Object.keys(payload).length > 0) {
+                    requestOptions.body = JSON.stringify(payload);
+                }
+                
+                const response = await fetch(endpoint, requestOptions);
+                const data = await response.json();
+                
+                if (data.error || !response.ok) {
+                    throw new Error(data.error || `HTTP ${response.status}`);
+                }
+                
+                // Show detailed results
+                showActionResults(action, data);
+                showToast(`${action.charAt(0).toUpperCase() + action.slice(1)} completed successfully`, 'success');
+                
+            } catch (error) {
+                console.error(`Error performing ${action}:`, error);
+                showToast(`${action.charAt(0).toUpperCase() + action.slice(1)} failed: ` + error.message, 'error');
+            }
+        }
+        
+        // Helper functions
+        function getStatusBadgeClass(status) {
+            switch (status) {
+                case 'up': return 'bg-success';
+                case 'down': return 'bg-danger';
+                case 'warning': return 'bg-warning text-dark';
+                default: return 'bg-secondary';
+            }
+        }
+        
+        function formatTimeAgo(dateString) {
+            const date = new Date(dateString);
+            const now = new Date();
+            const diffMs = now - date;
+            const diffMins = Math.floor(diffMs / 60000);
+            const diffHours = Math.floor(diffMins / 60);
+            const diffDays = Math.floor(diffHours / 24);
+            
+            if (diffMins < 1) return 'Just now';
+            if (diffMins < 60) return `${diffMins}m ago`;
+            if (diffHours < 24) return `${diffHours}h ago`;
+            return `${diffDays}d ago`;
+        }
+        
+        function showToast(message, type = 'info') {
+            // Create toast notification
+            const toastContainer = document.querySelector('.toast-container') || createToastContainer();
+            const toastId = 'toast-' + Date.now();
+            
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'primary'} border-0`;
+            toast.id = toastId;
+            toast.setAttribute('role', 'alert');
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            const bsToast = new bootstrap.Toast(toast, { delay: 3000 });
+            bsToast.show();
+            
+            // Remove toast element after hiding
+            toast.addEventListener('hidden.bs.toast', function() {
+                toast.remove();
+            });
+        }
+        
+        function createToastContainer() {
+            const container = document.createElement('div');
+            container.className = 'toast-container position-fixed top-0 end-0 p-3';
+            container.style.zIndex = '9999';
+            document.body.appendChild(container);
+            return container;
+        }
+        
+        // Action Results Modal Functions
+        function setupResultsModalEventHandlers() {
+            // Copy results button
+            document.getElementById('copy-results-btn').addEventListener('click', function() {
+                const resultsContent = document.getElementById('results-content').textContent;
+                navigator.clipboard.writeText(resultsContent).then(function() {
+                    showToast('Results copied to clipboard', 'success');
+                }).catch(function(err) {
+                    console.error('Failed to copy results: ', err);
+                    showToast('Failed to copy results', 'error');
+                });
+            });
+        }
+        
+        function showActionResults(action, data) {
+            if (!actionResultsModal) {
+                console.error('NOC: Action results modal not initialized');
+                return;
+            }
+            
+            // Get current device name for display
+            const currentDevice = nocData.devices.find(d => d.id === currentDeviceId);
+            const deviceName = currentDevice ? currentDevice.display_name : 'Unknown Device';
+            
+            // Update modal content
+            document.getElementById('results-action-type').textContent = action.toUpperCase();
+            document.getElementById('results-device-name').textContent = deviceName;
+            document.getElementById('results-timestamp').textContent = new Date().toLocaleString();
+            
+            // Format results based on action type
+            let formattedResults = '';
+            
+            switch (action) {
+                case 'ping':
+                    formattedResults = formatPingResults(data);
+                    break;
+                case 'wake':
+                    formattedResults = formatWakeResults(data);
+                    break;
+                case 'scan':
+                    formattedResults = formatScanResults(data);
+                    break;
+                default:
+                    formattedResults = JSON.stringify(data, null, 2);
+            }
+            
+            document.getElementById('results-content').textContent = formattedResults;
+            
+            // Show the modal
+            actionResultsModal.show();
+        }
+        
+        function formatPingResults(data) {
+            let result = `PING RESULTS\n${'='.repeat(50)}\n\n`;
+            result += `Device: ${data.ip_address || 'Unknown'}\n`;
+            result += `Success: ${data.success ? 'Yes' : 'No'}\n`;
+            
+            if (data.success && data.response_time) {
+                result += `Response Time: ${data.response_time}ms\n`;
+            } else {
+                result += `Response Time: No response\n`;
+            }
+            
+            result += `Timestamp: ${data.timestamp || new Date().toISOString()}\n`;
+            
+            if (data.error) {
+                result += `\nError Details:\n${data.error}\n`;
+            }
+            
+            return result;
+        }
+        
+        function formatWakeResults(data) {
+            let result = `WAKE-ON-LAN RESULTS\n${'='.repeat(50)}\n\n`;
+            result += `Success: ${data.success ? 'Yes' : 'No'}\n`;
+            result += `MAC Address: ${data.mac_address || 'Unknown'}\n`;
+            
+            if (data.success) {
+                result += `Magic packet sent successfully\n`;
+                result += `Broadcast Address: ${data.broadcast_address || 'Default'}\n`;
+            }
+            
+            if (data.error) {
+                result += `\nError Details:\n${data.error}\n`;
+            }
+            
+            if (data.message) {
+                result += `\nMessage: ${data.message}\n`;
+            }
+            
+            return result;
+        }
+        
+        function formatScanResults(data) {
+            let result = `PORT SCAN RESULTS\n${'='.repeat(50)}\n\n`;
+            result += `Target: ${data.ip_address || data.target || 'Unknown'}\n`;
+            result += `Scan Time: ${data.scan_time || data.timestamp || 'Unknown'}\n`;
+            result += `Total Ports Scanned: ${data.ports_scanned || data.total_ports || 0}\n`;
+            
+            // Handle different possible data structures for open ports
+            let openPorts = [];
+            if (data.open_ports) {
+                openPorts = Array.isArray(data.open_ports) ? data.open_ports : [];
+            } else if (data.ports) {
+                openPorts = Array.isArray(data.ports) ? data.ports : [];
+            } else if (data.results && Array.isArray(data.results)) {
+                openPorts = data.results;
+            }
+            
+            result += `Open Ports Found: ${openPorts.length}\n\n`;
+            
+            if (openPorts.length > 0) {
+                result += `OPEN PORTS:\n${'-'.repeat(30)}\n`;
+                openPorts.forEach(port => {
+                    let portNum, portState, portService, portVersion;
+                    
+                    // Handle different data structures
+                    if (typeof port === 'object') {
+                        portNum = port.port || port.number || port.portNumber;
+                        portState = port.state || port.status || 'open';
+                        portService = port.service || port.serviceName;
+                        portVersion = port.version || port.serviceVersion;
+                    } else if (typeof port === 'number') {
+                        portNum = port;
+                        portState = 'open';
+                    } else if (typeof port === 'string') {
+                        // Try to parse "port:state" or just "port"
+                        const parts = port.split(':');
+                        portNum = parts[0];
+                        portState = parts[1] || 'open';
+                    }
+                    
+                    result += `Port ${portNum || 'Unknown'}: ${portState || 'open'}`;
+                    if (portService) result += ` (${portService})`;
+                    if (portVersion) result += ` - ${portVersion}`;
+                    result += '\n';
+                });
+            } else {
+                result += `No open ports found.\n`;
+            }
+            
+            if (data.error) {
+                result += `\nError Details:\n${data.error}\n`;
+            }
+            
+            // Debug information (can be removed in production)
+            if (data.debug || (!openPorts.length && data.open_ports)) {
+                result += `\nDEBUG INFO:\n${'-'.repeat(20)}\n`;
+                result += `Raw data structure:\n${JSON.stringify(data, null, 2)}\n`;
+            }
+            
+            return result;
+        }
+        
+        // Keyboard navigation for device grid
+        let currentFocusIndex = 0;
+        
+        function initializeKeyboardNavigation() {
+            const tiles = document.querySelectorAll('.device-tile');
+            if (tiles.length === 0) return;
+            
+            // Set initial focus
+            tiles[currentFocusIndex].tabIndex = 0;
+            
+            // Add keyboard event listeners to each tile
+            tiles.forEach((tile, index) => {
+                tile.addEventListener('keydown', (event) => {
+                    handleDeviceTileKeydown(event, index);
+                });
+            });
+        }
+        
+        function handleDeviceTileKeydown(event, currentIndex) {
+            const tiles = document.querySelectorAll('.device-tile');
+            const cols = getGridColumns();
+            let newIndex = currentIndex;
+            
+            switch (event.key) {
+                case 'ArrowRight':
+                    event.preventDefault();
+                    newIndex = Math.min(currentIndex + 1, tiles.length - 1);
+                    break;
+                case 'ArrowLeft':
+                    event.preventDefault();
+                    newIndex = Math.max(currentIndex - 1, 0);
+                    break;
+                case 'ArrowDown':
+                    event.preventDefault();
+                    newIndex = Math.min(currentIndex + cols, tiles.length - 1);
+                    break;
+                case 'ArrowUp':
+                    event.preventDefault();
+                    newIndex = Math.max(currentIndex - cols, 0);
+                    break;
+                case 'Enter':
+                case ' ':
+                    event.preventDefault();
+                    const deviceId = tiles[currentIndex].getAttribute('data-device-id');
+                    openDeviceModal(parseInt(deviceId));
+                    return;
+                case 'Home':
+                    event.preventDefault();
+                    newIndex = 0;
+                    break;
+                case 'End':
+                    event.preventDefault();
+                    newIndex = tiles.length - 1;
+                    break;
+                default:
+                    return; // Don't handle other keys
+            }
+            
+            // Move focus to new tile
+            if (newIndex !== currentIndex) {
+                tiles[currentIndex].tabIndex = -1;
+                tiles[newIndex].tabIndex = 0;
+                tiles[newIndex].focus();
+                currentFocusIndex = newIndex;
+                
+                // Announce navigation for screen readers
+                const deviceName = tiles[newIndex].querySelector('.device-name').textContent;
+                const status = tiles[newIndex].classList.contains('status-up') ? 'online' : 
+                             tiles[newIndex].classList.contains('status-down') ? 'offline' : 'warning';
+                announceToScreenReader(`Focused on ${deviceName}, status ${status}`);
+            }
+        }
+        
+        function getGridColumns() {
+            // Calculate columns based on current viewport
+            if (window.innerWidth >= 1400) return 6; // col-xl-2 = 12/2 = 6 columns
+            if (window.innerWidth >= 992) return 4;  // col-lg-3 = 12/3 = 4 columns  
+            return 3; // col-4 = 12/4 = 3 columns
+        }
+        
+        function announceToScreenReader(message) {
+            const announcer = document.createElement('div');
+            announcer.setAttribute('aria-live', 'polite');
+            announcer.setAttribute('aria-atomic', 'true');
+            announcer.className = 'visually-hidden';
+            announcer.textContent = message;
+            
+            document.body.appendChild(announcer);
+            
+            // Remove after announcement
+            setTimeout(() => {
+                document.body.removeChild(announcer);
+            }, 1000);
+        }
+        
+        // Touch gesture support for mobile
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchEndX = 0;
+        let touchEndY = 0;
+        
+        function initializeTouchGestures() {
+            const deviceGrid = document.getElementById('device-grid');
+            if (!deviceGrid) return;
+            
+            deviceGrid.addEventListener('touchstart', function(event) {
+                touchStartX = event.changedTouches[0].screenX;
+                touchStartY = event.changedTouches[0].screenY;
+            });
+            
+            deviceGrid.addEventListener('touchend', function(event) {
+                touchEndX = event.changedTouches[0].screenX;
+                touchEndY = event.changedTouches[0].screenY;
+                handleGesture();
+            });
+        }
+        
+        function handleGesture() {
+            const deltaX = touchEndX - touchStartX;
+            const deltaY = touchEndY - touchStartY;
+            const minSwipeDistance = 50;
+            
+            // Horizontal swipes
+            if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+                if (deltaX > 0) {
+                    // Swipe right - show previous devices or go to critical mode
+                    if (deviceDisplayMode === 'all') {
+                        deviceDisplayMode = 'critical';
+                        document.getElementById('show-critical-only').checked = true;
+                        document.getElementById('show-all-devices').checked = false;
+                        document.getElementById('device-type-filter').style.display = 'none';
+                        updateDeviceGrid(true);
+                        showToast('Showing critical devices only', 'info');
+                    }
+                } else {
+                    // Swipe left - show more devices or go to all mode
+                    if (deviceDisplayMode === 'critical') {
+                        deviceDisplayMode = 'all';
+                        document.getElementById('show-all-devices').checked = true;
+                        document.getElementById('show-critical-only').checked = false;
+                        document.getElementById('device-type-filter').style.display = 'block';
+                        updateDeviceGrid(true);
+                        showToast('Showing all devices', 'info');
+                    }
+                }
+            }
+            
+            // Vertical swipes
+            if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > minSwipeDistance) {
+                if (deltaY > 0) {
+                    // Swipe down - refresh data
+                    showToast('Refreshing...', 'info');
+                    loadInitialData();
+                } else {
+                    // Swipe up - scroll to top
+                    window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+            }
+        }
+        
+        // Pull-to-refresh functionality
+        let pullToRefreshStartY = 0;
+        let pullToRefreshDistance = 0;
+        let isPullingToRefresh = false;
+        
+        function initializePullToRefresh() {
+            const nocContent = document.querySelector('.noc-content');
+            if (!nocContent) return;
+            
+            nocContent.addEventListener('touchstart', function(event) {
+                if (nocContent.scrollTop === 0) {
+                    pullToRefreshStartY = event.touches[0].clientY;
+                    isPullingToRefresh = true;
+                }
+            });
+            
+            nocContent.addEventListener('touchmove', function(event) {
+                if (isPullingToRefresh && nocContent.scrollTop === 0) {
+                    pullToRefreshDistance = event.touches[0].clientY - pullToRefreshStartY;
+                    
+                    if (pullToRefreshDistance > 0) {
+                        event.preventDefault();
+                        
+                        // Visual feedback for pull to refresh
+                        const opacity = Math.min(pullToRefreshDistance / 100, 1);
+                        nocContent.style.transform = `translateY(${Math.min(pullToRefreshDistance / 3, 50)}px)`;
+                        nocContent.style.opacity = 1 - (opacity * 0.3);
+                        
+                        if (pullToRefreshDistance > 100) {
+                            // Show refresh indicator
+                            showToast('Release to refresh', 'info');
+                        }
+                    }
+                }
+            });
+            
+            nocContent.addEventListener('touchend', function(event) {
+                if (isPullingToRefresh) {
+                    isPullingToRefresh = false;
+                    
+                    // Reset visual state
+                    nocContent.style.transform = '';
+                    nocContent.style.opacity = '';
+                    
+                    if (pullToRefreshDistance > 100) {
+                        // Trigger refresh
+                        showToast('Refreshing data...', 'info');
+                        loadInitialData();
+                    }
+                    
+                    pullToRefreshDistance = 0;
+                }
+            });
+        }
+        
+        // Initialize mobile features
+        function initializeMobileFeatures() {
+            // Check if device supports touch
+            if ('ontouchstart' in window || navigator.maxTouchPoints > 0) {
+                initializeTouchGestures();
+                initializePullToRefresh();
+                
+                // Add mobile-specific classes
+                document.body.classList.add('mobile-device');
+                
+                // Improve touch targets
+                const buttons = document.querySelectorAll('.btn, .device-tile, .alert-item');
+                buttons.forEach(button => {
+                    button.style.minHeight = '44px';
+                });
+                
+                // Add haptic feedback for supported devices
+                if (navigator.vibrate) {
+                    document.addEventListener('click', function(event) {
+                        if (event.target.closest('.device-tile, .quick-action-btn, .btn')) {
+                            navigator.vibrate(10);
+                        }
+                    });
+                }
+            }
+        }
+        
         // Keyboard shortcuts
         document.addEventListener('keydown', function(event) {
+            // Skip if user is typing in an input field
+            if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+                return;
+            }
+            
             if (event.key === 'F11') {
                 event.preventDefault();
                 toggleFullscreen();
@@ -693,7 +3770,18 @@
             if (event.key === 'Escape' && document.fullscreenElement) {
                 document.exitFullscreen();
             }
+            if (event.key === 'Escape' && deviceModal && deviceModal._isShown) {
+                deviceModal.hide();
+            }
+            if (event.key === '?' || event.key === 'h') {
+                event.preventDefault();
+                showKeyboardShortcuts();
+            }
         });
+        
+        function showKeyboardShortcuts() {
+            alert('Keyboard Shortcuts:\n\nArrow Keys - Navigate devices\nEnter/Space - Open device details\nF11 - Toggle fullscreen\nESC - Close modals');
+        }
     </script>
 </body>
 </html>

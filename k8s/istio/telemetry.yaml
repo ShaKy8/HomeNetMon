@@ -1,0 +1,171 @@
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: homenetmon-metrics
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: telemetry
+spec:
+  metrics:
+  - providers:
+    - name: prometheus
+  - overrides:
+    - match:
+        metric: ALL_METRICS
+      tagOverrides:
+        destination_app:
+          operation: UPSERT
+          value: "{{ .destination_app | default \"unknown\" }}"
+        source_app:
+          operation: UPSERT
+          value: "{{ .source_app | default \"unknown\" }}"
+        request_protocol:
+          operation: UPSERT
+          value: "{{ .request_protocol | default \"unknown\" }}"
+  - overrides:
+    - match:
+        metric: REQUEST_COUNT
+      tagOverrides:
+        response_code_class:
+          operation: UPSERT
+          value: "{{ .response_code | regexReplace \"[0-9]$\" \"x\" }}"
+    - match:
+        metric: REQUEST_DURATION
+      tagOverrides:
+        response_code_class:
+          operation: UPSERT
+          value: "{{ .response_code | regexReplace \"[0-9]$\" \"x\" }}"
+
+---
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: homenetmon-tracing
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: telemetry
+spec:
+  tracing:
+  - providers:
+    - name: jaeger
+  - customTags:
+      user_id:
+        header:
+          name: x-user-id
+      session_id:
+        header:
+          name: x-session-id
+      device_count:
+        header:
+          name: x-device-count
+      api_version:
+        header:
+          name: x-api-version
+
+---
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: homenetmon-access-logging
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: telemetry
+spec:
+  accessLogging:
+  - providers:
+    - name: otel
+  - format: |
+      {
+        "timestamp": "%START_TIME%",
+        "method": "%REQ(:METHOD)%",
+        "path": "%REQ(X-ENVOY-ORIGINAL-PATH?:PATH)%",
+        "protocol": "%PROTOCOL%",
+        "response_code": "%RESPONSE_CODE%",
+        "response_flags": "%RESPONSE_FLAGS%",
+        "response_code_details": "%RESPONSE_CODE_DETAILS%",
+        "connection_termination_details": "%CONNECTION_TERMINATION_DETAILS%",
+        "bytes_received": "%BYTES_RECEIVED%",
+        "bytes_sent": "%BYTES_SENT%",
+        "duration": "%DURATION%",
+        "upstream_service_time": "%RESP(X-ENVOY-UPSTREAM-SERVICE-TIME)%",
+        "x_forwarded_for": "%REQ(X-FORWARDED-FOR)%",
+        "user_agent": "%REQ(USER-AGENT)%",
+        "request_id": "%REQ(X-REQUEST-ID)%",
+        "authority": "%REQ(:AUTHORITY)%",
+        "upstream_host": "%UPSTREAM_HOST%",
+        "upstream_cluster": "%UPSTREAM_CLUSTER%",
+        "upstream_local_address": "%UPSTREAM_LOCAL_ADDRESS%",
+        "downstream_local_address": "%DOWNSTREAM_LOCAL_ADDRESS%",
+        "downstream_remote_address": "%DOWNSTREAM_REMOTE_ADDRESS%",
+        "requested_server_name": "%REQUESTED_SERVER_NAME%",
+        "route_name": "%ROUTE_NAME%",
+        "user_id": "%REQ(X-USER-ID)%",
+        "session_id": "%REQ(X-SESSION-ID)%",
+        "device_count": "%REQ(X-DEVICE-COUNT)%",
+        "api_version": "%REQ(X-API-VERSION)%"
+      }
+
+---
+apiVersion: install.istio.io/v1alpha1
+kind: IstioOperator
+metadata:
+  name: homenetmon-istio-config
+  namespace: istio-system
+spec:
+  meshConfig:
+    defaultConfig:
+      # Enable automatic mTLS
+      proxyStatsMatcher:
+        inclusionRegexps:
+        - ".*outlier_detection.*"
+        - ".*circuit_breakers.*"
+        - ".*upstream_rq_retry.*"
+        - ".*upstream_rq_pending.*"
+        - ".*_request_timeout"
+      # Telemetry configuration
+      discoveryAddress: istiod.istio-system.svc:15010
+      proxyMetadata:
+        PILOT_ENABLE_WORKLOAD_ENTRY_AUTOREGISTRATION: true
+        PILOT_ENABLE_IP_AUTOALLOCATE: true
+    # Global telemetry settings
+    extensionProviders:
+    - name: prometheus
+      prometheus:
+        configOverride:
+          metric_relabeling_configs:
+          - source_labels: [__name__]
+            regex: 'istio_.*'
+            target_label: __tmp_istio_metric
+          - source_labels: [__tmp_istio_metric]
+            regex: 'istio_request_total'
+            target_label: __tmp_keep
+          - source_labels: [__tmp_istio_metric]
+            regex: 'istio_request_duration_milliseconds'
+            target_label: __tmp_keep
+          - source_labels: [__tmp_istio_metric]
+            regex: 'istio_tcp_.*'
+            target_label: __tmp_keep
+          - source_labels: [__tmp_keep]
+            regex: ''
+            action: drop
+    - name: jaeger
+      envoyOtelAls:
+        service: jaeger.istio-system.svc.cluster.local
+        port: 14250
+    - name: otel
+      envoyOtelAls:
+        service: opentelemetry-collector.istio-system.svc.cluster.local
+        port: 4317
+  values:
+    global:
+      meshID: homenetmon-mesh
+      multiCluster:
+        clusterName: homenetmon-cluster
+      network: homenetmon-network
+    pilot:
+      env:
+        EXTERNAL_ISTIOD: false
+        PILOT_ENABLE_WORKLOAD_ENTRY_AUTOREGISTRATION: true

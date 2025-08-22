@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base_with_quickstats.html" %}
 
 {% block title %}Device Details - HomeNetMon{% endblock %}
 
@@ -328,6 +328,9 @@ function formatDateLabel(dateString, hours) {
 
 // Load response time chart
 async function loadResponseTimeChart(hours = 24) {
+    // Show loading state
+    showChartLoading('responseTimeChart');
+    
     try {
         // Adjust limit based on time period to ensure we get enough data points
         let limit;
@@ -346,6 +349,7 @@ async function loadResponseTimeChart(hours = 24) {
         
         if (!data.monitoring_data || data.monitoring_data.length === 0) {
             console.log('No monitoring data available for chart');
+            showChartEmpty('responseTimeChart', 'No response time data available for this time period');
             return;
         }
         
@@ -353,6 +357,12 @@ async function loadResponseTimeChart(hours = 24) {
         let validData = data.monitoring_data
             .filter(item => item.response_time !== null)
             .reverse();
+        
+        // Check if we have any valid data after filtering
+        if (validData.length === 0) {
+            showChartEmpty('responseTimeChart', 'No valid response time measurements found');
+            return;
+        }
         
         // For longer time periods, thin out the data to improve chart performance
         if (hours > 24 && validData.length > 200) {
@@ -364,28 +374,37 @@ async function loadResponseTimeChart(hours = 24) {
         const ctx = document.getElementById('responseTimeChart').getContext('2d');
         
         if (responseTimeChart) {
+            ChartUpdateManager.unregisterChart('responseTimeChart');
             responseTimeChart.destroy();
         }
         
-        responseTimeChart = new Chart(ctx, {
-            type: 'line',
+        // Create interactive line chart configuration with navigation
+        const chartConfig = ChartConfigFactory.createLineConfig({
+            interactionType: 'navigation', // Enable time-based navigation
             data: {
                 labels: validData.map(item => formatDateLabel(item.timestamp, hours)),
                 datasets: [{
                     label: 'Response Time (ms)',
                     data: validData.map(item => item.response_time),
-                    borderColor: 'rgb(54, 162, 235)',
-                    backgroundColor: 'rgba(54, 162, 235, 0.1)',
-                    tension: 0.1,
-                    fill: false
+                    borderColor: CHART_COLORS.primary,
+                    backgroundColor: CHART_COLORS.primary + '20', // 20 = 12.5% opacity in hex
+                    fill: true,
+                    // Add metadata for navigation
+                    timestamps: validData.map(item => item.timestamp),
+                    deviceId: deviceId // Pass device ID for context
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
                 plugins: {
                     legend: {
                         display: false
+                    },
+                    tooltip: {
+                        callbacks: {
+                            footer: function(tooltipItems) {
+                                return 'Click to view details at this time';
+                            }
+                        }
                     }
                 },
                 scales: {
@@ -399,43 +418,84 @@ async function loadResponseTimeChart(hours = 24) {
                 }
             }
         });
+
+        responseTimeChart = new Chart(ctx, chartConfig);
+        
+        // Register for real-time updates
+        ChartUpdateManager.registerChart('responseTimeChart', responseTimeChart, 'device', {
+            deviceId: deviceId,
+            dataType: 'responseTime',
+            maxDataPoints: hours <= 1 ? 60 : hours <= 6 ? 72 : 100
+        });
+        
+        // Add accessibility
+        enhanceChartAccessibility(responseTimeChart, `Response time chart for ${hours}h period showing network latency over time`);
+        });
         
     } catch (error) {
         console.error('Error loading response time chart:', error);
+        showChartError('responseTimeChart', 'Failed to load response time data');
     }
 }
 
 // Load uptime chart
 function loadUptimeChart() {
+    // Show loading state
+    showChartLoading('uptimeChart');
+    
     const ctx = document.getElementById('uptimeChart').getContext('2d');
     
     if (uptimeChart) {
+        ChartUpdateManager.unregisterChart('uptimeChart');
         uptimeChart.destroy();
     }
     
     const uptime = device.uptime_percentage || 0;
     const downtime = 100 - uptime;
     
-    uptimeChart = new Chart(ctx, {
-        type: 'doughnut',
+    // Create interactive doughnut chart configuration with performance filtering
+    const uptimeConfig = ChartConfigFactory.createDoughnutConfig({
+        interactionType: 'performance', // Enable performance-based interactions
         data: {
             labels: ['Uptime', 'Downtime'],
             datasets: [{
                 data: [uptime, downtime],
-                backgroundColor: ['#28a745', '#dc3545'],
-                borderWidth: 0
+                backgroundColor: [
+                    getPerformanceColor(uptime),
+                    CHART_COLORS.danger
+                ],
+                // Add metadata for interactions
+                deviceId: deviceId,
+                performanceMetrics: {
+                    uptime: uptime,
+                    downtime: downtime,
+                    level: uptime >= 95 ? 'excellent' : uptime >= 85 ? 'good' : uptime >= 70 ? 'fair' : 'poor'
+                }
             }]
         },
         options: {
-            responsive: true,
-            maintainAspectRatio: false,
             plugins: {
-                legend: {
-                    position: 'bottom'
+                tooltip: {
+                    callbacks: {
+                        footer: function(tooltipItems) {
+                            return 'Click to view performance details';
+                        }
+                    }
                 }
             }
         }
     });
+
+    uptimeChart = new Chart(ctx, uptimeConfig);
+    
+    // Register for real-time updates
+    ChartUpdateManager.registerChart('uptimeChart', uptimeChart, 'device', {
+        deviceId: deviceId,
+        dataType: 'uptime'
+    });
+    
+    // Add accessibility
+    enhanceChartAccessibility(uptimeChart, `Device uptime chart showing ${uptime.toFixed(1)}% uptime and ${downtime.toFixed(1)}% downtime`);
 }
 
 // Load device statistics
@@ -652,8 +712,15 @@ function exportData() {
 
 // Device control functions
 async function performDeviceControl(action) {
+    console.log('DeviceControl: Starting action:', action, 'for device:', deviceId);
+    
     try {
         let endpoint, data, loadingMessage, successMessage;
+        
+        // Validate deviceId
+        if (!deviceId) {
+            throw new Error('Device ID is not available');
+        }
         
         switch (action) {
             case 'ping':
@@ -690,6 +757,8 @@ async function performDeviceControl(action) {
                 throw new Error(`Unknown action: ${action}`);
         }
         
+        console.log('DeviceControl: Making request to:', endpoint, 'with data:', data);
+        
         // Show loading toast
         showToast(loadingMessage, 'info');
         
@@ -701,24 +770,65 @@ async function performDeviceControl(action) {
             body: JSON.stringify(data)
         });
         
+        console.log('DeviceControl: Response status:', response.status, response.statusText);
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
         const result = await response.json();
+        console.log('DeviceControl: Response data:', result);
         
         if (result.success) {
             showToast(successMessage, 'success');
             showDeviceControlResults(action, result);
+            console.log('DeviceControl: Action completed successfully');
         } else {
-            showToast(result.error || 'Operation failed', 'error');
+            const errorMsg = result.error || 'Operation failed';
+            console.error('DeviceControl: Action failed:', errorMsg);
+            showToast(errorMsg, 'error');
+            
+            // Show error details in results modal if available
+            if (result.error) {
+                showDeviceControlResults(action, result);
+            }
         }
         
     } catch (error) {
-        console.error('Device control error:', error);
-        showToast('Device control operation failed', 'error');
+        console.error('DeviceControl: Exception occurred:', error);
+        showToast(`Device control operation failed: ${error.message}`, 'error');
+        
+        // Show error in results modal
+        const errorResult = {
+            success: false,
+            error: error.message,
+            timestamp: new Date().toISOString()
+        };
+        showDeviceControlResults(action, errorResult);
     }
 }
 
 // Show device control results in a modal
 function showDeviceControlResults(action, result) {
+    console.log('DeviceControlResults: Showing results for action:', action, 'result:', result);
+    
     let title, content;
+    
+    // Handle error cases first
+    if (!result.success) {
+        title = `${action.charAt(0).toUpperCase() + action.slice(1)} Error`;
+        content = `
+            <div class="alert alert-danger">
+                <h6><i class="bi bi-exclamation-triangle"></i> Operation Failed</h6>
+                <p><strong>Error:</strong> ${result.error || 'Unknown error occurred'}</p>
+                <p><strong>Timestamp:</strong> ${result.timestamp || new Date().toISOString()}</p>
+            </div>
+        `;
+        
+        // Show modal and return early
+        showResultModal(title, content);
+        return;
+    }
     
     switch (action) {
         case 'ping':
@@ -846,6 +956,14 @@ function showDeviceControlResults(action, result) {
             break;
     }
     
+    // Show the modal with the content
+    showResultModal(title, content);
+}
+
+// Helper function to show result modal
+function showResultModal(title, content) {
+    console.log('DeviceControlResults: Showing modal with title:', title);
+    
     // Create modal if it doesn't exist
     let modal = document.getElementById('deviceControlModal');
     if (!modal) {
@@ -868,14 +986,20 @@ function showDeviceControlResults(action, result) {
             </div>
         `;
         document.body.appendChild(modal);
+        console.log('DeviceControlResults: Created new modal');
     }
     
     // Set content and show modal
-    document.getElementById('deviceControlModalTitle').textContent = title;
-    document.getElementById('deviceControlModalBody').innerHTML = content;
-    
-    const bsModal = new bootstrap.Modal(modal);
-    bsModal.show();
+    try {
+        document.getElementById('deviceControlModalTitle').textContent = title;
+        document.getElementById('deviceControlModalBody').innerHTML = content;
+        
+        const bsModal = new bootstrap.Modal(modal);
+        bsModal.show();
+        console.log('DeviceControlResults: Modal displayed successfully');
+    } catch (error) {
+        console.error('DeviceControlResults: Error showing modal:', error);
+    }
 }
 
 // Event listeners

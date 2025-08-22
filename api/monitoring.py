@@ -3,8 +3,58 @@ from datetime import datetime, timedelta
 from sqlalchemy import func
 from models import db, Device, MonitoringData, Alert, BandwidthData
 from monitoring.monitor import DeviceMonitor
+import ipaddress
 
 monitoring_bp = Blueprint('monitoring', __name__)
+
+def get_current_network_range():
+    """Get the currently configured network range"""
+    try:
+        from models import Configuration
+        return Configuration.get_value('network_range', '192.168.86.0/24')
+    except Exception:
+        # Fallback to config if database is not available
+        from config import Config
+        return Config.NETWORK_RANGE
+
+def is_device_in_network_range(device_ip, network_range):
+    """Check if a device IP is within the specified network range"""
+    try:
+        network = ipaddress.ip_network(network_range, strict=False)
+        ip = ipaddress.ip_address(device_ip)
+        return ip in network
+    except Exception:
+        return False
+
+def filter_devices_by_network_range(query, network_range=None):
+    """Filter device query by current network range"""
+    if network_range is None:
+        network_range = get_current_network_range()
+    
+    try:
+        network = ipaddress.ip_network(network_range, strict=False)
+        # Create a filter for devices within the network range
+        network_base = str(network.network_address)
+        network_parts = network_base.split('.')
+        
+        if network.prefixlen >= 24:
+            # /24 or smaller network - filter by first 3 octets
+            prefix = f"{network_parts[0]}.{network_parts[1]}.{network_parts[2]}."
+            return query.filter(Device.ip_address.like(f"{prefix}%"))
+        elif network.prefixlen >= 16:
+            # /16 to /23 network - filter by first 2 octets
+            prefix = f"{network_parts[0]}.{network_parts[1]}."
+            return query.filter(Device.ip_address.like(f"{prefix}%"))
+        elif network.prefixlen >= 8:
+            # /8 to /15 network - filter by first octet
+            prefix = f"{network_parts[0]}."
+            return query.filter(Device.ip_address.like(f"{prefix}%"))
+        else:
+            # Larger networks - return all devices
+            return query
+    except Exception:
+        # If network parsing fails, return original query
+        return query
 
 @monitoring_bp.route('/scan', methods=['POST'])
 def trigger_network_scan():
@@ -154,6 +204,64 @@ def get_monitoring_statistics():
             if not stats:
                 return jsonify({'error': 'No monitoring data available'}), 404
             return jsonify(stats)
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/quick-stats', methods=['GET'])
+def get_quick_stats():
+    """Get quick statistics for sidebar display"""
+    try:
+        # Get current network range
+        network_range = get_current_network_range()
+        
+        # Filter devices by current network range
+        base_query = Device.query
+        filtered_query = filter_devices_by_network_range(base_query, network_range)
+        
+        # Get total devices count (only in current network range)
+        total_devices = filtered_query.count()
+        
+        # Get monitored devices count (only in current network range)
+        monitored_query = filter_devices_by_network_range(
+            Device.query.filter_by(is_monitored=True), 
+            network_range
+        )
+        monitored_devices = monitored_query.count()
+        
+        # Determine status of monitored devices (based on last_seen within 10 minutes)
+        online_threshold = datetime.utcnow() - timedelta(minutes=10)
+        devices_up_query = filter_devices_by_network_range(
+            Device.query.filter(
+                Device.is_monitored == True,
+                Device.last_seen >= online_threshold
+            ),
+            network_range
+        )
+        devices_up = devices_up_query.count()
+        
+        devices_down = monitored_devices - devices_up
+        
+        # Get active alerts count (for devices in current network only)
+        # Get device IDs in current network
+        current_network_device_ids = [d.id for d in filtered_query.all()]
+        if current_network_device_ids:
+            active_alerts = Alert.query.filter(
+                Alert.resolved == False,
+                Alert.device_id.in_(current_network_device_ids)
+            ).count()
+        else:
+            active_alerts = 0
+        
+        return jsonify({
+            'total_devices': total_devices,
+            'devices_up': devices_up, 
+            'devices_down': devices_down,
+            'active_alerts': active_alerts,
+            'monitored_devices': monitored_devices,
+            'network_range': network_range,
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        })
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -341,6 +449,14 @@ def acknowledge_alert(alert_id):
         
         alert.acknowledge(acknowledged_by)
         
+        # Emit real-time update
+        try:
+            from flask import current_app
+            if hasattr(current_app, 'emit_alert_update'):
+                current_app.emit_alert_update(alert, 'acknowledged')
+        except Exception as e:
+            current_app.logger.error(f"Error emitting alert acknowledgment update: {e}")
+        
         return jsonify(alert.to_dict())
         
     except Exception as e:
@@ -377,6 +493,14 @@ def resolve_alert(alert_id):
         
         alert.resolve()
         
+        # Emit real-time update
+        try:
+            from flask import current_app
+            if hasattr(current_app, 'emit_alert_update'):
+                current_app.emit_alert_update(alert, 'resolved')
+        except Exception as e:
+            current_app.logger.error(f"Error emitting alert resolution update: {e}")
+        
         return jsonify(alert.to_dict())
         
     except Exception as e:
@@ -399,6 +523,25 @@ def delete_alert(alert_id):
         
         db.session.delete(alert)
         db.session.commit()
+        
+        # Emit real-time update
+        try:
+            from flask import current_app
+            if hasattr(current_app, 'socketio'):
+                # Emit deletion event
+                current_app.socketio.emit('alert_update', {
+                    'type': 'alert_update',
+                    'alert': {
+                        'id': alert_info['id'],
+                        'device_name': alert_info['device_name'],
+                        'device_ip': alert_info['device_ip'],
+                        'action': 'deleted'
+                    },
+                    'action': 'deleted',
+                    'timestamp': datetime.utcnow().isoformat() + 'Z'
+                })
+        except Exception as e:
+            current_app.logger.error(f"Error emitting alert deletion update: {e}")
         
         # Brief pause for individual deletions (2 minutes)
         from flask import current_app
@@ -1695,6 +1838,180 @@ def get_active_suppressions():
             'success': True,
             'active_suppressions': [suppression.to_dict() for suppression in active_suppressions],
             'count': len(active_suppressions)
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/alerts/<int:alert_id>/timeline', methods=['GET'])
+def get_alert_timeline(alert_id):
+    """Get timeline for a specific alert"""
+    try:
+        alert = Alert.query.get_or_404(alert_id)
+        
+        timeline = []
+        
+        # Alert creation
+        timeline.append({
+            'timestamp': alert.created_at.isoformat() + 'Z',
+            'action': 'Alert Created',
+            'description': f'{alert.severity.title()} alert created for {alert.device.display_name}',
+            'icon': 'bi-exclamation-triangle',
+            'color': 'danger' if alert.severity == 'critical' else 'warning' if alert.severity == 'warning' else 'info'
+        })
+        
+        # Acknowledgment
+        if alert.acknowledged:
+            timeline.append({
+                'timestamp': alert.acknowledged_at.isoformat() + 'Z',
+                'action': 'Alert Acknowledged',
+                'description': f'Acknowledged by {alert.acknowledged_by}',
+                'icon': 'bi-check',
+                'color': 'success'
+            })
+        
+        # Resolution
+        if alert.resolved:
+            timeline.append({
+                'timestamp': alert.resolved_at.isoformat() + 'Z',
+                'action': 'Alert Resolved',
+                'description': 'Alert was resolved',
+                'icon': 'bi-check-circle',
+                'color': 'success'
+            })
+        
+        # Get related monitoring data around the alert time
+        alert_time = alert.created_at
+        time_window = timedelta(hours=1)
+        monitoring_data = MonitoringData.query.filter(
+            MonitoringData.device_id == alert.device_id,
+            MonitoringData.timestamp >= alert_time - time_window,
+            MonitoringData.timestamp <= alert_time + time_window
+        ).order_by(MonitoringData.timestamp).limit(10).all()
+        
+        # Add significant monitoring events
+        for data in monitoring_data:
+            if data.response_time is None:
+                timeline.append({
+                    'timestamp': data.timestamp.isoformat() + 'Z',
+                    'action': 'Connection Failed',
+                    'description': f'Device ping failed at {data.timestamp.strftime("%H:%M:%S")}',
+                    'icon': 'bi-x-circle',
+                    'color': 'danger'
+                })
+            elif data.response_time > 1000:  # High latency
+                timeline.append({
+                    'timestamp': data.timestamp.isoformat() + 'Z',
+                    'action': 'High Latency Detected',
+                    'description': f'Response time: {data.response_time:.0f}ms',
+                    'icon': 'bi-clock',
+                    'color': 'warning'
+                })
+        
+        # Sort timeline by timestamp
+        timeline.sort(key=lambda x: x['timestamp'])
+        
+        return jsonify({
+            'timeline': timeline,
+            'alert_id': alert_id,
+            'device_name': alert.device.display_name
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/alerts/<int:alert_id>/unified-timeline', methods=['GET'])
+def get_unified_alert_timeline(alert_id):
+    """Get unified timeline for a specific alert including notifications"""
+    try:
+        alert = Alert.query.get_or_404(alert_id)
+        
+        timeline = []
+        
+        # Alert creation
+        timeline.append({
+            'timestamp': alert.created_at.isoformat() + 'Z',
+            'type': 'alert',
+            'action': 'Alert Created',
+            'description': f'{alert.severity.title()} alert created for {alert.device.display_name}',
+            'icon': 'bi-exclamation-triangle',
+            'color': 'danger' if alert.severity == 'critical' else 'warning' if alert.severity == 'warning' else 'info',
+            'details': {
+                'alert_type': alert.alert_type,
+                'message': alert.message,
+                'severity': alert.severity
+            }
+        })
+        
+        # Add notifications for this alert
+        from models import NotificationHistory
+        notifications = NotificationHistory.query.filter_by(alert_id=alert_id)\
+                                                 .order_by(NotificationHistory.sent_at)\
+                                                 .all()
+        
+        for notification in notifications:
+            status_color = 'success' if notification.delivery_status == 'success' else 'danger' if notification.delivery_status == 'failed' else 'secondary'
+            timeline.append({
+                'timestamp': notification.sent_at.isoformat() + 'Z',
+                'type': 'notification',
+                'action': f'Notification {notification.delivery_status.title()}',
+                'description': f'{notification.notification_type.replace("_", " ").title()} notification {notification.delivery_status}',
+                'icon': 'bi-bell' if notification.delivery_status == 'success' else 'bi-bell-slash' if notification.delivery_status == 'failed' else 'bi-bell',
+                'color': status_color,
+                'details': {
+                    'notification_type': notification.notification_type,
+                    'title': notification.title,
+                    'priority': notification.priority,
+                    'delivery_status': notification.delivery_status,
+                    'error_message': notification.error_message
+                }
+            })
+        
+        # Acknowledgment
+        if alert.acknowledged:
+            timeline.append({
+                'timestamp': alert.acknowledged_at.isoformat() + 'Z',
+                'type': 'alert',
+                'action': 'Alert Acknowledged',
+                'description': f'Acknowledged by {alert.acknowledged_by}',
+                'icon': 'bi-check',
+                'color': 'success',
+                'details': {
+                    'acknowledged_by': alert.acknowledged_by
+                }
+            })
+        
+        # Resolution
+        if alert.resolved:
+            timeline.append({
+                'timestamp': alert.resolved_at.isoformat() + 'Z',
+                'type': 'alert',
+                'action': 'Alert Resolved',
+                'description': 'Alert was resolved',
+                'icon': 'bi-check-circle',
+                'color': 'success',
+                'details': {}
+            })
+        
+        # Sort timeline by timestamp
+        timeline.sort(key=lambda x: x['timestamp'])
+        
+        return jsonify({
+            'alert_id': alert_id,
+            'timeline': timeline,
+            'summary': {
+                'total_events': len(timeline),
+                'notifications_sent': len(notifications),
+                'notification_success_rate': round(
+                    (len([n for n in notifications if n.delivery_status == 'success']) / len(notifications) * 100) 
+                    if notifications else 0, 1
+                ),
+                'alert_duration': (
+                    (alert.resolved_at - alert.created_at).total_seconds() / 60
+                    if alert.resolved else 
+                    (datetime.utcnow() - alert.created_at).total_seconds() / 60
+                )
+            }
         })
         
     except Exception as e:

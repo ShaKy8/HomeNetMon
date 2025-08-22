@@ -1,0 +1,49 @@
+apiVersion: v2
+name: homenetmon
+description: A comprehensive home network monitoring solution with real-time device tracking, alerting, and analytics
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+
+keywords:
+- monitoring
+- networking
+- devops
+- observability
+- home-automation
+
+home: https://github.com/homenetmon/homenetmon
+sources:
+- https://github.com/homenetmon/homenetmon
+
+maintainers:
+- name: HomeNetMon Team
+  email: support@homenetmon.io
+  url: https://homenetmon.io
+
+icon: https://raw.githubusercontent.com/homenetmon/homenetmon/main/static/icons/icon-192x192.png
+
+annotations:
+  category: Monitoring
+  licenses: MIT
+  
+dependencies:
+- name: redis
+  version: "17.3.7"
+  repository: "https://charts.bitnami.com/bitnami"
+  condition: redis.enabled
+  
+- name: postgresql
+  version: "12.1.2"
+  repository: "https://charts.bitnami.com/bitnami"
+  condition: postgresql.enabled
+  
+- name: nginx-ingress
+  version: "4.4.0"
+  repository: "https://kubernetes.github.io/ingress-nginx"
+  condition: ingress.nginx.enabled
+  
+- name: cert-manager
+  version: "v1.11.0"
+  repository: "https://charts.jetstack.io"
+  condition: certManager.enabled

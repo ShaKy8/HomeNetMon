@@ -3,11 +3,17 @@
   "short_name": "HomeNetMon",
   "description": "Comprehensive home network monitoring solution with real-time device tracking and alerts",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
-  "orientation": "portrait-primary",
+  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
+  "orientation": "any",
   "theme_color": "#0d6efd",
   "background_color": "#ffffff",
-  "categories": ["utilities", "productivity"],
+  "categories": ["utilities", "productivity", "business"],
+  "id": "homenetmon-app",
+  "lang": "en-US",
+  "dir": "ltr",
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "/static/icons/icon-72x72.png",
@@ -94,6 +100,65 @@
           "sizes": "96x96"
         }
       ]
+    },
+    {
+      "name": "Device Status",
+      "short_name": "Devices",
+      "description": "Quick device status check",
+      "url": "/devices",
+      "icons": [
+        {
+          "src": "/static/icons/device-96x96.png",
+          "sizes": "96x96"
+        }
+      ]
+    }
+  ],
+  "screenshots": [
+    {
+      "src": "/static/screenshots/dashboard-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "platform": "mobile",
+      "label": "HomeNetMon Dashboard on mobile"
+    },
+    {
+      "src": "/static/screenshots/topology-mobile.png",
+      "sizes": "390x844",
+      "type": "image/png",
+      "platform": "mobile",
+      "label": "Network topology view on mobile"
+    },
+    {
+      "src": "/static/screenshots/dashboard-desktop.png",
+      "sizes": "1920x1080",
+      "type": "image/png",
+      "platform": "wide",
+      "label": "HomeNetMon Dashboard on desktop"
+    }
+  ],
+  "launch_handler": {
+    "client_mode": "focus-existing"
+  },
+  "handle_links": "preferred",
+  "edge_side_panel": {
+    "preferred_width": 400
+  },
+  "protocol_handlers": [
+    {
+      "protocol": "web+homenetmon",
+      "url": "/protocol-handler?action=%s"
+    }
+  ],
+  "related_applications": [],
+  "file_handlers": [
+    {
+      "action": "/file-handler",
+      "accept": {
+        "application/json": [".json"],
+        "text/csv": [".csv"]
+      },
+      "launch_type": "single-client"
     }
   ]
 }

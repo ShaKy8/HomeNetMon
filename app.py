@@ -4,7 +4,7 @@ import time
 import logging
 from datetime import datetime
 from flask import Flask, render_template, request, jsonify, redirect, url_for
-from flask_socketio import SocketIO, emit
+from flask_socketio import SocketIO, emit, join_room, leave_room
 from config import Config
 from models import db, init_db
 from version import get_version_string, get_complete_info
@@ -45,6 +45,8 @@ def create_app():
     from api.config_management import config_management_bp
     from api.system import system_bp
     from api.health import health_bp
+    from api.escalation import escalation_bp
+    from api.performance import performance_bp
     
     app.register_blueprint(devices_bp, url_prefix='/api/devices')
     app.register_blueprint(monitoring_bp, url_prefix='/api/monitoring')
@@ -59,6 +61,8 @@ def create_app():
     app.register_blueprint(automation_bp, url_prefix='/api/automation')
     app.register_blueprint(system_bp, url_prefix='/api/system')
     app.register_blueprint(health_bp, url_prefix='/api/health')
+    app.register_blueprint(escalation_bp, url_prefix='/api/escalation')
+    app.register_blueprint(performance_bp, url_prefix='/api/performance')
     
     # Initialize monitoring services
     scanner = NetworkScanner(app)
@@ -86,6 +90,15 @@ def create_app():
     from services.configuration_service import configuration_service
     configuration_service.app = app
     
+    # Initialize escalation service
+    from services.escalation_service import escalation_service
+    escalation_service.init_app(app)
+    
+    # Initialize performance monitor service
+    from services.performance_monitor import performance_monitor
+    performance_monitor.app = app
+    performance_monitor.set_socketio(socketio)
+    
     # Make services accessible to other parts of the app
     app._scanner = scanner
     app._monitor = monitor
@@ -96,6 +109,8 @@ def create_app():
     app.security_scanner = security_scanner
     app.rule_engine_service = rule_engine_service
     app.configuration_service = configuration_service
+    app.escalation_service = escalation_service
+    app.performance_monitor = performance_monitor
     app.socketio = socketio
     
     # Start background services in separate threads
@@ -166,6 +181,22 @@ def create_app():
         )
         configuration_thread.start()
         
+        # Start escalation service
+        escalation_thread = threading.Thread(
+            target=escalation_service.start_monitoring,
+            daemon=True,
+            name='EscalationService'
+        )
+        escalation_thread.start()
+        
+        # Start performance monitor service
+        performance_thread = threading.Thread(
+            target=performance_monitor.start_monitoring,
+            daemon=True,
+            name='PerformanceMonitor'
+        )
+        performance_thread.start()
+        
         # Register service callbacks for configuration changes
         def register_config_callbacks():
             time.sleep(1)  # Wait for services to initialize
@@ -193,6 +224,12 @@ def create_app():
                 if key in ['bandwidth_interval']:
                     bandwidth_monitor.reload_config()
             configuration_service.register_service_callback('BandwidthMonitor', bandwidth_config_callback)
+            
+            # Register performance monitor callback
+            def performance_config_callback(key, old_value, new_value):
+                if key in ['performance_collection_interval', 'performance_collection_period', 'performance_retention_days']:
+                    performance_monitor.reload_config()
+            configuration_service.register_service_callback('PerformanceMonitor', performance_config_callback)
         
         # Register callbacks in background
         callback_thread = threading.Thread(target=register_config_callbacks, daemon=True)
@@ -233,9 +270,19 @@ def create_app():
     def notifications():
         return render_template('notifications.html')
     
+    @app.route('/notifications/analytics')
+    def notification_analytics():
+        """Advanced notification analytics dashboard"""
+        return render_template('notification_analytics.html')
+    
     @app.route('/analytics')
     def analytics():
         return render_template('analytics.html')
+    
+    @app.route('/performance-dashboard')
+    def performance_dashboard():
+        """Real-time performance monitoring dashboard"""
+        return render_template('performance_dashboard.html')
     
     @app.route('/ai-dashboard')
     def ai_dashboard():
@@ -282,6 +329,26 @@ def create_app():
         except Exception as e:
             return f'<html><body><h1>Template Error</h1><p>{str(e)}</p></body></html>', 500
     
+    @app.route('/escalation-rules')
+    def escalation_rules():
+        """Escalation rules management page"""
+        return render_template('escalation_rules.html')
+    
+    @app.route('/escalation-rules/new')
+    def new_escalation_rule():
+        """Create new escalation rule page"""
+        return render_template('escalation_rule_form.html', rule_id=None)
+    
+    @app.route('/escalation-rules/<int:rule_id>/edit')
+    def edit_escalation_rule(rule_id):
+        """Edit existing escalation rule page"""
+        return render_template('escalation_rule_form.html', rule_id=rule_id)
+    
+    @app.route('/escalation-executions')
+    def escalation_executions():
+        """Escalation executions monitoring page"""
+        return render_template('escalation_executions.html')
+    
     @app.route('/test')
     def test():
         return jsonify({'message': 'Flask is working'})
@@ -317,15 +384,75 @@ def create_app():
     def service_worker():
         return app.send_static_file('service-worker.js'), 200, {'Content-Type': 'application/javascript'}
     
-    # SocketIO events
+    # SocketIO events with room management for selective updates
     @socketio.on('connect')
     def handle_connect():
         print(f'Client connected: {request.sid}')
+        # Join default room for basic updates
+        join_room('general')
         emit('status', {'message': 'Connected to HomeNetMon'})
     
     @socketio.on('disconnect')
     def handle_disconnect():
         print(f'Client disconnected: {request.sid}')
+    
+    @socketio.on('subscribe_to_updates')
+    def handle_subscription(data):
+        """Allow clients to subscribe to specific types of updates"""
+        try:
+            update_types = data.get('types', [])
+            client_sid = request.sid
+            
+            # Available subscription types
+            available_types = [
+                'device_status',      # Device status updates
+                'monitoring_summary', # Overall monitoring summaries
+                'alerts',            # Alert notifications
+                'chart_data',        # Chart and graph data
+                'performance',       # Performance metrics
+                'configuration'      # Configuration changes
+            ]
+            
+            # Join rooms for requested update types
+            joined_rooms = []
+            for update_type in update_types:
+                if update_type in available_types:
+                    join_room(f'updates_{update_type}')
+                    joined_rooms.append(update_type)
+            
+            emit('subscription_confirmed', {
+                'subscribed_to': joined_rooms,
+                'available_types': available_types
+            })
+            
+            logger.info(f"Client {client_sid} subscribed to: {joined_rooms}")
+            
+        except Exception as e:
+            logger.error(f"Error handling subscription: {e}")
+            emit('subscription_error', {'error': str(e)})
+    
+    @socketio.on('unsubscribe_from_updates')
+    def handle_unsubscription(data):
+        """Allow clients to unsubscribe from specific types of updates"""
+        try:
+            update_types = data.get('types', [])
+            client_sid = request.sid
+            
+            # Leave rooms for requested update types
+            left_rooms = []
+            for update_type in update_types:
+                leave_room(f'updates_{update_type}')
+                left_rooms.append(update_type)
+            
+            emit('unsubscription_confirmed', {
+                'unsubscribed_from': left_rooms
+            })
+            
+            logger.info(f"Client {client_sid} unsubscribed from: {left_rooms}")
+            
+        except Exception as e:
+            logger.error(f"Error handling unsubscription: {e}")
+            emit('unsubscription_error', {'error': str(e)})
     
     @socketio.on('request_device_update')
     def handle_device_update_request():
@@ -454,6 +581,211 @@ def create_app():
             
         except Exception as e:
             emit('topology_error', {'error': str(e)})
+    
+    @socketio.on('request_alert_updates')
+    def handle_alert_updates_request():
+        """Handle request for real-time alert updates"""
+        try:
+            from models import Alert
+            
+            # Get active alerts summary
+            active_alerts = Alert.query.filter_by(resolved=False).all()
+            
+            alert_data = []
+            for alert in active_alerts:
+                alert_data.append({
+                    'id': alert.id,
+                    'device_id': alert.device_id,
+                    'device_name': alert.device.display_name,
+                    'device_ip': alert.device.ip_address,
+                    'alert_type': alert.alert_type,
+                    'severity': alert.severity,
+                    'message': alert.message,
+                    'created_at': alert.created_at.isoformat() + 'Z',
+                    'acknowledged': alert.acknowledged,
+                    'resolved': alert.resolved
+                })
+            
+            emit('alert_updates', {
+                'alerts': alert_data,
+                'count': len(alert_data),
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
+            })
+            
+        except Exception as e:
+            emit('alert_error', {'error': str(e)})
+    
+    @socketio.on('request_chart_data')
+    def handle_chart_data_request(data):
+        """Handle request for specific chart data"""
+        try:
+            chart_type = data.get('type')
+            device_id = data.get('device_id')
+            time_range = data.get('time_range', '24h')
+            
+            if chart_type == 'device_response_time' and device_id:
+                # Get recent response time data for a specific device
+                from models import MonitoringData
+                from datetime import timedelta
+                
+                hours_map = {'1h': 1, '6h': 6, '24h': 24, '7d': 168}
+                hours = hours_map.get(time_range, 24)
+                cutoff = datetime.utcnow() - timedelta(hours=hours)
+                
+                data_points = MonitoringData.query.filter(
+                    MonitoringData.device_id == device_id,
+                    MonitoringData.timestamp >= cutoff
+                ).order_by(MonitoringData.timestamp.desc()).limit(200).all()
+                
+                chart_data = [{
+                    'timestamp': point.timestamp.isoformat(),
+                    'response_time': point.response_time,
+                    'device_id': point.device_id
+                } for point in reversed(data_points)]
+                
+                emit('chart_data_response', {
+                    'type': chart_type,
+                    'device_id': device_id,
+                    'data': chart_data,
+                    'timestamp': datetime.utcnow().isoformat()
+                })
+            
+            elif chart_type == 'device_types':
+                # Get device types breakdown
+                from models import Device
+                from collections import defaultdict
+                
+                devices = Device.query.filter_by(is_monitored=True).all()
+                device_types = defaultdict(lambda: {'up': 0, 'down': 0})
+                
+                online_threshold = datetime.utcnow() - timedelta(minutes=10)
+                
+                for device in devices:
+                    device_type = device.device_type or 'unknown'
+                    if device.last_seen and device.last_seen >= online_threshold:
+                        device_types[device_type]['up'] += 1
+                    else:
+                        device_types[device_type]['down'] += 1
+                
+                chart_data = []
+                for device_type, counts in device_types.items():
+                    total = counts['up'] + counts['down']
+                    if total > 0:
+                        chart_data.append({
+                            'type': device_type,
+                            'total': total,
+                            'up': counts['up'],
+                            'down': counts['down'],
+                            'uptime_percentage': (counts['up'] / total) * 100
+                        })
+                
+                emit('chart_data_response', {
+                    'type': chart_type,
+                    'data': chart_data,
+                    'timestamp': datetime.utcnow().isoformat()
+                })
+            
+        except Exception as e:
+            emit('chart_data_error', {'error': str(e), 'type': chart_type})
+    
+    @socketio.on('request_performance_summary')
+    def handle_performance_summary_request():
+        """Handle request for performance summary"""
+        try:
+            summary = performance_monitor.get_network_performance_summary(24)
+            if summary:
+                emit('performance_summary_response', summary)
+            else:
+                emit('performance_error', {'error': 'Unable to generate performance summary'})
+        except Exception as e:
+            emit('performance_error', {'error': str(e)})
+    
+    @socketio.on('request_device_performance')
+    def handle_device_performance_request(data):
+        """Handle request for device performance data"""
+        try:
+            device_id = data.get('device_id')
+            hours = data.get('hours', 24)
+            
+            if not device_id:
+                emit('performance_error', {'error': 'Device ID required'})
+                return
+            
+            from models import Device
+            device = Device.query.get(device_id)
+            if not device:
+                emit('performance_error', {'error': 'Device not found'})
+                return
+            
+            performance_summary = device.get_performance_summary(hours)
+            emit('device_performance_response', {
+                'device_id': device_id,
+                'performance_summary': performance_summary,
+                'timestamp': datetime.utcnow().isoformat()
+            })
+            
+        except Exception as e:
+            emit('performance_error', {'error': str(e)})
+    
+    @socketio.on('trigger_performance_collection')
+    def handle_performance_collection_trigger(data):
+        """Handle manual performance collection trigger"""
+        try:
+            device_id = data.get('device_id') if data else None
+            
+            if device_id:
+                # Collect for specific device
+                result = performance_monitor.collect_device_performance_metrics(device_id)
+                if result:
+                    emit('performance_collection_success', {
+                        'message': f'Performance metrics collected for device {device_id}',
+                        'device_id': device_id,
+                        'timestamp': datetime.utcnow().isoformat()
+                    })
+                else:
+                    emit('performance_collection_error', {
+                        'error': 'Failed to collect device performance metrics'
+                    })
+            else:
+                # Collect for all devices
+                performance_monitor.collect_all_devices_performance()
+                emit('performance_collection_success', {
+                    'message': 'Performance metrics collection triggered for all devices',
+                    'timestamp': datetime.utcnow().isoformat()
+                })
+                
+        except Exception as e:
+            emit('performance_collection_error', {'error': str(e)})
+    
+    def emit_alert_update(alert, action='created'):
+        """Emit real-time alert update to all connected clients"""
+        try:
+            alert_data = {
+                'id': alert.id,
+                'device_id': alert.device_id,
+                'device_name': alert.device.display_name,
+                'device_ip': alert.device.ip_address,
+                'alert_type': alert.alert_type,
+                'severity': alert.severity,
+                'message': alert.message,
+                'created_at': alert.created_at.isoformat() + 'Z',
+                'acknowledged': alert.acknowledged,
+                'resolved': alert.resolved,
+                'action': action  # 'created', 'updated', 'resolved', 'acknowledged', 'deleted'
+            }
+            
+            socketio.emit('alert_update', {
+                'type': 'alert_update',
+                'alert': alert_data,
+                'action': action,
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error emitting alert update: {e}")
+    
+    # Store the emit function in app context for use by alert manager
+    app.emit_alert_update = emit_alert_update
     
     # Error handlers
     @app.errorhandler(404)

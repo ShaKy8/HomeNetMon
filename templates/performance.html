@@ -1,0 +1,1112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Analytics - HomeNetMon</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns@2.29.0/index.min.js"></script>
+    <style>
+        .performance-card {
+            transition: transform 0.2s;
+        }
+        .performance-card:hover {
+            transform: translateY(-2px);
+        }
+        .metric-badge {
+            font-size: 0.8rem;
+            padding: 0.25rem 0.5rem;
+        }
+        .trend-arrow {
+            font-size: 0.9rem;
+        }
+        .quality-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        .quality-excellent { background-color: #28a745; }
+        .quality-good { background-color: #17a2b8; }
+        .quality-fair { background-color: #ffc107; }
+        .quality-poor { background-color: #fd7e14; }
+        .quality-critical { background-color: #dc3545; }
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+        .mini-chart-container {
+            position: relative;
+            height: 150px;
+        }
+        .alert-item {
+            border-left: 4px solid;
+            margin-bottom: 0.5rem;
+        }
+        .alert-critical { border-left-color: #dc3545; }
+        .alert-high { border-left-color: #fd7e14; }
+        .alert-medium { border-left-color: #ffc107; }
+        .alert-low { border-left-color: #17a2b8; }
+        .recommendation-card {
+            border-left: 4px solid;
+        }
+        .priority-5 { border-left-color: #dc3545; }
+        .priority-4 { border-left-color: #fd7e14; }
+        .priority-3 { border-left-color: #ffc107; }
+        .priority-2 { border-left-color: #17a2b8; }
+        .priority-1 { border-left-color: #6c757d; }
+    </style>
+</head>
+<body>
+    <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="fas fa-chart-line"></i> HomeNetMon - Performance Analytics
+            </a>
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">Dashboard</a>
+                <a class="nav-link" href="/devices">Devices</a>
+                <a class="nav-link" href="/alerts">Alerts</a>
+                <a class="nav-link" href="/security">Security</a>
+                <a class="nav-link active" href="/performance">Performance</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Performance Overview Cards -->
+        <div class="row mb-4">
+            <div class="col-md-3">
+                <div class="card performance-card h-100">
+                    <div class="card-body text-center">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="card-title mb-0">Network Quality</h6>
+                            <span id="quality-indicator" class="quality-indicator"></span>
+                        </div>
+                        <h2 id="network-quality-score" class="text-primary mb-1">--</h2>
+                        <p id="network-quality-grade" class="text-muted mb-2">Grade: --</p>
+                        <small class="text-muted">Last 24 hours</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card performance-card h-100">
+                    <div class="card-body text-center">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="card-title mb-0">Avg Latency</h6>
+                            <i id="latency-trend" class="trend-arrow"></i>
+                        </div>
+                        <h2 id="avg-latency" class="text-info mb-1">-- ms</h2>
+                        <p id="latency-devices" class="text-muted mb-2">-- devices</p>
+                        <small class="text-muted">Current average</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card performance-card h-100">
+                    <div class="card-body text-center">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="card-title mb-0">Bandwidth</h6>
+                            <i class="fas fa-wifi text-success"></i>
+                        </div>
+                        <h2 id="bandwidth-speed" class="text-success mb-1">-- Mbps</h2>
+                        <p id="bandwidth-details" class="text-muted mb-2">↓-- / ↑-- Mbps</p>
+                        <small class="text-muted">Latest test</small>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-3">
+                <div class="card performance-card h-100">
+                    <div class="card-body text-center">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="card-title mb-0">Active Alerts</h6>
+                            <i id="alerts-icon" class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <h2 id="active-alerts-count" class="mb-1">--</h2>
+                        <p id="alerts-breakdown" class="text-muted mb-2">-- critical</p>
+                        <small class="text-muted">Performance issues</small>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Control Panel -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-cogs"></i> Performance Controls
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row align-items-center">
+                            <div class="col-md-3">
+                                <label for="time-range" class="form-label">Time Range</label>
+                                <select id="time-range" class="form-select">
+                                    <option value="1">Last Hour</option>
+                                    <option value="6">Last 6 Hours</option>
+                                    <option value="24" selected>Last 24 Hours</option>
+                                    <option value="168">Last Week</option>
+                                    <option value="720">Last Month</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label for="device-filter" class="form-label">Device Filter</label>
+                                <select id="device-filter" class="form-select">
+                                    <option value="">All Devices</option>
+                                </select>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Actions</label>
+                                <div class="d-flex gap-2">
+                                    <button id="refresh-data" class="btn btn-primary btn-sm">
+                                        <i class="fas fa-sync-alt"></i> Refresh
+                                    </button>
+                                    <button id="run-bandwidth-test" class="btn btn-success btn-sm">
+                                        <i class="fas fa-tachometer-alt"></i> Speed Test
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">Engine Control</label>
+                                <div class="d-flex gap-2">
+                                    <button id="start-analyzer" class="btn btn-outline-success btn-sm">
+                                        <i class="fas fa-play"></i> Start
+                                    </button>
+                                    <button id="stop-analyzer" class="btn btn-outline-danger btn-sm">
+                                        <i class="fas fa-stop"></i> Stop
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Charts -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-chart-line"></i> Performance Trends
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="performance-trends-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-wifi"></i> Bandwidth History
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mini-chart-container">
+                            <canvas id="bandwidth-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Device Performance and Alerts -->
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-desktop"></i> Device Performance
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="device-performance-list">
+                            <!-- Device performance items will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-md-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-exclamation-triangle"></i> Recent Alerts
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="performance-alerts-list">
+                            <!-- Performance alerts will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Optimization Recommendations -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-lightbulb"></i> Optimization Recommendations
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div id="optimization-recommendations">
+                            <!-- Recommendations will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Performance Metrics Table -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">
+                            <i class="fas fa-table"></i> Detailed Metrics
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table id="metrics-table" class="table table-striped table-hover">
+                                <thead class="table-dark">
+                                    <tr>
+                                        <th>Device</th>
+                                        <th>Metric</th>
+                                        <th>Current Value</th>
+                                        <th>Average (24h)</th>
+                                        <th>Trend</th>
+                                        <th>Quality</th>
+                                        <th>Last Updated</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="metrics-table-body">
+                                    <!-- Metrics data will be loaded here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Performance Alert Modal -->
+    <div class="modal fade" id="alertModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Performance Alert Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="alert-details">
+                    <!-- Alert details will be loaded here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" id="acknowledge-alert" class="btn btn-primary">Acknowledge</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recommendation Modal -->
+    <div class="modal fade" id="recommendationModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Optimization Recommendation</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="recommendation-details">
+                    <!-- Recommendation details will be loaded here -->
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" id="approve-recommendation" class="btn btn-success">Approve</button>
+                    <button type="button" id="reject-recommendation" class="btn btn-danger">Reject</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script>
+        // Global variables
+        let performanceTrendsChart = null;
+        let bandwidthChart = null;
+        let currentTimeRange = 24;
+        let currentDeviceFilter = '';
+        let currentAlertId = null;
+        let currentRecommendationId = null;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            loadDeviceList();
+            loadPerformanceData();
+            setupEventListeners();
+            
+            // Auto-refresh every 30 seconds
+            setInterval(() => {
+                if (document.visibilityState === 'visible') {
+                    loadPerformanceData();
+                }
+            }, 30000);
+        });
+
+        function setupEventListeners() {
+            document.getElementById('time-range').addEventListener('change', function() {
+                currentTimeRange = parseInt(this.value);
+                loadPerformanceData();
+            });
+
+            document.getElementById('device-filter').addEventListener('change', function() {
+                currentDeviceFilter = this.value;
+                loadPerformanceData();
+            });
+
+            document.getElementById('refresh-data').addEventListener('click', loadPerformanceData);
+            
+            document.getElementById('run-bandwidth-test').addEventListener('click', function() {
+                runBandwidthTest();
+            });
+
+            document.getElementById('start-analyzer').addEventListener('click', function() {
+                controlPerformanceAnalyzer('start');
+            });
+
+            document.getElementById('stop-analyzer').addEventListener('click', function() {
+                controlPerformanceAnalyzer('stop');
+            });
+
+            document.getElementById('acknowledge-alert').addEventListener('click', function() {
+                acknowledgeAlert(currentAlertId);
+            });
+
+            document.getElementById('approve-recommendation').addEventListener('click', function() {
+                updateRecommendationStatus(currentRecommendationId, 'approved');
+            });
+
+            document.getElementById('reject-recommendation').addEventListener('click', function() {
+                updateRecommendationStatus(currentRecommendationId, 'rejected');
+            });
+        }
+
+        async function loadDeviceList() {
+            try {
+                const response = await fetch('/api/devices');
+                const data = await response.json();
+                const deviceFilter = document.getElementById('device-filter');
+                
+                // Clear existing options (except "All Devices")
+                deviceFilter.innerHTML = '<option value="">All Devices</option>';
+                
+                data.devices.forEach(device => {
+                    const option = document.createElement('option');
+                    option.value = device.id;
+                    option.textContent = device.display_name || device.ip_address;
+                    deviceFilter.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading device list:', error);
+            }
+        }
+
+        async function loadPerformanceData() {
+            try {
+                // Load performance summary
+                await loadPerformanceSummary();
+                
+                // Load network quality score
+                await loadNetworkQuality();
+                
+                // Load performance trends
+                await loadPerformanceTrends();
+                
+                // Load bandwidth history
+                await loadBandwidthHistory();
+                
+                // Load device performance
+                await loadDevicePerformance();
+                
+                // Load performance alerts
+                await loadPerformanceAlerts();
+                
+                // Load optimization recommendations
+                await loadOptimizationRecommendations();
+                
+                // Load detailed metrics
+                await loadDetailedMetrics();
+                
+            } catch (error) {
+                console.error('Error loading performance data:', error);
+                showToast('Error loading performance data', 'error');
+            }
+        }
+
+        async function loadPerformanceSummary() {
+            const response = await fetch(`/api/performance/summary?hours=${currentTimeRange}`);
+            const data = await response.json();
+            
+            // Update overview cards
+            if (data.metrics) {
+                // Average latency
+                if (data.metrics.response_time) {
+                    document.getElementById('avg-latency').textContent = 
+                        `${data.metrics.response_time.average.toFixed(1)} ms`;
+                    document.getElementById('latency-devices').textContent = 
+                        `${data.metrics.response_time.device_count || 0} devices`;
+                    
+                    // Set trend arrow based on recent performance
+                    const trendIcon = document.getElementById('latency-trend');
+                    if (data.metrics.response_time.average < 50) {
+                        trendIcon.className = 'fas fa-arrow-down text-success trend-arrow';
+                    } else if (data.metrics.response_time.average > 100) {
+                        trendIcon.className = 'fas fa-arrow-up text-danger trend-arrow';
+                    } else {
+                        trendIcon.className = 'fas fa-minus text-warning trend-arrow';
+                    }
+                }
+            }
+            
+            // Update bandwidth info
+            if (data.bandwidth && data.bandwidth.download_mbps) {
+                document.getElementById('bandwidth-speed').textContent = 
+                    `${data.bandwidth.download_mbps.toFixed(1)} Mbps`;
+                document.getElementById('bandwidth-details').textContent = 
+                    `↓${data.bandwidth.download_mbps.toFixed(1)} / ↑${data.bandwidth.upload_mbps.toFixed(1)} Mbps`;
+            }
+            
+            // Update alerts count
+            if (data.alerts) {
+                document.getElementById('active-alerts-count').textContent = data.alerts.active_count || 0;
+                
+                const criticalAlerts = data.alerts.recent_alerts ? 
+                    data.alerts.recent_alerts.filter(alert => alert.severity === 'critical').length : 0;
+                document.getElementById('alerts-breakdown').textContent = `${criticalAlerts} critical`;
+                
+                // Update alerts icon color
+                const alertsIcon = document.getElementById('alerts-icon');
+                if (criticalAlerts > 0) {
+                    alertsIcon.className = 'fas fa-exclamation-triangle text-danger';
+                } else if (data.alerts.active_count > 0) {
+                    alertsIcon.className = 'fas fa-exclamation-triangle text-warning';
+                } else {
+                    alertsIcon.className = 'fas fa-check-circle text-success';
+                }
+            }
+        }
+
+        async function loadNetworkQuality() {
+            const response = await fetch(`/api/performance/quality/score?hours=${currentTimeRange}`);
+            const data = await response.json();
+            
+            document.getElementById('network-quality-score').textContent = 
+                data.overall_score ? `${data.overall_score}%` : '--';
+            document.getElementById('network-quality-grade').textContent = 
+                `Grade: ${data.quality_grade || '--'}`;
+            
+            // Update quality indicator color
+            const indicator = document.getElementById('quality-indicator');
+            if (data.overall_score >= 90) {
+                indicator.className = 'quality-indicator quality-excellent';
+            } else if (data.overall_score >= 80) {
+                indicator.className = 'quality-indicator quality-good';
+            } else if (data.overall_score >= 70) {
+                indicator.className = 'quality-indicator quality-fair';
+            } else if (data.overall_score >= 60) {
+                indicator.className = 'quality-indicator quality-poor';
+            } else {
+                indicator.className = 'quality-indicator quality-critical';
+            }
+        }
+
+        async function loadPerformanceTrends() {
+            const params = new URLSearchParams({
+                hours: currentTimeRange,
+                metric_type: 'response_time',
+                interval: currentTimeRange <= 24 ? 60 : 240  // 1h or 4h intervals
+            });
+            
+            if (currentDeviceFilter) {
+                params.append('device_id', currentDeviceFilter);
+            }
+            
+            const response = await fetch(`/api/performance/metrics/trends?${params}`);
+            const data = await response.json();
+            
+            updatePerformanceTrendsChart(data.trends || []);
+        }
+
+        async function loadBandwidthHistory() {
+            const response = await fetch(`/api/performance/bandwidth/history?hours=${currentTimeRange}`);
+            const data = await response.json();
+            
+            updateBandwidthChart(data.analyzer_data || []);
+        }
+
+        async function loadDevicePerformance() {
+            const response = await fetch('/api/devices');
+            const devicesData = await response.json();
+            
+            const deviceList = document.getElementById('device-performance-list');
+            deviceList.innerHTML = '';
+            
+            for (const device of devicesData.devices.slice(0, 10)) {  // Show top 10 devices
+                try {
+                    const perfResponse = await fetch(`/api/performance/device/${device.id}?hours=${currentTimeRange}`);
+                    const perfData = await perfResponse.json();
+                    
+                    const deviceItem = createDevicePerformanceItem(device, perfData);
+                    deviceList.appendChild(deviceItem);
+                } catch (error) {
+                    console.warn(`Error loading performance for device ${device.id}:`, error);
+                }
+            }
+        }
+
+        async function loadPerformanceAlerts() {
+            const params = new URLSearchParams({
+                hours: currentTimeRange,
+                status: 'active'
+            });
+            
+            if (currentDeviceFilter) {
+                params.append('device_id', currentDeviceFilter);
+            }
+            
+            const response = await fetch(`/api/performance/alerts?${params}`);
+            const data = await response.json();
+            
+            const alertsList = document.getElementById('performance-alerts-list');
+            alertsList.innerHTML = '';
+            
+            const allAlerts = [...(data.analyzer_alerts || []), ...(data.database_alerts || [])];
+            
+            if (allAlerts.length === 0) {
+                alertsList.innerHTML = '<p class="text-muted">No active performance alerts</p>';
+                return;
+            }
+            
+            allAlerts.slice(0, 10).forEach(alert => {
+                const alertItem = createAlertItem(alert);
+                alertsList.appendChild(alertItem);
+            });
+        }
+
+        async function loadOptimizationRecommendations() {
+            const response = await fetch('/api/performance/recommendations?status=pending&priority_min=2');
+            const data = await response.json();
+            
+            const recommendationsDiv = document.getElementById('optimization-recommendations');
+            recommendationsDiv.innerHTML = '';
+            
+            const allRecommendations = [...(data.analyzer_recommendations || []), ...(data.database_recommendations || [])];
+            
+            if (allRecommendations.length === 0) {
+                recommendationsDiv.innerHTML = '<p class="text-muted">No pending optimization recommendations</p>';
+                return;
+            }
+            
+            allRecommendations.slice(0, 5).forEach(recommendation => {
+                const recItem = createRecommendationItem(recommendation);
+                recommendationsDiv.appendChild(recItem);
+            });
+        }
+
+        async function loadDetailedMetrics() {
+            const params = new URLSearchParams({
+                hours: currentTimeRange
+            });
+            
+            if (currentDeviceFilter) {
+                params.append('device_id', currentDeviceFilter);
+            }
+            
+            const response = await fetch(`/api/performance/metrics?${params}`);
+            const data = await response.json();
+            
+            const tableBody = document.getElementById('metrics-table-body');
+            tableBody.innerHTML = '';
+            
+            if (!data.metrics_summary || Object.keys(data.metrics_summary).length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No metrics data available</td></tr>';
+                return;
+            }
+            
+            // Create rows for each metric type
+            Object.entries(data.metrics_summary).forEach(([metricType, metricData]) => {
+                const row = createMetricsTableRow(metricType, metricData);
+                tableBody.appendChild(row);
+            });
+        }
+
+        function updatePerformanceTrendsChart(trends) {
+            const ctx = document.getElementById('performance-trends-chart').getContext('2d');
+            
+            if (performanceTrendsChart) {
+                performanceTrendsChart.destroy();
+            }
+            
+            const labels = trends.map(t => new Date(t.timestamp).toLocaleTimeString());
+            const avgData = trends.map(t => t.average);
+            const minData = trends.map(t => t.min);
+            const maxData = trends.map(t => t.max);
+            
+            performanceTrendsChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Average Latency',
+                        data: avgData,
+                        borderColor: 'rgb(54, 162, 235)',
+                        backgroundColor: 'rgba(54, 162, 235, 0.1)',
+                        tension: 0.1
+                    }, {
+                        label: 'Min Latency',
+                        data: minData,
+                        borderColor: 'rgb(75, 192, 192)',
+                        backgroundColor: 'rgba(75, 192, 192, 0.1)',
+                        tension: 0.1
+                    }, {
+                        label: 'Max Latency',
+                        data: maxData,
+                        borderColor: 'rgb(255, 99, 132)',
+                        backgroundColor: 'rgba(255, 99, 132, 0.1)',
+                        tension: 0.1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Latency (ms)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Network Latency Trends'
+                        }
+                    }
+                }
+            });
+        }
+
+        function updateBandwidthChart(bandwidthData) {
+            const ctx = document.getElementById('bandwidth-chart').getContext('2d');
+            
+            if (bandwidthChart) {
+                bandwidthChart.destroy();
+            }
+            
+            const labels = bandwidthData.map(b => new Date(b.timestamp).toLocaleTimeString());
+            const downloadData = bandwidthData.map(b => b.download_mbps);
+            const uploadData = bandwidthData.map(b => b.upload_mbps);
+            
+            bandwidthChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: 'Download',
+                        data: downloadData,
+                        backgroundColor: 'rgba(54, 162, 235, 0.8)'
+                    }, {
+                        label: 'Upload',
+                        data: uploadData,
+                        backgroundColor: 'rgba(255, 99, 132, 0.8)'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            title: {
+                                display: true,
+                                text: 'Speed (Mbps)'
+                            }
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        },
+                        title: {
+                            display: true,
+                            text: 'Bandwidth Tests'
+                        }
+                    }
+                }
+            });
+        }
+
+        function createDevicePerformanceItem(device, perfData) {
+            const div = document.createElement('div');
+            div.className = 'mb-3 p-3 border rounded';
+            
+            const performanceLevel = perfData.performance_level || 'unknown';
+            const qualityClass = `quality-${performanceLevel}`;
+            
+            div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1">${device.display_name || device.ip_address}</h6>
+                        <small class="text-muted">${device.ip_address}</small>
+                    </div>
+                    <div class="text-end">
+                        <span class="quality-indicator ${qualityClass}"></span>
+                        <span class="badge bg-secondary">${performanceLevel}</span>
+                    </div>
+                </div>
+                <div class="mt-2">
+                    <small class="text-muted">
+                        Avg Latency: ${perfData.metrics?.response_time?.average?.toFixed(1) || '--'} ms |
+                        Alerts: ${perfData.alerts?.length || 0}
+                    </small>
+                </div>
+            `;
+            
+            div.style.cursor = 'pointer';
+            div.addEventListener('click', () => {
+                window.location.href = `/device/${device.id}?tab=performance`;
+            });
+            
+            return div;
+        }
+
+        function createAlertItem(alert) {
+            const div = document.createElement('div');
+            div.className = `alert-item p-3 mb-2 border rounded alert-${alert.severity}`;
+            
+            const timeAgo = new Date(alert.detected_at).toLocaleString();
+            
+            div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div>
+                        <h6 class="mb-1">${alert.description}</h6>
+                        <small class="text-muted">Device: ${alert.device_name || alert.device_id}</small>
+                        <br>
+                        <small class="text-muted">Detected: ${timeAgo}</small>
+                    </div>
+                    <span class="badge bg-${getSeverityColor(alert.severity)}">${alert.severity}</span>
+                </div>
+            `;
+            
+            div.style.cursor = 'pointer';
+            div.addEventListener('click', () => {
+                showAlertDetails(alert);
+            });
+            
+            return div;
+        }
+
+        function createRecommendationItem(recommendation) {
+            const div = document.createElement('div');
+            div.className = `recommendation-card p-3 mb-3 border rounded priority-${recommendation.priority}`;
+            
+            div.innerHTML = `
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">${recommendation.title}</h6>
+                        <p class="mb-2 text-muted">${recommendation.description}</p>
+                        <small class="text-muted">
+                            Category: ${recommendation.category} | 
+                            Effort: ${recommendation.implementation_effort} |
+                            Impact: ${recommendation.estimated_improvement || 'TBD'}
+                        </small>
+                    </div>
+                    <div class="text-end">
+                        <span class="badge bg-priority-${recommendation.priority}">P${recommendation.priority}</span>
+                    </div>
+                </div>
+            `;
+            
+            div.style.cursor = 'pointer';
+            div.addEventListener('click', () => {
+                showRecommendationDetails(recommendation);
+            });
+            
+            return div;
+        }
+
+        function createMetricsTableRow(metricType, metricData) {
+            const row = document.createElement('tr');
+            
+            const deviceCount = metricData.device_count || 0;
+            const stats = metricData.statistics;
+            const unit = metricData.unit || '';
+            
+            // Determine quality based on metric type and values
+            let quality = 'good';
+            if (metricType === 'response_time' && stats) {
+                if (stats.average > 100) quality = 'poor';
+                else if (stats.average > 50) quality = 'fair';
+                else quality = 'excellent';
+            } else if (metricType === 'packet_loss' && stats) {
+                if (stats.average > 2) quality = 'critical';
+                else if (stats.average > 1) quality = 'poor';
+                else if (stats.average > 0) quality = 'fair';
+                else quality = 'excellent';
+            }
+            
+            // Simple trend calculation (just show if current is above/below average)
+            let trendIcon = 'fas fa-minus text-muted';
+            if (stats && stats.max > stats.average * 1.2) {
+                trendIcon = 'fas fa-arrow-up text-danger';
+            } else if (stats && stats.min < stats.average * 0.8) {
+                trendIcon = 'fas fa-arrow-down text-success';
+            }
+            
+            row.innerHTML = `
+                <td>${deviceCount} devices</td>
+                <td>${metricType.replace('_', ' ').toUpperCase()}</td>
+                <td>${stats ? `${stats.average.toFixed(2)} ${unit}` : '--'}</td>
+                <td>${stats ? `${stats.average.toFixed(2)} ${unit}` : '--'}</td>
+                <td><i class="${trendIcon}"></i></td>
+                <td><span class="quality-indicator quality-${quality}"></span>${quality}</td>
+                <td>${new Date().toLocaleTimeString()}</td>
+            `;
+            
+            return row;
+        }
+
+        function getSeverityColor(severity) {
+            const colors = {
+                'critical': 'danger',
+                'high': 'warning',
+                'medium': 'info',
+                'low': 'secondary'
+            };
+            return colors[severity] || 'secondary';
+        }
+
+        function showAlertDetails(alert) {
+            currentAlertId = alert.alert_id;
+            
+            const modalBody = document.getElementById('alert-details');
+            modalBody.innerHTML = `
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6>Alert Information</h6>
+                        <p><strong>Device:</strong> ${alert.device_name || alert.device_id}</p>
+                        <p><strong>Metric:</strong> ${alert.metric_type}</p>
+                        <p><strong>Severity:</strong> <span class="badge bg-${getSeverityColor(alert.severity)}">${alert.severity}</span></p>
+                        <p><strong>Detected:</strong> ${new Date(alert.detected_at).toLocaleString()}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <h6>Performance Data</h6>
+                        <p><strong>Threshold:</strong> ${alert.threshold_value}</p>
+                        <p><strong>Actual Value:</strong> ${alert.actual_value}</p>
+                        <p><strong>Status:</strong> ${alert.status}</p>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <h6>Description</h6>
+                        <p>${alert.description}</p>
+                        ${alert.recommendations && alert.recommendations.length > 0 ? `
+                            <h6>Recommendations</h6>
+                            <ul>
+                                ${alert.recommendations.map(rec => `<li>${rec}</li>`).join('')}
+                            </ul>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+            
+            new bootstrap.Modal(document.getElementById('alertModal')).show();
+        }
+
+        function showRecommendationDetails(recommendation) {
+            currentRecommendationId = recommendation.recommendation_id;
+            
+            const modalBody = document.getElementById('recommendation-details');
+            modalBody.innerHTML = `
+                <div class="row">
+                    <div class="col-md-8">
+                        <h6>${recommendation.title}</h6>
+                        <p>${recommendation.description}</p>
+                        <p><strong>Impact Assessment:</strong> ${recommendation.impact_assessment || 'Not specified'}</p>
+                        <p><strong>Estimated Improvement:</strong> ${recommendation.estimated_improvement || 'TBD'}</p>
+                    </div>
+                    <div class="col-md-4">
+                        <p><strong>Priority:</strong> ${recommendation.priority}/5</p>
+                        <p><strong>Category:</strong> ${recommendation.category}</p>
+                        <p><strong>Effort:</strong> ${recommendation.implementation_effort}</p>
+                        <p><strong>Cost:</strong> ${recommendation.cost_estimate || 'TBD'}</p>
+                    </div>
+                </div>
+                ${recommendation.implementation_steps && recommendation.implementation_steps.length > 0 ? `
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6>Implementation Steps</h6>
+                            <ol>
+                                ${recommendation.implementation_steps.map(step => `<li>${step}</li>`).join('')}
+                            </ol>
+                        </div>
+                    </div>
+                ` : ''}
+            `;
+            
+            new bootstrap.Modal(document.getElementById('recommendationModal')).show();
+        }
+
+        async function runBandwidthTest() {
+            try {
+                const button = document.getElementById('run-bandwidth-test');
+                button.disabled = true;
+                button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
+                
+                const response = await fetch('/api/performance/bandwidth/test', {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    showToast('Bandwidth test initiated', 'success');
+                    // Reload bandwidth data after test completes
+                    setTimeout(loadBandwidthHistory, 35000);  // Wait 35 seconds
+                } else {
+                    throw new Error('Failed to start bandwidth test');
+                }
+            } catch (error) {
+                console.error('Error running bandwidth test:', error);
+                showToast('Failed to start bandwidth test', 'error');
+            } finally {
+                const button = document.getElementById('run-bandwidth-test');
+                button.disabled = false;
+                button.innerHTML = '<i class="fas fa-tachometer-alt"></i> Speed Test';
+            }
+        }
+
+        async function controlPerformanceAnalyzer(action) {
+            try {
+                const response = await fetch(`/api/performance/${action}`, {
+                    method: 'POST'
+                });
+                
+                if (response.ok) {
+                    showToast(`Performance analyzer ${action}ed successfully`, 'success');
+                    setTimeout(loadPerformanceData, 2000);  // Reload data after action
+                } else {
+                    throw new Error(`Failed to ${action} performance analyzer`);
+                }
+            } catch (error) {
+                console.error(`Error ${action}ing performance analyzer:`, error);
+                showToast(`Failed to ${action} performance analyzer`, 'error');
+            }
+        }
+
+        async function acknowledgeAlert(alertId) {
+            try {
+                const response = await fetch(`/api/performance/alerts/${alertId}/acknowledge`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        acknowledged_by: 'dashboard_user',
+                        notes: 'Acknowledged via performance dashboard'
+                    })
+                });
+                
+                if (response.ok) {
+                    showToast('Alert acknowledged successfully', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('alertModal')).hide();
+                    loadPerformanceAlerts();  // Reload alerts
+                } else {
+                    throw new Error('Failed to acknowledge alert');
+                }
+            } catch (error) {
+                console.error('Error acknowledging alert:', error);
+                showToast('Failed to acknowledge alert', 'error');
+            }
+        }
+
+        async function updateRecommendationStatus(recommendationId, status) {
+            try {
+                const response = await fetch(`/api/performance/recommendations/${recommendationId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        status: status,
+                        approved_by: 'dashboard_user',
+                        notes: `${status.charAt(0).toUpperCase() + status.slice(1)} via performance dashboard`
+                    })
+                });
+                
+                if (response.ok) {
+                    showToast(`Recommendation ${status} successfully`, 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('recommendationModal')).hide();
+                    loadOptimizationRecommendations();  // Reload recommendations
+                } else {
+                    throw new Error(`Failed to ${status} recommendation`);
+                }
+            } catch (error) {
+                console.error(`Error ${status}ing recommendation:`, error);
+                showToast(`Failed to ${status} recommendation`, 'error');
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            // Create a simple toast notification
+            const toastContainer = document.getElementById('toast-container') || createToastContainer();
+            
+            const toast = document.createElement('div');
+            toast.className = `toast align-items-center text-white bg-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'primary'} border-0`;
+            toast.setAttribute('role', 'alert');
+            toast.innerHTML = `
+                <div class="d-flex">
+                    <div class="toast-body">${message}</div>
+                    <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+                </div>
+            `;
+            
+            toastContainer.appendChild(toast);
+            
+            const bsToast = new bootstrap.Toast(toast);
+            bsToast.show();
+            
+            // Remove toast after it's hidden
+            toast.addEventListener('hidden.bs.toast', () => {
+                toast.remove();
+            });
+        }
+
+        function createToastContainer() {
+            const container = document.createElement('div');
+            container.id = 'toast-container';
+            container.className = 'toast-container position-fixed bottom-0 end-0 p-3';
+            container.style.zIndex = '1055';
+            document.body.appendChild(container);
+            return container;
+        }
+    </script>
+</body>
+</html>

@@ -1,8 +1,13 @@
-{% extends "base.html" %}
+{% extends "base_with_quickstats.html" %}
 
 {% block title %}Network Health Overview - HomeNetMon{% endblock %}
 
 {% block content %}
+<!-- Toast Container -->
+<div class="toast-container position-fixed top-0 end-0 p-3" style="z-index: 11;">
+    <!-- Toasts will be dynamically added here -->
+</div>
+
 <div id="health-overview-container">
     
     <!-- Critical Alerts Banner -->
@@ -47,7 +52,8 @@
                                             transform="rotate(-90 100 100)"/>
                                 </svg>
                                 <div class="health-score-content">
-                                    <div id="health-score-value" class="health-score-number">--</div>
+                                    <div id="health-score-value" class="health-score-number" 
+                                         aria-live="polite" aria-label="Network health score">--</div>
                                     <div class="health-score-label">Health Score</div>
                                     <div class="network-pulse">
                                         <div class="pulse-dot"></div>
@@ -76,9 +82,12 @@
                             <div class="metric-icon text-success mb-2">
                                 <i class="bi bi-wifi fs-1"></i>
                             </div>
-                            <div class="metric-value text-success" id="devices-online-count">--</div>
+                            <div class="metric-value text-success" id="devices-online-count" aria-label="Devices online count">--</div>
                             <div class="metric-label">Devices Online</div>
-                            <div class="metric-percentage text-muted" id="devices-online-percentage">--</div>
+                            <div class="metric-percentage text-muted" id="devices-online-percentage" aria-label="Online percentage">--</div>
+                            <div class="accessibility-indicator" aria-hidden="true">
+                                <span class="badge bg-success">✓ Online</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -90,9 +99,12 @@
                             <div class="metric-icon text-danger mb-2">
                                 <i class="bi bi-wifi-off fs-1"></i>
                             </div>
-                            <div class="metric-value text-danger" id="devices-offline-count">--</div>
+                            <div class="metric-value text-danger" id="devices-offline-count" aria-label="Devices offline count">--</div>
                             <div class="metric-label">Devices Offline</div>
-                            <div class="metric-trend" id="devices-offline-trend">--</div>
+                            <div class="metric-trend" id="devices-offline-trend" aria-label="Offline trend">--</div>
+                            <div class="accessibility-indicator" aria-hidden="true">
+                                <span class="badge bg-danger">✗ Offline</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -108,6 +120,9 @@
                                 <span id="avg-response-time">--</span><small class="metric-unit">ms</small>
                             </div>
                             <div class="metric-label">Avg Response</div>
+                            <div class="metric-trend-indicator" id="response-trend">
+                                <small class="text-muted">--</small>
+                            </div>
                             <div class="metric-sparkline">
                                 <canvas id="response-sparkline" width="100" height="30"></canvas>
                             </div>
@@ -126,6 +141,9 @@
                                 <span id="network-uptime">--</span><small class="metric-unit">%</small>
                             </div>
                             <div class="metric-label">24h Uptime</div>
+                            <div class="metric-trend-indicator" id="uptime-trend">
+                                <small class="text-muted">--</small>
+                            </div>
                             <div class="metric-bar">
                                 <div class="uptime-bar">
                                     <div id="uptime-bar-fill" class="uptime-bar-fill"></div>
@@ -326,20 +344,39 @@ class HealthOverviewDashboard {
         }
     }
 
-    async loadHealthData() {
+    async loadHealthData(retryCount = 0) {
         try {
             const response = await fetch('/api/health/overview');
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
             const data = await response.json();
             
             if (data.success) {
                 this.updateHealthData(data);
+                // Clear any previous connection warnings on success
+                if (retryCount > 0) {
+                    this.showSuccess('Connection restored');
+                }
             } else {
-                console.error('Failed to load health data:', data.error);
-                this.showError('Failed to load network health data');
+                throw new Error(data.error || 'Unknown server error');
             }
         } catch (error) {
             console.error('Error loading health data:', error);
-            this.showError('Network error loading health data');
+            
+            // Retry logic for network errors
+            if (retryCount < 3) {
+                const delay = Math.pow(2, retryCount) * 1000; // Exponential backoff
+                this.showWarning(`Connection issue, retrying in ${delay/1000}s... (${retryCount + 1}/3)`);
+                
+                setTimeout(() => {
+                    this.loadHealthData(retryCount + 1);
+                }, delay);
+            } else {
+                this.showError('Unable to load network health data. Please check your connection.');
+            }
         }
     }
 
@@ -362,6 +399,11 @@ class HealthOverviewDashboard {
         // Update last updated time
         const lastUpdated = new Date().toLocaleTimeString();
         document.getElementById('last-updated-time').textContent = lastUpdated;
+        
+        // Update historical comparisons
+        if (data.historical_comparisons) {
+            this.updateHistoricalComparisons(data.historical_comparisons);
+        }
     }
 
     updateHealthScore(score, statusSummary) {
@@ -438,8 +480,20 @@ class HealthOverviewDashboard {
     }
 
     updateBandwidth(bandwidth) {
-        document.getElementById('download-speed').textContent = bandwidth.download_mbps || '--';
-        document.getElementById('upload-speed').textContent = bandwidth.upload_mbps || '--';
+        const downloadElement = document.getElementById('download-speed');
+        const uploadElement = document.getElementById('upload-speed');
+        
+        if (bandwidth.available) {
+            // Show actual bandwidth data
+            downloadElement.textContent = bandwidth.download_mbps.toFixed(2);
+            uploadElement.textContent = bandwidth.upload_mbps.toFixed(2);
+            downloadElement.parentElement.parentElement.title = `Last updated: ${new Date(bandwidth.timestamp).toLocaleTimeString()}`;
+        } else {
+            // Show unavailable status
+            downloadElement.textContent = 'N/A';
+            uploadElement.textContent = 'N/A';
+            downloadElement.parentElement.parentElement.title = 'Bandwidth monitoring not available';
+        }
     }
 
     updateActivityFeed(activities) {
@@ -660,9 +714,107 @@ class HealthOverviewDashboard {
         return iconMap[deviceType] || iconMap['unknown'];
     }
 
+    updateHistoricalComparisons(comparisons) {
+        // Update response time trend
+        const responseTrend = document.getElementById('response-trend');
+        if (responseTrend && comparisons.response_time) {
+            const rt = comparisons.response_time;
+            const change = rt.percentage_change;
+            const trendIcon = change > 0 ? '↑' : change < 0 ? '↓' : '→';
+            const trendClass = change > 0 ? 'text-danger' : change < 0 ? 'text-success' : 'text-muted';
+            
+            responseTrend.innerHTML = `
+                <small class="${trendClass}">
+                    ${trendIcon} ${Math.abs(change)}% vs yesterday
+                </small>
+            `;
+        }
+        
+        // Update uptime trend
+        const uptimeTrend = document.getElementById('uptime-trend');
+        if (uptimeTrend && comparisons.uptime) {
+            const ut = comparisons.uptime;
+            const change = ut.change;
+            const trendIcon = change > 0 ? '↑' : change < 0 ? '↓' : '→';
+            const trendClass = change > 0 ? 'text-success' : change < 0 ? 'text-danger' : 'text-muted';
+            
+            uptimeTrend.innerHTML = `
+                <small class="${trendClass}">
+                    ${trendIcon} ${Math.abs(change)}% vs yesterday
+                </small>
+            `;
+        }
+        
+        // Update devices offline trend (if available)
+        const offlineTrend = document.getElementById('devices-offline-trend');
+        if (offlineTrend && comparisons.alerts) {
+            const alerts = comparisons.alerts;
+            const change = alerts.change;
+            const trendIcon = change > 0 ? '↑' : change < 0 ? '↓' : '→';
+            const trendClass = change > 0 ? 'text-danger' : change < 0 ? 'text-success' : 'text-muted';
+            
+            offlineTrend.innerHTML = `
+                <small class="${trendClass}">
+                    ${trendIcon} ${Math.abs(change)} alerts vs yesterday
+                </small>
+            `;
+        }
+    }
+
     showError(message) {
-        // Simple error display - could be enhanced with toast notifications
         console.error(message);
+        this.showToast(message, 'error');
+    }
+    
+    showToast(message, type = 'info', duration = 5000) {
+        const toastContainer = document.querySelector('.toast-container');
+        const toastId = `toast-${Date.now()}`;
+        
+        const toastTypes = {
+            'success': { icon: 'check-circle-fill', class: 'text-bg-success' },
+            'error': { icon: 'exclamation-triangle-fill', class: 'text-bg-danger' },
+            'warning': { icon: 'exclamation-circle-fill', class: 'text-bg-warning' },
+            'info': { icon: 'info-circle-fill', class: 'text-bg-info' }
+        };
+        
+        const toastType = toastTypes[type] || toastTypes['info'];
+        
+        const toastHTML = `
+            <div id="${toastId}" class="toast ${toastType.class}" role="alert" aria-live="assertive" aria-atomic="true">
+                <div class="toast-header">
+                    <i class="bi bi-${toastType.icon} me-2"></i>
+                    <strong class="me-auto">HomeNetMon</strong>
+                    <small>now</small>
+                    <button type="button" class="btn-close" data-bs-dismiss="toast"></button>
+                </div>
+                <div class="toast-body">
+                    ${message}
+                </div>
+            </div>
+        `;
+        
+        toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+        
+        const toastElement = document.getElementById(toastId);
+        const toast = new bootstrap.Toast(toastElement, {
+            autohide: true,
+            delay: duration
+        });
+        
+        toast.show();
+        
+        // Auto-remove toast element after it's hidden
+        toastElement.addEventListener('hidden.bs.toast', () => {
+            toastElement.remove();
+        });
+    }
+    
+    showSuccess(message) {
+        this.showToast(message, 'success');
+    }
+    
+    showWarning(message) {
+        this.showToast(message, 'warning');
     }
 }
 
@@ -693,31 +845,35 @@ function toggleTopologyLayout() {
 
 async function triggerNetworkScan() {
     try {
+        dashboard.showToast('Starting network scan...', 'info');
+        
         const response = await fetch('/api/monitoring/scan', { method: 'POST' });
         const result = await response.json();
         
         if (result.success) {
-            alert('Network scan initiated successfully!');
+            dashboard.showSuccess('Network scan initiated successfully!');
         } else {
-            alert('Failed to start network scan: ' + result.error);
+            dashboard.showError('Failed to start network scan: ' + result.error);
         }
     } catch (error) {
-        alert('Error starting network scan: ' + error.message);
+        dashboard.showError('Network error: Unable to start scan. Please check your connection.');
     }
 }
 
 async function pingAllDevices() {
     try {
+        dashboard.showToast('Pinging all devices...', 'info');
+        
         const response = await fetch('/api/monitoring/ping-all', { method: 'POST' });
         const result = await response.json();
         
         if (result.success) {
-            alert('Ping all devices initiated successfully!');
+            dashboard.showSuccess('Ping all devices initiated successfully!');
         } else {
-            alert('Failed to ping devices: ' + result.error);
+            dashboard.showError('Failed to ping devices: ' + result.error);
         }
     } catch (error) {
-        alert('Error pinging devices: ' + error.message);
+        dashboard.showError('Network error: Unable to ping devices. Please check your connection.');
     }
 }
 </script>
@@ -942,6 +1098,57 @@ async function pingAllDevices() {
 /* Purple color for bandwidth metric */
 .text-purple {
     color: #6f42c1 !important;
+}
+
+/* Accessibility improvements */
+.accessibility-indicator {
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    opacity: 0.8;
+    font-size: 0.7rem;
+}
+
+/* Enhanced focus indicators */
+.status-metric-card:focus-within {
+    outline: 3px solid #007bff;
+    outline-offset: 2px;
+}
+
+/* Respect user motion preferences */
+@media (prefers-reduced-motion: reduce) {
+    .health-circle-progress {
+        transition: none;
+    }
+    
+    .pulse-dot {
+        animation: none !important;
+    }
+    
+    .animate-pulse {
+        animation: none !important;
+    }
+    
+    * {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .health-circle-progress {
+        stroke-width: 12;
+    }
+    
+    .accessibility-indicator .badge {
+        border: 2px solid currentColor;
+    }
+    
+    .status-metric-card {
+        border: 2px solid #000;
+    }
 }
 
 /* Network Topology Styles */

@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base_with_quickstats.html" %}
 
 {% block title %}AI Dashboard - HomeNetMon{% endblock %}
 
@@ -37,6 +37,42 @@
     </div>
 </div>
 
+<!-- Mobile-first AI Overview -->
+<div class="d-block d-lg-none mb-4">
+    <div class="card">
+        <div class="card-body">
+            <div class="row text-center g-3">
+                <div class="col-6">
+                    <div id="mobile-ai-status" class="h4 mb-1">--</div>
+                    <div class="small text-muted">AI Status</div>
+                </div>
+                <div class="col-6">
+                    <div id="mobile-anomalies" class="h4 mb-1">--</div>
+                    <div class="small text-muted">Anomalies</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- AI Model Status Banner -->
+<div class="row mb-3" id="ai-model-status-banner" style="display: none;">
+    <div class="col-12">
+        <div class="card border-info bg-info bg-opacity-10">
+            <div class="card-body py-2">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-robot text-info me-2"></i>
+                    <div class="flex-grow-1">
+                        <small class="fw-medium text-info">AI Model Status: </small>
+                        <span id="ai-model-status-text" class="small">Checking...</span>
+                    </div>
+                    <small class="text-muted" id="ai-model-last-update">Last updated: --</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- AI Status Cards -->
 <div class="row mb-4">
     <div class="col-md-3">
@@ -44,7 +80,12 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h6 class="card-title">Detection Status</h6>
+                        <h6 class="card-title">
+                            Detection Status
+                            <button class="btn btn-sm btn-link text-white p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Shows whether AI anomaly detection is actively running or stopped. When running, the system continuously monitors for unusual patterns.">
+                                <i class="bi bi-question-circle"></i>
+                            </button>
+                        </h6>
                         <h4 id="detection-status" class="mb-0">Loading...</h4>
                     </div>
                     <div class="align-self-center">
@@ -59,7 +100,12 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h6 class="card-title">Anomalies (24h)</h6>
+                        <h6 class="card-title">
+                            Anomalies (24h)
+                            <button class="btn btn-sm btn-link text-white p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Number of unusual patterns detected in the last 24 hours. These are deviations from normal network behavior that require attention.">
+                                <i class="bi bi-question-circle"></i>
+                            </button>
+                        </h6>
                         <h4 id="total-anomalies" class="mb-0">--</h4>
                     </div>
                     <div class="align-self-center">
@@ -74,8 +120,13 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h6 class="card-title">Avg Confidence</h6>
-                        <h4 id="avg-confidence" class="mb-0">--%</h4>
+                        <h6 class="card-title">
+                            Detection Quality
+                            <button class="btn btn-sm btn-link text-white p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Average confidence level of AI detections. High = Very reliable, Medium = Generally reliable, Low = Needs verification.">
+                                <i class="bi bi-question-circle"></i>
+                            </button>
+                        </h6>
+                        <h4 id="avg-confidence" class="mb-0">--</h4>
                     </div>
                     <div class="align-self-center">
                         <i class="bi bi-graph-up fa-2x"></i>
@@ -89,7 +140,12 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h6 class="card-title">High Priority</h6>
+                        <h6 class="card-title">
+                            High Priority
+                            <button class="btn btn-sm btn-link text-white p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Critical and high severity anomalies that require immediate attention. These may indicate serious network issues.">
+                                <i class="bi bi-question-circle"></i>
+                            </button>
+                        </h6>
                         <h4 id="high-priority-count" class="mb-0">--</h4>
                     </div>
                     <div class="align-self-center">
@@ -106,7 +162,12 @@
     <div class="col-lg-6">
         <div class="card">
             <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Anomaly Distribution</h6>
+                <h6 class="mb-0">
+                    <i class="bi bi-pie-chart"></i> Anomaly Distribution
+                    <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Shows the types of anomalies detected (response time, uptime pattern, connectivity issues). Helps identify which areas of your network need attention.">
+                        <i class="bi bi-question-circle"></i>
+                    </button>
+                </h6>
             </div>
             <div class="card-body">
                 <canvas id="anomaly-distribution-chart" style="height: 300px;"></canvas>
@@ -116,7 +177,12 @@
     <div class="col-lg-6">
         <div class="card">
             <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Severity Breakdown</h6>
+                <h6 class="mb-0">
+                    <i class="bi bi-bar-chart"></i> Severity Breakdown
+                    <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Shows the urgency levels of detected anomalies. Critical and High require immediate action, Medium should be investigated, Low can be monitored.">
+                        <i class="bi bi-question-circle"></i>
+                    </button>
+                </h6>
             </div>
             <div class="card-body">
                 <canvas id="severity-chart" style="height: 300px;"></canvas>
@@ -130,7 +196,12 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="bi bi-list-check"></i> Recent Anomaly Alerts</h6>
+                <h6 class="mb-0">
+                    <i class="bi bi-list-check"></i> Recent Anomaly Alerts
+                    <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Chronological list of AI-detected anomalies. Click on any row for detailed information and recommended actions.">
+                        <i class="bi bi-question-circle"></i>
+                    </button>
+                </h6>
                 <div class="btn-group btn-group-sm">
                     <button class="btn btn-outline-secondary time-filter" data-hours="24">24h</button>
                     <button class="btn btn-outline-secondary time-filter" data-hours="168">7d</button>
@@ -155,7 +226,12 @@
     <div class="col-lg-6">
         <div class="card">
             <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-router"></i> Most Affected Devices</h6>
+                <h6 class="mb-0">
+                    <i class="bi bi-router"></i> Most Affected Devices
+                    <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Devices with the highest number of anomalies. These may need immediate attention or configuration changes.">
+                        <i class="bi bi-question-circle"></i>
+                    </button>
+                </h6>
             </div>
             <div class="card-body">
                 <div id="affected-devices-list">
@@ -170,24 +246,49 @@
     </div>
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-gear"></i> AI Settings</h6>
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">
+                    <i class="bi bi-gear"></i> AI Detection Settings
+                    <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Configure how the AI system detects anomalies. Changes take effect immediately and may impact detection sensitivity.">
+                        <i class="bi bi-question-circle"></i>
+                    </button>
+                </h6>
+                <button class="btn btn-sm btn-outline-secondary" id="reset-ai-settings" data-bs-toggle="tooltip" title="Reset to recommended defaults">
+                    <i class="bi bi-arrow-clockwise"></i> Reset
+                </button>
             </div>
             <div class="card-body">
                 <form id="ai-settings-form">
                     <div class="mb-3">
-                        <label class="form-label">Detection Interval (minutes)</label>
+                        <label class="form-label">
+                            Detection Interval (minutes)
+                            <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" title="How often AI checks for anomalies. Lower values = more frequent checks but higher system load. Recommended: 5 minutes.">
+                                <i class="bi bi-question-circle"></i>
+                            </button>
+                        </label>
                         <input type="number" class="form-control" id="detection-interval" min="1" max="60" value="5">
+                        <small class="form-text text-muted">Recommended: 5 minutes for optimal balance</small>
+                        <div id="interval-impact" class="small mt-1" style="display: none;"></div>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Baseline Period (hours)</label>
+                        <label class="form-label">
+                            Baseline Period (hours)
+                            <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" title="Historical data period used to establish 'normal' behavior. Longer periods = more stable baselines but slower adaptation. Recommended: 168 hours (7 days).">
+                                <i class="bi bi-question-circle"></i>
+                            </button>
+                        </label>
                         <input type="number" class="form-control" id="baseline-hours" min="24" max="720" value="168">
+                        <small class="form-text text-muted">Recommended: 168 hours (7 days) for stable detection</small>
+                        <div id="baseline-impact" class="small mt-1" style="display: none;"></div>
                     </div>
                     <div class="mb-3">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="response-time-detection" checked>
                             <label class="form-check-label" for="response-time-detection">
                                 Response Time Anomaly Detection
+                                <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" title="Detects when devices respond slower than usual. Helps identify network congestion or device performance issues.">
+                                    <i class="bi bi-question-circle"></i>
+                                </button>
                             </label>
                         </div>
                     </div>
@@ -196,6 +297,9 @@
                             <input class="form-check-input" type="checkbox" id="uptime-pattern-detection" checked>
                             <label class="form-check-label" for="uptime-pattern-detection">
                                 Uptime Pattern Detection
+                                <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" title="Identifies unusual device availability patterns. Detects when devices go offline unexpectedly or have irregular connectivity.">
+                                    <i class="bi bi-question-circle"></i>
+                                </button>
                             </label>
                         </div>
                     </div>
@@ -204,6 +308,9 @@
                             <input class="form-check-input" type="checkbox" id="connectivity-pattern-detection" checked>
                             <label class="form-check-label" for="connectivity-pattern-detection">
                                 Connectivity Pattern Detection
+                                <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" title="Monitors for unusual connection behaviors and network activity patterns. Helps identify potential security issues or configuration problems.">
+                                    <i class="bi bi-question-circle"></i>
+                                </button>
                             </label>
                         </div>
                     </div>
@@ -231,12 +338,23 @@
     };
 
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
         loadAIData();
         
         // Event listeners
         document.getElementById('refresh-ai-data').addEventListener('click', loadAIData);
         document.getElementById('run-detection').addEventListener('click', runManualDetection);
         document.getElementById('ai-settings-form').addEventListener('submit', updateAISettings);
+        document.getElementById('reset-ai-settings').addEventListener('click', resetAISettings);
+        
+        // Add real-time validation and impact preview
+        document.getElementById('detection-interval').addEventListener('input', validateDetectionInterval);
+        document.getElementById('baseline-hours').addEventListener('input', validateBaselineHours);
         
         // Time filter buttons with debouncing
         let filterDebounceTimer = null;
@@ -287,7 +405,32 @@
             ]);
         } catch (error) {
             console.error('Error loading AI data:', error);
-            showToast('Error loading AI dashboard data', 'error');
+            
+            // Provide specific error feedback
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                showToast('AI service unavailable. Check network connection.', 'error');
+            } else if (error.message.includes('404')) {
+                showToast('AI endpoints not found. Service may not be configured.', 'error');
+            } else if (error.message.includes('500')) {
+                showToast('AI service error. Please try again in a moment.', 'error');
+            } else {
+                showToast('Error loading AI dashboard data', 'error');
+            }
+            
+            // Add retry button to refresh button
+            const refreshBtn = document.getElementById('refresh-ai-data');
+            if (refreshBtn && !refreshBtn.classList.contains('btn-warning')) {
+                refreshBtn.classList.remove('btn-outline-primary');
+                refreshBtn.classList.add('btn-warning');
+                refreshBtn.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Retry';
+                
+                // Reset after successful load
+                setTimeout(() => {
+                    refreshBtn.classList.remove('btn-warning');
+                    refreshBtn.classList.add('btn-outline-primary');
+                    refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh';
+                }, 5000);
+            }
         }
     }
     
@@ -298,15 +441,40 @@
             
             if (data.success) {
                 const status = data.status;
-                document.getElementById('detection-status').textContent = status.running ? 'Running' : 'Stopped';
+                const statusText = status.running ? 'Running' : 'Stopped';
+                document.getElementById('detection-status').textContent = statusText;
+                
+                // Update mobile summary
+                const mobileStatus = document.getElementById('mobile-ai-status');
+                if (mobileStatus) {
+                    mobileStatus.textContent = statusText;
+                    mobileStatus.style.color = status.running ? '#28a745' : '#dc3545';
+                }
                 
                 // Update the status card color
                 const statusCard = document.getElementById('detection-status').closest('.card');
                 statusCard.className = status.running ? 'card bg-success text-white' : 'card bg-danger text-white';
+                
+                // Update AI model status banner
+                updateAIModelStatus(status);
             }
         } catch (error) {
             console.error('Error loading AI status:', error);
-            document.getElementById('detection-status').textContent = 'Error';
+            document.getElementById('detection-status').textContent = 'Connection Error';
+            
+            // Show specific error message
+            const banner = document.getElementById('ai-model-status-banner');
+            const statusText = document.getElementById('ai-model-status-text');
+            statusText.textContent = 'Unable to connect to AI service. Click refresh to retry.';
+            statusText.className = 'small text-danger';
+            banner.style.display = 'block';
+            
+            // Update mobile status
+            const mobileStatus = document.getElementById('mobile-ai-status');
+            if (mobileStatus) {
+                mobileStatus.textContent = 'Error';
+                mobileStatus.style.color = '#dc3545';
+            }
         }
     }
     
@@ -326,9 +494,20 @@
                 const stats = data.statistics;
                 
                 // Update summary cards
-                document.getElementById('total-anomalies').textContent = stats.total_anomalies || 0;
-                document.getElementById('avg-confidence').textContent = 
-                    stats.avg_confidence ? `${(stats.avg_confidence * 100).toFixed(1)}%` : '0%';
+                const totalAnomalies = stats.total_anomalies || 0;
+                document.getElementById('total-anomalies').textContent = totalAnomalies;
+                
+                // Update mobile anomalies count
+                const mobileAnomalies = document.getElementById('mobile-anomalies');
+                if (mobileAnomalies) {
+                    mobileAnomalies.textContent = totalAnomalies;
+                    mobileAnomalies.style.color = totalAnomalies === 0 ? '#28a745' : '#ffc107';
+                }
+                
+                // Interpret confidence score
+                const confidenceScore = stats.avg_confidence || 0;
+                const confidenceText = interpretConfidenceScore(confidenceScore);
+                document.getElementById('avg-confidence').textContent = confidenceText;
                 
                 const highPriority = (stats.by_severity.high || 0) + (stats.by_severity.critical || 0);
                 document.getElementById('high-priority-count').textContent = highPriority;
@@ -626,14 +805,21 @@
                             <th>Severity</th>
                             <th>Confidence</th>
                             <th>Message</th>
+                            <th>Recommended Action</th>
                             <th>Time</th>
+                            <th>Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${uniqueAlerts.map((alert, index) => `
-                            <tr data-alert-id="${alert.id}" data-device="${alert.device_name}">
+                        ${uniqueAlerts.map((alert, index) => {
+                            const recommendedAction = getRecommendedAction(alert.alert_type, alert.severity);
+                            return `
+                            <tr data-alert-id="${alert.id}" data-device="${alert.device_name}" class="anomaly-row" style="cursor: pointer;" onclick="toggleAnomalyDetails(${alert.id})">
                                 <td>
-                                    <span class="fw-bold">${alert.device_name}</span>
+                                    <div class="d-flex align-items-center">
+                                        <i class="bi bi-chevron-right expand-icon me-2" id="expand-${alert.id}"></i>
+                                        <span class="fw-bold">${alert.device_name}</span>
+                                    </div>
                                 </td>
                                 <td>
                                     <span class="badge bg-info">${alert.alert_type.replace('_', ' ')}</span>
@@ -645,22 +831,83 @@
                                     <div class="progress" style="width: 60px; height: 8px;">
                                         <div class="progress-bar" style="width: ${alert.confidence * 100}%"></div>
                                     </div>
-                                    <small>${(alert.confidence * 100).toFixed(1)}%</small>
+                                    <small>${interpretConfidenceScore(alert.confidence)}</small>
                                 </td>
                                 <td>
                                     <small class="text-truncate" style="max-width: 200px;" title="${alert.message}">${alert.message}</small>
                                 </td>
                                 <td>
+                                    <small class="text-primary">${recommendedAction}</small>
+                                </td>
+                                <td>
                                     <small>${new Date(alert.created_at).toLocaleString()}</small>
                                 </td>
+                                <td>
+                                    <div class="btn-group btn-group-sm">
+                                        <button class="btn btn-outline-primary btn-sm view-device" data-device-id="${alert.device_id}" title="View Device Details">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <button class="btn btn-outline-success btn-sm acknowledge-alert" data-alert-id="${alert.id}" title="Acknowledge Alert">
+                                            <i class="bi bi-check"></i>
+                                        </button>
+                                    </div>
+                                </td>
                             </tr>
-                        `).join('')}
+                            <tr id="details-${alert.id}" class="anomaly-details" style="display: none;">
+                                <td colspan="8" class="bg-light">
+                                    <div class="p-3">
+                                        <div class="row">
+                                            <div class="col-md-6">
+                                                <h6 class="text-muted">Detection Details</h6>
+                                                <table class="table table-sm table-borderless">
+                                                    <tr><td class="fw-medium">Baseline Value:</td><td>${alert.baseline_value || 'N/A'}</td></tr>
+                                                    <tr><td class="fw-medium">Current Value:</td><td>${alert.current_value || 'N/A'}</td></tr>
+                                                    <tr><td class="fw-medium">Threshold:</td><td>${alert.threshold || 'N/A'}</td></tr>
+                                                    <tr><td class="fw-medium">Full Message:</td><td>${alert.message}</td></tr>
+                                                </table>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <h6 class="text-muted">Next Steps</h6>
+                                                <div class="alert alert-info p-2 mb-0">
+                                                    <small><strong>Recommended:</strong> ${recommendedAction}</small>
+                                                    <hr class="my-2">
+                                                    <small>
+                                                        <strong>Priority:</strong> 
+                                                        ${alert.severity.charAt(0).toUpperCase() + alert.severity.slice(1)} severity - 
+                                                        ${alert.severity === 'critical' ? 'Immediate action required' : 
+                                                          alert.severity === 'high' ? 'Address within 1 hour' :
+                                                          alert.severity === 'medium' ? 'Address within 4 hours' :
+                                                          'Monitor and document'}
+                                                    </small>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </td>
+                            </tr>
+                            `;
+                        }).join('')}
                     </tbody>
                 </table>
             </div>
         `;
         
         container.innerHTML = table;
+        
+        // Add event listeners for action buttons
+        document.querySelectorAll('.view-device').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const deviceId = e.target.closest('.view-device').dataset.deviceId;
+                window.location.href = `/device/${deviceId}`;
+            });
+        });
+        
+        document.querySelectorAll('.acknowledge-alert').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                const alertId = e.target.closest('.acknowledge-alert').dataset.alertId;
+                acknowledgeAlert(alertId, e.target.closest('.acknowledge-alert'));
+            });
+        });
     }
     
     function updateAffectedDevicesList(devices) {
@@ -706,6 +953,175 @@
             'critical': 'dark'
         };
         return colors[severity] || 'secondary';
+    }
+    
+    function interpretConfidenceScore(score) {
+        if (score >= 0.8) {
+            return 'High';
+        } else if (score >= 0.6) {
+            return 'Medium';
+        } else if (score >= 0.3) {
+            return 'Low';
+        } else {
+            return 'Very Low';
+        }
+    }
+    
+    function updateAIModelStatus(status) {
+        const banner = document.getElementById('ai-model-status-banner');
+        const statusText = document.getElementById('ai-model-status-text');
+        const lastUpdate = document.getElementById('ai-model-last-update');
+        
+        if (status.running) {
+            statusText.textContent = 'Active and monitoring';
+            statusText.className = 'small text-success';
+        } else {
+            statusText.textContent = 'Inactive - detection stopped';
+            statusText.className = 'small text-warning';
+        }
+        
+        // Show the banner
+        banner.style.display = 'block';
+        
+        // Update last update time (you may want to get this from the API)
+        lastUpdate.textContent = `Last updated: ${new Date().toLocaleString()}`;
+    }
+    
+    function resetAISettings() {
+        // Confirmation dialog
+        if (confirm('Reset AI settings to recommended defaults? This will optimize detection for typical home networks.')) {
+            // Reset form values to defaults
+            document.getElementById('detection-interval').value = 5;
+            document.getElementById('baseline-hours').value = 168;
+            document.getElementById('response-time-detection').checked = true;
+            document.getElementById('uptime-pattern-detection').checked = true;
+            document.getElementById('connectivity-pattern-detection').checked = true;
+            
+            // Trigger form submission to save the defaults
+            document.getElementById('ai-settings-form').dispatchEvent(new Event('submit'));
+        }
+    }
+    
+    function getRecommendedAction(alertType, severity) {
+        const actions = {
+            'response_time': {
+                'critical': 'Investigate immediately - possible device failure',
+                'high': 'Check device and network connectivity',
+                'medium': 'Monitor device performance',
+                'low': 'Continue normal monitoring'
+            },
+            'uptime_pattern': {
+                'critical': 'Check power and physical connectivity',
+                'high': 'Verify device configuration and stability',
+                'medium': 'Monitor for recurring patterns',
+                'low': 'Note for trend analysis'
+            },
+            'connectivity_pattern': {
+                'critical': 'Check for security issues or device problems',
+                'high': 'Review network configuration and logs',
+                'medium': 'Monitor for unusual activity',
+                'low': 'Document pattern for analysis'
+            }
+        };
+        
+        const typeActions = actions[alertType] || actions['response_time'];
+        return typeActions[severity] || 'Review device status';
+    }
+    
+    async function acknowledgeAlert(alertId, buttonElement) {
+        try {
+            buttonElement.disabled = true;
+            buttonElement.innerHTML = '<i class="bi bi-hourglass-split"></i>';
+            
+            const response = await fetch(`/api/alerts/${alertId}/acknowledge`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Update button to show acknowledged state
+                buttonElement.innerHTML = '<i class="bi bi-check-circle"></i>';
+                buttonElement.classList.remove('btn-outline-success');
+                buttonElement.classList.add('btn-success');
+                buttonElement.title = 'Acknowledged';
+                
+                // Fade out the row
+                const row = buttonElement.closest('tr');
+                row.style.opacity = '0.5';
+                
+                showToast('Alert acknowledged successfully', 'success');
+            } else {
+                throw new Error(data.error || 'Failed to acknowledge alert');
+            }
+        } catch (error) {
+            console.error('Error acknowledging alert:', error);
+            buttonElement.disabled = false;
+            buttonElement.innerHTML = '<i class="bi bi-check"></i>';
+            showToast('Failed to acknowledge alert', 'error');
+        }
+    }
+    
+    function validateDetectionInterval() {
+        const input = document.getElementById('detection-interval');
+        const impact = document.getElementById('interval-impact');
+        const value = parseInt(input.value);
+        
+        impact.style.display = 'block';
+        
+        if (value < 2) {
+            impact.className = 'small mt-1 text-warning';
+            impact.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Very frequent detection may impact system performance';
+        } else if (value > 10) {
+            impact.className = 'small mt-1 text-info';
+            impact.innerHTML = '<i class="bi bi-info-circle"></i> Slower detection may miss short-duration anomalies';
+        } else if (value === 5) {
+            impact.className = 'small mt-1 text-success';
+            impact.innerHTML = '<i class="bi bi-check-circle"></i> Optimal setting for most networks';
+        } else {
+            impact.className = 'small mt-1 text-muted';
+            impact.innerHTML = '<i class="bi bi-info-circle"></i> Balanced detection frequency';
+        }
+    }
+    
+    function validateBaselineHours() {
+        const input = document.getElementById('baseline-hours');
+        const impact = document.getElementById('baseline-impact');
+        const value = parseInt(input.value);
+        
+        impact.style.display = 'block';
+        
+        if (value < 72) {
+            impact.className = 'small mt-1 text-warning';
+            impact.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Short baseline period may result in unstable detection';
+        } else if (value > 336) {
+            impact.className = 'small mt-1 text-info';
+            impact.innerHTML = '<i class="bi bi-info-circle"></i> Long baseline period may be slow to adapt to changes';
+        } else if (value === 168) {
+            impact.className = 'small mt-1 text-success';
+            impact.innerHTML = '<i class="bi bi-check-circle"></i> Optimal setting for stable and adaptive detection';
+        } else {
+            impact.className = 'small mt-1 text-muted';
+            impact.innerHTML = '<i class="bi bi-info-circle"></i> Reasonable baseline period for most scenarios';
+        }
+    }
+    
+    function toggleAnomalyDetails(alertId) {
+        const detailsRow = document.getElementById(`details-${alertId}`);
+        const expandIcon = document.getElementById(`expand-${alertId}`);
+        
+        if (detailsRow.style.display === 'none') {
+            detailsRow.style.display = 'table-row';
+            expandIcon.classList.remove('bi-chevron-right');
+            expandIcon.classList.add('bi-chevron-down');
+        } else {
+            detailsRow.style.display = 'none';
+            expandIcon.classList.remove('bi-chevron-down');
+            expandIcon.classList.add('bi-chevron-right');
+        }
     }
 </script>
 {% endblock %}

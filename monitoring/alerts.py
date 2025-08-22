@@ -91,7 +91,7 @@ class AlertManager:
                     # Only alert if device hasn't been seen AND has consecutive failures AND has poor recent uptime
                     # This prevents alerts for devices with good long-term uptime but temporary issues
                     try:
-                        device_uptime = device.uptime_percentage
+                        device_uptime = device.uptime_percentage()
                     except Exception:
                         device_uptime = 100  # Default to good uptime if calculation fails
                         
@@ -136,6 +136,9 @@ class AlertManager:
                                 
                                 # Send notifications
                                 self.send_alert_notifications(alert)
+                                
+                                # Emit real-time update
+                                self._emit_alert_update(alert, 'created')
                                 
                                 # Trigger rule engine for device down event
                                 self._trigger_rule_engine_for_alert(alert, device, 'device_down')
@@ -208,6 +211,9 @@ class AlertManager:
                         # Send notifications
                         self.send_alert_notifications(alert)
                         
+                        # Emit real-time update
+                        self._emit_alert_update(alert, 'created')
+                        
                         # Send enhanced push notification for high latency
                         self._send_high_latency_push_notification(device, avg_latency)
                         
@@ -266,6 +272,9 @@ class AlertManager:
                             # Send notifications
                             self.send_alert_notifications(recovery_alert)
                             
+                            # Emit real-time update
+                            self._emit_alert_update(recovery_alert, 'created')
+                            
                             # Send dedicated device recovery push notification
                             self._send_device_recovery_push_notification(device)
                             
@@ -303,6 +312,7 @@ class AlertManager:
                     device = alert.device
                     if device and device.last_seen and device.last_seen >= recent_time:
                         alert.resolve()
+                        self._emit_alert_update(alert, 'resolved')
                         logger.info(f"ALERT RESOLVED: Device down alert for {device.display_name} (last_seen: {device.last_seen}, recent_time: {recent_time})")
                     else:
                         logger.debug(f"Alert NOT resolved for {device.display_name}: device={device is not None}, last_seen={device.last_seen if device else None}, recent_time={recent_time}")
@@ -328,6 +338,7 @@ class AlertManager:
                         
                         if recent_high_latency == 0:
                             alert.resolve()
+                            self._emit_alert_update(alert, 'resolved')
                             logger.info(f"Resolved high latency alert for {device.display_name}")
                 
                 db.session.commit()
@@ -775,6 +786,14 @@ This is an automated message from HomeNetMon.
             
         except Exception as e:
             logger.error(f"Error cleaning up duplicate alerts: {e}")
+
+    def _emit_alert_update(self, alert, action='created'):
+        """Emit real-time alert update via WebSocket"""
+        try:
+            if self.app and hasattr(self.app, 'emit_alert_update'):
+                self.app.emit_alert_update(alert, action)
+        except Exception as e:
+            logger.error(f"Error emitting alert update: {e}")
 
     def reload_config(self):
         """Reload configuration for hot-reload support"""

@@ -1,0 +1,163 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: homenetmon-ingress
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: ingress
+  annotations:
+    # Ingress Controller specific annotations
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/force-ssl-redirect: "true"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+    
+    # Rate limiting
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    
+    # Security headers
+    nginx.ingress.kubernetes.io/configuration-snippet: |
+      add_header X-Frame-Options DENY;
+      add_header X-Content-Type-Options nosniff;
+      add_header X-XSS-Protection "1; mode=block";
+      add_header Strict-Transport-Security "max-age=31536000; includeSubDomains";
+      add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';";
+    
+    # WebSocket support
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    
+    # Compression
+    nginx.ingress.kubernetes.io/enable-gzip: "true"
+    nginx.ingress.kubernetes.io/gzip-types: "text/plain,text/css,text/xml,text/javascript,application/javascript,application/json"
+    
+    # Load balancing
+    nginx.ingress.kubernetes.io/upstream-hash-by: "$remote_addr"
+    
+    # Certificate management (cert-manager)
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    cert-manager.io/acme-challenge-type: http01
+    
+spec:
+  ingressClassName: nginx
+  tls:
+  - hosts:
+    - homenetmon.example.com
+    - www.homenetmon.example.com
+    - api.homenetmon.example.com
+    secretName: homenetmon-tls-cert
+  rules:
+  - host: homenetmon.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: homenetmon-app
+            port:
+              number: 80
+  - host: www.homenetmon.example.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: homenetmon-app
+            port:
+              number: 80
+  - host: api.homenetmon.example.com
+    http:
+      paths:
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: homenetmon-app
+            port:
+              number: 80
+      - path: /socket.io
+        pathType: Prefix
+        backend:
+          service:
+            name: homenetmon-app
+            port:
+              number: 80
+
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: homenetmon-network-policy
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: security
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: homenetmon
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Allow ingress from nginx ingress controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 5000
+  # Allow ingress from prometheus for metrics
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 5000
+  # Allow inter-pod communication
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/part-of: homenetmon
+    ports:
+    - protocol: TCP
+      port: 5000
+    - protocol: TCP
+      port: 80
+  egress:
+  # Allow egress to Redis
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: homenetmon-redis
+    ports:
+    - protocol: TCP
+      port: 6379
+  # Allow egress to external services (SMTP, webhooks)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 587
+    - protocol: TCP
+      port: 25
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+  # Allow network scanning (for monitoring)
+  - to: []
+    ports:
+    - protocol: ICMP

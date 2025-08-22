@@ -1,0 +1,225 @@
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: homenetmon-metrics
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: homenetmon
+      app.kubernetes.io/component: application
+  endpoints:
+  - port: app
+    path: /metrics
+    interval: 30s
+    scrapeTimeout: 10s
+    honorLabels: true
+    
+---
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: homenetmon-redis-metrics
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon-redis
+    app.kubernetes.io/component: monitoring
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: homenetmon-redis
+  endpoints:
+  - port: redis
+    path: /metrics
+    interval: 30s
+
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: homenetmon-alerts
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: alerting
+spec:
+  groups:
+  - name: homenetmon.rules
+    interval: 30s
+    rules:
+    # Application availability
+    - alert: HomeNetMonDown
+      expr: up{job="homenetmon-app"} == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "HomeNetMon application is down"
+        description: "HomeNetMon application has been down for more than 1 minute"
+        
+    # High error rate
+    - alert: HomeNetMonHighErrorRate
+      expr: rate(http_requests_total{job="homenetmon-app",status=~"5.."}[5m]) > 0.1
+      for: 2m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High error rate in HomeNetMon"
+        description: "Error rate is {{ $value }} errors per second"
+        
+    # High response time
+    - alert: HomeNetMonHighResponseTime
+      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job="homenetmon-app"}[5m])) > 2
+      for: 3m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High response time in HomeNetMon"
+        description: "95th percentile response time is {{ $value }}s"
+        
+    # High memory usage
+    - alert: HomeNetMonHighMemoryUsage
+      expr: container_memory_usage_bytes{pod=~"homenetmon-app-.*"} / container_spec_memory_limit_bytes > 0.9
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High memory usage in HomeNetMon"
+        description: "Memory usage is {{ $value | humanizePercentage }}"
+        
+    # High CPU usage
+    - alert: HomeNetMonHighCPUUsage
+      expr: rate(container_cpu_usage_seconds_total{pod=~"homenetmon-app-.*"}[5m]) > 0.8
+      for: 5m
+      labels:
+        severity: warning
+      annotations:
+        summary: "High CPU usage in HomeNetMon"
+        description: "CPU usage is {{ $value | humanizePercentage }}"
+        
+    # Redis connectivity
+    - alert: HomeNetMonRedisDown
+      expr: up{job="homenetmon-redis"} == 0
+      for: 1m
+      labels:
+        severity: critical
+      annotations:
+        summary: "HomeNetMon Redis is down"
+        description: "Redis instance has been down for more than 1 minute"
+        
+    # Pod restart frequency
+    - alert: HomeNetMonFrequentRestarts
+      expr: increase(kube_pod_container_status_restarts_total{pod=~"homenetmon-app-.*"}[1h]) > 3
+      for: 0m
+      labels:
+        severity: warning
+      annotations:
+        summary: "HomeNetMon pod restarting frequently"
+        description: "Pod {{ $labels.pod }} has restarted {{ $value }} times in the last hour"
+        
+    # Disk space
+    - alert: HomeNetMonLowDiskSpace
+      expr: kubelet_volume_stats_available_bytes{persistentvolumeclaim=~"homenetmon-.*"} / kubelet_volume_stats_capacity_bytes < 0.1
+      for: 5m
+      labels:
+        severity: critical
+      annotations:
+        summary: "Low disk space for HomeNetMon"
+        description: "Disk space is {{ $value | humanizePercentage }} available"
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: homenetmon-grafana-dashboard
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: monitoring
+    grafana_dashboard: "1"
+data:
+  homenetmon-dashboard.json: |
+    {
+      "dashboard": {
+        "id": null,
+        "title": "HomeNetMon Monitoring Dashboard",
+        "tags": ["homenetmon", "monitoring"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Application Uptime",
+            "type": "stat",
+            "targets": [
+              {
+                "expr": "up{job=\"homenetmon-app\"}",
+                "legendFormat": "Uptime"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "mappings": [
+                  {"options": {"0": {"text": "DOWN"}}, "type": "value"},
+                  {"options": {"1": {"text": "UP"}}, "type": "value"}
+                ],
+                "thresholds": {
+                  "steps": [
+                    {"color": "red", "value": 0},
+                    {"color": "green", "value": 1}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 2,
+            "title": "Request Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{job=\"homenetmon-app\"}[5m])",
+                "legendFormat": "Requests/sec"
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "title": "Response Time",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job=\"homenetmon-app\"}[5m]))",
+                "legendFormat": "95th percentile"
+              },
+              {
+                "expr": "histogram_quantile(0.50, rate(http_request_duration_seconds_bucket{job=\"homenetmon-app\"}[5m]))",
+                "legendFormat": "50th percentile"
+              }
+            ]
+          },
+          {
+            "id": 4,
+            "title": "Error Rate",
+            "type": "graph",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{job=\"homenetmon-app\",status=~\"5..\"}[5m])",
+                "legendFormat": "5xx errors/sec"
+              },
+              {
+                "expr": "rate(http_requests_total{job=\"homenetmon-app\",status=~\"4..\"}[5m])",
+                "legendFormat": "4xx errors/sec"
+              }
+            ]
+          }
+        ],
+        "time": {
+          "from": "now-1h",
+          "to": "now"
+        },
+        "refresh": "5s"
+      }
+    }

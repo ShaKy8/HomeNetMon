@@ -1,0 +1,270 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "homenetmon.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "homenetmon.labels" . | nindent 4 }}
+    app.kubernetes.io/component: application
+  annotations:
+    {{- include "homenetmon.commonAnnotations" . | nindent 4 }}
+spec:
+  {{- if not .Values.autoscaling.enabled }}
+  replicas: {{ .Values.replicaCount }}
+  {{- end }}
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      {{- include "homenetmon.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: application
+  template:
+    metadata:
+      annotations:
+        {{- include "homenetmon.podAnnotations" . | nindent 8 }}
+      labels:
+        {{- include "homenetmon.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: application
+        app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
+    spec:
+      {{- with (include "homenetmon.imagePullSecrets" .) }}
+      imagePullSecrets:
+        {{- . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "homenetmon.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 10 }}
+        image: {{ include "homenetmon.image" . }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: 5000
+          protocol: TCP
+        env:
+        # Configuration from ConfigMap
+        - name: FLASK_ENV
+          value: "production"
+        - name: DATABASE_URL
+          value: {{ include "homenetmon.databaseUrl" . | quote }}
+        - name: REDIS_URL
+          value: {{ include "homenetmon.redisUrl" . | quote }}
+        - name: NETWORK_RANGE
+          value: {{ .Values.config.networkRange | quote }}
+        - name: PING_INTERVAL
+          value: {{ .Values.config.pingInterval | quote }}
+        - name: DISCOVERY_INTERVAL
+          value: {{ .Values.config.discoveryInterval | quote }}
+        - name: MONITORING_ENABLED
+          value: {{ .Values.config.monitoringEnabled | quote }}
+        - name: REAL_TIME_UPDATES
+          value: {{ .Values.config.realTimeUpdates | quote }}
+        - name: MAX_MONITORED_DEVICES
+          value: {{ .Values.config.maxMonitoredDevices | quote }}
+        - name: API_RATE_LIMIT
+          value: {{ .Values.config.apiRateLimit | quote }}
+        - name: ENABLE_API_COMPRESSION
+          value: {{ .Values.config.enableApiCompression | quote }}
+        - name: ENABLE_PUSH_NOTIFICATIONS
+          value: {{ .Values.config.enablePushNotifications | quote }}
+        - name: ENABLE_REMOTE_ACCESS
+          value: {{ .Values.config.enableRemoteAccess | quote }}
+        - name: ENABLE_ANALYTICS
+          value: {{ .Values.config.enableAnalytics | quote }}
+        - name: ENABLE_MULTI_TENANCY
+          value: {{ .Values.config.enableMultiTenancy | quote }}
+        - name: LOG_LEVEL
+          value: {{ .Values.config.logLevel | quote }}
+        - name: LOG_FORMAT
+          value: {{ .Values.config.logFormat | quote }}
+        - name: WORKER_PROCESSES
+          value: {{ .Values.config.workerProcesses | quote }}
+        - name: WORKER_CONNECTIONS
+          value: {{ .Values.config.workerConnections | quote }}
+        {{- if .Values.development.enabled }}
+        - name: DEBUG
+          value: {{ .Values.development.debugMode | quote }}
+        {{- end }}
+        
+        # Secrets
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "homenetmon.fullname" . }}-secrets
+              key: SECRET_KEY
+        - name: JWT_SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "homenetmon.fullname" . }}-secrets
+              key: JWT_SECRET_KEY
+        {{- if .Values.postgresql.enabled }}
+        - name: DATABASE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "homenetmon.fullname" . }}-secrets
+              key: DATABASE_PASSWORD
+        {{- end }}
+        {{- if .Values.redis.enabled }}
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "homenetmon.fullname" . }}-secrets
+              key: REDIS_PASSWORD
+        {{- end }}
+        {{- if .Values.secrets.smtpPassword }}
+        - name: SMTP_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "homenetmon.fullname" . }}-secrets
+              key: SMTP_PASSWORD
+        - name: SMTP_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "homenetmon.fullname" . }}-secrets
+              key: SMTP_USERNAME
+        - name: SMTP_SERVER
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "homenetmon.fullname" . }}-secrets
+              key: SMTP_SERVER
+        {{- end }}
+        
+        # Kubernetes metadata
+        - name: POD_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: POD_NAMESPACE
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.namespace
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: RELEASE_NAME
+          value: {{ .Release.Name | quote }}
+        - name: CHART_VERSION
+          value: {{ .Chart.Version | quote }}
+              
+        volumeMounts:
+        {{- if .Values.persistence.enabled }}
+        - name: data
+          mountPath: /app/data
+        {{- end }}
+        {{- if .Values.logPersistence.enabled }}
+        - name: logs
+          mountPath: /app/logs
+        {{- end }}
+        - name: tmp
+          mountPath: /tmp
+        - name: static-files
+          mountPath: /app/static-shared
+          
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+          
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+          
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+          
+        startupProbe:
+          httpGet:
+            path: /health
+            port: http
+            scheme: HTTP
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 5
+          failureThreshold: 12
+          
+      {{- if .Values.nginx.enabled }}
+      # Nginx sidecar container
+      - name: nginx
+        image: {{ include "homenetmon.nginx.image" . }}
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: nginx-http
+          containerPort: 80
+          protocol: TCP
+        volumeMounts:
+        - name: nginx-config
+          mountPath: /etc/nginx/conf.d
+        - name: static-files
+          mountPath: /app/static
+          readOnly: true
+        resources:
+          {{- toYaml .Values.nginx.resources | nindent 10 }}
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: nginx-http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: nginx-http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+      {{- end }}
+          
+      volumes:
+      {{- if .Values.persistence.enabled }}
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ include "homenetmon.fullname" . }}-data
+      {{- end }}
+      {{- if .Values.logPersistence.enabled }}
+      - name: logs
+        persistentVolumeClaim:
+          claimName: {{ include "homenetmon.fullname" . }}-logs
+      {{- end }}
+      {{- if .Values.nginx.enabled }}
+      - name: nginx-config
+        configMap:
+          name: {{ include "homenetmon.fullname" . }}-nginx-config
+      {{- end }}
+      - name: static-files
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
+        
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

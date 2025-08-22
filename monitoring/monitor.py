@@ -149,19 +149,31 @@ class DeviceMonitor:
                     if previous_status != current_status:
                         self._trigger_rule_engine_for_status_change(device_obj, previous_status, current_status, response_time)
             
-            # Emit real-time update via SocketIO
+            # PERFORMANCE OPTIMIZATION: Emit real-time update via SocketIO with throttling
             if self.socketio and self.app:
-                with self.app.app_context():
-                    device_obj = Device.query.get(device_id)
-                    if device_obj:
-                        self.socketio.emit('device_status_update', {
-                            'device_id': device_id,
-                            'ip_address': device_ip,
-                            'display_name': device_obj.display_name,
-                            'response_time': response_time,
-                            'status': device_obj.status,
-                            'timestamp': datetime.utcnow().isoformat()
-                        })
+                # Calculate status directly from response_time to avoid DB query
+                # This replicates the logic from the Device.status property
+                current_status = 'up'
+                if response_time is None:
+                    current_status = 'down'
+                elif response_time > 1000:  # >1 second
+                    current_status = 'warning'
+                
+                event_data = {
+                    'device_id': device_id,
+                    'ip_address': device_ip,
+                    'display_name': device.custom_name or device.hostname or device_ip,
+                    'response_time': response_time,
+                    'status': current_status,
+                    'timestamp': datetime.utcnow().isoformat()
+                }
+                
+                # Use throttling to prevent WebSocket spam
+                from services.websocket_throttle import websocket_throttle
+                if websocket_throttle.should_emit_device_update(device_id, event_data):
+                    # Emit to specific room for device status updates
+                    self.socketio.emit('device_status_update', event_data, room='updates_device_status')
+                # If throttled, the update is queued for later emission
             
             logger.debug(f"Monitored {device.ip_address}: {response_time}ms" if response_time else f"Monitored {device.ip_address}: NO RESPONSE")
             
@@ -246,9 +258,9 @@ class DeviceMonitor:
             
             # Use ThreadPoolExecutor with smaller batch size
             with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                # Submit monitoring tasks
+                # PERFORMANCE OPTIMIZATION: Use ping-only tasks for batch processing
                 future_to_device = {
-                    executor.submit(self.monitor_device, device): device 
+                    executor.submit(self._ping_device_for_batch, device): device 
                     for device in devices_to_monitor
                 }
                 
@@ -264,18 +276,34 @@ class DeviceMonitor:
                     except Exception as e:
                         logger.error(f"Error getting result for device {device.ip_address}: {e}")
             
+            # PERFORMANCE OPTIMIZATION: Batch process all monitoring results in a single transaction
+            if results:
+                self._batch_process_monitoring_results(results)
+            
             # Emit summary update
-            if self.socketio and results:
+            if self.socketio and results and self.app:
                 successful_pings = sum(1 for r in results if r['success'])
                 total_devices = len(results)
                 
-                self.socketio.emit('monitoring_summary', {
-                    'timestamp': datetime.utcnow().isoformat(),
-                    'total_devices': total_devices,
-                    'devices_up': successful_pings,
-                    'devices_down': total_devices - successful_pings,
-                    'success_rate': (successful_pings / total_devices * 100) if total_devices > 0 else 0
-                })
+                # Get active alerts count with app context
+                with self.app.app_context():
+                    from models import Alert
+                    active_alerts = Alert.query.filter_by(resolved=False).count()
+                
+                # PERFORMANCE OPTIMIZATION: Throttle monitoring summary updates
+                from services.websocket_throttle import websocket_throttle
+                if websocket_throttle.should_emit_global_event('monitoring_summary'):
+                    self.socketio.emit('monitoring_summary', {
+                        'timestamp': datetime.utcnow().isoformat(),
+                        'total_devices': total_devices,
+                        'devices_up': successful_pings,
+                        'devices_down': total_devices - successful_pings,
+                        'active_alerts': active_alerts,
+                        'success_rate': (successful_pings / total_devices * 100) if total_devices > 0 else 0
+                    }, room='updates_monitoring_summary')
+                
+                # Emit chart data updates for real-time chart system
+                self._emit_chart_data_updates(results)
             
                 logger.info(f"Monitoring cycle completed for {len(devices_to_monitor)} devices")
             
@@ -429,6 +457,14 @@ class DeviceMonitor:
                     self.cleanup_old_data()
                     self._cleanup_counter = 0
                 
+                # Flush any pending WebSocket updates
+                if self.socketio:
+                    try:
+                        from services.websocket_throttle import websocket_throttle
+                        websocket_throttle.flush_pending_updates(self.socketio, self.app)
+                    except Exception as e:
+                        logger.error(f"Error flushing WebSocket updates: {e}")
+                
                 # Wait for next monitoring cycle  
                 ping_interval = int(self.get_config_value('ping_interval', Config.PING_INTERVAL))
                 self._stop_event.wait(ping_interval)
@@ -521,6 +557,80 @@ class DeviceMonitor:
             logger.error(f"Error triggering rule engine for status change: {e}")
             # Don't let rule engine errors affect monitoring
     
+    def _emit_chart_data_updates(self, monitoring_results):
+        """Emit real-time chart data updates for the interactive chart system"""
+        try:
+            if not self.socketio or not self.app:
+                return
+                
+            with self.app.app_context():
+                # Get device types breakdown for analytics charts
+                from collections import defaultdict
+                device_types = defaultdict(lambda: {'up': 0, 'down': 0})
+                response_times = []
+                
+                for result in monitoring_results:
+                    device = Device.query.get(result['device_id'])
+                    if device:
+                        device_type = device.device_type or 'unknown'
+                        if result['success']:
+                            device_types[device_type]['up'] += 1
+                            if result['response_time'] is not None:
+                                response_times.append({
+                                    'device_id': device.id,
+                                    'device_name': device.display_name,
+                                    'response_time': result['response_time'],
+                                    'timestamp': datetime.utcnow().isoformat()
+                                })
+                        else:
+                            device_types[device_type]['down'] += 1
+                
+                # Emit device types chart update
+                device_types_data = []
+                for device_type, counts in device_types.items():
+                    total = counts['up'] + counts['down']
+                    if total > 0:
+                        device_types_data.append({
+                            'type': device_type,
+                            'total': total,
+                            'up': counts['up'],
+                            'down': counts['down'],
+                            'uptime_percentage': (counts['up'] / total) * 100
+                        })
+                
+                self.socketio.emit('chart_data_update', {
+                    'type': 'device_types',
+                    'data': device_types_data,
+                    'timestamp': datetime.utcnow().isoformat()
+                })
+                
+                # Emit response times update for performance charts
+                if response_times:
+                    self.socketio.emit('chart_data_update', {
+                        'type': 'response_times',
+                        'data': response_times[-50:],  # Last 50 data points
+                        'timestamp': datetime.utcnow().isoformat()
+                    })
+                
+                # Emit network overview metrics
+                total_monitored = len(monitoring_results)
+                successful_pings = sum(1 for r in monitoring_results if r['success'])
+                
+                self.socketio.emit('chart_data_update', {
+                    'type': 'network_overview', 
+                    'data': {
+                        'total_devices': total_monitored,
+                        'devices_up': successful_pings,
+                        'devices_down': total_monitored - successful_pings,
+                        'success_rate': (successful_pings / total_monitored * 100) if total_monitored > 0 else 0,
+                        'avg_response_time': sum(r.get('response_time', 0) for r in monitoring_results if r.get('response_time')) / max(1, successful_pings)
+                    },
+                    'timestamp': datetime.utcnow().isoformat()
+                })
+                
+        except Exception as e:
+            logger.error(f"Error emitting chart data updates: {e}")
+    
     def reload_config(self):
         """Reload configuration for hot-reload support"""
         try:
@@ -539,3 +649,134 @@ class DeviceMonitor:
                               f"ping_timeout: {ping_timeout}s, data_retention: {data_retention} days")
         except Exception as e:
             logger.error(f"Error reloading DeviceMonitor configuration: {e}")
+    
+    def _ping_device_for_batch(self, device):
+        """Ping a device and return raw result for batch processing"""
+        try:
+            response_time = self.ping_device(device)
+            
+            return {
+                'device_id': device.id,
+                'device': device,  # Keep reference for batch processing
+                'response_time': response_time,
+                'success': response_time is not None,
+                'timestamp': datetime.utcnow()
+            }
+        except Exception as e:
+            logger.error(f"Error pinging device {device.ip_address} for batch: {e}")
+            return {
+                'device_id': device.id,
+                'device': device,
+                'response_time': None,
+                'success': False,
+                'timestamp': datetime.utcnow()
+            }
+    
+    def _batch_process_monitoring_results(self, ping_results):
+        """
+        PERFORMANCE OPTIMIZATION: Process all monitoring results in a single transaction
+        
+        This dramatically reduces database overhead by:
+        - Using a single transaction for all monitoring data inserts
+        - Batch updating device last_seen timestamps
+        - Collecting status changes for bulk rule engine processing
+        """
+        if not self.app or not ping_results:
+            return
+        
+        try:
+            with self.app.app_context():
+                status_changes = []
+                monitoring_records = []
+                device_updates = []
+                socketio_events = []
+                
+                # Prepare batch data
+                for result in ping_results:
+                    device = result['device']
+                    response_time = result['response_time']
+                    timestamp = result['timestamp']
+                    
+                    # Create monitoring data record
+                    monitoring_records.append(MonitoringData(
+                        device_id=device.id,
+                        response_time=response_time,
+                        timestamp=timestamp
+                    ))
+                    
+                    # Prepare device update if ping was successful
+                    if response_time is not None:
+                        device_updates.append({
+                            'device_id': device.id,
+                            'last_seen': timestamp
+                        })
+                    
+                    # Calculate status for change detection and WebSocket events
+                    previous_status = device.status  # This might trigger a query, but we'll optimize
+                    current_status = 'up'
+                    if response_time is None:
+                        current_status = 'down'
+                    elif response_time > 1000:
+                        current_status = 'warning'
+                    
+                    # Track status changes for rule engine
+                    if previous_status != current_status:
+                        status_changes.append({
+                            'device': device,
+                            'previous_status': previous_status,
+                            'current_status': current_status,
+                            'response_time': response_time
+                        })
+                    
+                    # Prepare WebSocket events with throttling
+                    event_data = {
+                        'device_id': device.id,
+                        'ip_address': device.ip_address,
+                        'display_name': device.custom_name or device.hostname or device.ip_address,
+                        'response_time': response_time,
+                        'status': current_status,
+                        'timestamp': timestamp.isoformat()
+                    }
+                    socketio_events.append(event_data)
+                
+                # Batch insert monitoring data
+                if monitoring_records:
+                    db.session.add_all(monitoring_records)
+                
+                # Batch update device last_seen timestamps using bulk update
+                if device_updates:
+                    for update in device_updates:
+                        db.session.execute(
+                            db.text("UPDATE devices SET last_seen = :last_seen WHERE id = :device_id"),
+                            {
+                                'last_seen': update['last_seen'],
+                                'device_id': update['device_id']
+                            }
+                        )
+                
+                # Commit all changes in single transaction
+                db.session.commit()
+                
+                logger.debug(f"Batch processed {len(monitoring_records)} monitoring records and {len(device_updates)} device updates")
+                
+                # Process status changes for rule engine (outside transaction)
+                for change in status_changes:
+                    self._trigger_rule_engine_for_status_change(
+                        change['device'],
+                        change['previous_status'],
+                        change['current_status'],
+                        change['response_time']
+                    )
+                
+                # Emit WebSocket events with throttling
+                if self.socketio:
+                    from services.websocket_throttle import websocket_throttle
+                    for event_data in socketio_events:
+                        if websocket_throttle.should_emit_device_update(event_data['device_id'], event_data):
+                            self.socketio.emit('device_status_update', event_data, room='updates_device_status')
+                
+        except Exception as e:
+            logger.error(f"Error in batch processing monitoring results: {e}")
+            if self.app:
+                with self.app.app_context():
+                    db.session.rollback()

@@ -1,0 +1,116 @@
+# Kustomization file for HomeNetMon base configuration
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: homenetmon-base
+  annotations:
+    config.kubernetes.io/local-config: "true"
+
+# Base resources
+resources:
+- namespace.yaml
+- configmap.yaml
+- secret.yaml
+- persistentvolume.yaml
+- rbac.yaml
+- redis.yaml
+- deployment.yaml
+- service.yaml
+- ingress.yaml
+- hpa.yaml
+- monitoring.yaml
+
+# Common labels applied to all resources
+commonLabels:
+  app.kubernetes.io/name: homenetmon
+  app.kubernetes.io/instance: homenetmon
+  app.kubernetes.io/version: "1.0.0"
+  app.kubernetes.io/component: application
+  app.kubernetes.io/part-of: homenetmon
+  app.kubernetes.io/managed-by: kustomize
+
+# Common annotations
+commonAnnotations:
+  config.kubernetes.io/origin: |
+    path: k8s/base/kustomization.yaml
+  app.kubernetes.io/source: https://github.com/homenetmon/homenetmon
+
+# Namespace for all resources
+namespace: homenetmon
+
+# Image transformations
+images:
+- name: homenetmon/homenetmon
+  newTag: latest
+
+# Resource name prefix
+namePrefix: ""
+
+# Resource name suffix  
+nameSuffix: ""
+
+# ConfigMap generator for dynamic config
+configMapGenerator:
+- name: homenetmon-build-info
+  literals:
+  - BUILD_VERSION=1.0.0
+  - BUILD_DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  - GIT_COMMIT=unknown
+  - BUILD_USER=kustomize
+
+# Secret generator for runtime secrets
+secretGenerator:
+- name: homenetmon-runtime-secrets
+  type: Opaque
+  literals:
+  - INSTANCE_ID=$(uuidgen)
+  
+# Patches for common modifications
+patchesStrategicMerge:
+- |-
+  apiVersion: apps/v1
+  kind: Deployment
+  metadata:
+    name: homenetmon-app
+    namespace: homenetmon
+  spec:
+    template:
+      metadata:
+        annotations:
+          kubectl.kubernetes.io/restartedAt: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+# JSON patches for specific modifications
+patchesJson6902:
+- target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: homenetmon-app
+    namespace: homenetmon
+  patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: KUSTOMIZE_BUILD_TIME
+        value: $(date -u +%Y-%m-%dT%H:%M:%SZ)
+
+# Replica count override
+replicas:
+- name: homenetmon-app
+  count: 3
+- name: homenetmon-redis
+  count: 1
+
+# Resource requirements
+replacements:
+- source:
+    kind: ConfigMap
+    name: homenetmon-config
+    fieldPath: data.WORKER_PROCESSES
+  targets:
+  - select:
+      kind: Deployment
+      name: homenetmon-app
+    fieldPaths:
+    - spec.template.spec.containers.[name=homenetmon].env.[name=WORKER_PROCESSES].value

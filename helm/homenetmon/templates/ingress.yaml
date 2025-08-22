@@ -1,0 +1,161 @@
+{{- if .Values.ingress.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "homenetmon.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "homenetmon.labels" . | nindent 4 }}
+    app.kubernetes.io/component: ingress
+  annotations:
+    {{- include "homenetmon.commonAnnotations" . | nindent 4 }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.ingress.className }}
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- end }}
+  {{- if .Values.ingress.tls }}
+  tls:
+    {{- range .Values.ingress.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            {{- if .pathType }}
+            pathType: {{ .pathType }}
+            {{- end }}
+            backend:
+              service:
+                name: {{ include "homenetmon.fullname" $ }}
+                port:
+                  {{- if .port }}
+                  number: {{ .port }}
+                  {{- else }}
+                  number: {{ $.Values.service.port }}
+                  {{- end }}
+          {{- end }}
+    {{- end }}
+{{- end }}
+
+{{- if .Values.networkPolicy.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "homenetmon.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "homenetmon.labels" . | nindent 4 }}
+    app.kubernetes.io/component: security
+  annotations:
+    {{- include "homenetmon.commonAnnotations" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "homenetmon.selectorLabels" . | nindent 6 }}
+  policyTypes:
+  {{- if .Values.networkPolicy.ingress.enabled }}
+  - Ingress
+  {{- end }}
+  {{- if .Values.networkPolicy.egress.enabled }}
+  - Egress
+  {{- end }}
+  {{- if .Values.networkPolicy.ingress.enabled }}
+  ingress:
+  # Allow ingress from nginx ingress controller
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 5000
+  # Allow ingress from prometheus for metrics
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring
+    ports:
+    - protocol: TCP
+      port: 5000
+  # Allow inter-pod communication within the same release
+  - from:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/instance: {{ .Release.Name }}
+    ports:
+    - protocol: TCP
+      port: 5000
+    - protocol: TCP
+      port: 80
+  {{- end }}
+  {{- if .Values.networkPolicy.egress.enabled }}
+  egress:
+  # Allow egress to Redis
+  {{- if .Values.redis.enabled }}
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: redis
+          app.kubernetes.io/instance: {{ .Release.Name }}
+    ports:
+    - protocol: TCP
+      port: 6379
+  {{- end }}
+  # Allow egress to PostgreSQL
+  {{- if .Values.postgresql.enabled }}
+  - to:
+    - podSelector:
+        matchLabels:
+          app.kubernetes.io/name: postgresql
+          app.kubernetes.io/instance: {{ .Release.Name }}
+    ports:
+    - protocol: TCP
+      port: 5432
+  {{- end }}
+  # Allow egress to external services (SMTP, webhooks, API calls)
+  - to: []
+    ports:
+    - protocol: TCP
+      port: 80
+    - protocol: TCP
+      port: 443
+    - protocol: TCP
+      port: 587
+    - protocol: TCP
+      port: 25
+  # Allow DNS resolution
+  - to: []
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow network scanning (for monitoring functionality)
+  - to: []
+    ports:
+    - protocol: ICMP
+  # Allow egress to Kubernetes API server
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          name: kube-system
+    ports:
+    - protocol: TCP
+      port: 443
+  {{- end }}
+{{- end }}

@@ -1,0 +1,53 @@
+[Unit]
+Description=HomeNetMon - Home Network Monitoring Service
+Documentation=https://github.com/your-repo/homeNetMon
+After=network.target network-online.target
+Wants=network-online.target
+Requires=network.target
+
+[Service]
+Type=simple
+User=kyle
+Group=kyle
+WorkingDirectory=/home/kyle/ClaudeCode/HomeNetMon
+Environment=PYTHONPATH=/home/kyle/ClaudeCode/HomeNetMon
+Environment=PATH=/home/kyle/ClaudeCode/HomeNetMon/venv/bin:/usr/local/bin:/usr/bin:/bin
+Environment=NETWORK_RANGE=192.168.86.0/24
+Environment=DEBUG=false
+Environment=HOST=0.0.0.0
+Environment=PORT=5000
+Environment=DATABASE_URL=sqlite:////home/kyle/ClaudeCode/HomeNetMon/homeNetMon.db
+Environment=PING_INTERVAL=30
+Environment=SCAN_INTERVAL=300
+Environment=PING_TIMEOUT=3.0
+Environment=MAX_WORKERS=50
+Environment=DATA_RETENTION_DAYS=30
+ExecStart=/home/kyle/ClaudeCode/HomeNetMon/venv/bin/python /home/kyle/ClaudeCode/HomeNetMon/app.py
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Restart policy
+Restart=always
+RestartSec=10
+TimeoutStartSec=60
+TimeoutStopSec=30
+KillMode=mixed
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+LimitCORE=0
+
+# Logging
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=homenetmon
+
+# Security settings
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=false
+ReadWritePaths=/home/kyle/ClaudeCode/HomeNetMon
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,81 @@
+# Development overlay for HomeNetMon
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: homenetmon-development
+  
+# Base configuration
+resources:
+- ../../base
+
+# Namespace override for development
+namespace: homenetmon-dev
+
+# Development-specific patches
+patchesStrategicMerge:
+- deployment-patch.yaml
+- configmap-patch.yaml
+- service-patch.yaml
+
+# JSON patches for development
+patchesJson6902:
+- target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: homenetmon-app
+    namespace: homenetmon-dev
+  patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: ENVIRONMENT
+        value: development
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/requests/cpu
+      value: 100m
+    - op: replace
+      path: /spec/template/spec/containers/0/resources/requests/memory
+      value: 256Mi
+
+# Development-specific images
+images:
+- name: homenetmon/homenetmon
+  newTag: dev-latest
+
+# Replica count for development
+replicas:
+- name: homenetmon-app
+  count: 1
+- name: homenetmon-redis
+  count: 1
+
+# ConfigMap generator for development
+configMapGenerator:
+- name: homenetmon-dev-config
+  literals:
+  - ENVIRONMENT=development
+  - DEBUG=true
+  - LOG_LEVEL=DEBUG
+  - HOT_RELOAD=true
+  - CACHE_ENABLED=false
+  - RATE_LIMITING=false
+
+# Development secrets
+secretGenerator:
+- name: homenetmon-dev-secrets
+  literals:
+  - SECRET_KEY=dev-secret-key-not-for-production
+  - JWT_SECRET_KEY=dev-jwt-secret
+  - REDIS_PASSWORD=dev-redis-password
+
+# Common labels for development
+commonLabels:
+  environment: development
+  app.kubernetes.io/environment: development
+
+# Development annotations
+commonAnnotations:
+  app.kubernetes.io/environment: development
+  deployment.kubernetes.io/revision: "dev"

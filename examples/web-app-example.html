@@ -1,0 +1,755 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HomeNetMon Web App Example</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f7fa;
+            color: #333;
+        }
+
+        .app {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        .header {
+            background: white;
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            color: #2563eb;
+            font-size: 28px;
+            font-weight: 700;
+        }
+
+        .connection-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .connection-status.online {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .connection-status.offline {
+            background: #fef2f2;
+            color: #dc2626;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-dot.online {
+            background: #22c55e;
+        }
+
+        .status-dot.offline {
+            background: #ef4444;
+        }
+
+        .login-form {
+            background: white;
+            border-radius: 12px;
+            padding: 32px;
+            max-width: 400px;
+            margin: 0 auto;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        .form-group label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 500;
+            color: #374151;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 1px solid #d1d5db;
+            border-radius: 8px;
+            font-size: 16px;
+            transition: border-color 0.2s;
+        }
+
+        .form-group input:focus {
+            outline: none;
+            border-color: #2563eb;
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+        }
+
+        .btn-primary {
+            background: #2563eb;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: #1d4ed8;
+        }
+
+        .btn-primary:disabled {
+            background: #9ca3af;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+
+        .btn-secondary:hover {
+            background: #e5e7eb;
+        }
+
+        .dashboard {
+            display: grid;
+            gap: 24px;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .stat-card .value {
+            font-size: 32px;
+            font-weight: 700;
+            color: #2563eb;
+            margin-bottom: 8px;
+        }
+
+        .stat-card .label {
+            font-size: 14px;
+            color: #6b7280;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .device-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 16px;
+        }
+
+        .device-card {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .device-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+        }
+
+        .device-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+        }
+
+        .device-name {
+            font-size: 16px;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .device-status {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .device-status.up {
+            background: #22c55e;
+        }
+
+        .device-status.down {
+            background: #ef4444;
+        }
+
+        .device-status.unknown {
+            background: #f59e0b;
+        }
+
+        .device-ip {
+            font-size: 14px;
+            color: #6b7280;
+            margin-bottom: 16px;
+        }
+
+        .device-metrics {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 16px;
+        }
+
+        .device-metric {
+            text-align: center;
+        }
+
+        .device-metric .value {
+            font-size: 18px;
+            font-weight: 600;
+            color: #111827;
+        }
+
+        .device-metric .label {
+            font-size: 12px;
+            color: #6b7280;
+            margin-top: 4px;
+        }
+
+        .device-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 40px;
+            color: #6b7280;
+        }
+
+        .spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #e5e7eb;
+            border-top: 2px solid #2563eb;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .notification {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: white;
+            border-radius: 8px;
+            padding: 16px 20px;
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
+            border-left: 4px solid #2563eb;
+            z-index: 1000;
+            transform: translateX(400px);
+            transition: transform 0.3s ease-out;
+        }
+
+        .notification.show {
+            transform: translateX(0);
+        }
+
+        .notification.success {
+            border-left-color: #22c55e;
+        }
+
+        .notification.error {
+            border-left-color: #ef4444;
+        }
+
+        .offline-banner {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 12px 16px;
+            text-align: center;
+            font-size: 14px;
+            font-weight: 500;
+            border-bottom: 1px solid #f59e0b;
+        }
+
+        @media (max-width: 768px) {
+            .header {
+                flex-direction: column;
+                gap: 16px;
+                text-align: center;
+            }
+
+            .stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .device-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .device-metrics {
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .device-actions {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app" class="app">
+        <!-- Offline Banner -->
+        <div id="offline-banner" class="offline-banner" style="display: none;">
+            ⚠️ You're offline. Some features may be limited. Data will sync when connection is restored.
+        </div>
+
+        <!-- Login Form -->
+        <div id="login-screen" style="display: none;">
+            <div class="login-form">
+                <h2 style="text-align: center; margin-bottom: 32px; color: #2563eb;">HomeNetMon Login</h2>
+                
+                <div class="form-group">
+                    <label for="server-url">Server URL (optional)</label>
+                    <input type="text" id="server-url" placeholder="https://your-homenetmon-server.com">
+                </div>
+
+                <div class="form-group">
+                    <label for="username">Username</label>
+                    <input type="text" id="username" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" required>
+                </div>
+
+                <div class="form-group">
+                    <button id="login-btn" class="btn btn-primary" style="width: 100%;">
+                        Login
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard -->
+        <div id="dashboard" style="display: none;">
+            <!-- Header -->
+            <div class="header">
+                <h1>HomeNetMon Dashboard</h1>
+                <div class="connection-status" id="connection-status">
+                    <div class="status-dot online"></div>
+                    <span>Online</span>
+                </div>
+            </div>
+
+            <!-- Stats -->
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="value" id="total-devices">0</div>
+                    <div class="label">Total Devices</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" id="online-devices">0</div>
+                    <div class="label">Online</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" id="offline-devices">0</div>
+                    <div class="label">Offline</div>
+                </div>
+                <div class="stat-card">
+                    <div class="value" id="active-alerts">0</div>
+                    <div class="label">Active Alerts</div>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <span>Loading devices...</span>
+            </div>
+
+            <!-- Devices -->
+            <div id="device-grid" class="device-grid" style="display: none;"></div>
+        </div>
+    </div>
+
+    <!-- Include the SDK -->
+    <script src="../sdk/homenetmon-sdk.js"></script>
+
+    <script>
+        class HomeNetMonApp {
+            constructor() {
+                this.sdk = null;
+                this.isAuthenticated = false;
+                this.devices = [];
+                this.init();
+            }
+
+            async init() {
+                // Initialize SDK
+                this.sdk = new HomeNetMonSDK({
+                    baseUrl: localStorage.getItem('homenetmon_server_url') || 'http://localhost:5000',
+                    enableOffline: true,
+                    syncInterval: 30000,
+                    debugMode: true
+                });
+
+                // Setup event listeners
+                this.setupEventListeners();
+
+                // Check if already authenticated
+                if (this.sdk.isAuthenticated()) {
+                    this.showDashboard();
+                    await this.loadDashboardData();
+                } else {
+                    this.showLogin();
+                }
+            }
+
+            setupEventListeners() {
+                // SDK events
+                this.sdk.on('authenticated', (user) => {
+                    this.isAuthenticated = true;
+                    this.showDashboard();
+                    this.loadDashboardData();
+                });
+
+                this.sdk.on('logout', () => {
+                    this.isAuthenticated = false;
+                    this.showLogin();
+                });
+
+                this.sdk.on('online', () => {
+                    this.updateConnectionStatus(true);
+                    this.hideOfflineBanner();
+                });
+
+                this.sdk.on('offline', () => {
+                    this.updateConnectionStatus(false);
+                    this.showOfflineBanner();
+                });
+
+                this.sdk.on('devicesUpdated', (data) => {
+                    console.log('Devices updated:', data);
+                    this.updateDevicesFromDelta(data);
+                });
+
+                this.sdk.on('alertsUpdated', (data) => {
+                    console.log('Alerts updated:', data);
+                    this.updateStats();
+                });
+
+                this.sdk.on('offlineSyncComplete', (result) => {
+                    this.showNotification('Offline data synced successfully', 'success');
+                });
+
+                // UI events
+                document.getElementById('login-btn').addEventListener('click', () => {
+                    this.handleLogin();
+                });
+
+                // Handle Enter key in login form
+                ['server-url', 'username', 'password'].forEach(id => {
+                    document.getElementById(id).addEventListener('keypress', (e) => {
+                        if (e.key === 'Enter') {
+                            this.handleLogin();
+                        }
+                    });
+                });
+            }
+
+            async handleLogin() {
+                const serverUrl = document.getElementById('server-url').value;
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+                const loginBtn = document.getElementById('login-btn');
+
+                if (!username || !password) {
+                    this.showNotification('Please enter username and password', 'error');
+                    return;
+                }
+
+                // Update server URL if provided
+                if (serverUrl && serverUrl !== this.sdk.baseUrl) {
+                    this.sdk.baseUrl = serverUrl;
+                    localStorage.setItem('homenetmon_server_url', serverUrl);
+                }
+
+                loginBtn.disabled = true;
+                loginBtn.innerHTML = '<div class="spinner" style="width: 16px; height: 16px;"></div> Logging in...';
+
+                try {
+                    const response = await this.sdk.login(username, password);
+
+                    if (response.requires_mfa) {
+                        const mfaCode = prompt('Enter your 6-digit verification code:');
+                        if (mfaCode) {
+                            await this.sdk.login(username, password, mfaCode);
+                        }
+                    }
+
+                } catch (error) {
+                    console.error('Login failed:', error);
+                    this.showNotification(error.message || 'Login failed', 'error');
+                } finally {
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = 'Login';
+                }
+            }
+
+            showLogin() {
+                document.getElementById('login-screen').style.display = 'block';
+                document.getElementById('dashboard').style.display = 'none';
+            }
+
+            showDashboard() {
+                document.getElementById('login-screen').style.display = 'none';
+                document.getElementById('dashboard').style.display = 'block';
+            }
+
+            async loadDashboardData() {
+                try {
+                    document.getElementById('loading').style.display = 'flex';
+                    document.getElementById('device-grid').style.display = 'none';
+
+                    // Load devices
+                    const response = await this.sdk.getDevices({ includeMetrics: true });
+                    
+                    if (response.success) {
+                        this.devices = response.devices;
+                        this.updateStats();
+                        this.renderDevices();
+                    } else if (!this.sdk.isOnline) {
+                        // Load cached devices when offline
+                        this.devices = this.sdk.getCachedDevices();
+                        this.updateStats();
+                        this.renderDevices();
+                        this.showNotification('Showing cached data (offline)', 'warning');
+                    }
+
+                } catch (error) {
+                    console.error('Failed to load dashboard data:', error);
+                    this.showNotification('Failed to load data', 'error');
+                } finally {
+                    document.getElementById('loading').style.display = 'none';
+                    document.getElementById('device-grid').style.display = 'grid';
+                }
+            }
+
+            updateStats() {
+                const total = this.devices.length;
+                const online = this.devices.filter(d => d.status === 'up').length;
+                const offline = this.devices.filter(d => d.status === 'down').length;
+                const alerts = this.devices.reduce((sum, d) => sum + (d.active_alerts || 0), 0);
+
+                document.getElementById('total-devices').textContent = total;
+                document.getElementById('online-devices').textContent = online;
+                document.getElementById('offline-devices').textContent = offline;
+                document.getElementById('active-alerts').textContent = alerts;
+            }
+
+            renderDevices() {
+                const grid = document.getElementById('device-grid');
+                
+                if (this.devices.length === 0) {
+                    grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #6b7280;">No devices found</div>';
+                    return;
+                }
+
+                grid.innerHTML = this.devices.map(device => `
+                    <div class="device-card">
+                        <div class="device-header">
+                            <div class="device-name">${device.display_name}</div>
+                            <div class="device-status ${device.status}"></div>
+                        </div>
+                        
+                        <div class="device-ip">${device.ip_address}</div>
+                        
+                        <div class="device-metrics">
+                            <div class="device-metric">
+                                <div class="value">${device.uptime_percentage}%</div>
+                                <div class="label">Uptime</div>
+                            </div>
+                            <div class="device-metric">
+                                <div class="value">${device.latest_response_time}ms</div>
+                                <div class="label">Response</div>
+                            </div>
+                            ${device.active_alerts > 0 ? `
+                                <div class="device-metric">
+                                    <div class="value" style="color: #ef4444;">${device.active_alerts}</div>
+                                    <div class="label">Alerts</div>
+                                </div>
+                            ` : ''}
+                        </div>
+                        
+                        <div class="device-actions">
+                            <button class="btn btn-secondary" onclick="app.pingDevice(${device.id})">
+                                Ping
+                            </button>
+                            <button class="btn btn-secondary" onclick="app.viewDevice(${device.id})">
+                                Details
+                            </button>
+                        </div>
+                    </div>
+                `).join('');
+            }
+
+            updateDevicesFromDelta(deltaData) {
+                if (deltaData.updated) {
+                    // Update existing devices
+                    deltaData.updated.forEach(updatedDevice => {
+                        const index = this.devices.findIndex(d => d.id === updatedDevice.id);
+                        if (index !== -1) {
+                            this.devices[index] = { ...this.devices[index], ...updatedDevice };
+                        } else {
+                            this.devices.push(updatedDevice);
+                        }
+                    });
+
+                    this.updateStats();
+                    this.renderDevices();
+                }
+            }
+
+            async pingDevice(deviceId) {
+                try {
+                    const response = await this.sdk.pingDevice(deviceId);
+                    
+                    if (response.success) {
+                        this.showNotification(response.message || 'Ping sent successfully', 'success');
+                    } else {
+                        this.showNotification(response.error || 'Failed to ping device', 'error');
+                    }
+                } catch (error) {
+                    console.error('Ping failed:', error);
+                    this.showNotification('Failed to ping device', 'error');
+                }
+            }
+
+            async viewDevice(deviceId) {
+                try {
+                    const response = await this.sdk.getDevice(deviceId, { hours: 24 });
+                    
+                    if (response.success) {
+                        // In a real app, this would open a modal or navigate to a details page
+                        alert(`Device: ${response.device.display_name}\nStatus: ${response.device.status}\nLast seen: ${response.device.last_seen || 'Never'}`);
+                    }
+                } catch (error) {
+                    console.error('Failed to load device details:', error);
+                    this.showNotification('Failed to load device details', 'error');
+                }
+            }
+
+            updateConnectionStatus(isOnline) {
+                const statusEl = document.getElementById('connection-status');
+                const dot = statusEl.querySelector('.status-dot');
+                const text = statusEl.querySelector('span');
+
+                if (isOnline) {
+                    statusEl.className = 'connection-status online';
+                    dot.className = 'status-dot online';
+                    text.textContent = 'Online';
+                } else {
+                    statusEl.className = 'connection-status offline';
+                    dot.className = 'status-dot offline';
+                    text.textContent = 'Offline';
+                }
+            }
+
+            showOfflineBanner() {
+                document.getElementById('offline-banner').style.display = 'block';
+            }
+
+            hideOfflineBanner() {
+                document.getElementById('offline-banner').style.display = 'none';
+            }
+
+            showNotification(message, type = 'info') {
+                // Remove existing notification
+                const existing = document.querySelector('.notification');
+                if (existing) {
+                    existing.remove();
+                }
+
+                // Create new notification
+                const notification = document.createElement('div');
+                notification.className = `notification ${type}`;
+                notification.innerHTML = `
+                    <div style="display: flex; align-items: center; gap: 8px;">
+                        <div style="font-weight: 500;">${message}</div>
+                        <button onclick="this.parentElement.parentElement.remove()" style="background: none; border: none; cursor: pointer; padding: 0; margin-left: auto;">✕</button>
+                    </div>
+                `;
+
+                document.body.appendChild(notification);
+
+                // Show notification
+                setTimeout(() => notification.classList.add('show'), 100);
+
+                // Auto-hide after 5 seconds
+                setTimeout(() => {
+                    notification.classList.remove('show');
+                    setTimeout(() => notification.remove(), 300);
+                }, 5000);
+            }
+        }
+
+        // Initialize app
+        const app = new HomeNetMonApp();
+    </script>
+</body>
+</html>

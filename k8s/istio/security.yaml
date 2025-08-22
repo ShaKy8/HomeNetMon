@@ -1,0 +1,192 @@
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: homenetmon-peer-auth
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: security
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: homenetmon
+  mtls:
+    mode: STRICT
+
+---
+apiVersion: security.istio.io/v1beta1
+kind: RequestAuthentication
+metadata:
+  name: homenetmon-request-auth
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: security
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: homenetmon
+  jwtRules:
+  - issuer: "https://homenetmon.example.com"
+    jwksUri: "https://homenetmon.example.com/.well-known/jwks.json"
+    audiences:
+    - "homenetmon-api"
+    fromHeaders:
+    - name: Authorization
+      prefix: "Bearer "
+    fromParams:
+    - "access_token"
+    forwardOriginalToken: true
+
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: homenetmon-authz
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: security
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: homenetmon
+  rules:
+  # Allow health checks from anywhere
+  - to:
+    - operation:
+        paths: ["/health", "/ready", "/metrics"]
+        methods: ["GET"]
+  
+  # Allow public access to main app (authentication handled by app)
+  - to:
+    - operation:
+        paths: ["/", "/static/*", "/login", "/register"]
+        methods: ["GET", "POST"]
+  
+  # Require JWT for API access
+  - from:
+    - source:
+        requestPrincipals: ["https://homenetmon.example.com/*"]
+    to:
+    - operation:
+        paths: ["/api/*"]
+        methods: ["GET", "POST", "PUT", "DELETE"]
+  
+  # Allow WebSocket connections with proper auth
+  - to:
+    - operation:
+        paths: ["/socket.io/*"]
+  
+  # Admin-only access
+  - from:
+    - source:
+        requestPrincipals: ["https://homenetmon.example.com/admin"]
+    to:
+    - operation:
+        paths: ["/api/admin/*", "/admin/*"]
+        methods: ["GET", "POST", "PUT", "DELETE"]
+
+---
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: homenetmon-redis-authz
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon-redis
+    app.kubernetes.io/component: security
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: homenetmon-redis
+  rules:
+  # Only allow access from HomeNetMon application
+  - from:
+    - source:
+        principals: ["cluster.local/ns/homenetmon/sa/homenetmon"]
+    to:
+    - operation:
+        ports: ["6379"]
+
+---
+apiVersion: security.istio.io/v1beta1
+kind: WorkloadEntry
+metadata:
+  name: homenetmon-external-db
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: external-db
+spec:
+  address: "external-db.example.com"
+  ports:
+    postgres: 5432
+  labels:
+    app: postgresql
+    version: external
+  serviceAccount: homenetmon
+
+---
+apiVersion: security.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: homenetmon-external-services
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: external-services
+spec:
+  hosts:
+  - smtp.gmail.com
+  - api.pushover.net
+  - hooks.slack.com
+  - discord.com
+  ports:
+  - number: 587
+    name: smtp
+    protocol: TCP
+  - number: 443
+    name: https
+    protocol: HTTPS
+  location: MESH_EXTERNAL
+  resolution: DNS
+
+---
+apiVersion: networking.istio.io/v1beta1
+kind: Sidecar
+metadata:
+  name: homenetmon-sidecar
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: sidecar
+spec:
+  workloadSelector:
+    labels:
+      app.kubernetes.io/name: homenetmon
+  ingress:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    defaultEndpoint: 127.0.0.1:5000
+  - port:
+      number: 5000
+      name: app
+      protocol: HTTP
+    defaultEndpoint: 127.0.0.1:5000
+  egress:
+  # Local services
+  - hosts:
+    - "./homenetmon-redis"
+    - "./homenetmon-postgresql"
+  # External services
+  - hosts:
+    - "smtp.gmail.com"
+    - "api.pushover.net"
+    - "hooks.slack.com"
+    - "discord.com"
+  # Kubernetes API
+  - hosts:
+    - "kubernetes.default.svc.cluster.local"

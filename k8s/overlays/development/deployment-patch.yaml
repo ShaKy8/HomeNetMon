@@ -1,0 +1,80 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: homenetmon-app
+  namespace: homenetmon-dev
+spec:
+  replicas: 1
+  template:
+    metadata:
+      annotations:
+        config.linkerd.io/skip-inbound-ports: "5000"
+        config.linkerd.io/skip-outbound-ports: "6379"
+    spec:
+      containers:
+      - name: homenetmon
+        env:
+        - name: FLASK_ENV
+          value: "development"
+        - name: DEBUG
+          value: "true"
+        - name: LOG_LEVEL
+          value: "DEBUG"
+        - name: HOT_RELOAD
+          value: "true"
+        - name: CACHE_ENABLED
+          value: "false"
+        - name: RATE_LIMITING
+          value: "false"
+        - name: MONITORING_INTERVAL
+          value: "10"
+        - name: DISCOVERY_INTERVAL
+          value: "60"
+        - name: API_RATE_LIMIT
+          value: "10000"
+        - name: WORKER_PROCESSES
+          value: "1"
+        - name: DEVELOPMENT_MODE
+          value: "true"
+        
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+            
+        livenessProbe:
+          initialDelaySeconds: 30
+          periodSeconds: 15
+          timeoutSeconds: 5
+          failureThreshold: 5
+          
+        readinessProbe:
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+          
+        # Enable development features
+        ports:
+        - containerPort: 5000
+          name: http
+        - containerPort: 5678
+          name: debug
+          
+        volumeMounts:
+        - name: dev-config
+          mountPath: /app/dev-config
+        - name: hot-reload
+          mountPath: /app/src
+          
+      volumes:
+      - name: dev-config
+        configMap:
+          name: homenetmon-dev-config
+      - name: hot-reload
+        hostPath:
+          path: /tmp/homenetmon-dev
+          type: DirectoryOrCreate

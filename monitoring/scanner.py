@@ -305,11 +305,15 @@ class NetworkScanner:
         # Set scanning flag
         self.is_scanning = True
         
-        # Store existing devices before scan for new device detection
+        # Store existing devices before scan for new device detection (use MAC when available)
         try:
             with self.app.app_context():
                 existing_devices = Device.query.all()
-                self._devices_before_scan = {device.ip_address for device in existing_devices}
+                self._devices_before_scan = set()
+                for device in existing_devices:
+                    # Use MAC address as primary identifier, fallback to IP for devices without MAC
+                    identifier = device.mac_address if device.mac_address else device.ip_address
+                    self._devices_before_scan.add(identifier)
                 self._new_devices_found = []
         except Exception as e:
             logger.error(f"Error getting existing devices: {e}")
@@ -366,21 +370,68 @@ class NetworkScanner:
             self.is_scanning = False
     
     def process_discovered_device(self, device_info):
-        """Process a discovered device and update database"""
+        """Process a discovered device and update database using MAC-based identification"""
         try:
             ip = device_info['ip']
+            mac = device_info.get('mac')
             
-            # Check if device already exists
-            device = Device.query.filter_by(ip_address=ip).first()
+            device = None
+            ip_changed = False
+            is_new_device = False
+            
+            # MAC-based device identification (primary method)
+            if mac:
+                # Look up device by MAC address first
+                device = Device.query.filter_by(mac_address=mac).first()
+                
+                if device:
+                    # Device exists - check if IP has changed
+                    if device.ip_address != ip:
+                        old_ip = device.ip_address
+                        logger.info(f"Device MAC {mac} IP changed: {old_ip} -> {ip}")
+                        
+                        # Log IP change to history table
+                        try:
+                            db.session.execute(db.text("""
+                                INSERT INTO device_ip_history 
+                                (device_id, old_ip_address, new_ip_address, change_reason, changed_at, detected_by)
+                                VALUES (:device_id, :old_ip, :new_ip, :reason, :changed_at, :detected_by)
+                            """), {
+                                'device_id': device.id,
+                                'old_ip': old_ip,
+                                'new_ip': ip,
+                                'reason': 'DHCP IP address change detected during scan',
+                                'changed_at': datetime.utcnow().isoformat(),
+                                'detected_by': 'network_scanner'
+                            })
+                            
+                            # Update device IP address
+                            device.ip_address = ip
+                            ip_changed = True
+                            logger.info(f"Updated device {device.display_name} IP: {old_ip} -> {ip}")
+                            
+                        except Exception as e:
+                            logger.error(f"Error logging IP change for device {device.id}: {e}")
+                
+            # Fallback: IP-based lookup for devices without MAC
+            if not device:
+                device = Device.query.filter_by(ip_address=ip).first()
+                
+                # If we found a device by IP but now have a MAC, update it
+                if device and mac and not device.mac_address:
+                    device.mac_address = mac
+                    logger.info(f"Added MAC address {mac} to existing device {device.display_name}")
             
             if device:
                 # Update existing device
-                updated = False
+                updated = ip_changed  # IP change already counts as an update
                 
-                if device_info.get('mac') and device.mac_address != device_info['mac']:
-                    device.mac_address = device_info['mac']
+                # Update MAC if we didn't have one before
+                if mac and not device.mac_address:
+                    device.mac_address = mac
                     updated = True
                 
+                # Update hostname if provided and different
                 if device_info.get('hostname') and device.hostname != device_info['hostname']:
                     device.hostname = device_info['hostname']
                     updated = True
@@ -403,7 +454,9 @@ class NetworkScanner:
                 if not device.device_type:
                     device_type = self.classify_device_type({
                         'hostname': device.hostname,
-                        'vendor': device.vendor
+                        'vendor': device.vendor,
+                        'mac': device.mac_address,
+                        'ip': device.ip_address
                     })
                     device.device_type = device_type
                     updated = True
@@ -415,20 +468,23 @@ class NetworkScanner:
                     
             else:
                 # Create new device
+                is_new_device = True
                 hostname = device_info.get('hostname') or self.resolve_hostname(ip)
                 vendor = None
                 
-                if device_info.get('mac'):
-                    vendor = self.get_mac_vendor(device_info['mac'])
+                if mac:
+                    vendor = self.get_mac_vendor(mac)
                 
                 device_type = self.classify_device_type({
                     'hostname': hostname,
-                    'vendor': vendor
+                    'vendor': vendor,
+                    'mac': mac,
+                    'ip': ip
                 })
                 
                 device = Device(
                     ip_address=ip,
-                    mac_address=device_info.get('mac'),
+                    mac_address=mac,
                     hostname=hostname,
                     vendor=vendor,
                     device_type=device_type,
@@ -437,15 +493,21 @@ class NetworkScanner:
                 
                 db.session.add(device)
                 db.session.flush()  # Ensure device has an ID for rule engine
-                logger.info(f"Added new device: {ip} ({hostname or 'unknown'})")
+                
+                if mac:
+                    logger.info(f"Added new device: {ip} (MAC: {mac}) ({hostname or 'unknown'})")
+                else:
+                    logger.warning(f"Added new device without MAC: {ip} ({hostname or 'unknown'}) - may create duplicates")
                 
                 # Trigger rule engine for new device discovery
                 self._trigger_rule_engine_for_new_device(device)
                 
-                # Track new device for notifications
-                if ip not in self._devices_before_scan:
+                # Track new device for notifications (use MAC if available, otherwise IP)
+                device_key = mac if mac else ip
+                if device_key not in self._devices_before_scan:
                     self._new_devices_found.append({
                         'ip': ip,
+                        'mac': mac,
                         'hostname': hostname,
                         'device_type': device_type,
                         'vendor': vendor
@@ -453,8 +515,14 @@ class NetworkScanner:
             
             db.session.commit()
             
+            # Log significant events
+            if ip_changed:
+                logger.info(f"Device {device.display_name} (MAC: {mac}) changed IP address")
+            if is_new_device and not mac:
+                logger.warning(f"New device {device.display_name} has no MAC address - consider re-scanning")
+            
         except Exception as e:
-            logger.error(f"Error processing device {device_info.get('ip')}: {e}")
+            logger.error(f"Error processing device {device_info.get('ip')} (MAC: {device_info.get('mac')}): {e}")
             db.session.rollback()
     
     def _send_scan_completion_notifications(self, total_devices):

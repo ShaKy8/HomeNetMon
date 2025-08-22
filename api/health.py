@@ -3,9 +3,76 @@ from datetime import datetime, timedelta
 from sqlalchemy import func, and_
 from models import db, Device, MonitoringData, Alert
 import logging
+import psutil
+import threading
+import time
 
 health_bp = Blueprint('health', __name__)
 logger = logging.getLogger(__name__)
+
+# Global variables for bandwidth monitoring
+bandwidth_data = {
+    'download_mbps': 0,
+    'upload_mbps': 0,
+    'timestamp': None,
+    'available': False
+}
+bandwidth_lock = threading.Lock()
+
+def get_network_bandwidth():
+    """Get current network bandwidth usage"""
+    try:
+        # Get network interface statistics
+        net_io_before = psutil.net_io_counters()
+        time.sleep(1)  # Wait 1 second to calculate rate
+        net_io_after = psutil.net_io_counters()
+        
+        # Calculate bytes per second
+        bytes_sent_per_sec = net_io_after.bytes_sent - net_io_before.bytes_sent
+        bytes_recv_per_sec = net_io_after.bytes_recv - net_io_before.bytes_recv
+        
+        # Convert to Mbps
+        upload_mbps = round((bytes_sent_per_sec * 8) / (1024 * 1024), 2)
+        download_mbps = round((bytes_recv_per_sec * 8) / (1024 * 1024), 2)
+        
+        with bandwidth_lock:
+            bandwidth_data.update({
+                'download_mbps': download_mbps,
+                'upload_mbps': upload_mbps,
+                'timestamp': datetime.utcnow().isoformat() + 'Z',
+                'available': True
+            })
+        
+        return True
+    except Exception as e:
+        logger.warning(f"Failed to get bandwidth data: {e}")
+        with bandwidth_lock:
+            bandwidth_data.update({
+                'download_mbps': 0,
+                'upload_mbps': 0,
+                'timestamp': None,
+                'available': False
+            })
+        return False
+
+def start_bandwidth_monitoring():
+    """Start background bandwidth monitoring"""
+    def monitor_bandwidth():
+        while True:
+            try:
+                get_network_bandwidth()
+                time.sleep(30)  # Update every 30 seconds
+            except Exception as e:
+                logger.error(f"Bandwidth monitoring error: {e}")
+                time.sleep(60)  # Wait longer on error
+    
+    # Start monitoring in background thread
+    monitor_thread = threading.Thread(target=monitor_bandwidth, daemon=True)
+    monitor_thread.start()
+    logger.info("Bandwidth monitoring started")
+
+# Initialize bandwidth monitoring when module loads
+start_bandwidth_monitoring()
 
 @health_bp.route('/overview', methods=['GET'])
 def get_health_overview():
@@ -15,6 +82,9 @@ def get_health_overview():
         now = datetime.utcnow()
         last_24h = now - timedelta(hours=24)
         last_1h = now - timedelta(hours=1)
+        last_week = now - timedelta(days=7)
+        yesterday_start = now - timedelta(days=1)
+        yesterday_end = now - timedelta(hours=24)
         
         # Basic device counts
         total_devices = Device.query.filter_by(is_monitored=True).count()
@@ -69,18 +139,20 @@ def get_health_overview():
             active_alerts, uptime_percentage
         )
         
+        # Calculate historical comparisons
+        historical_data = calculate_historical_comparisons(
+            last_24h, yesterday_start, yesterday_end, last_week
+        )
+        
         # Get recent activity (last 50 events)
         recent_activity = get_recent_network_activity(50)
         
         # Network performance trends
         performance_trends = get_performance_trends(last_24h)
         
-        # Bandwidth data (placeholder - BandwidthData model not implemented yet)
-        bandwidth_usage = {
-            'download_mbps': 0,
-            'upload_mbps': 0,
-            'timestamp': None
-        }
+        # Get current bandwidth data
+        with bandwidth_lock:
+            bandwidth_usage = bandwidth_data.copy()
         
         return jsonify({
             'success': True,
@@ -102,7 +174,8 @@ def get_health_overview():
             'bandwidth': bandwidth_usage,
             'performance_trends': performance_trends,
             'recent_activity': recent_activity,
-            'status_summary': get_status_summary(health_score, critical_alerts)
+            'status_summary': get_status_summary(health_score, critical_alerts),
+            'historical_comparisons': historical_data
         })
         
     except Exception as e:
@@ -355,4 +428,102 @@ def get_status_summary(health_score, critical_alerts):
             'status': 'poor',
             'message': 'Network has significant performance issues',
             'color': 'danger'
+        }
+
+def calculate_historical_comparisons(last_24h, yesterday_start, yesterday_end, last_week):
+    """Calculate historical comparisons for metrics"""
+    try:
+        # Yesterday's average response time
+        yesterday_avg_response = db.session.query(func.avg(MonitoringData.response_time))\
+            .filter(MonitoringData.timestamp >= yesterday_end)\
+            .filter(MonitoringData.timestamp < yesterday_start)\
+            .filter(MonitoringData.response_time > 0)\
+            .scalar()
+        
+        # Current hour's average response time
+        current_hour_avg = db.session.query(func.avg(MonitoringData.response_time))\
+            .filter(MonitoringData.timestamp >= datetime.utcnow() - timedelta(hours=1))\
+            .filter(MonitoringData.response_time > 0)\
+            .scalar()
+        
+        # Calculate percentage changes
+        response_time_change = 0
+        if yesterday_avg_response and current_hour_avg:
+            response_time_change = round(
+                ((float(current_hour_avg) - float(yesterday_avg_response)) / float(yesterday_avg_response)) * 100, 
+                1
+            )
+        
+        # Device count change (simplified - assumes devices don't change often)
+        total_devices_now = Device.query.filter_by(is_monitored=True).count()
+        
+        # Alert count comparison
+        yesterday_alerts = Alert.query.filter(
+            Alert.created_at >= yesterday_end,
+            Alert.created_at < yesterday_start,
+            Alert.resolved == False
+        ).count()
+        
+        current_alerts = Alert.query.filter_by(resolved=False).count()
+        alert_change = current_alerts - yesterday_alerts
+        
+        # Uptime comparison (last 24h vs previous 24h)
+        prev_24h_start = yesterday_end - timedelta(hours=24)
+        prev_24h_checks = MonitoringData.query\
+            .filter(MonitoringData.timestamp >= prev_24h_start)\
+            .filter(MonitoringData.timestamp < yesterday_end)\
+            .count()
+        
+        prev_24h_successful = MonitoringData.query\
+            .filter(MonitoringData.timestamp >= prev_24h_start)\
+            .filter(MonitoringData.timestamp < yesterday_end)\
+            .filter(MonitoringData.response_time > 0)\
+            .count()
+        
+        prev_uptime = (prev_24h_successful / prev_24h_checks * 100) if prev_24h_checks > 0 else 0
+        
+        current_24h_checks = MonitoringData.query\
+            .filter(MonitoringData.timestamp >= last_24h)\
+            .count()
+        
+        current_24h_successful = MonitoringData.query\
+            .filter(MonitoringData.timestamp >= last_24h)\
+            .filter(MonitoringData.response_time > 0)\
+            .count()
+        
+        current_uptime = (current_24h_successful / current_24h_checks * 100) if current_24h_checks > 0 else 0
+        uptime_change = round(current_uptime - prev_uptime, 1)
+        
+        return {
+            'response_time': {
+                'current_avg': float(current_hour_avg) if current_hour_avg else 0,
+                'yesterday_avg': float(yesterday_avg_response) if yesterday_avg_response else 0,
+                'percentage_change': response_time_change,
+                'trend': 'improving' if response_time_change < 0 else 'degrading' if response_time_change > 0 else 'stable'
+            },
+            'alerts': {
+                'current_count': current_alerts,
+                'yesterday_count': yesterday_alerts,
+                'change': alert_change,
+                'trend': 'improving' if alert_change < 0 else 'degrading' if alert_change > 0 else 'stable'
+            },
+            'uptime': {
+                'current_24h': round(current_uptime, 1),
+                'previous_24h': round(prev_uptime, 1),
+                'change': uptime_change,
+                'trend': 'improving' if uptime_change > 0 else 'degrading' if uptime_change < 0 else 'stable'
+            },
+            'devices': {
+                'total_monitored': total_devices_now,
+                'change_message': f'{total_devices_now} devices being monitored'
+            }
+        }
+        
+    except Exception as e:
+        logger.error(f"Error calculating historical comparisons: {e}")
+        return {
+            'response_time': {'current_avg': 0, 'yesterday_avg': 0, 'percentage_change': 0, 'trend': 'stable'},
+            'alerts': {'current_count': 0, 'yesterday_count': 0, 'change': 0, 'trend': 'stable'},
+            'uptime': {'current_24h': 0, 'previous_24h': 0, 'change': 0, 'trend': 'stable'},
+            'devices': {'total_monitored': 0, 'change_message': 'No data available'}
         }

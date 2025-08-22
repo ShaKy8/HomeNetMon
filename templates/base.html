@@ -91,12 +91,54 @@
             border-radius: 50%;
             display: inline-block;
             margin-right: 8px;
+            position: relative;
         }
         
-        .status-indicator.up { background-color: var(--success-color); }
-        .status-indicator.down { background-color: var(--danger-color); }
-        .status-indicator.warning { background-color: var(--warning-color); }
-        .status-indicator.unknown { background-color: var(--secondary-color); }
+        .status-indicator.up { 
+            background-color: var(--success-color); 
+        }
+        .status-indicator.down { 
+            background-color: var(--danger-color);
+        }
+        .status-indicator.warning { 
+            background-color: var(--warning-color);
+        }
+        .status-indicator.unknown { 
+            background-color: var(--secondary-color);
+        }
+        
+        /* Accessibility improvements for status indicators */
+        .status-indicator::after {
+            content: attr(data-status-text);
+            position: absolute;
+            left: -9999px;
+            width: 1px;
+            height: 1px;
+            overflow: hidden;
+        }
+        
+        /* High contrast mode support */
+        @media (prefers-contrast: high) {
+            .status-indicator {
+                border: 2px solid;
+            }
+            .status-indicator.up { 
+                border-color: var(--success-color);
+                background-color: transparent;
+            }
+            .status-indicator.down { 
+                border-color: var(--danger-color);
+                background-color: transparent;
+            }
+            .status-indicator.warning { 
+                border-color: var(--warning-color);
+                background-color: transparent;
+            }
+            .status-indicator.unknown { 
+                border-color: var(--secondary-color);
+                background-color: transparent;
+            }
+        }
         
         .sidebar {
             min-height: calc(100vh - 56px);
@@ -238,57 +280,75 @@
             
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
+                    <!-- Core Navigation -->
                     <li class="nav-item">
                         <a class="nav-link{% if request.endpoint == 'dashboard' %} active{% endif %}" href="{{ url_for('dashboard') }}">
                             <i class="bi bi-speedometer2"></i> Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link{% if request.endpoint == 'noc_view' %} active{% endif %}" href="{{ url_for('noc_view') }}" target="_blank">
-                            <i class="bi bi-display"></i> NOC View
-                        </a>
-                    </li>
-                    <li class="nav-item">
                         <a class="nav-link{% if request.endpoint == 'monitored_hosts' %} active{% endif %}" href="{{ url_for('monitored_hosts') }}">
-                            <i class="bi bi-hdd-network"></i> Monitored Hosts
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link{% if request.endpoint == 'health_overview' %} active{% endif %}" href="{{ url_for('health_overview') }}">
-                            <i class="bi bi-heart-pulse"></i> Health Overview
+                            <i class="bi bi-hdd-network"></i> Devices
                         </a>
                     </li>
                     <li class="nav-item">
                         <a class="nav-link{% if request.endpoint == 'alerts' %} active{% endif %}" href="{{ url_for('alerts') }}">
-                            <i class="bi bi-exclamation-triangle"></i> Alerts
+                            <i class="bi bi-exclamation-triangle"></i> Alerts & Issues
                             <span id="alert-count-badge" class="badge bg-danger ms-1" style="display: none;">0</span>
                         </a>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link{% if request.endpoint == 'notifications' %} active{% endif %}" href="{{ url_for('notifications') }}">
-                            <i class="bi bi-bell"></i> Notifications
+                    
+                    <!-- Monitoring & Analysis (Progressive Disclosure) -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle{% if request.endpoint in ['noc_view', 'health_overview', 'analytics', 'topology'] %} active{% endif %}" 
+                           href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-graph-up"></i> Monitoring
                         </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item{% if request.endpoint == 'health_overview' %} active{% endif %}" 
+                                   href="{{ url_for('health_overview') }}">
+                                <i class="bi bi-heart-pulse"></i> Health Overview
+                            </a></li>
+                            <li><a class="dropdown-item{% if request.endpoint == 'analytics' %} active{% endif %}" 
+                                   href="{{ url_for('analytics') }}">
+                                <i class="bi bi-graph-up"></i> Analytics
+                            </a></li>
+                            <li><a class="dropdown-item{% if request.endpoint == 'topology' %} active{% endif %}" 
+                                   href="{{ url_for('topology') }}">
+                                <i class="bi bi-diagram-3"></i> Network Topology
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item{% if request.endpoint == 'noc_view' %} active{% endif %}" 
+                                   href="{{ url_for('noc_view') }}" target="_blank">
+                                <i class="bi bi-display"></i> NOC View
+                            </a></li>
+                        </ul>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link{% if request.endpoint == 'analytics' %} active{% endif %}" href="{{ url_for('analytics') }}">
-                            <i class="bi bi-graph-up"></i> Analytics
+                    
+                    <!-- Advanced Features (Progressive Disclosure) -->
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle{% if request.endpoint in ['ai_dashboard', 'security_dashboard', 'notifications'] %} active{% endif %}" 
+                           href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-gear-wide-connected"></i> Advanced
                         </a>
+                        <ul class="dropdown-menu">
+                            <li><a class="dropdown-item{% if request.endpoint == 'ai_dashboard' %} active{% endif %}" 
+                                   href="{{ url_for('ai_dashboard') }}">
+                                <i class="bi bi-robot"></i> AI Dashboard
+                            </a></li>
+                            <li><a class="dropdown-item{% if request.endpoint == 'security_dashboard' %} active{% endif %}" 
+                                   href="{{ url_for('security_dashboard') }}">
+                                <i class="bi bi-shield-check"></i> Security
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item{% if request.endpoint == 'notifications' %} active{% endif %}" 
+                                   href="{{ url_for('notifications') }}">
+                                <i class="bi bi-bell"></i> Notification History
+                            </a></li>
+                        </ul>
                     </li>
-                    <li class="nav-item">
-                        <a class="nav-link{% if request.endpoint == 'topology' %} active{% endif %}" href="{{ url_for('topology') }}">
-                            <i class="bi bi-diagram-3"></i> Network Topology
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link{% if request.endpoint == 'ai_dashboard' %} active{% endif %}" href="{{ url_for('ai_dashboard') }}">
-                            <i class="bi bi-robot"></i> AI Dashboard
-                        </a>
-                    </li>
-                    <li class="nav-item">
-                        <a class="nav-link{% if request.endpoint == 'security_dashboard' %} active{% endif %}" href="{{ url_for('security_dashboard') }}">
-                            <i class="bi bi-shield-check"></i> Security
-                        </a>
-                    </li>
+                    
+                    <!-- Settings -->
                     <li class="nav-item">
                         <a class="nav-link{% if request.endpoint == 'settings' %} active{% endif %}" href="{{ url_for('settings') }}">
                             <i class="bi bi-gear"></i> Settings
@@ -330,8 +390,11 @@
                     </li>
                     <li class="nav-item">
                         <span class="navbar-text">
-                            <span id="connection-status" class="badge bg-success">
-                                <i class="bi bi-wifi"></i> Connected
+                            <span id="connection-status" class="badge bg-success" 
+                                  role="status" aria-live="polite" aria-label="Connection status">
+                                <i class="bi bi-wifi" aria-hidden="true"></i> 
+                                <span class="connection-text">Connected</span>
+                                <span class="visually-hidden" id="connection-status-text">Connected to HomeNetMon server</span>
                             </span>
                         </span>
                     </li>
@@ -343,47 +406,8 @@
     <!-- Main Content -->
     <div class="container-fluid">
         <div class="row">
-            <!-- Sidebar -->
-            <div class="col-md-2 sidebar p-3">
-                <div class="d-flex flex-column">
-                    <h6 class="text-muted mb-3">QUICK STATS</h6>
-                    
-                    <div class="mb-3">
-                        <small class="text-muted">Total Devices</small>
-                        <div class="h5 mb-0" id="total-devices">-</div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <small class="text-muted">Devices Up</small>
-                        <div class="h5 mb-0 text-success" id="devices-up">-</div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <small class="text-muted">Devices Down</small>
-                        <div class="h5 mb-0 text-danger" id="devices-down">-</div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <small class="text-muted">Active Alerts</small>
-                        <div class="h5 mb-0 text-warning" id="active-alerts">-</div>
-                    </div>
-                    
-                    <hr>
-                    
-                    <div class="mb-3">
-                        <small class="text-muted">Last Update</small>
-                        <div class="small" id="last-update">-</div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <small class="text-muted">Network Range</small>
-                        <div class="small" id="network-range">Loading...</div>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Main Content Area -->
-            <div class="col-md-10 main-content">
+            <!-- Full Width Main Content Area (No Sidebar) -->
+            <div class="col-md-12 main-content">
                 {% block content %}{% endblock %}
             </div>
         </div>
@@ -596,43 +620,37 @@
             
             socket.on('monitoring_summary', function(data) {
                 console.log('Monitoring summary:', data);
-                updateSidebarStats(data);
-                updateLastUpdateTime();
+                // Monitoring summary data received (no Quick Stats to update)
             });
             
             // Request initial device update
             socket.emit('request_device_update');
         }
         
-        // Update connection status indicator
+        // Update connection status indicator with accessibility improvements
         function updateConnectionStatus(connected) {
             const statusElement = document.getElementById('connection-status');
+            const statusText = document.getElementById('connection-status-text');
+            
             if (connected) {
                 statusElement.className = 'badge bg-success';
-                statusElement.innerHTML = '<i class="bi bi-wifi"></i> Connected';
+                statusElement.innerHTML = `
+                    <i class="bi bi-wifi" aria-hidden="true"></i> 
+                    <span class="connection-text">Connected</span>
+                    <span class="visually-hidden" id="connection-status-text">Connected to HomeNetMon server</span>
+                `;
+                statusElement.setAttribute('aria-label', 'Connection status: Connected');
             } else {
                 statusElement.className = 'badge bg-danger';
-                statusElement.innerHTML = '<i class="bi bi-wifi-off"></i> Disconnected';
+                statusElement.innerHTML = `
+                    <i class="bi bi-wifi-off" aria-hidden="true"></i> 
+                    <span class="connection-text">Disconnected</span>
+                    <span class="visually-hidden" id="connection-status-text">Disconnected from HomeNetMon server</span>
+                `;
+                statusElement.setAttribute('aria-label', 'Connection status: Disconnected');
             }
         }
         
-        // Update sidebar statistics
-        function updateSidebarStats(data) {
-            if (data.total_devices !== undefined) {
-                document.getElementById('total-devices').textContent = data.total_devices;
-            }
-            if (data.devices_up !== undefined) {
-                document.getElementById('devices-up').textContent = data.devices_up;
-            }
-            if (data.devices_down !== undefined) {
-                document.getElementById('devices-down').textContent = data.devices_down;
-            }
-        }
-        
-        // Update last update time
-        function updateLastUpdateTime() {
-            document.getElementById('last-update').textContent = new Date().toLocaleTimeString();
-        }
         
         // Show toast notification
         function showToast(message, type = 'info', duration = 5000) {
@@ -711,7 +729,7 @@
             }
         }
         
-        // Load active alerts count
+        // Load active alerts count for navbar badge
         async function loadActiveAlertsCount() {
             try {
                 const response = await fetch('/api/monitoring/alerts?resolved=false');
@@ -727,12 +745,12 @@
                     badge.style.display = 'none';
                 }
                 
-                document.getElementById('active-alerts').textContent = count;
-                
             } catch (error) {
                 console.error('Error loading alerts count:', error);
             }
         }
+        
+        
         
         // PWA Installation
         let deferredPrompt;
@@ -851,18 +869,6 @@
             }
         }
         
-        // Load and display current network range in sidebar
-        async function loadCurrentNetworkRange() {
-            try {
-                const response = await fetch('/api/config/network');
-                const data = await response.json();
-                if (data.network_range) {
-                    document.getElementById('network-range').textContent = data.network_range;
-                }
-            } catch (error) {
-                console.error('Failed to load network range:', error);
-            }
-        }
         
         function buildSearchIndex() {
             searchIndex = searchCache.map(device => ({
@@ -919,12 +925,90 @@
         function showSearchOverlay(query) {
             const results = performSearch(query);
             displaySearchResults(results);
-            document.getElementById('search-overlay').style.display = 'block';
+            const overlay = document.getElementById('search-overlay');
+            FocusManager.pushFocus(overlay);
+            overlay.style.display = 'block';
+            FocusManager.trapFocus(overlay);
+            FocusManager.announce(`${results.length} search results found for "${query}"`);
         }
         
         function hideSearchOverlay() {
-            document.getElementById('search-overlay').style.display = 'none';
+            const overlay = document.getElementById('search-overlay');
+            overlay.style.display = 'none';
+            FocusManager.popFocus();
+            FocusManager.announce('Search overlay closed');
         }
+        
+        // Focus management utilities
+        const FocusManager = {
+            // Stack to track focus history
+            focusStack: [],
+            
+            // Save current focus and set new focus
+            pushFocus: function(element) {
+                const currentFocus = document.activeElement;
+                if (currentFocus && currentFocus !== document.body) {
+                    this.focusStack.push(currentFocus);
+                }
+                if (element) {
+                    element.focus();
+                }
+            },
+            
+            // Restore previous focus
+            popFocus: function() {
+                const previousFocus = this.focusStack.pop();
+                if (previousFocus && typeof previousFocus.focus === 'function') {
+                    previousFocus.focus();
+                }
+            },
+            
+            // Trap focus within an element
+            trapFocus: function(element) {
+                const focusableElements = element.querySelectorAll(
+                    'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+                );
+                const firstElement = focusableElements[0];
+                const lastElement = focusableElements[focusableElements.length - 1];
+                
+                element.addEventListener('keydown', function(e) {
+                    if (e.key === 'Tab') {
+                        if (e.shiftKey) {
+                            if (document.activeElement === firstElement) {
+                                e.preventDefault();
+                                lastElement.focus();
+                            }
+                        } else {
+                            if (document.activeElement === lastElement) {
+                                e.preventDefault();
+                                firstElement.focus();
+                            }
+                        }
+                    }
+                });
+                
+                // Focus first element
+                if (firstElement) {
+                    firstElement.focus();
+                }
+            },
+            
+            // Announce content changes to screen readers
+            announce: function(message, priority = 'polite') {
+                const announcer = document.createElement('div');
+                announcer.setAttribute('aria-live', priority);
+                announcer.setAttribute('aria-atomic', 'true');
+                announcer.className = 'visually-hidden';
+                announcer.textContent = message;
+                
+                document.body.appendChild(announcer);
+                
+                // Remove after announcement
+                setTimeout(() => {
+                    document.body.removeChild(announcer);
+                }, 1000);
+            }
+        };
         
         // Keyboard Shortcuts
         function initializeKeyboardShortcuts() {
@@ -1003,22 +1087,43 @@
         
         function toggleShortcutsHelp() {
             const dialog = document.getElementById('shortcuts-help');
-            dialog.style.display = dialog.style.display === 'block' ? 'none' : 'block';
+            if (dialog.style.display === 'block') {
+                hideShortcutsHelp();
+            } else {
+                showShortcutsHelp();
+            }
+        }
+        
+        function showShortcutsHelp() {
+            const dialog = document.getElementById('shortcuts-help');
+            FocusManager.pushFocus(dialog);
+            dialog.style.display = 'block';
+            FocusManager.trapFocus(dialog);
+            FocusManager.announce('Keyboard shortcuts dialog opened');
         }
         
         function hideShortcutsHelp() {
-            document.getElementById('shortcuts-help').style.display = 'none';
+            const dialog = document.getElementById('shortcuts-help');
+            dialog.style.display = 'none';
+            FocusManager.popFocus();
+            FocusManager.announce('Keyboard shortcuts dialog closed');
         }
         
         // About dialog functions
         function showAboutDialog() {
             const dialog = document.getElementById('about-dialog');
+            FocusManager.pushFocus(dialog);
             dialog.style.display = 'block';
+            FocusManager.trapFocus(dialog);
             loadAboutInfo();
+            FocusManager.announce('About dialog opened');
         }
         
         function hideAboutDialog() {
-            document.getElementById('about-dialog').style.display = 'none';
+            const dialog = document.getElementById('about-dialog');
+            dialog.style.display = 'none';
+            FocusManager.popFocus();
+            FocusManager.announce('About dialog closed');
         }
         
         async function loadAboutInfo() {
@@ -1100,15 +1205,19 @@
             }
         }
         
+        
+        
         // Initialize when page loads
         document.addEventListener('DOMContentLoaded', function() {
+            console.log('Base: DOMContentLoaded fired');
+            
             initializeSocket();
             loadActiveAlertsCount();
             initializeTheme();
             initializeSearch();
-            loadCurrentNetworkRange();
             initializeKeyboardShortcuts();
             initializeMobileSidebar();
+            
             
             // Theme toggle event listener
             document.getElementById('theme-toggle').addEventListener('change', toggleTheme);
@@ -1153,7 +1262,6 @@
             setInterval(() => {
                 loadActiveAlertsCount();
                 initializeSearch(); // Refresh search index
-                loadCurrentNetworkRange(); // Refresh network range display
             }, 30000); // Every 30 seconds
         });
     </script>

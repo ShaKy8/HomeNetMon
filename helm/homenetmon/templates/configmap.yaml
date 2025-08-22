@@ -1,0 +1,187 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "homenetmon.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "homenetmon.labels" . | nindent 4 }}
+    app.kubernetes.io/component: config
+  annotations:
+    {{- include "homenetmon.commonAnnotations" . | nindent 4 }}
+data:
+  # Application Configuration
+  FLASK_ENV: "production"
+  DATABASE_URL: {{ include "homenetmon.databaseUrl" . | quote }}
+  REDIS_URL: {{ include "homenetmon.redisUrl" . | quote }}
+  
+  # Network Configuration
+  NETWORK_RANGE: {{ .Values.config.networkRange | quote }}
+  PING_INTERVAL: {{ .Values.config.pingInterval | quote }}
+  DISCOVERY_INTERVAL: {{ .Values.config.discoveryInterval | quote }}
+  
+  # Monitoring Configuration
+  MONITORING_ENABLED: {{ .Values.config.monitoringEnabled | quote }}
+  REAL_TIME_UPDATES: {{ .Values.config.realTimeUpdates | quote }}
+  MAX_MONITORED_DEVICES: {{ .Values.config.maxMonitoredDevices | quote }}
+  
+  # API Configuration
+  API_RATE_LIMIT: {{ .Values.config.apiRateLimit | quote }}
+  API_BURST_LIMIT: {{ .Values.config.apiBurstLimit | quote }}
+  ENABLE_API_COMPRESSION: {{ .Values.config.enableApiCompression | quote }}
+  
+  # Feature Flags
+  ENABLE_PUSH_NOTIFICATIONS: {{ .Values.config.enablePushNotifications | quote }}
+  ENABLE_REMOTE_ACCESS: {{ .Values.config.enableRemoteAccess | quote }}
+  ENABLE_MULTI_TENANCY: {{ .Values.config.enableMultiTenancy | quote }}
+  ENABLE_ANALYTICS: {{ .Values.config.enableAnalytics | quote }}
+  
+  # Logging Configuration
+  LOG_LEVEL: {{ .Values.config.logLevel | quote }}
+  LOG_FORMAT: {{ .Values.config.logFormat | quote }}
+  LOG_RETENTION_DAYS: {{ .Values.config.logRetentionDays | quote }}
+  
+  # Security Configuration
+  SECURE_HEADERS: {{ .Values.config.secureHeaders | quote }}
+  CSRF_PROTECTION: {{ .Values.config.csrfProtection | quote }}
+  RATE_LIMITING: {{ .Values.config.rateLimiting | quote }}
+  
+  # Performance Configuration
+  WORKER_PROCESSES: {{ .Values.config.workerProcesses | quote }}
+  WORKER_CONNECTIONS: {{ .Values.config.workerConnections | quote }}
+  KEEPALIVE_TIMEOUT: {{ .Values.config.keepaliveTimeout | quote }}
+  
+  # Kubernetes specific
+  RELEASE_NAME: {{ .Release.Name | quote }}
+  RELEASE_NAMESPACE: {{ .Release.Namespace | quote }}
+  CHART_VERSION: {{ .Chart.Version | quote }}
+  APP_VERSION: {{ .Chart.AppVersion | quote }}
+
+{{- if .Values.nginx.enabled }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "homenetmon.fullname" . }}-nginx-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "homenetmon.labels" . | nindent 4 }}
+    app.kubernetes.io/component: nginx-config
+  annotations:
+    {{- include "homenetmon.commonAnnotations" . | nindent 4 }}
+data:
+  default.conf: |
+    upstream app {
+        least_conn;
+        server 127.0.0.1:5000 max_fails=3 fail_timeout=30s;
+    }
+    
+    {{- if .Values.nginx.config.rateLimitEnabled }}
+    # Rate limiting
+    limit_req_zone $binary_remote_addr zone=api:10m rate=10r/s;
+    limit_req_zone $binary_remote_addr zone=web:10m rate=5r/s;
+    {{- end }}
+    
+    server {
+        listen 80;
+        server_name _;
+        
+        # Client max body size
+        client_max_body_size 10M;
+        
+        {{- if .Values.nginx.config.securityHeaders }}
+        # Security headers
+        add_header X-Frame-Options DENY;
+        add_header X-Content-Type-Options nosniff;
+        add_header X-XSS-Protection "1; mode=block";
+        add_header Strict-Transport-Security "max-age=31536000; includeSubDomains";
+        add_header Content-Security-Policy "default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline';";
+        {{- end }}
+        
+        {{- if .Values.nginx.config.gzipEnabled }}
+        # Gzip compression
+        gzip on;
+        gzip_vary on;
+        gzip_min_length 1024;
+        gzip_types text/plain text/css text/xml text/javascript application/javascript application/json;
+        {{- end }}
+        
+        # Static files
+        location /static/ {
+            alias /app/static/;
+            expires 1y;
+            add_header Cache-Control "public, immutable";
+            try_files $uri $uri/ =404;
+        }
+        
+        # API endpoints
+        location /api/ {
+            {{- if .Values.nginx.config.rateLimitEnabled }}
+            limit_req zone=api burst=20 nodelay;
+            {{- end }}
+            proxy_pass http://app;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_connect_timeout 30s;
+            proxy_send_timeout 30s;
+            proxy_read_timeout 30s;
+            proxy_buffering off;
+        }
+        
+        # WebSocket endpoints
+        location /socket.io/ {
+            proxy_pass http://app;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection "upgrade";
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_read_timeout 3600s;
+            proxy_send_timeout 3600s;
+        }
+        
+        # Health check
+        location /health {
+            access_log off;
+            proxy_pass http://app;
+            proxy_connect_timeout 5s;
+            proxy_send_timeout 5s;
+            proxy_read_timeout 5s;
+        }
+        
+        # Ready check
+        location /ready {
+            access_log off;
+            proxy_pass http://app;
+            proxy_connect_timeout 5s;
+            proxy_send_timeout 5s;
+            proxy_read_timeout 5s;
+        }
+        
+        # Main application
+        location / {
+            {{- if .Values.nginx.config.rateLimitEnabled }}
+            limit_req zone=web burst=10 nodelay;
+            {{- end }}
+            proxy_pass http://app;
+            proxy_set_header Host $host;
+            proxy_set_header X-Real-IP $remote_addr;
+            proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+            proxy_set_header X-Forwarded-Proto $scheme;
+            proxy_connect_timeout 30s;
+            proxy_send_timeout 30s;
+            proxy_read_timeout 30s;
+        }
+        
+        # Error pages
+        error_page 404 /404.html;
+        error_page 500 502 503 504 /50x.html;
+        
+        location = /50x.html {
+            root /usr/share/nginx/html;
+        }
+    }
+{{- end }}

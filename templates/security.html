@@ -1,0 +1,1236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Dashboard - HomeNetMon</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        .security-metric-card {
+            transition: transform 0.2s ease-in-out;
+            cursor: pointer;
+        }
+        
+        .security-metric-card:hover {
+            transform: translateY(-2px);
+        }
+        
+        .threat-level-critical {
+            background: linear-gradient(135deg, #dc3545, #b02a37);
+            color: white;
+        }
+        
+        .threat-level-high {
+            background: linear-gradient(135deg, #fd7e14, #e8590c);
+            color: white;
+        }
+        
+        .threat-level-medium {
+            background: linear-gradient(135deg, #ffc107, #e0a800);
+            color: black;
+        }
+        
+        .threat-level-low {
+            background: linear-gradient(135deg, #28a745, #1e7e34);
+            color: white;
+        }
+        
+        .threat-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 5px;
+        }
+        
+        .threat-critical { background-color: #dc3545; }
+        .threat-high { background-color: #fd7e14; }
+        .threat-medium { background-color: #ffc107; }
+        .threat-low { background-color: #28a745; }
+        
+        .security-status-active {
+            color: #28a745;
+            animation: pulse 2s infinite;
+        }
+        
+        .security-status-inactive {
+            color: #dc3545;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .vulnerability-card {
+            border-left: 4px solid;
+        }
+        
+        .vuln-critical { border-left-color: #dc3545; }
+        .vuln-high { border-left-color: #fd7e14; }
+        .vuln-medium { border-left-color: #ffc107; }
+        .vuln-low { border-left-color: #28a745; }
+        
+        .incident-timeline {
+            position: relative;
+            padding-left: 20px;
+        }
+        
+        .incident-timeline:before {
+            content: '';
+            position: absolute;
+            left: 9px;
+            top: 0;
+            bottom: 0;
+            width: 2px;
+            background: #dee2e6;
+        }
+        
+        .incident-timeline-item {
+            position: relative;
+            margin-bottom: 15px;
+        }
+        
+        .incident-timeline-item:before {
+            content: '';
+            position: absolute;
+            left: -15px;
+            top: 5px;
+            width: 10px;
+            height: 10px;
+            background: #007bff;
+            border-radius: 50%;
+            border: 2px solid white;
+        }
+        
+        .compliance-gauge {
+            text-align: center;
+            position: relative;
+        }
+        
+        .compliance-score {
+            font-size: 2rem;
+            font-weight: bold;
+        }
+        
+        .scanning-animation {
+            animation: scanning 2s linear infinite;
+        }
+        
+        @keyframes scanning {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-light">
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-dark bg-primary">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="/">
+                <i class="bi bi-shield-check"></i> HomeNetMon Security
+            </a>
+            
+            <div class="navbar-nav ms-auto">
+                <a class="nav-link" href="/">Dashboard</a>
+                <a class="nav-link" href="/topology">Topology</a>
+                <a class="nav-link active" href="/security">Security</a>
+                <a class="nav-link" href="/alerts">Alerts</a>
+                <a class="nav-link" href="/settings">Settings</a>
+            </div>
+        </div>
+    </nav>
+
+    <div class="container-fluid mt-4">
+        <!-- Security Status Overview -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">
+                            <i class="bi bi-shield-exclamation"></i> Security Status Overview
+                        </h5>
+                        <div>
+                            <button class="btn btn-outline-primary btn-sm" id="refreshSecurityData">
+                                <i class="bi bi-arrow-clockwise"></i> Refresh
+                            </button>
+                            <button class="btn btn-primary btn-sm" id="startSecurityScan">
+                                <i class="bi bi-search"></i> Start Scan
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="row">
+                            <!-- Security Engine Status -->
+                            <div class="col-md-3 mb-3">
+                                <div class="card security-metric-card h-100">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-cpu display-4 mb-2" id="scannerStatusIcon"></i>
+                                        <h6>Security Scanner</h6>
+                                        <p class="mb-0" id="scannerStatus">Loading...</p>
+                                        <small class="text-muted" id="scannerLastScan">-</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Threat Monitoring -->
+                            <div class="col-md-3 mb-3">
+                                <div class="card security-metric-card h-100">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-eye display-4 mb-2" id="monitoringStatusIcon"></i>
+                                        <h6>Threat Monitor</h6>
+                                        <p class="mb-0" id="monitoringStatus">Loading...</p>
+                                        <small class="text-muted" id="monitoringThreats">-</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Response Engine -->
+                            <div class="col-md-3 mb-3">
+                                <div class="card security-metric-card h-100">
+                                    <div class="card-body text-center">
+                                        <i class="bi bi-lightning display-4 mb-2" id="responseStatusIcon"></i>
+                                        <h6>Response Engine</h6>
+                                        <p class="mb-0" id="responseStatus">Loading...</p>
+                                        <small class="text-muted" id="responseActions">-</small>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Compliance Score -->
+                            <div class="col-md-3 mb-3">
+                                <div class="card security-metric-card h-100">
+                                    <div class="card-body text-center compliance-gauge">
+                                        <div class="compliance-score" id="complianceScore">-</div>
+                                        <h6>Compliance Score</h6>
+                                        <small class="text-muted" id="complianceFramework">-</small>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Metrics Row -->
+        <div class="row mb-4">
+            <!-- Vulnerability Summary -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="bi bi-bug"></i> Vulnerability Summary</h6>
+                        <button class="btn btn-outline-primary btn-sm" onclick="refreshVulnerabilities()">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center mb-3">
+                            <div class="col-3">
+                                <div class="text-danger">
+                                    <h4 id="criticalVulns">0</h4>
+                                    <small>Critical</small>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="text-warning">
+                                    <h4 id="highVulns">0</h4>
+                                    <small>High</small>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="text-info">
+                                    <h4 id="mediumVulns">0</h4>
+                                    <small>Medium</small>
+                                </div>
+                            </div>
+                            <div class="col-3">
+                                <div class="text-success">
+                                    <h4 id="lowVulns">0</h4>
+                                    <small>Low</small>
+                                </div>
+                            </div>
+                        </div>
+                        <canvas id="vulnerabilityChart" height="200"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Recent Threats -->
+            <div class="col-lg-6 mb-4">
+                <div class="card h-100">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h6 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Recent Threats</h6>
+                        <button class="btn btn-outline-primary btn-sm" onclick="refreshThreats()">
+                            <i class="bi bi-arrow-clockwise"></i>
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <div id="recentThreats">
+                            <div class="text-center">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Information Tabs -->
+        <div class="row">
+            <div class="col-12">
+                <div class="card">
+                    <div class="card-header">
+                        <ul class="nav nav-tabs card-header-tabs" id="securityTabs" role="tablist">
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link active" id="vulnerabilities-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#vulnerabilities" type="button" role="tab">
+                                    <i class="bi bi-bug"></i> Vulnerabilities
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="incidents-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#incidents" type="button" role="tab">
+                                    <i class="bi bi-exclamation-circle"></i> Incidents
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="compliance-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#compliance" type="button" role="tab">
+                                    <i class="bi bi-check-circle"></i> Compliance
+                                </button>
+                            </li>
+                            <li class="nav-item" role="presentation">
+                                <button class="nav-link" id="reports-tab" data-bs-toggle="tab" 
+                                        data-bs-target="#reports" type="button" role="tab">
+                                    <i class="bi bi-file-earmark-text"></i> Reports
+                                </button>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="card-body">
+                        <div class="tab-content" id="securityTabContent">
+                            <!-- Vulnerabilities Tab -->
+                            <div class="tab-pane fade show active" id="vulnerabilities" role="tabpanel">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6>Vulnerability Details</h6>
+                                    <div>
+                                        <select class="form-select form-select-sm d-inline-block w-auto me-2" id="vulnSeverityFilter">
+                                            <option value="">All Severities</option>
+                                            <option value="critical">Critical</option>
+                                            <option value="high">High</option>
+                                            <option value="medium">Medium</option>
+                                            <option value="low">Low</option>
+                                        </select>
+                                        <select class="form-select form-select-sm d-inline-block w-auto" id="vulnStatusFilter">
+                                            <option value="open">Open</option>
+                                            <option value="acknowledged">Acknowledged</option>
+                                            <option value="remediated">Remediated</option>
+                                            <option value="false_positive">False Positive</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="vulnerabilityDetails">
+                                    <div class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading vulnerabilities...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Incidents Tab -->
+                            <div class="tab-pane fade" id="incidents" role="tabpanel">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6>Security Incidents</h6>
+                                    <div>
+                                        <select class="form-select form-select-sm d-inline-block w-auto me-2" id="incidentStatusFilter">
+                                            <option value="">All Statuses</option>
+                                            <option value="new">New</option>
+                                            <option value="assigned">Assigned</option>
+                                            <option value="investigating">Investigating</option>
+                                            <option value="resolved">Resolved</option>
+                                        </select>
+                                    </div>
+                                </div>
+                                <div id="incidentDetails">
+                                    <div class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading incidents...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Compliance Tab -->
+                            <div class="tab-pane fade" id="compliance" role="tabpanel">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <h6>Compliance Assessment</h6>
+                                    <div>
+                                        <select class="form-select form-select-sm d-inline-block w-auto me-2" id="complianceFrameworkSelect">
+                                            <option value="cis">CIS Controls</option>
+                                            <option value="nist">NIST Framework</option>
+                                            <option value="pci_dss">PCI DSS</option>
+                                            <option value="iso27001">ISO 27001</option>
+                                        </select>
+                                        <button class="btn btn-primary btn-sm" onclick="runComplianceAssessment()">
+                                            <i class="bi bi-play-circle"></i> Run Assessment
+                                        </button>
+                                    </div>
+                                </div>
+                                <div id="complianceDetails">
+                                    <div class="text-center">
+                                        <div class="spinner-border text-primary" role="status">
+                                            <span class="visually-hidden">Loading compliance data...</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Reports Tab -->
+                            <div class="tab-pane fade" id="reports" role="tabpanel">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Generate Security Report</h6>
+                                        <form id="reportGenerationForm">
+                                            <div class="mb-3">
+                                                <label class="form-label">Framework</label>
+                                                <select class="form-select" name="framework">
+                                                    <option value="cis">CIS Controls</option>
+                                                    <option value="nist">NIST Framework</option>
+                                                    <option value="pci_dss">PCI DSS</option>
+                                                    <option value="iso27001">ISO 27001</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Report Type</label>
+                                                <select class="form-select" name="report_type">
+                                                    <option value="executive_summary">Executive Summary</option>
+                                                    <option value="detailed_technical">Detailed Technical</option>
+                                                    <option value="compliance_scorecard">Compliance Scorecard</option>
+                                                    <option value="trend_analysis">Trend Analysis</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Time Period (days)</label>
+                                                <select class="form-select" name="period_days">
+                                                    <option value="7">Last 7 days</option>
+                                                    <option value="30" selected>Last 30 days</option>
+                                                    <option value="90">Last 90 days</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-3">
+                                                <label class="form-label">Format</label>
+                                                <select class="form-select" name="format">
+                                                    <option value="json">JSON</option>
+                                                    <option value="html">HTML</option>
+                                                    <option value="csv">CSV</option>
+                                                </select>
+                                            </div>
+                                            <button type="submit" class="btn btn-primary">
+                                                <i class="bi bi-file-earmark-arrow-down"></i> Generate Report
+                                            </button>
+                                        </form>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <h6>Recent Reports</h6>
+                                        <div id="recentReports" class="list-group">
+                                            <div class="text-center">
+                                                <small class="text-muted">No recent reports</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vulnerability Detail Modal -->
+    <div class="modal fade" id="vulnerabilityModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Vulnerability Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="vulnerabilityModalContent">
+                        <!-- Vulnerability details will be loaded here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-warning" onclick="acknowledgeVulnerability()">Acknowledge</button>
+                    <button type="button" class="btn btn-success" onclick="markVulnerabilityRemediated()">Mark as Remediated</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Incident Detail Modal -->
+    <div class="modal fade" id="incidentModal" tabindex="-1">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Incident Details</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div id="incidentModalContent">
+                        <!-- Incident details will be loaded here -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" onclick="updateIncidentStatus()">Update Status</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <script>
+        // Global variables
+        let vulnerabilityChart = null;
+        let currentVulnerability = null;
+        let currentIncident = null;
+        let refreshInterval = null;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeSecurityDashboard();
+            startAutoRefresh();
+            
+            // Set up event listeners
+            setupEventListeners();
+        });
+
+        function initializeSecurityDashboard() {
+            refreshSecurityStatus();
+            refreshVulnerabilities();
+            refreshThreats();
+            refreshIncidents();
+            refreshComplianceData();
+        }
+
+        function setupEventListeners() {
+            // Refresh button
+            document.getElementById('refreshSecurityData').addEventListener('click', function() {
+                initializeSecurityDashboard();
+            });
+
+            // Start scan button
+            document.getElementById('startSecurityScan').addEventListener('click', function() {
+                startSecurityScan();
+            });
+
+            // Vulnerability filters
+            document.getElementById('vulnSeverityFilter').addEventListener('change', refreshVulnerabilities);
+            document.getElementById('vulnStatusFilter').addEventListener('change', refreshVulnerabilities);
+
+            // Incident filter
+            document.getElementById('incidentStatusFilter').addEventListener('change', refreshIncidents);
+
+            // Report generation form
+            document.getElementById('reportGenerationForm').addEventListener('submit', function(e) {
+                e.preventDefault();
+                generateSecurityReport();
+            });
+
+            // Tab change events
+            document.querySelectorAll('[data-bs-toggle="tab"]').forEach(tab => {
+                tab.addEventListener('shown.bs.tab', function(e) {
+                    const targetId = e.target.getAttribute('data-bs-target');
+                    if (targetId === '#compliance') {
+                        refreshComplianceData();
+                    }
+                });
+            });
+        }
+
+        function refreshSecurityStatus() {
+            fetch('/api/security/summary?hours=24')
+                .then(response => response.json())
+                .then(data => {
+                    updateSecurityStatusDisplay(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching security status:', error);
+                });
+        }
+
+        function updateSecurityStatusDisplay(data) {
+            // Update scanner status
+            const scannerActive = data.scanner?.monitoring_status === 'active';
+            document.getElementById('scannerStatusIcon').className = scannerActive 
+                ? 'bi bi-cpu display-4 mb-2 security-status-active'
+                : 'bi bi-cpu display-4 mb-2 security-status-inactive';
+            document.getElementById('scannerStatus').textContent = scannerActive ? 'Active' : 'Inactive';
+            document.getElementById('scannerLastScan').textContent = data.scanner?.last_analysis 
+                ? `Last: ${new Date(data.scanner.last_analysis).toLocaleString()}` : 'Never';
+
+            // Update monitoring status
+            const monitoringActive = data.monitoring?.monitoring_status === 'active';
+            document.getElementById('monitoringStatusIcon').className = monitoringActive 
+                ? 'bi bi-eye display-4 mb-2 security-status-active'
+                : 'bi bi-eye display-4 mb-2 security-status-inactive';
+            document.getElementById('monitoringStatus').textContent = monitoringActive ? 'Active' : 'Inactive';
+            document.getElementById('monitoringThreats').textContent = 
+                `${data.monitoring?.active_threats || 0} active threats`;
+
+            // Update response status
+            const responseActive = data.response?.response_engine?.status === 'active';
+            document.getElementById('responseStatusIcon').className = responseActive 
+                ? 'bi bi-lightning display-4 mb-2 security-status-active'
+                : 'bi bi-lightning display-4 mb-2 security-status-inactive';
+            document.getElementById('responseStatus').textContent = responseActive ? 'Active' : 'Inactive';
+            document.getElementById('responseActions').textContent = 
+                `${data.response?.response_engine?.total_responses_executed || 0} actions executed`;
+
+            // Update compliance score
+            const complianceScore = data.compliance?.compliance_score || 0;
+            document.getElementById('complianceScore').textContent = `${complianceScore}%`;
+            document.getElementById('complianceScore').className = 
+                `compliance-score ${complianceScore >= 90 ? 'text-success' : complianceScore >= 70 ? 'text-warning' : 'text-danger'}`;
+            document.getElementById('complianceFramework').textContent = 'CIS Controls';
+
+            // Update vulnerability counts
+            const vulns = data.vulnerabilities || {};
+            document.getElementById('criticalVulns').textContent = vulns.by_severity?.critical || 0;
+            document.getElementById('highVulns').textContent = vulns.by_severity?.high || 0;
+            document.getElementById('mediumVulns').textContent = vulns.by_severity?.medium || 0;
+            document.getElementById('lowVulns').textContent = vulns.by_severity?.low || 0;
+
+            // Update vulnerability chart
+            updateVulnerabilityChart(vulns.by_severity || {});
+        }
+
+        function updateVulnerabilityChart(severityData) {
+            const ctx = document.getElementById('vulnerabilityChart').getContext('2d');
+            
+            if (vulnerabilityChart) {
+                vulnerabilityChart.destroy();
+            }
+
+            vulnerabilityChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Critical', 'High', 'Medium', 'Low'],
+                    datasets: [{
+                        data: [
+                            severityData.critical || 0,
+                            severityData.high || 0,
+                            severityData.medium || 0,
+                            severityData.low || 0
+                        ],
+                        backgroundColor: ['#dc3545', '#fd7e14', '#ffc107', '#28a745'],
+                        borderWidth: 2,
+                        borderColor: '#ffffff'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom'
+                        }
+                    }
+                }
+            });
+        }
+
+        function refreshVulnerabilities() {
+            const severity = document.getElementById('vulnSeverityFilter').value;
+            const status = document.getElementById('vulnStatusFilter').value;
+            
+            let url = '/api/security/vulnerabilities?';
+            if (severity) url += `severity=${severity}&`;
+            if (status) url += `status=${status}&`;
+            url += 'days=30';
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    displayVulnerabilities(data.vulnerabilities || []);
+                })
+                .catch(error => {
+                    console.error('Error fetching vulnerabilities:', error);
+                    document.getElementById('vulnerabilityDetails').innerHTML = 
+                        '<div class="alert alert-danger">Error loading vulnerabilities</div>';
+                });
+        }
+
+        function displayVulnerabilities(vulnerabilities) {
+            const container = document.getElementById('vulnerabilityDetails');
+            
+            if (vulnerabilities.length === 0) {
+                container.innerHTML = '<div class="text-center text-muted">No vulnerabilities found</div>';
+                return;
+            }
+
+            let html = '';
+            vulnerabilities.forEach(vuln => {
+                const severityClass = `vuln-${vuln.severity}`;
+                html += `
+                    <div class="card vulnerability-card ${severityClass} mb-2">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-title">${vuln.title}</h6>
+                                    <p class="card-text text-muted small">${vuln.description}</p>
+                                    <div>
+                                        <span class="badge bg-${getSeverityBadgeClass(vuln.severity)}">${vuln.severity.toUpperCase()}</span>
+                                        <span class="badge bg-secondary">${vuln.category}</span>
+                                        <span class="badge bg-info">Risk: ${vuln.risk_score}/10</span>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <small class="text-muted">${vuln.device_name}</small><br>
+                                    <small class="text-muted">${new Date(vuln.discovered_at).toLocaleString()}</small><br>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="showVulnerabilityDetail('${vuln.finding_id}')">
+                                        <i class="bi bi-eye"></i> View
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function refreshThreats() {
+            fetch('/api/security/threats?hours=24')
+                .then(response => response.json())
+                .then(data => {
+                    displayRecentThreats(data.threats || []);
+                })
+                .catch(error => {
+                    console.error('Error fetching threats:', error);
+                });
+        }
+
+        function displayRecentThreats(threats) {
+            const container = document.getElementById('recentThreats');
+            
+            if (threats.length === 0) {
+                container.innerHTML = '<div class="text-center text-muted">No recent threats detected</div>';
+                return;
+            }
+
+            let html = '<div class="list-group list-group-flush">';
+            threats.slice(0, 10).forEach(threat => {
+                const threatClass = `threat-${threat.threat_level}`;
+                html += `
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <span class="threat-indicator ${threatClass}"></span>
+                                <strong>${threat.attack_type.replace('_', ' ').toUpperCase()}</strong>
+                                <p class="mb-1">${threat.description}</p>
+                                <small>Source: ${threat.source_ip} | Confidence: ${(threat.confidence_score * 100).toFixed(0)}%</small>
+                            </div>
+                            <small class="text-muted">${new Date(threat.detected_at).toLocaleString()}</small>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            
+            container.innerHTML = html;
+        }
+
+        function refreshIncidents() {
+            const status = document.getElementById('incidentStatusFilter').value;
+            
+            let url = '/api/security/incidents?days=30';
+            if (status) url += `&status=${status}`;
+
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    displayIncidents(data.incidents || []);
+                })
+                .catch(error => {
+                    console.error('Error fetching incidents:', error);
+                    document.getElementById('incidentDetails').innerHTML = 
+                        '<div class="alert alert-danger">Error loading incidents</div>';
+                });
+        }
+
+        function displayIncidents(incidents) {
+            const container = document.getElementById('incidentDetails');
+            
+            if (incidents.length === 0) {
+                container.innerHTML = '<div class="text-center text-muted">No incidents found</div>';
+                return;
+            }
+
+            let html = '';
+            incidents.forEach(incident => {
+                const statusClass = getIncidentStatusClass(incident.status);
+                html += `
+                    <div class="card mb-3">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-start">
+                                <div>
+                                    <h6 class="card-title">${incident.title}</h6>
+                                    <p class="card-text">${incident.description}</p>
+                                    <div>
+                                        <span class="badge bg-${getSeverityBadgeClass(incident.severity)}">${incident.severity.toUpperCase()}</span>
+                                        <span class="badge ${statusClass}">${incident.status.toUpperCase()}</span>
+                                        <span class="badge bg-secondary">${incident.category}</span>
+                                        <span class="badge bg-info">Risk: ${incident.risk_score}/10</span>
+                                    </div>
+                                </div>
+                                <div class="text-end">
+                                    <small class="text-muted">${new Date(incident.detected_at).toLocaleString()}</small><br>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="showIncidentDetail('${incident.incident_id}')">
+                                        <i class="bi bi-eye"></i> View
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            
+            container.innerHTML = html;
+        }
+
+        function refreshComplianceData() {
+            const framework = document.getElementById('complianceFrameworkSelect').value;
+            
+            fetch(`/api/security/compliance/results?framework=${framework}&days=30`)
+                .then(response => response.json())
+                .then(data => {
+                    displayComplianceResults(data.results || []);
+                })
+                .catch(error => {
+                    console.error('Error fetching compliance data:', error);
+                    document.getElementById('complianceDetails').innerHTML = 
+                        '<div class="alert alert-danger">Error loading compliance data</div>';
+                });
+        }
+
+        function displayComplianceResults(results) {
+            const container = document.getElementById('complianceDetails');
+            
+            if (results.length === 0) {
+                container.innerHTML = '<div class="text-center text-muted">No compliance results found</div>';
+                return;
+            }
+
+            // Group results by status
+            const groupedResults = results.reduce((acc, result) => {
+                if (!acc[result.status]) acc[result.status] = [];
+                acc[result.status].push(result);
+                return acc;
+            }, {});
+
+            let html = '';
+            ['fail', 'pass', 'not_applicable'].forEach(status => {
+                if (!groupedResults[status]) return;
+                
+                const statusClass = status === 'pass' ? 'success' : status === 'fail' ? 'danger' : 'secondary';
+                html += `
+                    <h6 class="text-${statusClass}">
+                        <i class="bi bi-${status === 'pass' ? 'check-circle' : status === 'fail' ? 'x-circle' : 'dash-circle'}"></i> 
+                        ${status.replace('_', ' ').toUpperCase()} (${groupedResults[status].length})
+                    </h6>
+                    <div class="mb-4">
+                `;
+                
+                groupedResults[status].forEach(result => {
+                    html += `
+                        <div class="card mb-2">
+                            <div class="card-body">
+                                <div class="d-flex justify-content-between">
+                                    <div>
+                                        <h6 class="card-title">${result.rule_id}: ${result.title}</h6>
+                                        <p class="card-text small">${result.description}</p>
+                                        <span class="badge bg-${getSeverityBadgeClass(result.severity)}">${result.severity.toUpperCase()}</span>
+                                    </div>
+                                    <small class="text-muted">${new Date(result.checked_at).toLocaleString()}</small>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+                
+                html += '</div>';
+            });
+            
+            container.innerHTML = html;
+        }
+
+        // Utility functions
+        function getSeverityBadgeClass(severity) {
+            const classes = {
+                'critical': 'danger',
+                'high': 'warning',
+                'medium': 'info',
+                'low': 'success'
+            };
+            return classes[severity] || 'secondary';
+        }
+
+        function getIncidentStatusClass(status) {
+            const classes = {
+                'new': 'bg-danger',
+                'assigned': 'bg-warning',
+                'investigating': 'bg-info',
+                'containing': 'bg-primary',
+                'resolved': 'bg-success',
+                'closed': 'bg-secondary'
+            };
+            return classes[status] || 'bg-secondary';
+        }
+
+        function startSecurityScan() {
+            const button = document.getElementById('startSecurityScan');
+            const originalText = button.innerHTML;
+            
+            button.innerHTML = '<i class="bi bi-arrow-clockwise scanning-animation"></i> Scanning...';
+            button.disabled = true;
+
+            fetch('/api/security/scan/start', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('Security scan started successfully', 'success');
+                    setTimeout(() => {
+                        refreshSecurityStatus();
+                        refreshVulnerabilities();
+                    }, 2000);
+                } else {
+                    showAlert('Failed to start security scan: ' + (data.error || 'Unknown error'), 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error starting scan:', error);
+                showAlert('Error starting security scan', 'danger');
+            })
+            .finally(() => {
+                button.innerHTML = originalText;
+                button.disabled = false;
+            });
+        }
+
+        function runComplianceAssessment() {
+            const framework = document.getElementById('complianceFrameworkSelect').value;
+            
+            fetch('/api/security/compliance/assess', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ framework: framework })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('Compliance assessment completed', 'success');
+                    refreshComplianceData();
+                } else {
+                    showAlert('Compliance assessment failed: ' + (data.error || 'Unknown error'), 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error running compliance assessment:', error);
+                showAlert('Error running compliance assessment', 'danger');
+            });
+        }
+
+        function generateSecurityReport() {
+            const form = document.getElementById('reportGenerationForm');
+            const formData = new FormData(form);
+            const reportData = Object.fromEntries(formData);
+
+            fetch('/api/security/compliance/report', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(reportData)
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('Security report generated successfully', 'success');
+                    if (data.report_content && reportData.format === 'json') {
+                        // Display JSON report in a modal or new window
+                        console.log('Report data:', data.report_data);
+                    } else if (data.download_path) {
+                        showAlert(`Report saved to: ${data.download_path}`, 'info');
+                    }
+                } else {
+                    showAlert('Failed to generate report: ' + (data.error || 'Unknown error'), 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error generating report:', error);
+                showAlert('Error generating security report', 'danger');
+            });
+        }
+
+        function showVulnerabilityDetail(findingId) {
+            fetch(`/api/security/vulnerabilities/${findingId}`)
+                .then(response => response.json())
+                .then(data => {
+                    currentVulnerability = data;
+                    displayVulnerabilityModal(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching vulnerability details:', error);
+                    showAlert('Error loading vulnerability details', 'danger');
+                });
+        }
+
+        function displayVulnerabilityModal(vuln) {
+            const content = document.getElementById('vulnerabilityModalContent');
+            content.innerHTML = `
+                <div class="row">
+                    <div class="col-md-8">
+                        <h6>Overview</h6>
+                        <p><strong>Title:</strong> ${vuln.title}</p>
+                        <p><strong>Description:</strong> ${vuln.description}</p>
+                        <p><strong>Device:</strong> ${vuln.device_name}</p>
+                        <p><strong>Category:</strong> ${vuln.category}</p>
+                        <p><strong>Risk Score:</strong> ${vuln.risk_score}/10</p>
+                        ${vuln.cvss_score ? `<p><strong>CVSS Score:</strong> ${vuln.cvss_score}</p>` : ''}
+                        ${vuln.cve_references && vuln.cve_references.length > 0 ? 
+                            `<p><strong>CVE References:</strong> ${vuln.cve_references.join(', ')}</p>` : ''}
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Status Information</h6>
+                        <p><strong>Status:</strong> <span class="badge bg-${vuln.status === 'open' ? 'danger' : 'success'}">${vuln.status.toUpperCase()}</span></p>
+                        <p><strong>Severity:</strong> <span class="badge bg-${getSeverityBadgeClass(vuln.severity)}">${vuln.severity.toUpperCase()}</span></p>
+                        <p><strong>Discovered:</strong> ${new Date(vuln.discovered_at).toLocaleString()}</p>
+                        <p><strong>Last Verified:</strong> ${new Date(vuln.last_verified).toLocaleString()}</p>
+                    </div>
+                </div>
+                ${vuln.remediation && vuln.remediation.length > 0 ? `
+                <div class="mt-3">
+                    <h6>Remediation Steps</h6>
+                    <ol>
+                        ${vuln.remediation.map(step => `<li>${step}</li>`).join('')}
+                    </ol>
+                </div>
+                ` : ''}
+                ${vuln.evidence ? `
+                <div class="mt-3">
+                    <h6>Evidence</h6>
+                    <pre class="bg-light p-2 small">${JSON.stringify(vuln.evidence, null, 2)}</pre>
+                </div>
+                ` : ''}
+            `;
+            
+            new bootstrap.Modal(document.getElementById('vulnerabilityModal')).show();
+        }
+
+        function showIncidentDetail(incidentId) {
+            fetch(`/api/security/incidents/${incidentId}`)
+                .then(response => response.json())
+                .then(data => {
+                    currentIncident = data;
+                    displayIncidentModal(data);
+                })
+                .catch(error => {
+                    console.error('Error fetching incident details:', error);
+                    showAlert('Error loading incident details', 'danger');
+                });
+        }
+
+        function displayIncidentModal(incident) {
+            const content = document.getElementById('incidentModalContent');
+            content.innerHTML = `
+                <div class="row">
+                    <div class="col-md-8">
+                        <h6>Overview</h6>
+                        <p><strong>Title:</strong> ${incident.title}</p>
+                        <p><strong>Description:</strong> ${incident.description}</p>
+                        <p><strong>Category:</strong> ${incident.category}</p>
+                        <p><strong>Risk Score:</strong> ${incident.risk_score}/10</p>
+                        ${incident.assigned_to ? `<p><strong>Assigned To:</strong> ${incident.assigned_to}</p>` : ''}
+                    </div>
+                    <div class="col-md-4">
+                        <h6>Status Information</h6>
+                        <p><strong>Status:</strong> <span class="badge ${getIncidentStatusClass(incident.status)}">${incident.status.toUpperCase()}</span></p>
+                        <p><strong>Severity:</strong> <span class="badge bg-${getSeverityBadgeClass(incident.severity)}">${incident.severity.toUpperCase()}</span></p>
+                        <p><strong>Detected:</strong> ${new Date(incident.detected_at).toLocaleString()}</p>
+                        ${incident.resolved_at ? `<p><strong>Resolved:</strong> ${new Date(incident.resolved_at).toLocaleString()}</p>` : ''}
+                    </div>
+                </div>
+                ${incident.response_actions && incident.response_actions.length > 0 ? `
+                <div class="mt-3">
+                    <h6>Response Actions Taken</h6>
+                    <ul>
+                        ${incident.response_actions.map(action => `<li>${JSON.stringify(action)}</li>`).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+                ${incident.timeline && incident.timeline.length > 0 ? `
+                <div class="mt-3">
+                    <h6>Timeline</h6>
+                    <div class="incident-timeline">
+                        ${incident.timeline.map(event => `
+                            <div class="incident-timeline-item">
+                                <small class="text-muted">${new Date(event.timestamp).toLocaleString()}</small><br>
+                                <strong>${event.event}</strong>
+                                ${event.details ? `<br><span class="text-muted">${event.details}</span>` : ''}
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                ` : ''}
+            `;
+            
+            new bootstrap.Modal(document.getElementById('incidentModal')).show();
+        }
+
+        function acknowledgeVulnerability() {
+            if (!currentVulnerability) return;
+            
+            fetch(`/api/security/vulnerabilities/${currentVulnerability.finding_id}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: 'acknowledged' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('Vulnerability acknowledged', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('vulnerabilityModal')).hide();
+                    refreshVulnerabilities();
+                } else {
+                    showAlert('Failed to acknowledge vulnerability: ' + (data.error || 'Unknown error'), 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error acknowledging vulnerability:', error);
+                showAlert('Error acknowledging vulnerability', 'danger');
+            });
+        }
+
+        function markVulnerabilityRemediated() {
+            if (!currentVulnerability) return;
+            
+            fetch(`/api/security/vulnerabilities/${currentVulnerability.finding_id}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: 'remediated' })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('Vulnerability marked as remediated', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('vulnerabilityModal')).hide();
+                    refreshVulnerabilities();
+                } else {
+                    showAlert('Failed to update vulnerability status: ' + (data.error || 'Unknown error'), 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating vulnerability status:', error);
+                showAlert('Error updating vulnerability status', 'danger');
+            });
+        }
+
+        function updateIncidentStatus() {
+            if (!currentIncident) return;
+            
+            const newStatus = prompt('Enter new status (new, assigned, investigating, containing, eradicating, recovering, resolved, closed):');
+            if (!newStatus) return;
+            
+            const notes = prompt('Enter notes (optional):');
+            
+            fetch(`/api/security/incidents/${currentIncident.incident_id}/status`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ status: newStatus, notes: notes })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    showAlert('Incident status updated', 'success');
+                    bootstrap.Modal.getInstance(document.getElementById('incidentModal')).hide();
+                    refreshIncidents();
+                } else {
+                    showAlert('Failed to update incident status: ' + (data.error || 'Unknown error'), 'danger');
+                }
+            })
+            .catch(error => {
+                console.error('Error updating incident status:', error);
+                showAlert('Error updating incident status', 'danger');
+            });
+        }
+
+        function showAlert(message, type) {
+            // Create and show bootstrap alert
+            const alertDiv = document.createElement('div');
+            alertDiv.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+            alertDiv.style.top = '20px';
+            alertDiv.style.right = '20px';
+            alertDiv.style.zIndex = '9999';
+            alertDiv.innerHTML = `
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            `;
+            
+            document.body.appendChild(alertDiv);
+            
+            // Auto-remove after 5 seconds
+            setTimeout(() => {
+                if (alertDiv.parentNode) {
+                    alertDiv.parentNode.removeChild(alertDiv);
+                }
+            }, 5000);
+        }
+
+        function startAutoRefresh() {
+            // Refresh data every 30 seconds
+            refreshInterval = setInterval(() => {
+                refreshSecurityStatus();
+                refreshThreats();
+            }, 30000);
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (refreshInterval) {
+                clearInterval(refreshInterval);
+            }
+        });
+    </script>
+</body>
+</html>

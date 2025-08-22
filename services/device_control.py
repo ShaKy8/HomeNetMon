@@ -24,7 +24,7 @@ class DeviceControlService:
                 return {
                     'success': False,
                     'error': 'Invalid MAC address format',
-                    'timestamp': datetime.utcnow()
+                    'timestamp': datetime.utcnow().isoformat() + 'Z'
                 }
             
             # Convert MAC address to bytes
@@ -61,7 +61,7 @@ class DeviceControlService:
                 'success': True,
                 'message': f'Wake-on-LAN packet sent to {mac_address}',
                 'broadcast_count': sent_count,
-                'timestamp': datetime.utcnow()
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
             }
             
         except Exception as e:
@@ -69,7 +69,7 @@ class DeviceControlService:
             return {
                 'success': False,
                 'error': f'Wake-on-LAN error: {str(e)}',
-                'timestamp': datetime.utcnow()
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
             }
     
     def ping_device(self, ip_address, count=4):
@@ -82,7 +82,7 @@ class DeviceControlService:
                 return {
                     'success': False,
                     'error': 'Ping command not available',
-                    'timestamp': datetime.utcnow()
+                    'timestamp': datetime.utcnow().isoformat() + 'Z'
                 }
             
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
@@ -113,21 +113,21 @@ class DeviceControlService:
                 'packet_loss_percent': 100 - success_rate,
                 'avg_response_time': round(avg_time, 2),
                 'raw_output': result.stdout,
-                'timestamp': datetime.utcnow()
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
             }
             
         except subprocess.TimeoutExpired:
             return {
                 'success': False,
                 'error': 'Ping operation timed out',
-                'timestamp': datetime.utcnow()
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
             }
         except Exception as e:
             logger.error(f"Error pinging device {ip_address}: {e}")
             return {
                 'success': False,
                 'error': f'Ping error: {str(e)}',
-                'timestamp': datetime.utcnow()
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
             }
     
     def scan_device_ports(self, ip_address, ports=None):
@@ -174,7 +174,7 @@ class DeviceControlService:
                 'open_services': open_services,
                 'closed_ports': closed_ports,
                 'total_scanned': len(ports),
-                'timestamp': datetime.utcnow()
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
             }
             
         except Exception as e:
@@ -182,7 +182,7 @@ class DeviceControlService:
             return {
                 'success': False,
                 'error': f'Port scan error: {str(e)}',
-                'timestamp': datetime.utcnow()
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
             }
     
     def discover_device_info(self, ip_address):
@@ -190,7 +190,7 @@ class DeviceControlService:
         try:
             info = {
                 'ip_address': ip_address,
-                'timestamp': datetime.utcnow()
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
             }
             
             # Try to get hostname
@@ -232,7 +232,7 @@ class DeviceControlService:
             return {
                 'success': False,
                 'error': f'Device discovery error: {str(e)}',
-                'timestamp': datetime.utcnow()
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
             }
     
     def traceroute_to_device(self, ip_address):
@@ -311,21 +311,21 @@ class DeviceControlService:
             return {
                 'success': False,
                 'error': 'No traceroute command available (traceroute, tracert, or mtr)',
-                'timestamp': datetime.utcnow()
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
             }
             
         except subprocess.TimeoutExpired:
             return {
                 'success': False,
                 'error': 'Traceroute operation timed out',
-                'timestamp': datetime.utcnow()
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
             }
         except Exception as e:
             logger.error(f"Error running traceroute to {ip_address}: {e}")
             return {
                 'success': False,
                 'error': f'Traceroute error: {str(e)}',
-                'timestamp': datetime.utcnow()
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
             }
     
     def get_device_capabilities(self, device):

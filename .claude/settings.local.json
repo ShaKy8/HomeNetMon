@@ -60,12 +60,32 @@
       "Bash(mtr:*)",
       "Bash(time curl:*)",
       "Bash(git commit:*)",
-      "Bash(lsof:*)"
+      "Bash(lsof:*)",
+      "Bash(cat:*)",
+      "Bash(sed:*)",
+      "mcp__playwright__browser_navigate",
+      "mcp__playwright__browser_install",
+      "Bash(git checkout:*)",
+      "Bash(git rm:*)",
+      "Bash(git reset:*)",
+      "Bash(gh pr merge:*)",
+      "Bash(pip3 show:*)",
+      "Bash(pip3 install:*)",
+      "Bash(source:*)",
+      "Bash(apt list:*)",
+      "Bash(apt search:*)",
+      "Bash(mv:*)",
+      "Bash(./update_service.sh)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(git stash:*)",
+      "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch homeNetMon.db.backup_20250816_062107' --prune-empty --tag-name-filter cat -- --all)"
     ],
     "deny": [],
+    "defaultMode": "acceptEdits",
     "additionalDirectories": [
-      "/home/kyle/.config/systemd/user"
-    ],
-    "defaultMode": "acceptEdits"
+      "/home/kyle/.config/systemd/user",
+      "/etc/systemd/system"
+    ]
   }
 }

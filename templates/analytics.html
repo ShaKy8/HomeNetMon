@@ -1,27 +1,85 @@
-{% extends "base.html" %}
+{% extends "base_with_quickstats.html" %}
 
 {% block title %}Analytics - HomeNetMon{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="bi bi-graph-up"></i> Network Analytics</h1>
+    <div>
+        <h1><i class="bi bi-graph-up"></i> Network Analytics</h1>
+        <!-- Active Filters Display -->
+        <div id="active-filters" class="mt-2" style="display: none;">
+            <span class="text-muted small">Active filters:</span>
+            <span id="filter-badges"></span>
+            <button class="btn btn-sm btn-link text-decoration-none p-0 ms-2" onclick="GlobalFilters.clearFilters()">
+                <i class="bi bi-x-circle"></i> Clear all
+            </button>
+        </div>
+    </div>
     
     <div class="btn-group" role="group">
         <button type="button" class="btn btn-outline-primary" id="refresh-analytics">
             <i class="bi bi-arrow-clockwise"></i> Refresh
         </button>
-        <div class="dropdown">
-            <button class="btn btn-outline-primary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                <i class="bi bi-calendar3"></i> Time Range
-            </button>
-            <ul class="dropdown-menu">
-                <li><a class="dropdown-item time-range-btn" href="#" data-hours="24">Last 24 Hours</a></li>
-                <li><a class="dropdown-item time-range-btn" href="#" data-hours="168">Last Week</a></li>
-                <li><a class="dropdown-item time-range-btn" href="#" data-days="30">Last Month</a></li>
-            </ul>
+        <div class="btn-group" role="group">
+            <input type="radio" class="btn-check" name="global-time-range" id="time-24h" value="24h" checked>
+            <label class="btn btn-outline-primary" for="time-24h">24h</label>
+            
+            <input type="radio" class="btn-check" name="global-time-range" id="time-7d" value="7d">
+            <label class="btn btn-outline-primary" for="time-7d">7d</label>
+            
+            <input type="radio" class="btn-check" name="global-time-range" id="time-30d" value="30d">
+            <label class="btn btn-outline-primary" for="time-30d">30d</label>
         </div>
     </div>
 </div>
+
+<!-- Mobile-first Analytics Overview -->
+<div class="d-block d-lg-none mb-4">
+    <div class="card">
+        <div class="card-body">
+            <div class="row text-center g-3">
+                <div class="col-4">
+                    <div class="h3 mb-1" id="mobile-health-score">--</div>
+                    <div class="small text-muted">Health</div>
+                </div>
+                <div class="col-4">
+                    <div class="h3 mb-1" id="mobile-devices-up">--</div>
+                    <div class="small text-muted">Online</div>
+                </div>
+                <div class="col-4">
+                    <div class="h3 mb-1" id="mobile-alerts">--</div>
+                    <div class="small text-muted">Alerts</div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Progressive Disclosure Navigation -->
+<div class="analytics-navigation mb-4">
+    <nav>
+        <div class="nav nav-pills justify-content-center" id="analytics-tabs" role="tablist">
+            <button class="nav-link active" id="overview-tab" data-bs-toggle="pill" data-bs-target="#overview-panel" type="button" role="tab" aria-controls="overview-panel" aria-selected="true">
+                <i class="bi bi-speedometer me-1"></i> Overview
+            </button>
+            <button class="nav-link" id="performance-tab" data-bs-toggle="pill" data-bs-target="#performance-panel" type="button" role="tab" aria-controls="performance-panel" aria-selected="false">
+                <i class="bi bi-graph-up-arrow me-1"></i> Performance
+            </button>
+            <button class="nav-link" id="devices-tab" data-bs-toggle="pill" data-bs-target="#devices-panel" type="button" role="tab" aria-controls="devices-panel" aria-selected="false">
+                <i class="bi bi-award me-1"></i> Devices
+            </button>
+            <button class="nav-link" id="bandwidth-tab" data-bs-toggle="pill" data-bs-target="#bandwidth-panel" type="button" role="tab" aria-controls="bandwidth-panel" aria-selected="false">
+                <i class="bi bi-speedometer2 me-1"></i> Bandwidth
+            </button>
+        </div>
+    </nav>
+</div>
+
+<!-- Tab Content Container -->
+<div class="tab-content" id="analytics-tab-content">
+
+<!-- Overview Tab Panel -->
+<div class="tab-pane fade show active" id="overview-panel" role="tabpanel" aria-labelledby="overview-tab" tabindex="0">
 
 <!-- Network Health Score Card -->
 <div class="row mb-4">
@@ -32,12 +90,16 @@
                     <div class="col-md-3 text-center">
                         <div class="position-relative d-inline-block">
                             <div id="health-score-circle" class="rounded-circle d-flex align-items-center justify-content-center" 
-                                 style="width: 120px; height: 120px; border: 8px solid #e9ecef;">
+                                 style="width: 120px; height: 120px; border: 8px solid #e9ecef;"
+                                 role="img" 
+                                 aria-label="Network health score indicator"
+                                 aria-describedby="health-score-description">
                                 <div class="text-center">
-                                    <div id="health-score-value" class="h2 fw-bold mb-0">--</div>
+                                    <div id="health-score-value" class="h2 fw-bold mb-0" aria-live="polite">--</div>
                                     <small class="text-muted">Health Score</small>
                                 </div>
                             </div>
+                            <div id="health-score-description" class="visually-hidden">Network health score out of 100, calculated from device uptime, response times, and network stability</div>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -77,12 +139,44 @@
     </div>
 </div>
 
+<!-- Actionable Insights Section -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="card border-warning" id="insights-card" style="display: none;">
+            <div class="card-header bg-warning bg-opacity-10">
+                <h6 class="mb-0">
+                    <i class="bi bi-lightbulb text-warning"></i> Actionable Insights
+                    <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" title="AI-powered recommendations based on your network performance data">
+                        <i class="bi bi-info-circle"></i>
+                    </button>
+                </h6>
+            </div>
+            <div class="card-body">
+                <div id="actionable-insights" class="row">
+                    <div class="col-12">
+                        <div class="placeholder-glow">
+                            <span class="placeholder col-7 mb-2"></span>
+                            <span class="placeholder col-5 mb-2"></span>
+                            <span class="placeholder col-8"></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Internet Speed Test Card -->
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="bi bi-speedometer"></i> Internet Speed Test</h6>
+                <h6 class="mb-0">
+                    <i class="bi bi-speedometer"></i> Internet Speed Test
+                    <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" title="Test your internet connection speed and get recommendations for optimal performance">
+                        <i class="bi bi-info-circle"></i>
+                    </button>
+                </h6>
                 <div class="btn-group">
                     <button class="btn btn-primary" id="speedtest-btn" title="Test download and upload speeds">
                         <i class="bi bi-speedometer2"></i> Run Speed Test
@@ -160,13 +254,66 @@
     </div>
 </div>
 
-<!-- Analytics Cards Row -->
+<!-- Fun Network Statistics -->
+<div class="row">
+    <div class="col-12">
+        <div class="card h-100">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-emoji-smile"></i> Fun Network Facts</h6>
+            </div>
+            <div class="card-body">
+                <div class="row g-3" id="network-facts">
+                    <div class="col-md-3 col-6">
+                        <div class="text-center p-3 border rounded">
+                            <div class="h4 mb-1">🏆</div>
+                            <div class="small text-muted">Network Champion</div>
+                            <div id="network-champion" class="fw-bold small">Loading...</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="text-center p-3 border rounded">
+                            <div class="h4 mb-1">⚡</div>
+                            <div class="small text-muted">Speed Demon</div>
+                            <div id="speed-demon" class="fw-bold small">Loading...</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="text-center p-3 border rounded">
+                            <div class="h4 mb-1">📊</div>
+                            <div class="small text-muted">Data Collected</div>
+                            <div id="total-pings" class="fw-bold small">Loading...</div>
+                        </div>
+                    </div>
+                    <div class="col-md-3 col-6">
+                        <div class="text-center p-3 border rounded">
+                            <div class="h4 mb-1">🕒</div>
+                            <div class="small text-muted">Peak Activity</div>
+                            <div id="peak-activity-time" class="fw-bold small">Loading...</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+</div> <!-- End Overview Tab Panel -->
+
+<!-- Devices Tab Panel -->
+<div class="tab-pane fade" id="devices-panel" role="tabpanel" aria-labelledby="devices-tab" tabindex="0">
+
+<!-- Device Analytics Cards Row -->
 <div class="row mb-4">
     <!-- Device Insights -->
     <div class="col-lg-6 mb-4">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="bi bi-award"></i> Device Champions</h6>
+                <h6 class="mb-0">
+                    <i class="bi bi-award"></i> Device Champions
+                    <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" title="Shows your most reliable devices and fastest performers based on uptime and response time statistics">
+                        <i class="bi bi-info-circle"></i>
+                    </button>
+                </h6>
                 <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#device-insights">
                     <i class="bi bi-chevron-down"></i>
                 </button>
@@ -209,7 +356,12 @@
     <div class="col-lg-6 mb-4">
         <div class="card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="bi bi-clock-history"></i> Usage Patterns</h6>
+                <h6 class="mb-0">
+                    <i class="bi bi-clock-history"></i> Usage Patterns
+                    <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" title="Analyze your network's activity patterns throughout the day to optimize performance and identify peak usage times">
+                        <i class="bi bi-info-circle"></i>
+                    </button>
+                </h6>
                 <button class="btn btn-sm btn-outline-secondary" data-bs-toggle="collapse" data-bs-target="#usage-patterns">
                     <i class="bi bi-chevron-down"></i>
                 </button>
@@ -242,6 +394,11 @@
         </div>
     </div>
 </div>
+
+</div> <!-- End Devices Tab Panel -->
+
+<!-- Performance Tab Panel -->
+<div class="tab-pane fade" id="performance-panel" role="tabpanel" aria-labelledby="performance-tab" tabindex="0">
 
 <!-- Network Trends -->
 <div class="row mb-4">
@@ -283,19 +440,29 @@
                 </div>
                 
                 <div style="height: 400px;">
-                    <canvas id="trends-chart"></canvas>
+                    <canvas id="trends-chart" aria-label="Network performance trends chart showing response time and success rate over time"></canvas>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
+</div> <!-- End Performance Tab Panel -->
+
+<!-- Bandwidth Tab Panel -->
+<div class="tab-pane fade" id="bandwidth-panel" role="tabpanel" aria-labelledby="bandwidth-tab" tabindex="0">
+
 <!-- Bandwidth Analytics -->
 <div class="row mb-4">
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="bi bi-speedometer"></i> Bandwidth Usage Analytics</h6>
+                <h6 class="mb-0">
+                    <i class="bi bi-speedometer"></i> Bandwidth Usage Analytics
+                    <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" title="Monitor which devices are using the most bandwidth and track usage patterns over time">
+                        <i class="bi bi-info-circle"></i>
+                    </button>
+                </h6>
                 <div class="btn-group btn-group-sm" role="group">
                     <input type="radio" class="btn-check" name="bandwidth-period" id="bw-24h" value="24" checked>
                     <label class="btn btn-outline-primary" for="bw-24h">24 Hours</label>
@@ -399,6 +566,11 @@
         </div>
     </div>
 </div>
+
+</div> <!-- End Bandwidth Tab Panel -->
+
+</div> <!-- End Tab Content Container -->
+
 {% endblock %}
 
 {% block scripts %}
@@ -413,6 +585,37 @@
         
         // Load benchmark data after initial page load
         setTimeout(loadSpeedTestBenchmark, 1000);
+        
+        // Initialize tooltips
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+        
+        // Handle tab switching to load appropriate data
+        document.querySelectorAll('#analytics-tabs button[data-bs-toggle="pill"]').forEach(button => {
+            button.addEventListener('shown.bs.tab', function(event) {
+                const targetId = event.target.getAttribute('data-bs-target');
+                
+                // Load specific tab content based on which tab is active
+                switch(targetId) {
+                    case '#overview-panel':
+                        loadNetworkHealth();
+                        loadSpeedTestData();
+                        break;
+                    case '#performance-panel':
+                        loadNetworkTrends(7);
+                        break;
+                    case '#devices-panel':
+                        loadDeviceInsights();
+                        loadUsagePatterns();
+                        break;
+                    case '#bandwidth-panel':
+                        loadBandwidthAnalytics(24);
+                        break;
+                }
+            });
+        });
         
         // Event listeners
         document.getElementById('refresh-analytics').addEventListener('click', loadAllAnalytics);
@@ -440,20 +643,45 @@
             }
         });
         
-        // Time range buttons
-        document.querySelectorAll('.time-range-btn').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                e.preventDefault();
-                const hours = e.target.dataset.hours;
-                const days = e.target.dataset.days;
+        // Global time range controls
+        document.querySelectorAll('input[name="global-time-range"]').forEach(radio => {
+            radio.addEventListener('change', (e) => {
+                const value = e.target.value;
                 
-                if (hours) {
-                    currentTimeRange = { hours: parseInt(hours) };
-                } else if (days) {
-                    currentTimeRange = { days: parseInt(days) };
+                switch(value) {
+                    case '24h':
+                        currentTimeRange = { hours: 24 };
+                        break;
+                    case '7d':
+                        currentTimeRange = { hours: 168 };
+                        break;
+                    case '30d':
+                        currentTimeRange = { days: 30 };
+                        break;
                 }
                 
-                loadAllAnalytics();
+                // Reload data for the current active tab
+                const activeTab = document.querySelector('#analytics-tabs .nav-link.active');
+                if (activeTab) {
+                    const targetId = activeTab.getAttribute('data-bs-target');
+                    switch(targetId) {
+                        case '#overview-panel':
+                            loadNetworkHealth();
+                            break;
+                        case '#performance-panel':
+                            loadNetworkTrends(currentTimeRange.days || Math.floor(currentTimeRange.hours / 24) || 7);
+                            break;
+                        case '#devices-panel':
+                            loadDeviceInsights();
+                            loadUsagePatterns();
+                            break;
+                        case '#bandwidth-panel':
+                            loadBandwidthAnalytics(currentTimeRange.hours || 24);
+                            break;
+                    }
+                } else {
+                    loadAllAnalytics();
+                }
             });
         });
         
@@ -500,6 +728,8 @@
             }
             
             updateHealthScoreDisplay(data);
+            updateMobileSummary(data);
+            updateActionableInsights(data);
         } catch (error) {
             console.error('Error loading network health:', error);
             document.getElementById('health-score-value').textContent = 'Error';
@@ -588,6 +818,117 @@
                 .join('');
         } else {
             recommendationsElement.innerHTML = '<div class="small text-muted">No recommendations at this time.</div>';
+        }
+    }
+
+    function updateMobileSummary(data) {
+        // Update mobile overview summary
+        const mobileHealthScore = document.getElementById('mobile-health-score');
+        const mobileDevicesUp = document.getElementById('mobile-devices-up');
+        const mobileAlerts = document.getElementById('mobile-alerts');
+        
+        if (mobileHealthScore) {
+            mobileHealthScore.textContent = Math.round(data.health_score || 0);
+            mobileHealthScore.style.color = data.status_color || '#6c757d';
+        }
+        
+        if (mobileDevicesUp) {
+            mobileDevicesUp.textContent = data.metrics.devices_up || '--';
+            mobileDevicesUp.style.color = data.metrics.devices_up > 0 ? '#28a745' : '#dc3545';
+        }
+        
+        if (mobileAlerts) {
+            const alertCount = data.metrics.active_alerts || 0;
+            mobileAlerts.textContent = alertCount;
+            mobileAlerts.style.color = alertCount === 0 ? '#28a745' : '#dc3545';
+        }
+    }
+
+    function updateActionableInsights(data) {
+        const insightsCard = document.getElementById('insights-card');
+        const insightsContainer = document.getElementById('actionable-insights');
+        
+        if (!data || !data.metrics) return;
+        
+        let insights = [];
+        const metrics = data.metrics;
+        const healthScore = data.health_score || 0;
+        
+        // Generate contextual insights based on data
+        if (healthScore < 70) {
+            insights.push({
+                type: 'warning',
+                icon: '⚠️',
+                title: 'Network Health Needs Attention',
+                description: `Your network health score is ${Math.round(healthScore)}. Consider checking device connectivity and network infrastructure.`,
+                action: 'View device details to identify problematic devices'
+            });
+        }
+        
+        if (metrics.success_rate < 95) {
+            insights.push({
+                type: 'info',
+                icon: '📡',
+                title: 'Connectivity Issues Detected',
+                description: `Success rate is ${metrics.success_rate}%. Some devices may have intermittent connectivity problems.`,
+                action: 'Check the Performance tab for trends and patterns'
+            });
+        }
+        
+        if (metrics.avg_response_time > 100) {
+            insights.push({
+                type: 'tip',
+                icon: '🐌',
+                title: 'High Response Times',
+                description: `Average response time is ${metrics.avg_response_time}ms. Your network may be experiencing congestion.`,
+                action: 'Check bandwidth usage or consider QoS settings'
+            });
+        }
+        
+        if (metrics.active_alerts > 0) {
+            insights.push({
+                type: 'urgent',
+                icon: '🚨',
+                title: 'Active Alerts',
+                description: `You have ${metrics.active_alerts} active alert${metrics.active_alerts > 1 ? 's' : ''} requiring attention.`,
+                action: 'Visit the Alerts page to review and resolve issues'
+            });
+        }
+        
+        // Good performance insights
+        if (healthScore >= 90 && metrics.active_alerts === 0) {
+            insights.push({
+                type: 'success',
+                icon: '✅',
+                title: 'Excellent Network Performance',
+                description: `Your network is performing excellently with a ${Math.round(healthScore)} health score and no active issues.`,
+                action: 'Continue regular monitoring to maintain this performance'
+            });
+        }
+        
+        if (insights.length > 0) {
+            const insightsHTML = insights.map(insight => `
+                <div class="col-md-6 mb-3">
+                    <div class="d-flex">
+                        <div class="me-3">
+                            <div class="h4 mb-0">${insight.icon}</div>
+                        </div>
+                        <div class="flex-grow-1">
+                            <h6 class="mb-1">${insight.title}</h6>
+                            <p class="small text-muted mb-1">${insight.description}</p>
+                            <div class="small">
+                                <i class="bi bi-arrow-right text-primary"></i> 
+                                <span class="text-primary">${insight.action}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+            
+            insightsContainer.innerHTML = insightsHTML;
+            insightsCard.style.display = 'block';
+        } else {
+            insightsCard.style.display = 'none';
         }
     }
 
@@ -685,39 +1026,60 @@
     }
 
     function updateDeviceTypesChart(deviceTypes) {
-        const ctx = document.getElementById('device-types-canvas').getContext('2d');
+        // Show loading state while creating chart
+        showChartLoading('device-types-canvas');
         
-        if (deviceTypesChart) {
-            deviceTypesChart.destroy();
-        }
+        // Short delay to show loading state
+        setTimeout(() => {
+            const ctx = document.getElementById('device-types-canvas').getContext('2d');
+            
+            if (deviceTypesChart) {
+                ChartUpdateManager.unregisterChart('deviceTypesChart');
+                deviceTypesChart.destroy();
+            }
         
-        deviceTypesChart = new Chart(ctx, {
-            type: 'doughnut',
+        // Create interactive device types chart with filtering capability
+        const deviceTypesConfig = ChartConfigFactory.createDoughnutConfig({
+            interactionType: 'filter', // Enable device type filtering
             data: {
                 labels: deviceTypes.map(d => d.type),
                 datasets: [{
                     data: deviceTypes.map(d => d.count),
-                    backgroundColor: [
-                        '#0d6efd', '#6f42c1', '#d63384', '#dc3545', '#fd7e14',
-                        '#ffc107', '#20c997', '#198754', '#0dcaf0', '#6c757d'
-                    ]
+                    backgroundColor: generateChartPalette(deviceTypes.length),
+                    // Add metadata for filtering
+                    filterType: 'deviceType',
+                    deviceTypes: deviceTypes.map(d => d.type),
+                    deviceCounts: deviceTypes.map(d => d.count)
                 }]
             },
             options: {
-                responsive: true,
-                maintainAspectRatio: false,
                 plugins: {
-                    legend: {
-                        position: 'bottom',
-                        labels: {
-                            padding: 15,
-                            usePointStyle: true,
-                            font: { size: 11 }
+                    tooltip: {
+                        callbacks: {
+                            afterLabel: function(context) {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percentage = ((context.parsed * 100) / total).toFixed(1);
+                                return `${percentage}% of all devices`;
+                            },
+                            footer: function(tooltipItems) {
+                                return 'Click to filter by device type';
+                            }
                         }
                     }
                 }
             }
         });
+
+        deviceTypesChart = new Chart(ctx, deviceTypesConfig);
+        
+        // Register for real-time updates 
+        ChartUpdateManager.registerChart('deviceTypesChart', deviceTypesChart, 'performance', {
+            dataType: 'deviceTypes'
+        });
+        
+        // Add accessibility
+        enhanceChartAccessibility(deviceTypesChart, `Device types distribution chart showing ${deviceTypes.length} different device types`);
+        }, 100); // End setTimeout
     }
 
     function updateHourlyPatternChart(hourlyData) {
@@ -1364,5 +1726,83 @@
         if (gb < 1) return (gb * 1024).toFixed(0) + ' MB';
         return gb.toFixed(2) + ' GB';
     }
+    
+    // Global filter handling for interactive charts
+    document.addEventListener('globalFiltersChanged', function(event) {
+        const filters = event.detail.filters;
+        updateActiveFiltersDisplay(filters);
+        
+        // Apply filters to current data
+        if (filters.deviceType) {
+            console.log('Analytics: Filtering by device type:', filters.deviceType);
+            // Could reload data here with device type filter
+        }
+        
+        if (filters.timeRange && filters.timeRange !== globalTimeRange) {
+            // Update time range and reload data
+            globalTimeRange = filters.timeRange;
+            updateTimeRangeButtons();
+            refreshAllData();
+        }
+    });
+    
+    // Update active filters display
+    function updateActiveFiltersDisplay(filters) {
+        const activeFiltersDiv = document.getElementById('active-filters');
+        const filterBadges = document.getElementById('filter-badges');
+        
+        let badges = '';
+        let hasActiveFilters = false;
+        
+        if (filters.deviceType) {
+            badges += `<span class="badge bg-primary me-1">Type: ${filters.deviceType}</span>`;
+            hasActiveFilters = true;
+        }
+        
+        if (filters.severity) {
+            badges += `<span class="badge bg-warning me-1">Severity: ${filters.severity}</span>`;
+            hasActiveFilters = true;
+        }
+        
+        if (filters.timeRange && filters.timeRange !== '24h') {
+            badges += `<span class="badge bg-info me-1">Time: ${filters.timeRange}</span>`;
+            hasActiveFilters = true;
+        }
+        
+        filterBadges.innerHTML = badges;
+        activeFiltersDiv.style.display = hasActiveFilters ? 'block' : 'none';
+    }
+    
+    // Update time range buttons to match global filter
+    function updateTimeRangeButtons() {
+        document.querySelectorAll('input[name="global-time-range"]').forEach(input => {
+            input.checked = input.value === globalTimeRange;
+        });
+    }
+    
+    // Initialize filter display on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        // Set initial filters from URL
+        if (GlobalFilters.timeRange !== '24h') {
+            globalTimeRange = GlobalFilters.timeRange;
+            updateTimeRangeButtons();
+        }
+        
+        updateActiveFiltersDisplay(GlobalFilters);
+        
+        // Demo: Log chart interaction capabilities
+        console.log('🎮 Interactive Chart Features Enabled:');
+        console.log('📊 Click device types chart → Filter by device type');
+        console.log('🔄 Real-time updates → Charts update automatically');
+        console.log('🎯 Global filters → Sync across all dashboards');
+        console.log('📱 Mobile responsive → Touch-friendly interactions');
+        console.log('♿ Accessibility → Screen reader and keyboard support');
+        
+        // Demo: Show chart manager stats after 5 seconds
+        setTimeout(() => {
+            const stats = ChartUpdateManager.getStats();
+            console.log('📈 Chart Update Manager Stats:', stats);
+        }, 5000);
+    });
 </script>
 {% endblock %}

@@ -1,4 +1,4 @@
-{% extends "base.html" %}
+{% extends "base_with_quickstats.html" %}
 
 {% block title %}Settings - HomeNetMon{% endblock %}
 
@@ -444,7 +444,18 @@ async function loadNetworkConfig() {
         
     } catch (error) {
         console.error('Error loading network config:', error);
-        showToast('Error loading network configuration', 'error');
+        
+        let errorMessage = 'Failed to load network configuration';
+        let recoveryAction = 'Check your connection and try refreshing the page';
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            errorMessage = 'Cannot connect to HomeNetMon server';
+            recoveryAction = 'Verify the service is running and refresh the page';
+        }
+        
+        showEnhancedToast(errorMessage, recoveryAction, 'error', function() {
+            loadNetworkConfig();
+        });
     }
 }
 
@@ -658,7 +669,23 @@ async function saveNetworkConfig(event) {
         
     } catch (error) {
         console.error('Error saving network config:', error);
-        showToast('Error saving network configuration', 'error');
+        
+        // Enhanced error handling with recovery suggestions
+        let errorMessage = 'Network configuration could not be saved';
+        let recoveryAction = 'Please check your inputs and try again';
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            errorMessage = 'Unable to connect to HomeNetMon server';
+            recoveryAction = 'Check if the service is running and refresh the page';
+        } else if (error.message && error.message.includes('timeout')) {
+            errorMessage = 'Request timed out while saving configuration';
+            recoveryAction = 'The server may be busy. Wait a moment and try again';
+        }
+        
+        showEnhancedToast(errorMessage, recoveryAction, 'error', function() {
+            // Retry action - re-trigger form submission
+            document.querySelector('#network-config-form').dispatchEvent(new Event('submit'));
+        });
     }
 }
 
@@ -687,7 +714,18 @@ async function loadAlertConfig() {
         
     } catch (error) {
         console.error('Error loading alert config:', error);
-        showToast('Error loading alert configuration', 'error');
+        
+        let errorMessage = 'Failed to load alert configuration';
+        let recoveryAction = 'Verify your connection and try again';
+        
+        if (error.name === 'TypeError') {
+            errorMessage = 'Connection to server failed';
+            recoveryAction = 'Check if HomeNetMon service is running';
+        }
+        
+        showEnhancedToast(errorMessage, recoveryAction, 'error', function() {
+            loadAlertConfig();
+        });
     }
 }
 

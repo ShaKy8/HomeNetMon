@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Performance Dashboard - HomeNetMon</title>
+    
+    <!-- Bootstrap CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Font Awesome -->
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <style>
+        .metric-card {
+            border-left: 4px solid #dee2e6;
+            transition: all 0.3s ease;
+        }
+        .metric-card.healthy {
+            border-left-color: #28a745;
+        }
+        .metric-card.warning {
+            border-left-color: #ffc107;
+        }
+        .metric-card.critical {
+            border-left-color: #dc3545;
+        }
+        
+        .metric-icon {
+            width: 48px;
+            height: 48px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 12px;
+            font-size: 24px;
+        }
+        
+        .chart-container {
+            position: relative;
+            height: 300px;
+            width: 100%;
+        }
+        
+        .health-indicator {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 8px;
+        }
+        
+        .health-indicator.healthy {
+            background-color: #28a745;
+            box-shadow: 0 0 8px rgba(40, 167, 69, 0.5);
+        }
+        
+        .health-indicator.warning {
+            background-color: #ffc107;
+            box-shadow: 0 0 8px rgba(255, 193, 7, 0.5);
+        }
+        
+        .health-indicator.critical {
+            background-color: #dc3545;
+            box-shadow: 0 0 8px rgba(220, 53, 69, 0.5);
+        }
+        
+        .realtime-value {
+            font-size: 2rem;
+            font-weight: bold;
+            line-height: 1;
+        }
+        
+        .trend-indicator {
+            font-size: 0.9rem;
+            margin-top: 4px;
+        }
+        
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+        
+        @media (max-width: 768px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- Header -->
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h1 class="h3 mb-1">
+                            <span class="health-indicator {{ health_status.status }}"></span>
+                            Performance Dashboard
+                        </h1>
+                        <p class="text-muted mb-0">
+                            System health: {{ health_status.status.title() }} ({{ health_status.health_score }}%)
+                            {% if health_status.issues %}
+                                • {{ health_status.issues|length }} issue(s) detected
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div class="d-flex gap-2">
+                        <div class="dropdown">
+                            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                                <i class="fas fa-clock me-2"></i>Time Range
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><a class="dropdown-item" href="#" onclick="updateTimeRange(15)">Last 15 minutes</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="updateTimeRange(60)">Last hour</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="updateTimeRange(360)">Last 6 hours</a></li>
+                                <li><a class="dropdown-item" href="#" onclick="updateTimeRange(1440)">Last 24 hours</a></li>
+                            </ul>
+                        </div>
+                        <button class="btn btn-primary" onclick="window.location.reload()">
+                            <i class="fas fa-sync-alt me-2"></i>Refresh
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Real-time Metrics Grid -->
+        <div class="dashboard-grid" id="metricsGrid">
+            <!-- Metrics will be populated here -->
+        </div>
+
+        <!-- Charts Section -->
+        <div class="row mb-4">
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">System Performance</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="systemChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-6">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Application Performance</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="chart-container">
+                            <canvas id="applicationChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Detailed Sections -->
+        <div class="row mb-4">
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Top Endpoints</h5>
+                        <a href="/performance/metrics" class="btn btn-sm btn-outline-primary">View All</a>
+                    </div>
+                    <div class="card-body">
+                        <div id="topEndpoints">
+                            <div class="text-center py-3">
+                                <i class="fas fa-spinner fa-spin"></i> Loading...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Cache Performance</h5>
+                        <a href="/performance/cache" class="btn btn-sm btn-outline-primary">Details</a>
+                    </div>
+                    <div class="card-body">
+                        <div id="cacheMetrics">
+                            <div class="text-center py-3">
+                                <i class="fas fa-spinner fa-spin"></i> Loading...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0">Circuit Breakers</h5>
+                        <a href="/performance/circuit-breakers" class="btn btn-sm btn-outline-primary">Manage</a>
+                    </div>
+                    <div class="card-body">
+                        <div id="circuitBreakerStatus">
+                            <div class="text-center py-3">
+                                <i class="fas fa-spinner fa-spin"></i> Loading...
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Issues and Alerts -->
+        {% if health_status.issues %}
+        <div class="row mb-4">
+            <div class="col-12">
+                <div class="card border-warning">
+                    <div class="card-header bg-warning text-dark">
+                        <h5 class="mb-0">
+                            <i class="fas fa-exclamation-triangle me-2"></i>
+                            Performance Issues Detected
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        {% for issue in health_status.issues %}
+                        <div class="alert alert-warning d-flex align-items-center mb-2">
+                            <i class="fas fa-exclamation-circle me-2"></i>
+                            {{ issue }}
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+
+    <script>
+        // Global variables
+        let currentTimeRange = 60; // minutes
+        let systemChart = null;
+        let applicationChart = null;
+        let updateInterval = null;
+
+        // Initialize dashboard
+        document.addEventListener('DOMContentLoaded', function() {
+            initializeCharts();
+            loadInitialData();
+            startRealTimeUpdates();
+        });
+
+        function initializeCharts() {
+            // System chart
+            const systemCtx = document.getElementById('systemChart').getContext('2d');
+            systemChart = new Chart(systemCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'CPU %',
+                            data: [],
+                            borderColor: '#007bff',
+                            backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                            tension: 0.4
+                        },
+                        {
+                            label: 'Memory %',
+                            data: [],
+                            borderColor: '#28a745',
+                            backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                            tension: 0.4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+
+            // Application chart
+            const appCtx = document.getElementById('applicationChart').getContext('2d');
+            applicationChart = new Chart(appCtx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [
+                        {
+                            label: 'Requests/sec',
+                            data: [],
+                            borderColor: '#17a2b8',
+                            backgroundColor: 'rgba(23, 162, 184, 0.1)',
+                            tension: 0.4,
+                            yAxisID: 'y'
+                        },
+                        {
+                            label: 'Response Time (ms)',
+                            data: [],
+                            borderColor: '#ffc107',
+                            backgroundColor: 'rgba(255, 193, 7, 0.1)',
+                            tension: 0.4,
+                            yAxisID: 'y1'
+                        },
+                        {
+                            label: 'Error Rate %',
+                            data: [],
+                            borderColor: '#dc3545',
+                            backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                            tension: 0.4,
+                            yAxisID: 'y2'
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        y: {
+                            type: 'linear',
+                            display: true,
+                            position: 'left',
+                            beginAtZero: true
+                        },
+                        y1: {
+                            type: 'linear',
+                            display: true,
+                            position: 'right',
+                            beginAtZero: true,
+                            grid: {
+                                drawOnChartArea: false,
+                            },
+                        },
+                        y2: {
+                            type: 'linear',
+                            display: false,
+                            beginAtZero: true,
+                            max: 100
+                        }
+                    },
+                    plugins: {
+                        legend: {
+                            position: 'top'
+                        }
+                    }
+                }
+            });
+        }
+
+        async function loadInitialData() {
+            try {
+                await Promise.all([
+                    updateMetricsGrid(),
+                    updateCharts(),
+                    updateEndpoints(),
+                    updateCacheMetrics(),
+                    updateCircuitBreakers()
+                ]);
+            } catch (error) {
+                console.error('Error loading initial data:', error);
+            }
+        }
+
+        async function updateMetricsGrid() {
+            try {
+                const response = await fetch('/performance/api/realtime/summary');
+                const data = await response.json();
+                
+                const grid = document.getElementById('metricsGrid');
+                grid.innerHTML = createMetricsCards(data);
+                
+            } catch (error) {
+                console.error('Error updating metrics grid:', error);
+            }
+        }
+
+        function createMetricsCards(data) {
+            const cards = [
+                {
+                    title: 'CPU Usage',
+                    value: `${data.system.cpu_percent.toFixed(1)}%`,
+                    icon: 'fas fa-microchip',
+                    status: data.system.cpu_percent > 80 ? 'critical' : data.system.cpu_percent > 60 ? 'warning' : 'healthy',
+                    trend: 'stable'
+                },
+                {
+                    title: 'Memory Usage',
+                    value: `${data.system.memory_percent.toFixed(1)}%`,
+                    icon: 'fas fa-memory',
+                    status: data.system.memory_percent > 80 ? 'critical' : data.system.memory_percent > 60 ? 'warning' : 'healthy',
+                    trend: 'stable'
+                },
+                {
+                    title: 'Request Rate',
+                    value: `${data.application.request_rate.toFixed(1)}/s`,
+                    icon: 'fas fa-exchange-alt',
+                    status: 'healthy',
+                    trend: 'up'
+                },
+                {
+                    title: 'Response Time',
+                    value: `${(data.application.response_time_avg * 1000).toFixed(0)}ms`,
+                    icon: 'fas fa-clock',
+                    status: data.application.response_time_avg > 1 ? 'warning' : 'healthy',
+                    trend: 'stable'
+                },
+                {
+                    title: 'Error Rate',
+                    value: `${data.application.error_rate.toFixed(1)}%`,
+                    icon: 'fas fa-exclamation-triangle',
+                    status: data.application.error_rate > 5 ? 'critical' : data.application.error_rate > 1 ? 'warning' : 'healthy',
+                    trend: 'down'
+                },
+                {
+                    title: 'Cache Hit Rate',
+                    value: `${data.cache.hit_rate.toFixed(1)}%`,
+                    icon: 'fas fa-database',
+                    status: data.cache.hit_rate < 70 ? 'warning' : 'healthy',
+                    trend: 'stable'
+                }
+            ];
+
+            return cards.map(card => `
+                <div class="card metric-card ${card.status}">
+                    <div class="card-body">
+                        <div class="d-flex align-items-center">
+                            <div class="metric-icon bg-light me-3">
+                                <i class="${card.icon}"></i>
+                            </div>
+                            <div class="flex-grow-1">
+                                <h6 class="card-title mb-1">${card.title}</h6>
+                                <div class="realtime-value">${card.value}</div>
+                                <div class="trend-indicator text-muted">
+                                    <i class="fas fa-arrow-${card.trend === 'up' ? 'up text-success' : card.trend === 'down' ? 'down text-danger' : 'right text-secondary'}"></i>
+                                    ${card.trend}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function updateCharts() {
+            try {
+                // Get system metrics
+                const systemResponse = await fetch(`/performance/api/metrics/system?minutes=${currentTimeRange}`);
+                const systemData = await systemResponse.json();
+                
+                if (systemData.metrics && systemData.metrics.length > 0) {
+                    const labels = systemData.metrics.map(m => new Date(m.timestamp).toLocaleTimeString());
+                    const cpuData = systemData.metrics.map(m => m.cpu_percent);
+                    const memoryData = systemData.metrics.map(m => m.memory_percent);
+                    
+                    systemChart.data.labels = labels;
+                    systemChart.data.datasets[0].data = cpuData;
+                    systemChart.data.datasets[1].data = memoryData;
+                    systemChart.update('none');
+                }
+                
+                // Get application metrics
+                const appResponse = await fetch(`/performance/api/metrics/application?minutes=${currentTimeRange}`);
+                const appData = await appResponse.json();
+                
+                if (appData.metrics && appData.metrics.length > 0) {
+                    const labels = appData.metrics.map(m => new Date(m.timestamp).toLocaleTimeString());
+                    const requestRateData = appData.metrics.map(m => m.request_rate);
+                    const responseTimeData = appData.metrics.map(m => m.response_time_avg * 1000); // Convert to ms
+                    const errorRateData = appData.metrics.map(m => m.error_rate);
+                    
+                    applicationChart.data.labels = labels;
+                    applicationChart.data.datasets[0].data = requestRateData;
+                    applicationChart.data.datasets[1].data = responseTimeData;
+                    applicationChart.data.datasets[2].data = errorRateData;
+                    applicationChart.update('none');
+                }
+                
+            } catch (error) {
+                console.error('Error updating charts:', error);
+            }
+        }
+
+        async function updateEndpoints() {
+            try {
+                const response = await fetch('/performance/api/metrics/endpoints');
+                const data = await response.json();
+                
+                const container = document.getElementById('topEndpoints');
+                const endpoints = Object.values(data.metrics)
+                    .sort((a, b) => b.request_count - a.request_count)
+                    .slice(0, 5);
+                
+                if (endpoints.length === 0) {
+                    container.innerHTML = '<p class="text-muted text-center">No endpoint data available</p>';
+                    return;
+                }
+                
+                container.innerHTML = endpoints.map(endpoint => `
+                    <div class="d-flex justify-content-between align-items-center border-bottom py-2">
+                        <div>
+                            <strong>${endpoint.method}</strong> ${endpoint.endpoint}
+                            <br>
+                            <small class="text-muted">${endpoint.request_count} requests</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="badge ${endpoint.error_rate > 5 ? 'bg-danger' : endpoint.error_rate > 1 ? 'bg-warning' : 'bg-success'}">
+                                ${endpoint.avg_response_time.toFixed(0)}ms
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Error updating endpoints:', error);
+            }
+        }
+
+        async function updateCacheMetrics() {
+            try {
+                const response = await fetch('/performance/api/cache/metrics');
+                const data = await response.json();
+                
+                const container = document.getElementById('cacheMetrics');
+                const metrics = data.metrics;
+                
+                if (!metrics || Object.keys(metrics).length === 0) {
+                    container.innerHTML = '<p class="text-muted text-center">No cache data available</p>';
+                    return;
+                }
+                
+                container.innerHTML = Object.entries(metrics).map(([level, stats]) => `
+                    <div class="row mb-2">
+                        <div class="col-8">
+                            <strong>${level.replace('_', ' ').toUpperCase()}</strong>
+                            <br>
+                            <small class="text-muted">Hit rate: ${stats.hit_rate.toFixed(1)}%</small>
+                        </div>
+                        <div class="col-4 text-end">
+                            <div class="progress" style="height: 8px;">
+                                <div class="progress-bar bg-info" style="width: ${stats.hit_rate}%"></div>
+                            </div>
+                            <small>${stats.hits}/${stats.hits + stats.misses}</small>
+                        </div>
+                    </div>
+                `).join('');
+                
+            } catch (error) {
+                console.error('Error updating cache metrics:', error);
+            }
+        }
+
+        async function updateCircuitBreakers() {
+            try {
+                const response = await fetch('/performance/api/circuit-breakers/metrics');
+                const data = await response.json();
+                
+                const container = document.getElementById('circuitBreakerStatus');
+                const breakers = data.circuit_breakers;
+                
+                if (!breakers || Object.keys(breakers).length === 0) {
+                    container.innerHTML = '<p class="text-muted text-center">No circuit breakers configured</p>';
+                    return;
+                }
+                
+                const summary = {
+                    total: Object.keys(breakers).length,
+                    closed: Object.values(breakers).filter(cb => cb.state === 'closed').length,
+                    open: Object.values(breakers).filter(cb => cb.state === 'open').length,
+                    half_open: Object.values(breakers).filter(cb => cb.state === 'half_open').length
+                };
+                
+                container.innerHTML = `
+                    <div class="row text-center">
+                        <div class="col-3">
+                            <div class="h4 mb-0 text-success">${summary.closed}</div>
+                            <small class="text-muted">Closed</small>
+                        </div>
+                        <div class="col-3">
+                            <div class="h4 mb-0 text-warning">${summary.half_open}</div>
+                            <small class="text-muted">Half-Open</small>
+                        </div>
+                        <div class="col-3">
+                            <div class="h4 mb-0 text-danger">${summary.open}</div>
+                            <small class="text-muted">Open</small>
+                        </div>
+                        <div class="col-3">
+                            <div class="h4 mb-0">${summary.total}</div>
+                            <small class="text-muted">Total</small>
+                        </div>
+                    </div>
+                `;
+                
+            } catch (error) {
+                console.error('Error updating circuit breakers:', error);
+            }
+        }
+
+        function startRealTimeUpdates() {
+            // Update every 30 seconds
+            updateInterval = setInterval(async () => {
+                await updateMetricsGrid();
+                await updateCharts();
+            }, 30000);
+            
+            // Update other components every 60 seconds
+            setInterval(async () => {
+                await updateEndpoints();
+                await updateCacheMetrics();
+                await updateCircuitBreakers();
+            }, 60000);
+        }
+
+        function updateTimeRange(minutes) {
+            currentTimeRange = minutes;
+            updateCharts();
+        }
+
+        // Cleanup on page unload
+        window.addEventListener('beforeunload', function() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+            }
+        });
+    </script>
+</body>
+</html>

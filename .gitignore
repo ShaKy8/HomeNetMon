@@ -165,4 +165,5 @@ temp/
 
 # Local configuration overrides
 config-local.yaml
-local-config.yaml
+local-config.yaml*.backup*
+*.db.backup*

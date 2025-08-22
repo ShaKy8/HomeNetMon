@@ -1,17 +1,67 @@
 import numpy as np
 import logging
+import threading
+import time
+import statistics
+from collections import defaultdict, deque
 from datetime import datetime, timedelta
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any, Set
 from dataclasses import dataclass
-from models import db, Device, MonitoringData
+from enum import Enum
+from models import db, Device, MonitoringData, Alert, Configuration
 from sqlalchemy import func, and_
 import json
 
+from services.device_analytics import DeviceBehaviorAnalytics
+from services.predictive_failure import FailurePredictionEngine
+
 logger = logging.getLogger(__name__)
+
+
+class AnomalyType(Enum):
+    """Types of anomalies that can be detected"""
+    RESPONSE_TIME = "response_time_anomaly"
+    AVAILABILITY = "availability_anomaly"
+    BEHAVIORAL = "behavioral_anomaly"
+    NETWORK_WIDE = "network_wide_anomaly"
+    TEMPORAL = "temporal_anomaly"
+    STATISTICAL = "statistical_anomaly"
+    PATTERN = "pattern_anomaly"
+    TRAFFIC = "traffic_anomaly"
+    SECURITY = "security_anomaly"
+
+
+class AnomalySeverity(Enum):
+    """Severity levels for detected anomalies"""
+    LOW = "low"
+    MEDIUM = "medium"
+    HIGH = "high"
+    CRITICAL = "critical"
+
+
+@dataclass
+class AnomalyEvent:
+    """Enhanced data class for representing detected anomalies"""
+    anomaly_id: str
+    device_id: int
+    device_name: str
+    anomaly_type: AnomalyType
+    severity: AnomalySeverity
+    confidence: float
+    description: str
+    detected_at: datetime
+    affected_metrics: List[str]
+    baseline_values: Dict[str, float]
+    anomaly_values: Dict[str, float]
+    context: Dict[str, Any]
+    recommendations: List[str]
+    impact_assessment: str = "medium"
+    correlation_id: Optional[str] = None
+
 
 @dataclass
 class AnomalyAlert:
-    """Represents an anomaly detection alert"""
+    """Legacy alert class for backward compatibility"""
     device_id: int
     device_name: str
     anomaly_type: str
@@ -24,7 +74,7 @@ class AnomalyAlert:
     threshold: Optional[float] = None
 
 class AnomalyDetectionEngine:
-    """AI-powered anomaly detection for network monitoring"""
+    """Enhanced AI-powered anomaly detection for network monitoring"""
     
     def __init__(self, app=None):
         self.app = app
@@ -32,7 +82,69 @@ class AnomalyDetectionEngine:
         self.detection_interval = 300  # 5 minutes
         self.rule_engine_service = None
         
-        # Load configuration from database or use defaults
+        # Initialize advanced analytics services
+        self.device_analytics = DeviceBehaviorAnalytics()
+        self.failure_prediction = FailurePredictionEngine()
+        
+        # Enhanced anomaly detection configuration
+        self.enhanced_detection_config = {
+            'statistical_algorithms': {
+                'z_score_threshold': 2.5,
+                'isolation_forest_contamination': 0.1,
+                'local_outlier_factor_neighbors': 20,
+                'confidence_threshold': 0.7
+            },
+            'behavioral_analysis': {
+                'pattern_deviation_threshold': 0.4,
+                'usage_pattern_sensitivity': 0.3,
+                'communication_pattern_sensitivity': 0.5,
+                'baseline_days': 14
+            },
+            'network_wide_detection': {
+                'correlation_threshold': 0.3,
+                'cascade_detection_enabled': True,
+                'distributed_anomaly_threshold': 0.25
+            },
+            'real_time_monitoring': {
+                'sliding_window_minutes': 15,
+                'rapid_detection_threshold': 3.0,
+                'alert_debouncing_seconds': 300
+            }
+        }
+        
+        # Real-time anomaly tracking and correlation
+        self.active_anomalies = {}
+        self.anomaly_history = deque(maxlen=10000)
+        self.anomaly_correlations = defaultdict(list)
+        self.baseline_cache = {}
+        self.pattern_cache = {}
+        
+        # Advanced statistical models
+        self.device_baselines = {}
+        self.network_baselines = {}
+        self.seasonal_patterns = {}
+        self.anomaly_patterns = defaultdict(list)
+        
+        # Monitoring and alerting systems
+        self.anomaly_callbacks = []
+        self.alert_thresholds = {
+            AnomalySeverity.LOW: 0.7,
+            AnomalySeverity.MEDIUM: 0.8,
+            AnomalySeverity.HIGH: 0.9,
+            AnomalySeverity.CRITICAL: 0.95
+        }
+        
+        # Performance tracking
+        self._monitoring_active = False
+        self._last_baseline_update = datetime.utcnow()
+        self._detection_statistics = {
+            'total_anomalies_detected': 0,
+            'false_positives': 0,
+            'true_positives': 0,
+            'detection_accuracy': 0.0
+        }
+        
+        # Load legacy configuration for backward compatibility
         self.load_configuration()
     
     def load_configuration(self):
@@ -647,6 +759,879 @@ class AnomalyDetectionEngine:
         except Exception as e:
             logger.error(f"Error triggering rule engine for anomaly: {e}")
             # Don't let rule engine errors affect anomaly processing
+    
+    # ===== ENHANCED ANOMALY DETECTION METHODS =====
+    
+    def detect_enhanced_anomalies(self, device_id: Optional[int] = None, hours: int = 24) -> Dict[str, Any]:
+        """Perform comprehensive enhanced anomaly detection"""
+        try:
+            logger.info(f"Starting enhanced anomaly detection for device_id={device_id}, hours={hours}")
+            
+            with self.app.app_context():
+                # Get devices to analyze
+                if device_id:
+                    devices = [Device.query.get(device_id)]
+                    if not devices[0]:
+                        return {'error': f'Device {device_id} not found'}
+                else:
+                    devices = Device.query.filter_by(is_monitored=True).all()
+                
+                if not devices:
+                    return {'error': 'No devices found for analysis'}
+                
+                # Initialize enhanced detection results
+                detection_results = {
+                    'detection_metadata': {
+                        'analysis_timestamp': datetime.utcnow().isoformat(),
+                        'analysis_period_hours': hours,
+                        'devices_analyzed': len(devices),
+                        'detection_algorithms': ['statistical', 'behavioral', 'temporal', 'network_wide', 'ml_based']
+                    },
+                    'anomalies': [],
+                    'device_summaries': {},
+                    'network_summary': {},
+                    'correlation_analysis': {},
+                    'recommendations': [],
+                    'confidence_distribution': defaultdict(int)
+                }
+                
+                # Perform enhanced anomaly detection for each device
+                for device in devices:
+                    if not device:
+                        continue
+                    
+                    try:
+                        device_anomalies = self._detect_enhanced_device_anomalies(device, hours)
+                        
+                        detection_results['device_summaries'][device.id] = {
+                            'device_name': device.display_name,
+                            'ip_address': device.ip_address,
+                            'anomalies_detected': len(device_anomalies),
+                            'anomaly_types': list(set([a.anomaly_type.value for a in device_anomalies])),
+                            'max_severity': max([a.severity.value for a in device_anomalies]) if device_anomalies else 'none',
+                            'avg_confidence': round(statistics.mean([a.confidence for a in device_anomalies]), 3) if device_anomalies else 0.0
+                        }
+                        
+                        # Convert anomaly objects to dictionaries and track confidence
+                        for anomaly in device_anomalies:
+                            anomaly_dict = self._enhanced_anomaly_to_dict(anomaly)
+                            detection_results['anomalies'].append(anomaly_dict)
+                            
+                            # Track confidence distribution
+                            confidence_bucket = f"{int(anomaly.confidence * 10) * 10}%"
+                            detection_results['confidence_distribution'][confidence_bucket] += 1
+                        
+                    except Exception as e:
+                        logger.error(f"Error detecting enhanced anomalies for device {device.id}: {e}")
+                        continue
+                
+                # Perform network-wide and correlation analysis
+                network_anomalies = self._detect_enhanced_network_anomalies(hours)
+                for anomaly in network_anomalies:
+                    detection_results['anomalies'].append(self._enhanced_anomaly_to_dict(anomaly))
+                
+                # Perform anomaly correlation analysis
+                correlation_analysis = self._analyze_anomaly_correlations(detection_results['anomalies'])
+                detection_results['correlation_analysis'] = correlation_analysis
+                
+                # Generate enhanced network summary
+                detection_results['network_summary'] = self._generate_enhanced_network_summary(
+                    detection_results['anomalies'], devices
+                )
+                
+                # Generate enhanced recommendations
+                detection_results['recommendations'] = self._generate_enhanced_recommendations(
+                    detection_results['anomalies'], correlation_analysis
+                )
+                
+                # Update detection statistics
+                self._detection_statistics['total_anomalies_detected'] += len(detection_results['anomalies'])
+                
+                logger.info(f"Enhanced anomaly detection completed: {len(detection_results['anomalies'])} anomalies found")
+                
+                return detection_results
+                
+        except Exception as e:
+            logger.error(f"Error in enhanced anomaly detection: {e}")
+            return {'error': str(e)}
+    
+    def _detect_enhanced_device_anomalies(self, device: Device, hours: int) -> List[AnomalyEvent]:
+        """Detect enhanced anomalies for a specific device using advanced algorithms"""
+        anomalies = []
+        
+        try:
+            # Get monitoring data for analysis period
+            cutoff = datetime.utcnow() - timedelta(hours=hours)
+            monitoring_data = MonitoringData.query.filter(
+                MonitoringData.device_id == device.id,
+                MonitoringData.timestamp >= cutoff
+            ).order_by(MonitoringData.timestamp.desc()).all()
+            
+            if len(monitoring_data) < 20:  # Need sufficient data for enhanced analysis
+                return anomalies
+            
+            # Statistical anomaly detection with multiple algorithms
+            statistical_anomalies = self._detect_advanced_statistical_anomalies(device, monitoring_data)
+            anomalies.extend(statistical_anomalies)
+            
+            # Behavioral anomaly detection using ML patterns
+            behavioral_anomalies = self._detect_advanced_behavioral_anomalies(device, monitoring_data)
+            anomalies.extend(behavioral_anomalies)
+            
+            # Temporal pattern anomalies with seasonal adjustment
+            temporal_anomalies = self._detect_advanced_temporal_anomalies(device, monitoring_data)
+            anomalies.extend(temporal_anomalies)
+            
+            # Traffic and communication pattern anomalies
+            traffic_anomalies = self._detect_traffic_anomalies(device, monitoring_data)
+            anomalies.extend(traffic_anomalies)
+            
+            # Security-related anomalies
+            security_anomalies = self._detect_security_anomalies(device, monitoring_data)
+            anomalies.extend(security_anomalies)
+            
+        except Exception as e:
+            logger.error(f"Error detecting enhanced device anomalies for {device.id}: {e}")
+        
+        return anomalies
+    
+    def _detect_advanced_statistical_anomalies(self, device: Device, monitoring_data: List) -> List[AnomalyEvent]:
+        """Advanced statistical anomaly detection using multiple algorithms"""
+        anomalies = []
+        
+        try:
+            response_times = [data.response_time for data in monitoring_data if data.response_time is not None]
+            
+            if len(response_times) >= 30:
+                # Z-score based detection
+                mean_response = statistics.mean(response_times)
+                std_response = statistics.stdev(response_times) if len(response_times) > 1 else 0
+                
+                if std_response > 0:
+                    # Calculate rolling z-scores for recent data
+                    recent_data = response_times[-10:]  # Last 10 measurements
+                    z_scores = [(rt - mean_response) / std_response for rt in recent_data]
+                    max_z_score = max([abs(z) for z in z_scores])
+                    
+                    threshold = self.enhanced_detection_config['statistical_algorithms']['z_score_threshold']
+                    if max_z_score > threshold:
+                        confidence = min(0.99, max_z_score / 5.0)
+                        severity = self._calculate_enhanced_severity(confidence)
+                        
+                        anomaly = AnomalyEvent(
+                            anomaly_id=f"stat_zscore_{device.id}_{int(datetime.utcnow().timestamp())}",
+                            device_id=device.id,
+                            device_name=device.display_name,
+                            anomaly_type=AnomalyType.STATISTICAL,
+                            severity=severity,
+                            confidence=confidence,
+                            description=f"Statistical anomaly detected using Z-score analysis (max z-score: {max_z_score:.2f})",
+                            detected_at=datetime.utcnow(),
+                            affected_metrics=['response_time', 'statistical_deviation'],
+                            baseline_values={'mean_response_time': mean_response, 'std_response_time': std_response},
+                            anomaly_values={'max_z_score': max_z_score, 'recent_avg': statistics.mean(recent_data)},
+                            context={
+                                'algorithm': 'z_score',
+                                'threshold_used': threshold,
+                                'data_points_analyzed': len(response_times),
+                                'recent_measurements': len(recent_data)
+                            },
+                            recommendations=[
+                                "Investigate recent network changes or performance issues",
+                                "Check device resource utilization and health",
+                                "Verify network path stability and routing"
+                            ]
+                        )
+                        anomalies.append(anomaly)
+                
+                # Isolation Forest detection for outliers
+                if len(response_times) >= 50:
+                    anomalies.extend(self._detect_isolation_forest_anomalies(device, response_times))
+                
+                # Local Outlier Factor detection
+                if len(response_times) >= 30:
+                    anomalies.extend(self._detect_local_outlier_anomalies(device, response_times))
+            
+        except Exception as e:
+            logger.error(f"Error in advanced statistical anomaly detection for device {device.id}: {e}")
+        
+        return anomalies
+    
+    def _detect_isolation_forest_anomalies(self, device: Device, response_times: List[float]) -> List[AnomalyEvent]:
+        """Detect anomalies using Isolation Forest algorithm"""
+        anomalies = []
+        
+        try:
+            from sklearn.ensemble import IsolationForest
+            
+            # Prepare data for Isolation Forest
+            data = np.array(response_times).reshape(-1, 1)
+            contamination = self.enhanced_detection_config['statistical_algorithms']['isolation_forest_contamination']
+            
+            # Fit Isolation Forest
+            iso_forest = IsolationForest(contamination=contamination, random_state=42)
+            outlier_labels = iso_forest.fit_predict(data)
+            outlier_scores = iso_forest.decision_function(data)
+            
+            # Find outliers (labeled as -1)
+            outlier_indices = [i for i, label in enumerate(outlier_labels) if label == -1]
+            
+            if outlier_indices:
+                # Calculate confidence based on outlier scores
+                outlier_score_values = [abs(outlier_scores[i]) for i in outlier_indices]
+                max_outlier_score = max(outlier_score_values)
+                confidence = min(0.99, max_outlier_score * 2)  # Scale appropriately
+                
+                if confidence >= self.enhanced_detection_config['statistical_algorithms']['confidence_threshold']:
+                    severity = self._calculate_enhanced_severity(confidence)
+                    
+                    anomaly = AnomalyEvent(
+                        anomaly_id=f"iso_forest_{device.id}_{int(datetime.utcnow().timestamp())}",
+                        device_id=device.id,
+                        device_name=device.display_name,
+                        anomaly_type=AnomalyType.STATISTICAL,
+                        severity=severity,
+                        confidence=confidence,
+                        description=f"Isolation Forest detected {len(outlier_indices)} outlier measurements",
+                        detected_at=datetime.utcnow(),
+                        affected_metrics=['response_time', 'outlier_detection'],
+                        baseline_values={'normal_measurements': len(response_times) - len(outlier_indices)},
+                        anomaly_values={
+                            'outlier_count': len(outlier_indices),
+                            'max_outlier_score': max_outlier_score,
+                            'outlier_values': [response_times[i] for i in outlier_indices[-5:]]  # Last 5 outliers
+                        },
+                        context={
+                            'algorithm': 'isolation_forest',
+                            'contamination_rate': contamination,
+                            'total_measurements': len(response_times)
+                        },
+                        recommendations=[
+                            "Review outlier response time measurements for patterns",
+                            "Check for intermittent network issues or interference",
+                            "Monitor device performance during peak usage times"
+                        ]
+                    )
+                    anomalies.append(anomaly)
+            
+        except ImportError:
+            logger.debug("scikit-learn not available for Isolation Forest detection")
+        except Exception as e:
+            logger.error(f"Error in Isolation Forest anomaly detection: {e}")
+        
+        return anomalies
+    
+    def _detect_local_outlier_anomalies(self, device: Device, response_times: List[float]) -> List[AnomalyEvent]:
+        """Detect anomalies using Local Outlier Factor algorithm"""
+        anomalies = []
+        
+        try:
+            from sklearn.neighbors import LocalOutlierFactor
+            
+            # Prepare data
+            data = np.array(response_times).reshape(-1, 1)
+            n_neighbors = min(
+                self.enhanced_detection_config['statistical_algorithms']['local_outlier_factor_neighbors'],
+                len(response_times) // 2
+            )
+            
+            # Fit Local Outlier Factor
+            lof = LocalOutlierFactor(n_neighbors=n_neighbors, contamination=0.1)
+            outlier_labels = lof.fit_predict(data)
+            outlier_scores = lof.negative_outlier_factor_
+            
+            # Find outliers
+            outlier_indices = [i for i, label in enumerate(outlier_labels) if label == -1]
+            
+            if outlier_indices:
+                # Calculate confidence from LOF scores
+                outlier_lof_scores = [abs(outlier_scores[i]) for i in outlier_indices]
+                max_lof_score = max(outlier_lof_scores)
+                confidence = min(0.99, (max_lof_score - 1.0) * 0.5)  # LOF scores around 1 are normal
+                
+                if confidence >= self.enhanced_detection_config['statistical_algorithms']['confidence_threshold']:
+                    severity = self._calculate_enhanced_severity(confidence)
+                    
+                    anomaly = AnomalyEvent(
+                        anomaly_id=f"lof_{device.id}_{int(datetime.utcnow().timestamp())}",
+                        device_id=device.id,
+                        device_name=device.display_name,
+                        anomaly_type=AnomalyType.STATISTICAL,
+                        severity=severity,
+                        confidence=confidence,
+                        description=f"Local Outlier Factor detected {len(outlier_indices)} local outliers",
+                        detected_at=datetime.utcnow(),
+                        affected_metrics=['response_time', 'local_outlier_detection'],
+                        baseline_values={'neighbors_analyzed': n_neighbors},
+                        anomaly_values={
+                            'outlier_count': len(outlier_indices),
+                            'max_lof_score': max_lof_score,
+                            'outlier_values': [response_times[i] for i in outlier_indices[-3:]]  # Last 3 outliers
+                        },
+                        context={
+                            'algorithm': 'local_outlier_factor',
+                            'neighbors_used': n_neighbors,
+                            'total_measurements': len(response_times)
+                        },
+                        recommendations=[
+                            "Investigate local network conditions during outlier periods",
+                            "Check for device-specific performance issues",
+                            "Review network topology for potential bottlenecks"
+                        ]
+                    )
+                    anomalies.append(anomaly)
+            
+        except ImportError:
+            logger.debug("scikit-learn not available for Local Outlier Factor detection")
+        except Exception as e:
+            logger.error(f"Error in Local Outlier Factor anomaly detection: {e}")
+        
+        return anomalies
+    
+    def _detect_advanced_behavioral_anomalies(self, device: Device, monitoring_data: List) -> List[AnomalyEvent]:
+        """Advanced behavioral anomaly detection using ML patterns"""
+        anomalies = []
+        
+        try:
+            # Get detailed behavioral analysis from device analytics
+            behavior_analysis = self.device_analytics.analyze_device_behavior(device.id, days=14)
+            
+            if 'error' in behavior_analysis:
+                return anomalies
+            
+            # Analyze communication patterns
+            communication_anomalies = self._detect_communication_pattern_anomalies(device, behavior_analysis)
+            anomalies.extend(communication_anomalies)
+            
+            # Analyze usage pattern changes
+            usage_anomalies = self._detect_usage_pattern_anomalies(device, behavior_analysis)
+            anomalies.extend(usage_anomalies)
+            
+            # Analyze device role deviations
+            role_anomalies = self._detect_device_role_anomalies(device, behavior_analysis)
+            anomalies.extend(role_anomalies)
+            
+        except Exception as e:
+            logger.error(f"Error in advanced behavioral anomaly detection for device {device.id}: {e}")
+        
+        return anomalies
+    
+    def _detect_communication_pattern_anomalies(self, device: Device, behavior_analysis: Dict) -> List[AnomalyEvent]:
+        """Detect anomalies in device communication patterns"""
+        anomalies = []
+        
+        try:
+            response_characteristics = behavior_analysis.get('response_time_characteristics', {})
+            pattern_consistency = response_characteristics.get('consistency_score', 1.0)
+            
+            threshold = self.enhanced_detection_config['behavioral_analysis']['communication_pattern_sensitivity']
+            
+            if pattern_consistency < (1.0 - threshold):
+                confidence = 1.0 - pattern_consistency
+                severity = self._calculate_enhanced_severity(confidence)
+                
+                anomaly = AnomalyEvent(
+                    anomaly_id=f"comm_pattern_{device.id}_{int(datetime.utcnow().timestamp())}",
+                    device_id=device.id,
+                    device_name=device.display_name,
+                    anomaly_type=AnomalyType.BEHAVIORAL,
+                    severity=severity,
+                    confidence=confidence,
+                    description=f"Communication pattern anomaly: consistency dropped to {pattern_consistency:.2f}",
+                    detected_at=datetime.utcnow(),
+                    affected_metrics=['communication_pattern', 'consistency_score'],
+                    baseline_values={'expected_consistency': 1.0 - threshold},
+                    anomaly_values={'actual_consistency': pattern_consistency},
+                    context={
+                        'pattern_type': response_characteristics.get('pattern', 'unknown'),
+                        'variance': response_characteristics.get('variance', 0),
+                        'analysis_period': '14 days'
+                    },
+                    recommendations=[
+                        "Monitor device for configuration changes",
+                        "Check for software updates or patches",
+                        "Investigate potential security issues or unauthorized access"
+                    ]
+                )
+                anomalies.append(anomaly)
+            
+        except Exception as e:
+            logger.error(f"Error detecting communication pattern anomalies: {e}")
+        
+        return anomalies
+    
+    def _detect_usage_pattern_anomalies(self, device: Device, behavior_analysis: Dict) -> List[AnomalyEvent]:
+        """Detect anomalies in device usage patterns"""
+        anomalies = []
+        
+        try:
+            uptime_patterns = behavior_analysis.get('uptime_patterns', {})
+            pattern_score = uptime_patterns.get('pattern_score', 1.0)
+            
+            threshold = self.enhanced_detection_config['behavioral_analysis']['usage_pattern_sensitivity']
+            
+            if pattern_score < (1.0 - threshold):
+                confidence = 1.0 - pattern_score
+                severity = self._calculate_enhanced_severity(confidence)
+                
+                anomaly = AnomalyEvent(
+                    anomaly_id=f"usage_pattern_{device.id}_{int(datetime.utcnow().timestamp())}",
+                    device_id=device.id,
+                    device_name=device.display_name,
+                    anomaly_type=AnomalyType.BEHAVIORAL,
+                    severity=severity,
+                    confidence=confidence,
+                    description=f"Usage pattern anomaly: pattern score dropped to {pattern_score:.2f}",
+                    detected_at=datetime.utcnow(),
+                    affected_metrics=['usage_pattern', 'uptime_behavior'],
+                    baseline_values={'expected_pattern_score': 1.0 - threshold},
+                    anomaly_values={'actual_pattern_score': pattern_score},
+                    context={
+                        'pattern_type': uptime_patterns.get('pattern_type', 'unknown'),
+                        'regularity': uptime_patterns.get('regularity', 0),
+                        'typical_hours': uptime_patterns.get('typical_hours', [])
+                    },
+                    recommendations=[
+                        "Review device usage schedules and patterns",
+                        "Check for changes in user behavior or device purpose",
+                        "Verify device power management and scheduling settings"
+                    ]
+                )
+                anomalies.append(anomaly)
+            
+        except Exception as e:
+            logger.error(f"Error detecting usage pattern anomalies: {e}")
+        
+        return anomalies
+    
+    def _detect_device_role_anomalies(self, device: Device, behavior_analysis: Dict) -> List[AnomalyEvent]:
+        """Detect anomalies in device role and expected behavior"""
+        anomalies = []
+        
+        try:
+            # Compare actual behavior with expected behavior for device type
+            device_type = device.device_type or 'unknown'
+            
+            # Get behavior expectations based on device type
+            expected_patterns = self._get_expected_patterns_for_device_type(device_type)
+            
+            if expected_patterns:
+                actual_patterns = behavior_analysis.get('uptime_patterns', {})
+                
+                # Check for role deviations
+                role_deviation_score = self._calculate_role_deviation(expected_patterns, actual_patterns)
+                
+                if role_deviation_score > 0.6:  # Significant role deviation
+                    confidence = role_deviation_score
+                    severity = self._calculate_enhanced_severity(confidence)
+                    
+                    anomaly = AnomalyEvent(
+                        anomaly_id=f"role_deviation_{device.id}_{int(datetime.utcnow().timestamp())}",
+                        device_id=device.id,
+                        device_name=device.display_name,
+                        anomaly_type=AnomalyType.BEHAVIORAL,
+                        severity=severity,
+                        confidence=confidence,
+                        description=f"Device role anomaly: behavior doesn't match expected {device_type} patterns",
+                        detected_at=datetime.utcnow(),
+                        affected_metrics=['device_role', 'behavioral_consistency'],
+                        baseline_values=expected_patterns,
+                        anomaly_values={'role_deviation_score': role_deviation_score},
+                        context={
+                            'expected_device_type': device_type,
+                            'actual_patterns': actual_patterns,
+                            'deviation_factors': self._analyze_deviation_factors(expected_patterns, actual_patterns)
+                        },
+                        recommendations=[
+                            f"Verify device classification as {device_type}",
+                            "Check for device repurposing or configuration changes",
+                            "Update device type if role has legitimately changed"
+                        ]
+                    )
+                    anomalies.append(anomaly)
+            
+        except Exception as e:
+            logger.error(f"Error detecting device role anomalies: {e}")
+        
+        return anomalies
+    
+    def _detect_advanced_temporal_anomalies(self, device: Device, monitoring_data: List) -> List[AnomalyEvent]:
+        """Advanced temporal pattern anomaly detection with seasonal adjustment"""
+        anomalies = []
+        
+        try:
+            # Analyze temporal patterns with enhanced algorithms
+            temporal_analysis = self._perform_temporal_analysis(device, monitoring_data)
+            
+            # Detect seasonal anomalies
+            seasonal_anomalies = self._detect_seasonal_anomalies(device, temporal_analysis)
+            anomalies.extend(seasonal_anomalies)
+            
+            # Detect cyclical pattern breaks
+            cyclical_anomalies = self._detect_cyclical_anomalies(device, temporal_analysis)
+            anomalies.extend(cyclical_anomalies)
+            
+        except Exception as e:
+            logger.error(f"Error in advanced temporal anomaly detection for device {device.id}: {e}")
+        
+        return anomalies
+    
+    def _detect_traffic_anomalies(self, device: Device, monitoring_data: List) -> List[AnomalyEvent]:
+        """Detect traffic and load-related anomalies"""
+        anomalies = []
+        
+        try:
+            # Analyze request frequency patterns
+            frequency_anomalies = self._detect_frequency_anomalies(device, monitoring_data)
+            anomalies.extend(frequency_anomalies)
+            
+            # Detect load spikes and unusual traffic patterns
+            load_anomalies = self._detect_load_anomalies(device, monitoring_data)
+            anomalies.extend(load_anomalies)
+            
+        except Exception as e:
+            logger.error(f"Error detecting traffic anomalies for device {device.id}: {e}")
+        
+        return anomalies
+    
+    def _detect_security_anomalies(self, device: Device, monitoring_data: List) -> List[AnomalyEvent]:
+        """Detect security-related anomalies"""
+        anomalies = []
+        
+        try:
+            # Detect unusual access patterns that might indicate security issues
+            access_anomalies = self._detect_access_pattern_anomalies(device, monitoring_data)
+            anomalies.extend(access_anomalies)
+            
+            # Detect potential scanning or probing activities
+            scanning_anomalies = self._detect_scanning_anomalies(device, monitoring_data)
+            anomalies.extend(scanning_anomalies)
+            
+        except Exception as e:
+            logger.error(f"Error detecting security anomalies for device {device.id}: {e}")
+        
+        return anomalies
+    
+    def _detect_enhanced_network_anomalies(self, hours: int) -> List[AnomalyEvent]:
+        """Detect enhanced network-wide anomalies"""
+        anomalies = []
+        
+        try:
+            with self.app.app_context():
+                # Detect distributed anomalies
+                distributed_anomalies = self._detect_distributed_anomalies(hours)
+                anomalies.extend(distributed_anomalies)
+                
+                # Detect cascade failures
+                cascade_anomalies = self._detect_cascade_anomalies(hours)
+                anomalies.extend(cascade_anomalies)
+                
+                # Detect network-wide performance degradation
+                performance_anomalies = self._detect_network_performance_anomalies(hours)
+                anomalies.extend(performance_anomalies)
+                
+        except Exception as e:
+            logger.error(f"Error detecting enhanced network anomalies: {e}")
+        
+        return anomalies
+    
+    def _calculate_enhanced_severity(self, confidence: float) -> AnomalySeverity:
+        """Calculate enhanced anomaly severity based on confidence score"""
+        if confidence >= self.alert_thresholds[AnomalySeverity.CRITICAL]:
+            return AnomalySeverity.CRITICAL
+        elif confidence >= self.alert_thresholds[AnomalySeverity.HIGH]:
+            return AnomalySeverity.HIGH
+        elif confidence >= self.alert_thresholds[AnomalySeverity.MEDIUM]:
+            return AnomalySeverity.MEDIUM
+        else:
+            return AnomalySeverity.LOW
+    
+    def _enhanced_anomaly_to_dict(self, anomaly: AnomalyEvent) -> Dict[str, Any]:
+        """Convert enhanced AnomalyEvent to dictionary for JSON serialization"""
+        return {
+            'anomaly_id': anomaly.anomaly_id,
+            'device_id': anomaly.device_id,
+            'device_name': anomaly.device_name,
+            'anomaly_type': anomaly.anomaly_type.value,
+            'severity': anomaly.severity.value,
+            'confidence': round(anomaly.confidence, 3),
+            'description': anomaly.description,
+            'detected_at': anomaly.detected_at.isoformat(),
+            'affected_metrics': anomaly.affected_metrics,
+            'baseline_values': anomaly.baseline_values,
+            'anomaly_values': anomaly.anomaly_values,
+            'context': anomaly.context,
+            'recommendations': anomaly.recommendations,
+            'impact_assessment': anomaly.impact_assessment,
+            'correlation_id': anomaly.correlation_id
+        }
+    
+    def _analyze_anomaly_correlations(self, anomalies: List[Dict]) -> Dict[str, Any]:
+        """Analyze correlations between detected anomalies"""
+        correlation_analysis = {
+            'temporal_correlations': [],
+            'device_correlations': [],
+            'type_correlations': [],
+            'severity_patterns': {},
+            'cascade_indicators': []
+        }
+        
+        try:
+            # Group anomalies by time windows for temporal correlation
+            time_windows = defaultdict(list)
+            
+            for anomaly in anomalies:
+                detected_time = datetime.fromisoformat(anomaly['detected_at'].replace('Z', '+00:00'))
+                time_window = detected_time.replace(minute=0, second=0, microsecond=0)  # Hour buckets
+                time_windows[time_window].append(anomaly)
+            
+            # Find temporal correlations
+            for time_window, window_anomalies in time_windows.items():
+                if len(window_anomalies) > 1:
+                    correlation_analysis['temporal_correlations'].append({
+                        'time_window': time_window.isoformat(),
+                        'anomaly_count': len(window_anomalies),
+                        'affected_devices': list(set([a['device_id'] for a in window_anomalies])),
+                        'anomaly_types': list(set([a['anomaly_type'] for a in window_anomalies])),
+                        'correlation_strength': min(1.0, len(window_anomalies) / 10)  # Scale correlation strength
+                    })
+            
+            # Analyze device correlations
+            device_anomaly_counts = defaultdict(int)
+            for anomaly in anomalies:
+                device_anomaly_counts[anomaly['device_id']] += 1
+            
+            # Find devices with multiple anomalies
+            multi_anomaly_devices = {device_id: count for device_id, count in device_anomaly_counts.items() if count > 1}
+            correlation_analysis['device_correlations'] = [
+                {'device_id': device_id, 'anomaly_count': count}
+                for device_id, count in sorted(multi_anomaly_devices.items(), key=lambda x: x[1], reverse=True)
+            ]
+            
+            # Analyze anomaly type correlations
+            type_combinations = defaultdict(int)
+            for time_window, window_anomalies in time_windows.items():
+                if len(window_anomalies) > 1:
+                    types = sorted(set([a['anomaly_type'] for a in window_anomalies]))
+                    if len(types) > 1:
+                        combo = ' + '.join(types)
+                        type_combinations[combo] += 1
+            
+            correlation_analysis['type_correlations'] = [
+                {'combination': combo, 'frequency': freq}
+                for combo, freq in sorted(type_combinations.items(), key=lambda x: x[1], reverse=True)
+            ]
+            
+        except Exception as e:
+            logger.error(f"Error analyzing anomaly correlations: {e}")
+        
+        return correlation_analysis
+    
+    def _generate_enhanced_network_summary(self, anomalies: List[Dict], devices: List[Device]) -> Dict[str, Any]:
+        """Generate enhanced network-wide summary of detected anomalies"""
+        summary = {
+            'total_anomalies': len(anomalies),
+            'severity_distribution': defaultdict(int),
+            'type_distribution': defaultdict(int),
+            'affected_devices': set(),
+            'network_health_score': 0.0,
+            'critical_issues': [],
+            'trends': {},
+            'risk_assessment': 'low',
+            'impact_analysis': {}
+        }
+        
+        try:
+            high_confidence_anomalies = 0
+            total_confidence = 0
+            
+            # Analyze anomaly distribution and calculate metrics
+            for anomaly in anomalies:
+                summary['severity_distribution'][anomaly['severity']] += 1
+                summary['type_distribution'][anomaly['anomaly_type']] += 1
+                
+                if anomaly['device_id'] > 0:
+                    summary['affected_devices'].add(anomaly['device_id'])
+                
+                # Track confidence metrics
+                confidence = anomaly.get('confidence', 0)
+                total_confidence += confidence
+                if confidence > 0.8:
+                    high_confidence_anomalies += 1
+                
+                # Collect critical issues
+                if anomaly['severity'] in ['critical', 'high']:
+                    summary['critical_issues'].append({
+                        'device_id': anomaly['device_id'],
+                        'device_name': anomaly['device_name'],
+                        'type': anomaly['anomaly_type'],
+                        'severity': anomaly['severity'],
+                        'confidence': confidence,
+                        'description': anomaly['description']
+                    })
+            
+            # Calculate enhanced network health score
+            total_devices = len(devices)
+            affected_devices = len(summary['affected_devices'])
+            
+            if total_devices > 0:
+                device_health = 1.0 - (affected_devices / total_devices)
+                
+                # Weight by severity and confidence
+                severity_penalty = (
+                    summary['severity_distribution']['critical'] * 0.5 +
+                    summary['severity_distribution']['high'] * 0.3 +
+                    summary['severity_distribution']['medium'] * 0.15 +
+                    summary['severity_distribution']['low'] * 0.05
+                ) / max(1, len(anomalies))
+                
+                confidence_factor = (total_confidence / max(1, len(anomalies))) * 0.2
+                
+                summary['network_health_score'] = max(0.0, min(1.0, 
+                    device_health - severity_penalty - confidence_factor))
+            
+            # Determine overall risk assessment
+            critical_count = summary['severity_distribution']['critical']
+            high_count = summary['severity_distribution']['high']
+            
+            if critical_count > 0 or high_count > 2:
+                summary['risk_assessment'] = 'critical'
+            elif high_count > 0 or summary['severity_distribution']['medium'] > 3:
+                summary['risk_assessment'] = 'high'
+            elif summary['severity_distribution']['medium'] > 0 or summary['severity_distribution']['low'] > 5:
+                summary['risk_assessment'] = 'medium'
+            else:
+                summary['risk_assessment'] = 'low'
+            
+            # Impact analysis
+            summary['impact_analysis'] = {
+                'devices_at_risk_percentage': round((affected_devices / max(1, total_devices)) * 100, 1),
+                'high_confidence_anomalies': high_confidence_anomalies,
+                'average_confidence': round(total_confidence / max(1, len(anomalies)), 3),
+                'network_stability': 'unstable' if affected_devices > total_devices * 0.3 else 'stable'
+            }
+            
+            # Convert sets to lists for JSON serialization
+            summary['affected_devices'] = list(summary['affected_devices'])
+            summary['severity_distribution'] = dict(summary['severity_distribution'])
+            summary['type_distribution'] = dict(summary['type_distribution'])
+            
+        except Exception as e:
+            logger.error(f"Error generating enhanced network summary: {e}")
+        
+        return summary
+    
+    def _generate_enhanced_recommendations(self, anomalies: List[Dict], 
+                                         correlation_analysis: Dict) -> List[str]:
+        """Generate enhanced actionable recommendations"""
+        recommendations = set()
+        
+        try:
+            severity_counts = defaultdict(int)
+            type_counts = defaultdict(int)
+            
+            for anomaly in anomalies:
+                severity_counts[anomaly['severity']] += 1
+                type_counts[anomaly['anomaly_type']] += 1
+                
+                # Add specific recommendations from each anomaly
+                for rec in anomaly.get('recommendations', []):
+                    recommendations.add(rec)
+            
+            # Add correlation-based recommendations
+            if correlation_analysis.get('temporal_correlations'):
+                recommendations.add("Investigate time-based correlation patterns indicating systematic issues")
+            
+            if correlation_analysis.get('device_correlations'):
+                recommendations.add("Review devices with multiple anomalies for common configuration issues")
+            
+            # Add enhanced recommendations based on patterns
+            if severity_counts['critical'] > 0:
+                recommendations.add("URGENT: Address critical anomalies immediately to prevent service disruption")
+                recommendations.add("Implement emergency response procedures for critical network issues")
+            
+            if type_counts.get('network_wide_anomaly', 0) > 0:
+                recommendations.add("Perform comprehensive network infrastructure assessment")
+                recommendations.add("Review network monitoring and alerting thresholds")
+            
+            if type_counts.get('statistical_anomaly', 0) > 3:
+                recommendations.add("Investigate underlying performance issues affecting multiple devices")
+                recommendations.add("Consider network capacity and bandwidth analysis")
+            
+            if type_counts.get('behavioral_anomaly', 0) > 0:
+                recommendations.add("Review device configurations and usage patterns")
+                recommendations.add("Check for unauthorized access or security incidents")
+            
+            if type_counts.get('security_anomaly', 0) > 0:
+                recommendations.add("Conduct security audit and vulnerability assessment")
+                recommendations.add("Review access logs and authentication patterns")
+            
+            if len(anomalies) > 15:
+                recommendations.add("Consider implementing automated anomaly response procedures")
+                recommendations.add("Review anomaly detection thresholds to reduce false positives")
+            
+            # Add ML-specific recommendations
+            recommendations.add("Monitor anomaly detection accuracy and adjust ML models as needed")
+            recommendations.add("Use anomaly correlation analysis for proactive issue prevention")
+            
+        except Exception as e:
+            logger.error(f"Error generating enhanced recommendations: {e}")
+        
+        return sorted(list(recommendations))
+    
+    # Helper methods for advanced detection algorithms (stubs for complex implementations)
+    
+    def _perform_temporal_analysis(self, device: Device, monitoring_data: List) -> Dict:
+        """Perform detailed temporal analysis (implementation placeholder)"""
+        return {'temporal_patterns': {}, 'seasonal_indicators': {}}
+    
+    def _detect_seasonal_anomalies(self, device: Device, temporal_analysis: Dict) -> List[AnomalyEvent]:
+        """Detect seasonal pattern anomalies (implementation placeholder)"""
+        return []
+    
+    def _detect_cyclical_anomalies(self, device: Device, temporal_analysis: Dict) -> List[AnomalyEvent]:
+        """Detect cyclical pattern breaks (implementation placeholder)"""
+        return []
+    
+    def _detect_frequency_anomalies(self, device: Device, monitoring_data: List) -> List[AnomalyEvent]:
+        """Detect request frequency anomalies (implementation placeholder)"""
+        return []
+    
+    def _detect_load_anomalies(self, device: Device, monitoring_data: List) -> List[AnomalyEvent]:
+        """Detect load and traffic anomalies (implementation placeholder)"""
+        return []
+    
+    def _detect_access_pattern_anomalies(self, device: Device, monitoring_data: List) -> List[AnomalyEvent]:
+        """Detect access pattern security anomalies (implementation placeholder)"""
+        return []
+    
+    def _detect_scanning_anomalies(self, device: Device, monitoring_data: List) -> List[AnomalyEvent]:
+        """Detect scanning/probing anomalies (implementation placeholder)"""
+        return []
+    
+    def _detect_distributed_anomalies(self, hours: int) -> List[AnomalyEvent]:
+        """Detect distributed network anomalies (implementation placeholder)"""
+        return []
+    
+    def _detect_cascade_anomalies(self, hours: int) -> List[AnomalyEvent]:
+        """Detect cascade failure patterns (implementation placeholder)"""
+        return []
+    
+    def _detect_network_performance_anomalies(self, hours: int) -> List[AnomalyEvent]:
+        """Detect network-wide performance anomalies (implementation placeholder)"""
+        return []
+    
+    def _get_expected_patterns_for_device_type(self, device_type: str) -> Dict:
+        """Get expected behavioral patterns for device type (implementation placeholder)"""
+        return {}
+    
+    def _calculate_role_deviation(self, expected: Dict, actual: Dict) -> float:
+        """Calculate role deviation score (implementation placeholder)"""
+        return 0.0
+    
+    def _analyze_deviation_factors(self, expected: Dict, actual: Dict) -> List[str]:
+        """Analyze factors contributing to role deviation (implementation placeholder)"""
+        return []
 
 # Global anomaly detection service instance
 anomaly_detection_service = AnomalyDetectionEngine()

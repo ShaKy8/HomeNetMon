@@ -1,0 +1,1099 @@
+{% extends "base_with_quickstats.html" %}
+
+{% block title %}Escalation Executions - HomeNetMon{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Execution-specific styles */
+.execution-status-badge {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+}
+
+.status-pending { background-color: #ffc107; color: #000; }
+.status-in_progress { background-color: #17a2b8; color: white; }
+.status-completed { background-color: #28a745; color: white; }
+.status-failed { background-color: #dc3545; color: white; }
+.status-cancelled { background-color: #6c757d; color: white; }
+
+.execution-card {
+    transition: all 0.2s ease;
+    border: 1px solid #dee2e6;
+    margin-bottom: 1rem;
+    position: relative;
+}
+
+.execution-card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    transform: translateY(-1px);
+}
+
+.execution-card.status-failed {
+    border-left: 4px solid #dc3545;
+}
+
+.execution-card.status-completed {
+    border-left: 4px solid #28a745;
+}
+
+.execution-card.status-in_progress {
+    border-left: 4px solid #17a2b8;
+}
+
+.execution-card.status-pending {
+    border-left: 4px solid #ffc107;
+}
+
+.progress-indicator {
+    height: 4px;
+    background-color: #e9ecef;
+    border-radius: 2px;
+    overflow: hidden;
+    margin: 0.5rem 0;
+}
+
+.progress-fill {
+    height: 100%;
+    transition: width 0.3s ease;
+}
+
+.action-log-item {
+    padding: 0.5rem;
+    margin: 0.25rem 0;
+    border-radius: 4px;
+    font-size: 0.875rem;
+}
+
+.action-log-item.success {
+    background-color: #d4edda;
+    border-left: 3px solid #28a745;
+}
+
+.action-log-item.failed {
+    background-color: #f8d7da;
+    border-left: 3px solid #dc3545;
+}
+
+.action-log-item.skipped {
+    background-color: #fff3cd;
+    border-left: 3px solid #ffc107;
+}
+
+.timeline-item {
+    position: relative;
+    padding-left: 2rem;
+    padding-bottom: 1rem;
+}
+
+.timeline-item::before {
+    content: '';
+    position: absolute;
+    left: 8px;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    background-color: #dee2e6;
+}
+
+.timeline-item::after {
+    content: '';
+    position: absolute;
+    left: 4px;
+    top: 6px;
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background-color: #6c757d;
+}
+
+.timeline-item.completed::after {
+    background-color: #28a745;
+}
+
+.timeline-item.failed::after {
+    background-color: #dc3545;
+}
+
+.timeline-item.in-progress::after {
+    background-color: #17a2b8;
+    animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+    0% { opacity: 1; }
+    50% { opacity: 0.5; }
+    100% { opacity: 1; }
+}
+
+.real-time-indicator {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background-color: #28a745;
+    display: inline-block;
+    margin-right: 0.5rem;
+    animation: pulse 2s infinite;
+}
+
+.execution-metrics {
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.filter-summary {
+    background-color: #f8f9fa;
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-top: 1rem;
+}
+
+@media (max-width: 768px) {
+    .table-responsive {
+        display: none !important;
+    }
+    
+    .execution-cards {
+        display: block !important;
+    }
+    
+    .desktop-only {
+        display: none !important;
+    }
+    
+    .timeline-item {
+        padding-left: 1.5rem;
+    }
+}
+
+@media (min-width: 769px) {
+    .execution-cards {
+        display: none !important;
+    }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Breadcrumb Navigation -->
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="bi bi-house"></i> Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('escalation_rules') }}"><i class="bi bi-arrow-up-right-circle"></i> Escalation Rules</a></li>
+        <li class="breadcrumb-item active" aria-current="page"><i class="bi bi-list-task"></i> Execution Monitor</li>
+    </ol>
+</nav>
+
+<!-- Header -->
+<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
+    <div>
+        <h1 class="mb-1">
+            <i class="bi bi-list-task"></i> Escalation Executions
+            <span class="real-time-indicator" title="Real-time monitoring"></span>
+        </h1>
+        <p class="text-muted mb-0">Monitor active and completed escalation workflows</p>
+    </div>
+    
+    <div class="btn-group" role="group">
+        <a href="{{ url_for('escalation_rules') }}" class="btn btn-outline-primary">
+            <i class="bi bi-arrow-up-right-circle"></i> Manage Rules
+        </a>
+        <button class="btn btn-outline-success" onclick="refreshExecutions()">
+            <i class="bi bi-arrow-clockwise"></i> Refresh
+        </button>
+        <div class="dropdown">
+            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                <i class="bi bi-download"></i> Export
+            </button>
+            <ul class="dropdown-menu">
+                <li><a class="dropdown-item" href="#" onclick="exportExecutions('csv')">Export as CSV</a></li>
+                <li><a class="dropdown-item" href="#" onclick="exportExecutions('json')">Export as JSON</a></li>
+            </ul>
+        </div>
+        <button class="btn btn-outline-warning" onclick="showBulkActions()" id="bulk-actions-toggle" style="display: none;">
+            <i class="bi bi-gear"></i> Bulk Actions
+        </button>
+    </div>
+</div>
+
+<!-- Live Statistics -->
+<div class="row mb-4" id="live-stats">
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-warning">Pending</h5>
+                <h3 class="card-text" id="pending-count">-</h3>
+                <small class="text-muted">Waiting to execute</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-info">In Progress</h5>
+                <h3 class="card-text" id="in-progress-count">-</h3>
+                <small class="text-muted">Currently running</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-success">Completed</h5>
+                <h3 class="card-text" id="completed-count">-</h3>
+                <small class="text-muted">Successfully finished</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card text-center">
+            <div class="card-body">
+                <h5 class="card-title text-danger">Failed</h5>
+                <h3 class="card-text" id="failed-count">-</h3>
+                <small class="text-muted">Execution errors</small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Filters -->
+<div class="card mb-4">
+    <div class="card-header">
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-funnel"></i> Filters</h5>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#execution-filters" aria-expanded="false">
+                <i class="bi bi-chevron-down"></i> Advanced Filters
+            </button>
+        </div>
+    </div>
+    <div class="card-body">
+        <!-- Basic Filters -->
+        <div class="row mb-3">
+            <div class="col-md-3">
+                <label for="filter-status" class="form-label">Status</label>
+                <select class="form-select" id="filter-status" onchange="applyFilters()">
+                    <option value="">All Statuses</option>
+                    <option value="pending">Pending</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="failed">Failed</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="filter-rule" class="form-label">Rule</label>
+                <select class="form-select" id="filter-rule" onchange="applyFilters()">
+                    <option value="">All Rules</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="filter-trigger-type" class="form-label">Trigger Type</label>
+                <select class="form-select" id="filter-trigger-type" onchange="applyFilters()">
+                    <option value="">All Types</option>
+                    <option value="notification">Notification</option>
+                    <option value="alert">Alert</option>
+                    <option value="device">Device</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="filter-timeframe" class="form-label">Time Range</label>
+                <select class="form-select" id="filter-timeframe" onchange="applyFilters()">
+                    <option value="24">Last 24 Hours</option>
+                    <option value="168">Last Week</option>
+                    <option value="720">Last Month</option>
+                    <option value="0">All Time</option>
+                </select>
+            </div>
+        </div>
+        
+        <!-- Advanced Filters -->
+        <div class="collapse" id="execution-filters">
+            <div class="border-top pt-3">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label for="filter-escalation-level" class="form-label">Escalation Level</label>
+                        <select class="form-select" id="filter-escalation-level" onchange="applyFilters()">
+                            <option value="">Any Level</option>
+                            <option value="0">Level 1</option>
+                            <option value="1">Level 2</option>
+                            <option value="2">Level 3</option>
+                            <option value="3">Level 4+</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="filter-search" class="form-label">Search</label>
+                        <input type="text" class="form-control" id="filter-search" placeholder="Search executions..." onkeyup="applyFilters()">
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="clearAllFilters()">
+                            <i class="bi bi-x-circle"></i> Clear Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Active Filters Summary -->
+        <div class="filter-summary" id="active-filters" style="display: none;">
+            <strong>Active Filters:</strong>
+            <div id="filter-badges"></div>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Actions Panel -->
+<div class="card mb-4" id="bulk-actions-panel" style="display: none;">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center">
+            <div>
+                <strong id="selected-executions-count">0</strong> executions selected
+            </div>
+            <div class="btn-group">
+                <button class="btn btn-warning btn-sm" onclick="bulkCancelExecutions()">
+                    <i class="bi bi-stop-circle"></i> Cancel Selected
+                </button>
+                <button class="btn btn-danger btn-sm" onclick="bulkDeleteExecutions()">
+                    <i class="bi bi-trash"></i> Delete Selected
+                </button>
+                <button class="btn btn-secondary btn-sm" onclick="clearSelection()">
+                    Clear Selection
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Executions List -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-activity"></i> Execution History</h5>
+        <div>
+            <span class="badge bg-secondary" id="executions-count">0 executions</span>
+        </div>
+    </div>
+    <div class="card-body">
+        <div id="loading-spinner" class="text-center py-4">
+            <div class="spinner-border" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <div class="mt-2">Loading escalation executions...</div>
+        </div>
+        
+        <!-- Desktop Table View -->
+        <div class="table-responsive" id="executions-table" style="display: none;">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th width="50">
+                            <input type="checkbox" id="select-all-executions" onchange="toggleSelectAll()">
+                        </th>
+                        <th>Rule</th>
+                        <th>Status</th>
+                        <th>Trigger</th>
+                        <th>Level</th>
+                        <th>Created</th>
+                        <th>Progress</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="executions-tbody">
+                </tbody>
+            </table>
+        </div>
+        
+        <!-- Mobile Card View -->
+        <div class="execution-cards" id="executions-cards">
+            <!-- Cards will be populated here -->
+        </div>
+        
+        <!-- Pagination -->
+        <nav aria-label="Executions pagination" id="pagination-container" style="display: none;">
+            <ul class="pagination justify-content-center" id="pagination">
+            </ul>
+        </nav>
+        
+        <div id="no-executions" class="text-center py-4" style="display: none;">
+            <i class="bi bi-list-task fs-1 text-muted"></i>
+            <h5 class="mt-3 text-muted">No executions found</h5>
+            <p class="text-muted">No escalation executions match the current filters.</p>
+        </div>
+    </div>
+</div>
+
+<!-- Execution Details Modal -->
+<div class="modal fade" id="executionDetailsModal" tabindex="-1" aria-labelledby="executionDetailsModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="executionDetailsModalLabel">Execution Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="execution-details-content">
+                <!-- Content will be populated here -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-warning" id="cancel-execution-btn" onclick="cancelExecution()" style="display: none;">
+                    <i class="bi bi-stop-circle"></i> Cancel Execution
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let currentPage = 1;
+let currentFilters = {
+    status: '',
+    rule_id: '',
+    triggered_by_type: '',
+    hours: 24,
+    escalation_level: '',
+    search: ''
+};
+let selectedExecutions = new Set();
+let allExecutions = [];
+let refreshInterval;
+let currentExecutionId = null;
+
+// Initialize page
+document.addEventListener('DOMContentLoaded', function() {
+    loadRules();
+    loadStatistics();
+    loadExecutions();
+    
+    // Start real-time updates
+    startRealTimeUpdates();
+});
+
+// Real-time updates
+function startRealTimeUpdates() {
+    refreshInterval = setInterval(() => {
+        loadStatistics();
+        if (currentPage === 1) {
+            loadExecutions(true); // Silent refresh
+        }
+    }, 5000); // Update every 5 seconds
+}
+
+function stopRealTimeUpdates() {
+    if (refreshInterval) {
+        clearInterval(refreshInterval);
+    }
+}
+
+// Load data functions
+async function loadRules() {
+    try {
+        const response = await fetch('/api/escalation/rules');
+        const data = await response.json();
+        
+        const select = document.getElementById('filter-rule');
+        data.rules.forEach(rule => {
+            const option = document.createElement('option');
+            option.value = rule.id;
+            option.textContent = rule.name;
+            select.appendChild(option);
+        });
+    } catch (error) {
+        console.error('Error loading rules:', error);
+    }
+}
+
+async function loadStatistics() {
+    try {
+        const response = await fetch('/api/escalation/statistics');
+        const stats = await response.json();
+        
+        document.getElementById('pending-count').textContent = stats.pending_executions;
+        document.getElementById('in-progress-count').textContent = stats.total_executions - stats.completed_executions - stats.failed_executions - stats.pending_executions;
+        document.getElementById('completed-count').textContent = stats.completed_executions;
+        document.getElementById('failed-count').textContent = stats.failed_executions;
+        
+    } catch (error) {
+        console.error('Error loading statistics:', error);
+    }
+}
+
+async function loadExecutions(silent = false) {
+    try {
+        if (!silent) {
+            document.getElementById('loading-spinner').style.display = 'block';
+            document.getElementById('executions-table').style.display = 'none';
+            document.getElementById('executions-cards').style.display = 'none';
+            document.getElementById('no-executions').style.display = 'none';
+        }
+        
+        const params = new URLSearchParams({
+            page: currentPage,
+            per_page: 20,
+            ...currentFilters
+        });
+        
+        // Remove empty parameters
+        for (const [key, value] of [...params.entries()]) {
+            if (!value) params.delete(key);
+        }
+        
+        const response = await fetch(`/api/escalation/executions?${params}`);
+        const data = await response.json();
+        
+        if (!silent) {
+            document.getElementById('loading-spinner').style.display = 'none';
+        }
+        
+        if (data.executions.length === 0) {
+            if (!silent) {
+                document.getElementById('no-executions').style.display = 'block';
+            }
+            return;
+        }
+        
+        allExecutions = data.executions;
+        
+        if (!silent) {
+            document.getElementById('executions-table').style.display = 'block';
+            document.getElementById('executions-cards').style.display = 'block';
+            document.getElementById('executions-count').textContent = `${data.pagination.total} executions`;
+        }
+        
+        renderExecutionsTable(data.executions);
+        renderExecutionsCards(data.executions);
+        
+        if (!silent) {
+            updatePagination(data.pagination);
+        }
+        
+    } catch (error) {
+        console.error('Error loading executions:', error);
+        if (!silent) {
+            document.getElementById('loading-spinner').style.display = 'none';
+            showToast('Error loading executions', 'error');
+        }
+    }
+}
+
+function renderExecutionsTable(executions) {
+    const tbody = document.getElementById('executions-tbody');
+    tbody.innerHTML = '';
+    
+    executions.forEach(execution => {
+        const row = document.createElement('tr');
+        row.className = `execution-row status-${execution.status}`;
+        
+        // Status badge
+        const statusBadge = `<span class="execution-status-badge status-${execution.status}">${execution.status.replace('_', ' ').toUpperCase()}</span>`;
+        
+        // Progress calculation
+        const progress = calculateProgress(execution);
+        const progressBar = `
+            <div class="progress-indicator">
+                <div class="progress-fill bg-${getProgressColor(execution.status)}" style="width: ${progress}%"></div>
+            </div>
+            <small class="text-muted">${progress}%</small>
+        `;
+        
+        // Time formatting
+        const createdAt = new Date(execution.created_at).toLocaleString();
+        const scheduledFor = execution.scheduled_for ? new Date(execution.scheduled_for).toLocaleString() : 'N/A';
+        
+        row.innerHTML = `
+            <td>
+                <input type="checkbox" class="execution-checkbox" value="${execution.id}" onchange="toggleExecutionSelection(${execution.id})">
+            </td>
+            <td>
+                <strong>${execution.rule_name}</strong>
+                <br><small class="text-muted">ID: ${execution.escalation_rule_id}</small>
+            </td>
+            <td>${statusBadge}</td>
+            <td>
+                <span class="badge bg-info">${execution.triggered_by_type}</span>
+                <br><small class="text-muted">ID: ${execution.triggered_by_id}</small>
+            </td>
+            <td>
+                <span class="badge bg-primary">Level ${execution.current_escalation_level + 1}</span>
+            </td>
+            <td>
+                <small>${createdAt}</small>
+                ${execution.scheduled_for ? `<br><small class="text-muted">Next: ${scheduledFor}</small>` : ''}
+            </td>
+            <td>${progressBar}</td>
+            <td>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-info" onclick="viewExecutionDetails(${execution.id})" title="View Details">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                    ${execution.status === 'pending' || execution.status === 'in_progress' ? 
+                        `<button class="btn btn-outline-warning" onclick="cancelExecution(${execution.id})" title="Cancel">
+                            <i class="bi bi-stop-circle"></i>
+                        </button>` : ''
+                    }
+                </div>
+            </td>
+        `;
+        
+        tbody.appendChild(row);
+    });
+}
+
+function renderExecutionsCards(executions) {
+    const container = document.getElementById('executions-cards');
+    container.innerHTML = '';
+    
+    executions.forEach(execution => {
+        const card = document.createElement('div');
+        card.className = `execution-card card status-${execution.status}`;
+        
+        const statusBadge = `<span class="execution-status-badge status-${execution.status}">${execution.status.replace('_', ' ').toUpperCase()}</span>`;
+        const progress = calculateProgress(execution);
+        
+        card.innerHTML = `
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <input type="checkbox" class="execution-checkbox me-2" value="${execution.id}" onchange="toggleExecutionSelection(${execution.id})">
+                        <strong>${execution.rule_name}</strong>
+                    </div>
+                    ${statusBadge}
+                </div>
+                
+                <div class="row mb-2">
+                    <div class="col-6">
+                        <small class="text-muted">Trigger:</small><br>
+                        <span class="badge bg-info">${execution.triggered_by_type} ${execution.triggered_by_id}</span>
+                    </div>
+                    <div class="col-6">
+                        <small class="text-muted">Level:</small><br>
+                        <span class="badge bg-primary">Level ${execution.current_escalation_level + 1}</span>
+                    </div>
+                </div>
+                
+                <div class="mb-2">
+                    <small class="text-muted">Progress:</small>
+                    <div class="progress-indicator">
+                        <div class="progress-fill bg-${getProgressColor(execution.status)}" style="width: ${progress}%"></div>
+                    </div>
+                    <small class="text-muted">${progress}%</small>
+                </div>
+                
+                <div class="execution-metrics mb-3">
+                    <span class="me-3"><i class="bi bi-clock"></i> ${new Date(execution.created_at).toLocaleDateString()}</span>
+                    <span><i class="bi bi-lightning"></i> ${execution.total_actions_executed || 0} actions</span>
+                </div>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                        ${execution.scheduled_for ? `Next: ${new Date(execution.scheduled_for).toLocaleString()}` : ''}
+                    </small>
+                    <div class="btn-group btn-group-sm">
+                        <button class="btn btn-outline-info" onclick="viewExecutionDetails(${execution.id})">
+                            <i class="bi bi-eye"></i> Details
+                        </button>
+                        ${execution.status === 'pending' || execution.status === 'in_progress' ? 
+                            `<button class="btn btn-outline-warning" onclick="cancelExecution(${execution.id})">
+                                <i class="bi bi-stop-circle"></i>
+                            </button>` : ''
+                        }
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        container.appendChild(card);
+    });
+}
+
+function calculateProgress(execution) {
+    if (execution.status === 'completed') return 100;
+    if (execution.status === 'failed' || execution.status === 'cancelled') return 0;
+    
+    // Calculate based on current escalation level and total actions
+    const totalLevels = execution.total_actions_executed || 1;
+    const currentLevel = execution.current_escalation_level + 1;
+    
+    return Math.round((currentLevel / Math.max(totalLevels, currentLevel)) * 100);
+}
+
+function getProgressColor(status) {
+    switch (status) {
+        case 'completed': return 'success';
+        case 'failed': return 'danger';
+        case 'cancelled': return 'secondary';
+        case 'in_progress': return 'info';
+        default: return 'warning';
+    }
+}
+
+function updatePagination(pagination) {
+    const container = document.getElementById('pagination-container');
+    const paginationElement = document.getElementById('pagination');
+    
+    if (pagination.pages <= 1) {
+        container.style.display = 'none';
+        return;
+    }
+    
+    container.style.display = 'block';
+    paginationElement.innerHTML = '';
+    
+    // Previous button
+    const prevItem = document.createElement('li');
+    prevItem.className = `page-item ${!pagination.has_prev ? 'disabled' : ''}`;
+    prevItem.innerHTML = `<a class="page-link" href="#" onclick="changePage(${pagination.page - 1})">Previous</a>`;
+    paginationElement.appendChild(prevItem);
+    
+    // Page numbers
+    const startPage = Math.max(1, pagination.page - 2);
+    const endPage = Math.min(pagination.pages, pagination.page + 2);
+    
+    for (let i = startPage; i <= endPage; i++) {
+        const pageItem = document.createElement('li');
+        pageItem.className = `page-item ${i === pagination.page ? 'active' : ''}`;
+        pageItem.innerHTML = `<a class="page-link" href="#" onclick="changePage(${i})">${i}</a>`;
+        paginationElement.appendChild(pageItem);
+    }
+    
+    // Next button
+    const nextItem = document.createElement('li');
+    nextItem.className = `page-item ${!pagination.has_next ? 'disabled' : ''}`;
+    nextItem.innerHTML = `<a class="page-link" href="#" onclick="changePage(${pagination.page + 1})">Next</a>`;
+    paginationElement.appendChild(nextItem);
+}
+
+function changePage(page) {
+    if (page < 1) return;
+    currentPage = page;
+    loadExecutions();
+}
+
+function applyFilters() {
+    currentFilters = {
+        status: document.getElementById('filter-status').value,
+        rule_id: document.getElementById('filter-rule').value,
+        triggered_by_type: document.getElementById('filter-trigger-type').value,
+        hours: parseInt(document.getElementById('filter-timeframe').value),
+        escalation_level: document.getElementById('filter-escalation-level').value,
+        search: document.getElementById('filter-search').value
+    };
+    currentPage = 1;
+    loadExecutions();
+    updateActiveFilters();
+}
+
+function clearAllFilters() {
+    document.getElementById('filter-status').value = '';
+    document.getElementById('filter-rule').value = '';
+    document.getElementById('filter-trigger-type').value = '';
+    document.getElementById('filter-timeframe').value = '24';
+    document.getElementById('filter-escalation-level').value = '';
+    document.getElementById('filter-search').value = '';
+    applyFilters();
+}
+
+function updateActiveFilters() {
+    const activeFilters = document.getElementById('active-filters');
+    const filterBadges = document.getElementById('filter-badges');
+    
+    filterBadges.innerHTML = '';
+    let hasActiveFilters = false;
+    
+    Object.entries(currentFilters).forEach(([key, value]) => {
+        if (value && value !== '24') { // 24 hours is default
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-primary me-1 mb-1';
+            badge.textContent = `${key}: ${value}`;
+            filterBadges.appendChild(badge);
+            hasActiveFilters = true;
+        }
+    });
+    
+    activeFilters.style.display = hasActiveFilters ? 'block' : 'none';
+}
+
+// Selection and bulk actions
+function toggleSelectAll() {
+    const selectAllCheckbox = document.getElementById('select-all-executions');
+    const executionCheckboxes = document.querySelectorAll('.execution-checkbox');
+    
+    selectedExecutions.clear();
+    
+    executionCheckboxes.forEach(checkbox => {
+        checkbox.checked = selectAllCheckbox.checked;
+        if (selectAllCheckbox.checked) {
+            selectedExecutions.add(parseInt(checkbox.value));
+        }
+    });
+    
+    updateBulkActionsDisplay();
+}
+
+function toggleExecutionSelection(executionId) {
+    if (selectedExecutions.has(executionId)) {
+        selectedExecutions.delete(executionId);
+    } else {
+        selectedExecutions.add(executionId);
+    }
+    updateBulkActionsDisplay();
+}
+
+function updateBulkActionsDisplay() {
+    const bulkActionsToggle = document.getElementById('bulk-actions-toggle');
+    const bulkActionsPanel = document.getElementById('bulk-actions-panel');
+    const selectedCount = document.getElementById('selected-executions-count');
+    
+    if (selectedExecutions.size > 0) {
+        bulkActionsToggle.style.display = 'block';
+        selectedCount.textContent = selectedExecutions.size;
+    } else {
+        bulkActionsToggle.style.display = 'none';
+        bulkActionsPanel.style.display = 'none';
+    }
+}
+
+function showBulkActions() {
+    const panel = document.getElementById('bulk-actions-panel');
+    panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+function clearSelection() {
+    selectedExecutions.clear();
+    document.querySelectorAll('.execution-checkbox').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+    document.getElementById('select-all-executions').checked = false;
+    updateBulkActionsDisplay();
+}
+
+// Execution actions
+async function viewExecutionDetails(executionId) {
+    try {
+        const response = await fetch(`/api/escalation/executions/${executionId}`);
+        const execution = await response.json();
+        
+        currentExecutionId = executionId;
+        
+        const modal = new bootstrap.Modal(document.getElementById('executionDetailsModal'));
+        const content = document.getElementById('execution-details-content');
+        const cancelBtn = document.getElementById('cancel-execution-btn');
+        
+        // Show cancel button if execution can be cancelled
+        if (execution.status === 'pending' || execution.status === 'in_progress') {
+            cancelBtn.style.display = 'block';
+        } else {
+            cancelBtn.style.display = 'none';
+        }
+        
+        content.innerHTML = generateExecutionDetailsHTML(execution);
+        modal.show();
+        
+    } catch (error) {
+        console.error('Error loading execution details:', error);
+        showToast('Error loading execution details', 'error');
+    }
+}
+
+function generateExecutionDetailsHTML(execution) {
+    let html = `
+        <div class="row mb-4">
+            <div class="col-md-6">
+                <h6><i class="bi bi-info-circle"></i> Execution Information</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>ID:</strong></td><td>${execution.id}</td></tr>
+                    <tr><td><strong>Rule:</strong></td><td>${execution.rule_name}</td></tr>
+                    <tr><td><strong>Status:</strong></td><td><span class="execution-status-badge status-${execution.status}">${execution.status.replace('_', ' ').toUpperCase()}</span></td></tr>
+                    <tr><td><strong>Current Level:</strong></td><td>Level ${execution.current_escalation_level + 1}</td></tr>
+                    <tr><td><strong>Actions Executed:</strong></td><td>${execution.total_actions_executed || 0}</td></tr>
+                </table>
+            </div>
+            
+            <div class="col-md-6">
+                <h6><i class="bi bi-clock"></i> Timing</h6>
+                <table class="table table-sm">
+                    <tr><td><strong>Created:</strong></td><td>${new Date(execution.created_at).toLocaleString()}</td></tr>
+                    <tr><td><strong>Scheduled:</strong></td><td>${execution.scheduled_for ? new Date(execution.scheduled_for).toLocaleString() : 'N/A'}</td></tr>
+                    <tr><td><strong>Started:</strong></td><td>${execution.started_at ? new Date(execution.started_at).toLocaleString() : 'Not started'}</td></tr>
+                    <tr><td><strong>Completed:</strong></td><td>${execution.completed_at ? new Date(execution.completed_at).toLocaleString() : 'Not completed'}</td></tr>
+                </table>
+            </div>
+        </div>
+        
+        <div class="mb-4">
+            <h6><i class="bi bi-gear"></i> Trigger Context</h6>
+            <pre class="bg-light p-3 rounded"><code>${JSON.stringify(execution.trigger_context, null, 2)}</code></pre>
+        </div>
+    `;
+    
+    if (execution.action_logs && execution.action_logs.length > 0) {
+        html += `
+            <div class="mb-4">
+                <h6><i class="bi bi-list-task"></i> Action Logs</h6>
+                <div class="timeline">
+        `;
+        
+        execution.action_logs.forEach(log => {
+            html += `
+                <div class="timeline-item ${log.status}">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <strong>Level ${log.escalation_level + 1}: ${log.action_type}</strong>
+                            <div class="text-muted small">${new Date(log.executed_at).toLocaleString()}</div>
+                        </div>
+                        <div>
+                            <span class="badge bg-${log.status === 'success' ? 'success' : log.status === 'failed' ? 'danger' : 'warning'}">${log.status}</span>
+                            ${log.duration_ms ? `<small class="text-muted ms-2">${log.duration_ms}ms</small>` : ''}
+                        </div>
+                    </div>
+                    ${log.error_message ? `<div class="text-danger small mt-1">${log.error_message}</div>` : ''}
+                    ${log.result ? `<div class="small mt-1"><code>${JSON.stringify(log.result, null, 2)}</code></div>` : ''}
+                </div>
+            `;
+        });
+        
+        html += `
+                </div>
+            </div>
+        `;
+    }
+    
+    if (execution.error_message) {
+        html += `
+            <div class="alert alert-danger">
+                <h6><i class="bi bi-exclamation-triangle"></i> Error Details</h6>
+                <p class="mb-0">${execution.error_message}</p>
+            </div>
+        `;
+    }
+    
+    return html;
+}
+
+async function cancelExecution(executionId = null) {
+    const id = executionId || currentExecutionId;
+    if (!id) return;
+    
+    if (!confirm('Are you sure you want to cancel this execution?')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`/api/escalation/executions/${id}/cancel`, {
+            method: 'POST'
+        });
+        
+        if (response.ok) {
+            showToast('Execution cancelled successfully', 'success');
+            loadExecutions();
+            
+            // Close modal if open
+            const modal = bootstrap.Modal.getInstance(document.getElementById('executionDetailsModal'));
+            if (modal) {
+                modal.hide();
+            }
+        } else {
+            const error = await response.json();
+            throw new Error(error.error || 'Failed to cancel execution');
+        }
+        
+    } catch (error) {
+        console.error('Error cancelling execution:', error);
+        showToast('Error cancelling execution: ' + error.message, 'error');
+    }
+}
+
+async function bulkCancelExecutions() {
+    if (selectedExecutions.size === 0) return;
+    
+    if (!confirm(`Are you sure you want to cancel ${selectedExecutions.size} selected executions?`)) {
+        return;
+    }
+    
+    try {
+        const promises = Array.from(selectedExecutions).map(id =>
+            fetch(`/api/escalation/executions/${id}/cancel`, {
+                method: 'POST'
+            })
+        );
+        
+        await Promise.all(promises);
+        
+        showToast(`Successfully cancelled ${selectedExecutions.size} executions`, 'success');
+        clearSelection();
+        loadExecutions();
+        
+    } catch (error) {
+        console.error('Error cancelling executions:', error);
+        showToast('Error cancelling executions', 'error');
+    }
+}
+
+async function bulkDeleteExecutions() {
+    if (selectedExecutions.size === 0) return;
+    
+    if (!confirm(`Are you sure you want to delete ${selectedExecutions.size} selected executions? This action cannot be undone.`)) {
+        return;
+    }
+    
+    // Note: This would require a delete endpoint in the API
+    showToast('Bulk delete functionality coming soon', 'info');
+}
+
+function refreshExecutions() {
+    loadStatistics();
+    loadExecutions();
+}
+
+async function exportExecutions(format) {
+    try {
+        const params = new URLSearchParams(currentFilters);
+        params.set('format', format);
+        params.set('export', 'true');
+        
+        const response = await fetch(`/api/escalation/executions?${params}`);
+        const blob = await response.blob();
+        
+        // Create download link
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `escalation_executions_${new Date().toISOString().split('T')[0]}.${format}`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        
+        showToast(`Executions exported as ${format.toUpperCase()}`, 'success');
+        
+    } catch (error) {
+        console.error('Error exporting executions:', error);
+        showToast('Error exporting executions', 'error');
+    }
+}
+
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `alert alert-${type === 'error' ? 'danger' : type} alert-dismissible fade show position-fixed`;
+    toast.style.top = '20px';
+    toast.style.right = '20px';
+    toast.style.zIndex = '9999';
+    toast.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        if (toast.parentNode) {
+            toast.parentNode.removeChild(toast);
+        }
+    }, 5000);
+}
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    stopRealTimeUpdates();
+});
+</script>
+{% endblock %}

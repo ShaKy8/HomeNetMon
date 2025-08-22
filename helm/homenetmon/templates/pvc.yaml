@@ -1,0 +1,47 @@
+{{- if .Values.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "homenetmon.fullname" . }}-data
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "homenetmon.labels" . | nindent 4 }}
+    app.kubernetes.io/component: storage
+  annotations:
+    {{- include "homenetmon.commonAnnotations" . | nindent 4 }}
+    {{- with .Values.persistence.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.size | quote }}
+  {{- if (include "homenetmon.storageClassName" .) }}
+  storageClassName: {{ include "homenetmon.storageClassName" . | quote }}
+  {{- end }}
+{{- end }}
+
+{{- if .Values.logPersistence.enabled }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "homenetmon.fullname" . }}-logs
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "homenetmon.labels" . | nindent 4 }}
+    app.kubernetes.io/component: logs
+  annotations:
+    {{- include "homenetmon.commonAnnotations" . | nindent 4 }}
+spec:
+  accessModes:
+    - {{ .Values.logPersistence.accessMode | quote }}
+  resources:
+    requests:
+      storage: {{ .Values.logPersistence.size | quote }}
+  {{- if (include "homenetmon.logStorageClassName" .) }}
+  storageClassName: {{ include "homenetmon.logStorageClassName" . | quote }}
+  {{- end }}
+{{- end }}

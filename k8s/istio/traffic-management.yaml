@@ -1,0 +1,302 @@
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: homenetmon-rate-limit
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: rate-limiting
+spec:
+  workloadSelector:
+    labels:
+      app.kubernetes.io/name: homenetmon
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: SIDECAR_INBOUND
+      listener:
+        filterChain:
+          filter:
+            name: "envoy.filters.network.http_connection_manager"
+    patch:
+      operation: INSERT_BEFORE
+      value:
+        name: envoy.filters.http.local_ratelimit
+        typed_config:
+          "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+          type_url: type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+          value:
+            stat_prefix: rate_limiter
+            token_bucket:
+              max_tokens: 100
+              tokens_per_fill: 10
+              fill_interval: 60s
+            filter_enabled:
+              runtime_key: local_rate_limit_enabled
+              default_value:
+                numerator: 100
+                denominator: HUNDRED
+            filter_enforced:
+              runtime_key: local_rate_limit_enforced
+              default_value:
+                numerator: 100
+                denominator: HUNDRED
+            response_headers_to_add:
+            - append: false
+              header:
+                key: x-local-rate-limit
+                value: 'true'
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: homenetmon-compression
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: compression
+spec:
+  workloadSelector:
+    labels:
+      app.kubernetes.io/name: homenetmon
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: SIDECAR_INBOUND
+      listener:
+        filterChain:
+          filter:
+            name: "envoy.filters.network.http_connection_manager"
+    patch:
+      operation: INSERT_BEFORE
+      value:
+        name: envoy.filters.http.compressor
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.http.compressor.v3.Compressor
+          response_direction_config:
+            common_config:
+              min_content_length: 1024
+              content_type:
+              - text/html
+              - text/css
+              - text/javascript
+              - application/javascript
+              - application/json
+              - text/xml
+              - application/xml
+            disable_on_etag_header: true
+          request_direction_config:
+            common_config:
+              enabled:
+                default_value: false
+          compressor_library:
+            name: envoy.compression.gzip.compressor
+            typed_config:
+              "@type": type.googleapis.com/envoy.extensions.compression.gzip.compressor.v3.Gzip
+              memory_level: 6
+              window_bits: 15
+              compression_level: DEFAULT_COMPRESSION
+              compression_strategy: DEFAULT_STRATEGY
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+metadata:
+  name: homenetmon-wasm-auth
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: wasm-auth
+spec:
+  workloadSelector:
+    labels:
+      app.kubernetes.io/name: homenetmon
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: SIDECAR_INBOUND
+      listener:
+        filterChain:
+          filter:
+            name: "envoy.filters.network.http_connection_manager"
+    patch:
+      operation: INSERT_BEFORE
+      value:
+        name: envoy.filters.http.wasm
+        typed_config:
+          "@type": type.googleapis.com/envoy.extensions.filters.http.wasm.v3.Wasm
+          config:
+            name: "homenetmon_auth"
+            root_id: "homenetmon_auth"
+            configuration:
+              "@type": type.googleapis.com/google.protobuf.StringValue
+              value: |
+                {
+                  "api_endpoints": ["/api/"],
+                  "admin_endpoints": ["/api/admin/", "/admin/"],
+                  "public_endpoints": ["/", "/health", "/ready", "/static/", "/login", "/register"],
+                  "jwt_issuer": "https://homenetmon.example.com",
+                  "jwt_audience": "homenetmon-api"
+                }
+            vm_config:
+              vm_id: "homenetmon_auth"
+              runtime: "envoy.wasm.runtime.v8"
+              code:
+                local:
+                  inline_string: |
+                    const ROOT_CONTEXT_ID = "homenetmon_auth";
+                    
+                    class RootContext {
+                      constructor(rootContextId) {
+                        this.rootContextId = rootContextId;
+                      }
+                      
+                      onConfigure(size) {
+                        const config = JSON.parse(this.getBufferBytes(WasmBufferType.PluginConfiguration, 0, size).toString());
+                        this.config = config;
+                        return true;
+                      }
+                    }
+                    
+                    class HttpContext {
+                      constructor(rootContextId, contextId) {
+                        this.rootContextId = rootContextId;
+                        this.contextId = contextId;
+                      }
+                      
+                      onRequestHeaders() {
+                        const path = this.getRequestHeader(":path");
+                        const method = this.getRequestHeader(":method");
+                        
+                        // Allow public endpoints
+                        if (this.isPublicEndpoint(path)) {
+                          return FilterHeadersStatus.Continue;
+                        }
+                        
+                        // Check authentication for protected endpoints
+                        const authHeader = this.getRequestHeader("authorization");
+                        if (!authHeader || !authHeader.startsWith("Bearer ")) {
+                          this.sendLocalResponse(401, "Unauthorized", "Missing or invalid authorization header", []);
+                          return FilterHeadersStatus.StopIteration;
+                        }
+                        
+                        // Additional JWT validation would go here
+                        return FilterHeadersStatus.Continue;
+                      }
+                      
+                      isPublicEndpoint(path) {
+                        const config = JSON.parse(this.getContext(ROOT_CONTEXT_ID).config);
+                        return config.public_endpoints.some(endpoint => path.startsWith(endpoint));
+                      }
+                    }
+
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: homenetmon-canary
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: canary
+spec:
+  hosts:
+  - homenetmon-app
+  http:
+  # Canary routing based on headers
+  - match:
+    - headers:
+        canary:
+          exact: "true"
+    route:
+    - destination:
+        host: homenetmon-app
+        subset: canary
+    fault:
+      delay:
+        percentage:
+          value: 0.5
+        fixedDelay: 1s
+  # A/B testing based on user segments
+  - match:
+    - headers:
+        user-segment:
+          exact: "beta"
+    route:
+    - destination:
+        host: homenetmon-app
+        subset: canary
+      weight: 50
+    - destination:
+        host: homenetmon-app
+        subset: v1
+      weight: 50
+  # Default routing
+  - route:
+    - destination:
+        host: homenetmon-app
+        subset: v1
+
+---
+apiVersion: networking.istio.io/v1alpha3
+kind: WorkloadEntry
+metadata:
+  name: homenetmon-legacy-service
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: legacy
+spec:
+  address: "legacy.homenetmon.internal"
+  ports:
+    http: 8080
+  labels:
+    app: homenetmon-legacy
+    version: legacy
+  serviceAccount: homenetmon
+
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: homenetmon-legacy-migration
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: legacy-migration
+spec:
+  hosts:
+  - homenetmon-app
+  http:
+  # Gradual migration from legacy system
+  - match:
+    - uri:
+        prefix: /api/legacy/
+    rewrite:
+      uri: /api/v1/
+    route:
+    - destination:
+        host: homenetmon-app
+        subset: v1
+  - match:
+    - uri:
+        prefix: /legacy/
+    route:
+    - destination:
+        host: homenetmon-legacy-service
+        port:
+          number: 8080
+  # Mirror traffic to new system for testing
+  - match:
+    - uri:
+        prefix: /api/v2/
+    route:
+    - destination:
+        host: homenetmon-app
+        subset: v1
+    mirror:
+      host: homenetmon-app
+      subset: canary
+    mirrorPercentage:
+      value: 10.0

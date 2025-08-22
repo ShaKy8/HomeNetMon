@@ -1,0 +1,99 @@
+# Production overlay for HomeNetMon
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+metadata:
+  name: homenetmon-production
+  
+# Base configuration
+resources:
+- ../../base
+
+# Production namespace
+namespace: homenetmon
+
+# Production-specific patches
+patchesStrategicMerge:
+- deployment-patch.yaml
+- configmap-patch.yaml
+- hpa-patch.yaml
+- pdb-patch.yaml
+
+# JSON patches for production optimizations
+patchesJson6902:
+- target:
+    group: apps
+    version: v1
+    kind: Deployment
+    name: homenetmon-app
+    namespace: homenetmon
+  patch: |-
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: ENVIRONMENT
+        value: production
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: NEW_RELIC_LICENSE_KEY
+        valueFrom:
+          secretKeyRef:
+            name: homenetmon-secrets
+            key: NEW_RELIC_LICENSE_KEY
+    - op: add
+      path: /spec/template/spec/containers/0/env/-
+      value:
+        name: SENTRY_DSN
+        valueFrom:
+          secretKeyRef:
+            name: homenetmon-secrets
+            key: SENTRY_DSN
+
+# Production images with specific versions
+images:
+- name: homenetmon/homenetmon
+  newTag: v1.0.0
+
+# Production replica counts
+replicas:
+- name: homenetmon-app
+  count: 5
+- name: homenetmon-redis
+  count: 3
+
+# Production ConfigMap
+configMapGenerator:
+- name: homenetmon-prod-config
+  literals:
+  - ENVIRONMENT=production
+  - DEBUG=false
+  - LOG_LEVEL=INFO
+  - MONITORING_ENABLED=true
+  - METRICS_ENABLED=true
+  - PROFILING_ENABLED=false
+  - CACHE_TTL=3600
+  - SESSION_TIMEOUT=7200
+  - MAX_CONNECTIONS=1000
+  - CONNECTION_POOL_SIZE=50
+
+# Production secrets (values should be provided via external secret management)
+secretGenerator:
+- name: homenetmon-prod-secrets
+  literals:
+  - SECRET_KEY=REPLACE_WITH_ACTUAL_SECRET
+  - JWT_SECRET_KEY=REPLACE_WITH_ACTUAL_JWT_SECRET
+  - DATABASE_PASSWORD=REPLACE_WITH_ACTUAL_DB_PASSWORD
+  - REDIS_PASSWORD=REPLACE_WITH_ACTUAL_REDIS_PASSWORD
+
+# Production labels
+commonLabels:
+  environment: production
+  app.kubernetes.io/environment: production
+  app.kubernetes.io/managed-by: kustomize
+
+# Production annotations
+commonAnnotations:
+  app.kubernetes.io/environment: production
+  config.kubernetes.io/origin: "production overlay"
+  deployment.kubernetes.io/revision: "prod"

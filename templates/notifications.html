@@ -1,17 +1,121 @@
-{% extends "base.html" %}
+{% extends "base_with_quickstats.html" %}
 
 {% block title %}Push Notifications - HomeNetMon{% endblock %}
 
+{% block extra_css %}
+<style>
+/* Mobile card layout for notifications */
+.notification-cards {
+    display: none;
+}
+
+@media (max-width: 768px) {
+    .table-responsive {
+        display: none !important;
+    }
+    
+    .notification-cards {
+        display: block !important;
+    }
+    
+    .notification-card {
+        background: white;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        margin-bottom: 1rem;
+        padding: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        transition: all 0.2s ease;
+    }
+    
+    .notification-card:hover {
+        box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+        transform: translateY(-1px);
+    }
+    
+    .notification-card-header {
+        display: flex;
+        justify-content-between;
+        align-items-start;
+        margin-bottom: 0.5rem;
+    }
+    
+    .notification-card-body {
+        margin-bottom: 0.5rem;
+    }
+    
+    .notification-card-footer {
+        display: flex;
+        justify-content-between;
+        align-items-center;
+        font-size: 0.875rem;
+        color: #6c757d;
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid #f8f9fa;
+    }
+    
+    .notification-card .badge {
+        font-size: 0.75rem;
+    }
+}
+
+/* Consistent filter styles */
+.filter-summary {
+    background: #f8f9fa;
+    border-radius: 6px;
+    padding: 0.75rem;
+    margin-top: 1rem;
+}
+
+.filter-summary .badge {
+    margin-right: 0.5rem;
+    margin-bottom: 0.25rem;
+}
+
+/* Enhanced loading states */
+.loading-skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+</style>
+{% endblock %}
+
 {% block content %}
+<!-- Breadcrumb Navigation -->
+<nav aria-label="breadcrumb" class="mb-3">
+    <ol class="breadcrumb">
+        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="bi bi-house"></i> Dashboard</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('alerts') }}"><i class="bi bi-exclamation-triangle"></i> Alerts & Issues</a></li>
+        <li class="breadcrumb-item active" aria-current="page"><i class="bi bi-bell"></i> Notification History</li>
+    </ol>
+</nav>
+
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="bi bi-bell"></i> Push Notifications</h1>
+    <h1><i class="bi bi-bell"></i> Notification History</h1>
     <div class="btn-group" role="group">
+        <a href="{{ url_for('alerts') }}" class="btn btn-outline-primary">
+            <i class="bi bi-exclamation-triangle"></i> View Alerts
+        </a>
         <button type="button" class="btn btn-outline-secondary" onclick="refreshHistory()">
             <i class="bi bi-arrow-clockwise"></i> Refresh
         </button>
         <button type="button" class="btn btn-outline-warning" onclick="clearOldNotifications()">
             <i class="bi bi-trash"></i> Clear Old
         </button>
+        <button type="button" class="btn btn-outline-danger" onclick="showFailureAnalysis()">
+            <i class="bi bi-exclamation-triangle"></i> Failure Analysis
+        </button>
+        <a href="{{ url_for('notification_analytics') }}" class="btn btn-outline-success">
+            <i class="bi bi-graph-up"></i> Advanced Analytics
+        </a>
     </div>
 </div>
 
@@ -55,29 +159,20 @@
     </div>
 </div>
 
-<!-- Filters -->
+<!-- Progressive Filters -->
 <div class="card mb-4">
     <div class="card-header">
-        <h5 class="mb-0"><i class="bi bi-funnel"></i> Filters</h5>
+        <div class="d-flex justify-content-between align-items-center">
+            <h5 class="mb-0"><i class="bi bi-funnel"></i> Filters</h5>
+            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#advanced-filters" aria-expanded="false" aria-controls="advanced-filters">
+                <i class="bi bi-chevron-down"></i> Advanced Filters
+            </button>
+        </div>
     </div>
     <div class="card-body">
-        <div class="row">
-            <div class="col-md-3">
-                <label for="filter-type" class="form-label">Notification Type</label>
-                <select class="form-select" id="filter-type" onchange="applyFilters()">
-                    <option value="">All Types</option>
-                </select>
-            </div>
-            <div class="col-md-3">
-                <label for="filter-status" class="form-label">Delivery Status</label>
-                <select class="form-select" id="filter-status" onchange="applyFilters()">
-                    <option value="">All Status</option>
-                    <option value="success">Success</option>
-                    <option value="failed">Failed</option>
-                    <option value="unknown">Unknown</option>
-                </select>
-            </div>
-            <div class="col-md-3">
+        <!-- Basic Filters (Always Visible) -->
+        <div class="row mb-3">
+            <div class="col-md-6">
                 <label for="filter-hours" class="form-label">Time Range</label>
                 <select class="form-select" id="filter-hours" onchange="applyFilters()">
                     <option value="1">Last Hour</option>
@@ -87,12 +182,48 @@
                     <option value="720">Last Month</option>
                 </select>
             </div>
-            <div class="col-md-3">
-                <label for="filter-device" class="form-label">Device</label>
-                <select class="form-select" id="filter-device" onchange="applyFilters()">
-                    <option value="">All Devices</option>
+            <div class="col-md-6">
+                <label for="filter-status" class="form-label">Delivery Status</label>
+                <select class="form-select" id="filter-status" onchange="applyFilters()">
+                    <option value="">All Status</option>
+                    <option value="success">Success</option>
+                    <option value="failed">Failed</option>
+                    <option value="unknown">Unknown</option>
                 </select>
             </div>
+        </div>
+        
+        <!-- Advanced Filters (Collapsible) -->
+        <div class="collapse" id="advanced-filters">
+            <div class="border-top pt-3">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label for="filter-type" class="form-label">Notification Type</label>
+                        <select class="form-select" id="filter-type" onchange="applyFilters()">
+                            <option value="">All Types</option>
+                        </select>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="filter-device" class="form-label">Device</label>
+                        <select class="form-select" id="filter-device" onchange="applyFilters()">
+                            <option value="">All Devices</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="row mt-3">
+                    <div class="col-12">
+                        <button class="btn btn-outline-secondary btn-sm" onclick="clearAllFilters()">
+                            <i class="bi bi-x-circle"></i> Clear All Filters
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Active Filters Summary -->
+        <div id="active-filters-summary" class="filter-summary" style="display: none;">
+            <strong>Active Filters:</strong>
+            <div id="filter-badges"></div>
         </div>
     </div>
 </div>
@@ -114,6 +245,7 @@
         </div>
         
         <div id="notifications-table" style="display: none;">
+            <!-- Desktop Table View -->
             <div class="table-responsive">
                 <table class="table table-hover">
                     <thead>
@@ -130,6 +262,11 @@
                     <tbody id="notifications-tbody">
                     </tbody>
                 </table>
+            </div>
+            
+            <!-- Mobile Card View -->
+            <div class="notification-cards" id="notifications-cards">
+                <!-- Cards will be populated here -->
             </div>
             
             <!-- Pagination -->
@@ -247,7 +384,9 @@ async function loadNotificationHistory() {
         document.getElementById('total-count').textContent = `${data.pagination.total} notifications`;
         
         const tbody = document.getElementById('notifications-tbody');
+        const cardsContainer = document.getElementById('notifications-cards');
         tbody.innerHTML = '';
+        cardsContainer.innerHTML = '';
         
         data.notifications.forEach(notification => {
             const row = document.createElement('tr');
@@ -264,14 +403,21 @@ async function loadNotificationHistory() {
                 'min': 'light'
             }[notification.priority] || 'secondary';
             
-            // Status badge
+            // Status badge - consistent with alerts page
             const statusClass = {
                 'success': 'success',
                 'failed': 'danger',
                 'unknown': 'secondary'
             }[notification.delivery_status] || 'secondary';
             
-            // Type badge
+            // Status icon - consistent with alerts page
+            const statusIcon = {
+                'success': 'bi-check-circle-fill',
+                'failed': 'bi-x-circle-fill',
+                'unknown': 'bi-question-circle-fill'
+            }[notification.delivery_status] || 'bi-question-circle-fill';
+            
+            // Type badge - consistent with alerts page severity colors
             const typeClass = {
                 'device_down': 'danger',
                 'device_up': 'success',
@@ -283,17 +429,77 @@ async function loadNotificationHistory() {
                 'test': 'secondary'
             }[notification.notification_type] || 'secondary';
             
+            // Type icon - consistent with alerts page
+            const typeIcon = {
+                'device_down': 'bi-router',
+                'device_up': 'bi-router',
+                'new_device': 'bi-plus-circle',
+                'scan_complete': 'bi-search',
+                'high_latency': 'bi-clock',
+                'anomaly': 'bi-exclamation-triangle',
+                'security': 'bi-shield-exclamation',
+                'test': 'bi-gear'
+            }[notification.notification_type] || 'bi-bell';
+            
             row.innerHTML = `
                 <td><small>${timestamp}</small></td>
-                <td><span class="badge bg-${typeClass}">${notification.notification_type}</span></td>
+                <td>
+                    <span class="badge bg-${typeClass}">
+                        <i class="${typeIcon}"></i> ${notification.notification_type.replace('_', ' ')}
+                    </span>
+                </td>
                 <td>${notification.device_name || 'System'}</td>
                 <td>${notification.title}</td>
                 <td><small>${notification.message}</small></td>
                 <td><span class="badge bg-${priorityClass}">${notification.priority}</span></td>
-                <td><span class="badge bg-${statusClass}">${notification.delivery_status}</span></td>
+                <td>
+                    <span class="badge bg-${statusClass}">
+                        <i class="${statusIcon}"></i> ${notification.delivery_status}
+                    </span>
+                </td>
             `;
             
             tbody.appendChild(row);
+            
+            // Create mobile card
+            const card = document.createElement('div');
+            card.className = 'notification-card';
+            card.innerHTML = `
+                <div class="notification-card-header">
+                    <div>
+                        <span class="badge bg-${typeClass} mb-1">
+                            <i class="${typeIcon}"></i> ${notification.notification_type.replace('_', ' ')}
+                        </span>
+                        <br>
+                        <strong>${notification.title}</strong>
+                    </div>
+                    <span class="badge bg-${statusClass}">
+                        <i class="${statusIcon}"></i> ${notification.delivery_status}
+                    </span>
+                </div>
+                <div class="notification-card-body">
+                    <p class="mb-2 text-muted">${notification.message}</p>
+                    ${notification.device_name && notification.device_name !== 'System' ? 
+                        `<div class="mb-2">
+                            <i class="bi bi-router"></i> <strong>Device:</strong> ${notification.device_name}
+                        </div>` : ''
+                    }
+                </div>
+                <div class="notification-card-footer">
+                    <div>
+                        <i class="bi bi-clock"></i> ${timestamp}
+                        <br>
+                        <span class="badge bg-${priorityClass}">Priority: ${notification.priority}</span>
+                    </div>
+                    ${notification.alert_id ? 
+                        `<a href="/alerts" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-exclamation-triangle"></i> View Alert
+                        </a>` : ''
+                    }
+                </div>
+            `;
+            
+            cardsContainer.appendChild(card);
         });
         
         // Update pagination
@@ -350,8 +556,60 @@ function applyFilters() {
         device_id: document.getElementById('filter-device').value
     };
     currentPage = 1;
+    updateActiveFiltersSummary();
     loadNotificationStats();
     loadNotificationHistory();
+}
+
+function clearAllFilters() {
+    document.getElementById('filter-type').value = '';
+    document.getElementById('filter-status').value = '';
+    document.getElementById('filter-hours').value = 24;
+    document.getElementById('filter-device').value = '';
+    applyFilters();
+}
+
+function updateActiveFiltersSummary() {
+    const summary = document.getElementById('active-filters-summary');
+    const badges = document.getElementById('filter-badges');
+    badges.innerHTML = '';
+    
+    let hasActiveFilters = false;
+    
+    // Time range (always show if not default)
+    if (currentFilters.hours !== 24) {
+        const timeOptions = {
+            1: 'Last Hour',
+            6: 'Last 6 Hours', 
+            24: 'Last 24 Hours',
+            168: 'Last Week',
+            720: 'Last Month'
+        };
+        badges.innerHTML += `<span class="badge bg-primary">Time: ${timeOptions[currentFilters.hours]}</span>`;
+        hasActiveFilters = true;
+    }
+    
+    // Status filter
+    if (currentFilters.status) {
+        badges.innerHTML += `<span class="badge bg-secondary">Status: ${currentFilters.status}</span>`;
+        hasActiveFilters = true;
+    }
+    
+    // Type filter
+    if (currentFilters.type) {
+        badges.innerHTML += `<span class="badge bg-info">Type: ${currentFilters.type.replace('_', ' ')}</span>`;
+        hasActiveFilters = true;
+    }
+    
+    // Device filter
+    if (currentFilters.device_id) {
+        const deviceSelect = document.getElementById('filter-device');
+        const deviceName = deviceSelect.options[deviceSelect.selectedIndex].text;
+        badges.innerHTML += `<span class="badge bg-warning">Device: ${deviceName}</span>`;
+        hasActiveFilters = true;
+    }
+    
+    summary.style.display = hasActiveFilters ? 'block' : 'none';
 }
 
 function refreshHistory() {
@@ -403,6 +661,169 @@ function showToast(message, type = 'info') {
             toast.parentNode.removeChild(toast);
         }
     }, 5000);
+}
+
+async function showFailureAnalysis() {
+    try {
+        const hours = currentFilters.hours || 24;
+        const response = await fetch(`/api/notifications/failure-analysis?hours=${hours}`);
+        const analysis = await response.json();
+        
+        if (!response.ok) {
+            throw new Error(analysis.error || 'Failed to load failure analysis');
+        }
+        
+        displayFailureAnalysisModal(analysis);
+        
+    } catch (error) {
+        console.error('Error loading failure analysis:', error);
+        showToast('Error loading failure analysis: ' + error.message, 'error');
+    }
+}
+
+function displayFailureAnalysisModal(analysis) {
+    const modalHtml = `
+        <div class="modal fade" id="failureAnalysisModal" tabindex="-1" aria-labelledby="failureAnalysisModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="failureAnalysisModalLabel">
+                            <i class="bi bi-exclamation-triangle text-danger"></i> Notification Failure Analysis
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        ${generateFailureAnalysisContent(analysis)}
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if any
+    const existingModal = document.getElementById('failureAnalysisModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to DOM
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('failureAnalysisModal'));
+    modal.show();
+}
+
+function generateFailureAnalysisContent(analysis) {
+    let content = `
+        <div class="row mb-4">
+            <div class="col-md-3 text-center">
+                <div class="h2 text-danger">${analysis.total_failed}</div>
+                <small class="text-muted">Total Failures</small>
+            </div>
+            <div class="col-md-9">
+                <h6>Recommendations</h6>
+                ${analysis.recommendations.map(rec => `
+                    <div class="alert alert-${rec.type === 'critical' ? 'danger' : rec.type === 'warning' ? 'warning' : rec.type === 'success' ? 'success' : 'info'} mb-2">
+                        <strong>${rec.title}:</strong> ${rec.description}<br>
+                        <small><strong>Action:</strong> ${rec.action}</small>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+    
+    if (analysis.total_failed > 0) {
+        content += `
+            <div class="row mb-4">
+                <div class="col-md-6">
+                    <h6>Failures by Type</h6>
+                    <div class="list-group list-group-flush">
+                        ${Object.entries(analysis.failure_by_type).slice(0, 5).map(([type, count]) => `
+                            <div class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                                <span><i class="bi bi-bell"></i> ${type.replace('_', ' ')}</span>
+                                <span class="badge bg-danger">${count}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                <div class="col-md-6">
+                    <h6>Failures by Device</h6>
+                    <div class="list-group list-group-flush">
+                        ${Object.entries(analysis.failure_by_device).slice(0, 5).map(([device, count]) => `
+                            <div class="list-group-item d-flex justify-content-between align-items-center border-0 px-0">
+                                <span><i class="bi bi-router"></i> ${device}</span>
+                                <span class="badge bg-warning">${count}</span>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        if (Object.keys(analysis.common_errors).length > 0) {
+            content += `
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <h6>Common Error Messages</h6>
+                        <div class="list-group">
+                            ${Object.entries(analysis.common_errors).slice(0, 3).map(([error, count]) => `
+                                <div class="list-group-item">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div class="flex-grow-1">
+                                            <code class="text-danger">${error}</code>
+                                        </div>
+                                        <span class="badge bg-danger ms-2">${count} times</span>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+        
+        if (analysis.failure_rate_trend.length > 0) {
+            content += `
+                <div class="row">
+                    <div class="col-12">
+                        <h6>Failure Rate Trend</h6>
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Time Period</th>
+                                        <th>Failed</th>
+                                        <th>Total</th>
+                                        <th>Failure Rate</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${analysis.failure_rate_trend.map(trend => `
+                                        <tr>
+                                            <td>${new Date(trend.time_block).toLocaleString()}</td>
+                                            <td>${trend.failed_count}</td>
+                                            <td>${trend.total_count}</td>
+                                            <td>
+                                                <span class="badge bg-${trend.failure_rate > 20 ? 'danger' : trend.failure_rate > 10 ? 'warning' : 'success'}">
+                                                    ${trend.failure_rate}%
+                                                </span>
+                                            </td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+    }
+    
+    return content;
 }
 </script>
 {% endblock %}

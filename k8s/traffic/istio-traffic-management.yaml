@@ -1,0 +1,418 @@
+# HomeNetMon Istio Traffic Management Configuration
+# Load Balancing and Traffic Management
+
+# Gateway for ingress traffic
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: homenetmon-gateway
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: gateway
+    app.kubernetes.io/part-of: homenetmon
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - "homenetmon.local"
+    - "*.homenetmon.local"
+    tls:
+      httpsRedirect: true
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    tls:
+      mode: SIMPLE
+      credentialName: homenetmon-tls
+    hosts:
+    - "homenetmon.local"
+    - "*.homenetmon.local"
+
+---
+# Virtual Service for main application routing
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: homenetmon-vs
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: virtual-service
+    app.kubernetes.io/part-of: homenetmon
+spec:
+  hosts:
+  - "homenetmon.local"
+  gateways:
+  - homenetmon-gateway
+  http:
+  # API traffic routing with load balancing
+  - match:
+    - uri:
+        prefix: /api/
+    route:
+    - destination:
+        host: homenetmon-service
+        port:
+          number: 5000
+        subset: stable
+      weight: 80
+    - destination:
+        host: homenetmon-service
+        port:
+          number: 5000
+        subset: canary
+      weight: 20
+    timeout: 30s
+    retries:
+      attempts: 3
+      perTryTimeout: 10s
+      retryOn: 5xx,reset,connect-failure,refused-stream
+    headers:
+      request:
+        add:
+          x-request-id: "%REQ(x-request-id)%"
+          x-forwarded-proto: https
+      response:
+        add:
+          x-served-by: istio-gateway
+  
+  # WebSocket traffic for real-time updates
+  - match:
+    - uri:
+        prefix: /socket.io/
+    - headers:
+        upgrade:
+          exact: websocket
+    route:
+    - destination:
+        host: homenetmon-service
+        port:
+          number: 5000
+        subset: stable
+      weight: 100
+    timeout: 0s  # No timeout for WebSocket connections
+    
+  # Static assets with caching
+  - match:
+    - uri:
+        prefix: /static/
+    route:
+    - destination:
+        host: homenetmon-service
+        port:
+          number: 5000
+        subset: stable
+    headers:
+      response:
+        add:
+          cache-control: "public, max-age=31536000"
+          
+  # Main application traffic
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        host: homenetmon-service
+        port:
+          number: 5000
+        subset: stable
+      weight: 90
+    - destination:
+        host: homenetmon-service
+        port:
+          number: 5000
+        subset: canary
+      weight: 10
+    timeout: 30s
+    fault:
+      delay:
+        percentage:
+          value: 0.1
+        fixedDelay: 100ms
+
+---
+# Destination Rule for load balancing configuration
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: homenetmon-dr
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: destination-rule
+    app.kubernetes.io/part-of: homenetmon
+spec:
+  host: homenetmon-service
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_CONN  # Load balancing algorithm
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 30s
+        tcpNoDelay: true
+      http:
+        http1MaxPendingRequests: 64
+        http2MaxRequests: 100
+        maxRequestsPerConnection: 10
+        maxRetries: 3
+        consecutiveGatewayErrors: 5
+        interval: 30s
+        baseEjectionTime: 30s
+        maxEjectionPercent: 50
+        minHealthPercent: 30
+    circuitBreaker:
+      consecutiveGatewayErrors: 5
+      consecutive5xxErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 30
+  subsets:
+  - name: stable
+    labels:
+      version: stable
+    trafficPolicy:
+      loadBalancer:
+        simple: ROUND_ROBIN
+  - name: canary
+    labels:
+      version: canary
+    trafficPolicy:
+      loadBalancer:
+        simple: LEAST_CONN
+
+---
+# Service Entry for external dependencies
+apiVersion: networking.istio.io/v1beta1
+kind: ServiceEntry
+metadata:
+  name: external-apis
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: service-entry
+    app.kubernetes.io/part-of: homenetmon
+spec:
+  hosts:
+  - api.stripe.com
+  - api.sendgrid.com
+  - hooks.slack.com
+  ports:
+  - number: 443
+    name: https
+    protocol: HTTPS
+  location: MESH_EXTERNAL
+  resolution: DNS
+
+---
+# Virtual Service for API subdomain
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: homenetmon-api-vs
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: api-virtual-service
+    app.kubernetes.io/part-of: homenetmon
+spec:
+  hosts:
+  - "api.homenetmon.local"
+  gateways:
+  - homenetmon-gateway
+  http:
+  - match:
+    - uri:
+        prefix: /v1/
+    route:
+    - destination:
+        host: homenetmon-service
+        port:
+          number: 5000
+        subset: stable
+    headers:
+      request:
+        add:
+          x-api-version: "v1"
+      response:
+        add:
+          x-ratelimit-limit: "1000"
+          x-ratelimit-remaining: "999"
+    timeout: 60s
+    retries:
+      attempts: 3
+      perTryTimeout: 20s
+
+---
+# Destination Rule for Redis cluster
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: redis-dr
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: redis-destination-rule
+    app.kubernetes.io/part-of: homenetmon
+spec:
+  host: redis-service
+  trafficPolicy:
+    loadBalancer:
+      consistentHash:
+        useSourceIp: true  # Session affinity for Redis
+    connectionPool:
+      tcp:
+        maxConnections: 50
+        connectTimeout: 10s
+    outlierDetection:
+      consecutiveGatewayErrors: 3
+      consecutive5xxErrors: 3
+      interval: 30s
+      baseEjectionTime: 30s
+
+---
+# Destination Rule for PostgreSQL
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: postgres-dr
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: postgres-destination-rule
+    app.kubernetes.io/part-of: homenetmon
+spec:
+  host: postgres-service
+  trafficPolicy:
+    loadBalancer:
+      simple: ROUND_ROBIN
+    connectionPool:
+      tcp:
+        maxConnections: 20
+        connectTimeout: 5s
+    outlierDetection:
+      consecutiveGatewayErrors: 2
+      interval: 10s
+      baseEjectionTime: 30s
+
+---
+# Policy for rate limiting
+apiVersion: networking.istio.io/v1beta1
+kind: EnvoyFilter
+metadata:
+  name: rate-limit-filter
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: rate-limit
+    app.kubernetes.io/part-of: homenetmon
+spec:
+  workloadSelector:
+    labels:
+      app.kubernetes.io/name: homenetmon
+  configPatches:
+  - applyTo: HTTP_FILTER
+    match:
+      context: SIDECAR_INBOUND
+      listener:
+        filterChain:
+          filter:
+            name: "envoy.filters.network.http_connection_manager"
+    patch:
+      operation: INSERT_BEFORE
+      value:
+        name: envoy.filters.http.local_ratelimit
+        typed_config:
+          "@type": type.googleapis.com/udpa.type.v1.TypedStruct
+          type_url: type.googleapis.com/envoy.extensions.filters.http.local_ratelimit.v3.LocalRateLimit
+          value:
+            stat_prefix: local_rate_limiter
+            token_bucket:
+              max_tokens: 1000
+              tokens_per_fill: 1000
+              fill_interval: 60s
+            filter_enabled:
+              runtime_key: local_rate_limit_enabled
+              default_value:
+                numerator: 100
+                denominator: HUNDRED
+            filter_enforced:
+              runtime_key: local_rate_limit_enforced
+              default_value:
+                numerator: 100
+                denominator: HUNDRED
+
+---
+# Peer Authentication for mTLS
+apiVersion: security.istio.io/v1beta1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: peer-authentication
+    app.kubernetes.io/part-of: homenetmon
+spec:
+  mtls:
+    mode: STRICT
+
+---
+# Authorization Policy
+apiVersion: security.istio.io/v1beta1
+kind: AuthorizationPolicy
+metadata:
+  name: homenetmon-authz
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: authorization
+    app.kubernetes.io/part-of: homenetmon
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: homenetmon
+  rules:
+  - from:
+    - source:
+        principals: ["cluster.local/ns/istio-system/sa/istio-ingressgateway-service-account"]
+  - to:
+    - operation:
+        methods: ["GET", "POST", "PUT", "DELETE"]
+        paths: ["/api/*", "/", "/static/*", "/socket.io/*"]
+  
+---
+# Telemetry for monitoring
+apiVersion: telemetry.istio.io/v1alpha1
+kind: Telemetry
+metadata:
+  name: homenetmon-metrics
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: telemetry
+    app.kubernetes.io/part-of: homenetmon
+spec:
+  metrics:
+  - providers:
+    - name: prometheus
+  - overrides:
+    - match:
+        metric: ALL_METRICS
+      tagOverrides:
+        request_protocol:
+          value: "http"
+        source_app:
+          value: "homenetmon"
+  accessLogging:
+  - providers:
+    - name: envoy

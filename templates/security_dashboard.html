@@ -1,50 +1,166 @@
-{% extends "base.html" %}
+{% extends "base_with_quickstats.html" %}
 
 {% block title %}Security Dashboard - HomeNetMon{% endblock %}
 
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="bi bi-shield-check"></i> Security Dashboard</h1>
+    <div class="d-flex align-items-center">
+        <h1><i class="bi bi-shield-check"></i> Security Dashboard</h1>
+        <span class="ms-3 text-muted" data-bs-toggle="tooltip" data-bs-placement="bottom" 
+              data-bs-title="Monitor your network for security vulnerabilities, open ports, and suspicious activity. Regular scanning helps identify potential security risks.">
+            <i class="bi bi-info-circle"></i>
+        </span>
+    </div>
     <div class="btn-group" role="group">
-        <button type="button" class="btn btn-outline-primary" id="refresh-security-data">
+        <button type="button" class="btn btn-outline-primary" id="refresh-security-data"
+                data-bs-toggle="tooltip" data-bs-placement="bottom" 
+                data-bs-title="Update all security data with the latest scan results and alert information">
             <i class="bi bi-arrow-clockwise"></i> Refresh
         </button>
-        <button type="button" class="btn btn-outline-warning" id="run-security-scan">
+        <button type="button" class="btn btn-outline-warning" id="run-security-scan"
+                data-bs-toggle="tooltip" data-bs-placement="bottom" 
+                data-bs-title="Start a comprehensive network scan to check all devices for open ports, services, and potential security risks">
             <i class="bi bi-search"></i> Run Network Scan
         </button>
     </div>
 </div>
 
-<!-- Security Scan Progress Bar -->
+<!-- Enhanced Security Scan Progress -->
 <div class="row mb-3" id="scan-progress-container" style="display: none;">
     <div class="col-12">
-        <div class="card border-warning">
-            <div class="card-body py-3">
-                <div class="d-flex align-items-center mb-2">
-                    <div class="spinner-border spinner-border-sm text-warning me-2" role="status">
-                        <span class="visually-hidden">Loading...</span>
+        <div class="card border-primary" id="scan-progress-card">
+            <div class="card-header bg-light">
+                <div class="d-flex align-items-center justify-content-between">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm text-primary me-2" role="status" id="scan-spinner">
+                            <span class="visually-hidden">Scanning...</span>
+                        </div>
+                        <h6 class="mb-0 fw-bold">Network Security Scan</h6>
+                        <span class="ms-3 badge bg-primary" id="scan-stage">Initializing</span>
                     </div>
-                    <strong>Running Security Scan...</strong>
-                    <span class="ms-auto text-muted" id="scan-status-text">Initializing...</span>
+                    <div class="text-end">
+                        <small class="text-muted" id="scan-timer">0s</small>
+                    </div>
                 </div>
-                <div class="progress" style="height: 8px;">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-warning" 
-                         role="progressbar" id="scan-progress-bar" style="width: 0%"></div>
+            </div>
+            <div class="card-body">
+                <!-- Overall Progress -->
+                <div class="mb-3">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <span class="fw-medium" id="scan-status-text">Preparing scan...</span>
+                        <span class="text-muted small" id="scan-percentage">0%</span>
+                    </div>
+                    <div class="progress mb-2" style="height: 12px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" id="scan-progress-bar" style="width: 0%"></div>
+                    </div>
+                    <small class="text-muted" id="scan-details">Initializing network security scan...</small>
                 </div>
-                <small class="text-muted mt-1" id="scan-details">Preparing security scan...</small>
+                
+                <!-- Scan Statistics -->
+                <div class="row text-center" id="scan-stats" style="display: none;">
+                    <div class="col-3">
+                        <div class="border rounded p-2">
+                            <div class="h5 mb-1 text-primary" id="devices-progress">0/0</div>
+                            <small class="text-muted">Devices</small>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="border rounded p-2">
+                            <div class="h5 mb-1 text-info" id="ports-scanned">0</div>
+                            <small class="text-muted">Ports Checked</small>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="border rounded p-2">
+                            <div class="h5 mb-1 text-warning" id="open-ports-found">0</div>
+                            <small class="text-muted">Open Ports</small>
+                        </div>
+                    </div>
+                    <div class="col-3">
+                        <div class="border rounded p-2">
+                            <div class="h5 mb-1 text-danger" id="alerts-generated">0</div>
+                            <small class="text-muted">Security Alerts</small>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Current Device Info -->
+                <div id="current-device-info" class="mt-3 p-2 bg-light rounded" style="display: none;">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-router text-primary me-2"></i>
+                        <div>
+                            <div class="fw-medium">Currently Scanning: <span id="current-device-name">--</span></div>
+                            <small class="text-muted">Checking for open ports and services...</small>
+                        </div>
+                    </div>
+                    <div class="progress mt-2" style="height: 6px;">
+                        <div class="progress-bar bg-primary" id="current-device-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+                
+                <!-- Scan Process Explanation -->
+                <div class="mt-3 p-3 bg-info bg-opacity-10 rounded" id="scan-explanation">
+                    <div class="d-flex align-items-start">
+                        <i class="bi bi-info-circle text-info me-2 mt-1"></i>
+                        <div>
+                            <div class="fw-medium text-info mb-1">What's happening?</div>
+                            <small class="text-muted" id="scan-explanation-text">
+                                The security scanner is checking each device on your network for open ports and running services. 
+                                This helps identify potential security vulnerabilities and unusual network activity.
+                            </small>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Security Status Cards -->
-<div class="row mb-4">
+<!-- Mobile Security Summary -->
+<div class="security-cards-mobile d-lg-none">
+    <div class="mobile-card" id="mobile-security-status">
+        <div class="mobile-card-icon text-success">
+            <i class="bi bi-shield-check"></i>
+        </div>
+        <div class="mobile-card-value text-success">Secure</div>
+        <div class="mobile-card-label">Security Status</div>
+    </div>
+    <div class="mobile-card">
+        <div class="mobile-card-icon text-info">
+            <i class="bi bi-router"></i>
+        </div>
+        <div class="mobile-card-value" id="mobile-devices-scanned">--</div>
+        <div class="mobile-card-label">Devices Scanned</div>
+    </div>
+    <div class="mobile-card">
+        <div class="mobile-card-icon text-warning">
+            <i class="bi bi-exclamation-triangle"></i>
+        </div>
+        <div class="mobile-card-value" id="mobile-total-alerts">--</div>
+        <div class="mobile-card-label">Security Alerts</div>
+    </div>
+    <div class="mobile-card">
+        <div class="mobile-card-icon text-danger">
+            <i class="bi bi-shield-exclamation"></i>
+        </div>
+        <div class="mobile-card-value" id="mobile-high-risk">--</div>
+        <div class="mobile-card-label">High Risk</div>
+    </div>
+</div>
+
+<!-- Desktop Security Status Cards -->
+<div class="row mb-4 security-cards-desktop">
     <div class="col-md-3">
         <div class="card bg-success text-white">
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h6 class="card-title">Security Status</h6>
+                        <h6 class="card-title d-flex align-items-center">
+                            Security Status 
+                            <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top" 
+                               data-bs-title="Overall network security health based on recent scans and alerts. Secure = no critical issues, At Risk = security concerns found, Critical = immediate attention needed"></i>
+                        </h6>
                         <h4 id="security-status" class="mb-0">Secure</h4>
                     </div>
                     <div class="align-self-center">
@@ -59,7 +175,11 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h6 class="card-title">Devices Scanned</h6>
+                        <h6 class="card-title d-flex align-items-center">
+                            Devices Scanned 
+                            <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top" 
+                               data-bs-title="Number of network devices that have been security scanned in the selected time period. Regular scanning helps maintain network security."></i>
+                        </h6>
                         <h4 id="devices-scanned" class="mb-0">--</h4>
                     </div>
                     <div class="align-self-center">
@@ -74,7 +194,11 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h6 class="card-title">Open Ports</h6>
+                        <h6 class="card-title d-flex align-items-center">
+                            Open Ports 
+                            <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top" 
+                               data-bs-title="Network ports that are accepting connections. Each open port represents a service that could be a potential entry point. Not all open ports are security risks."></i>
+                        </h6>
                         <h4 id="total-open-ports" class="mb-0">--</h4>
                     </div>
                     <div class="align-self-center">
@@ -89,7 +213,11 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between">
                     <div>
-                        <h6 class="card-title">High Risk Devices</h6>
+                        <h6 class="card-title d-flex align-items-center">
+                            High Risk Devices 
+                            <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top" 
+                               data-bs-title="Devices with security concerns that need attention. High risk typically means vulnerable services, suspicious ports, or outdated software detected."></i>
+                        </h6>
                         <h4 id="high-risk-devices" class="mb-0">--</h4>
                     </div>
                     <div class="align-self-center">
@@ -105,8 +233,12 @@
 <div class="row mb-4">
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-bar-chart"></i> Security Alerts by Type</h6>
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6 class="mb-0 d-flex align-items-center">
+                    <i class="bi bi-bar-chart"></i> Security Alerts by Type
+                    <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top" 
+                       data-bs-title="Breakdown of security alerts by category: New Service (newly discovered services), Suspicious Port (risky open ports), Vulnerability (security weaknesses)"></i>
+                </h6>
             </div>
             <div class="card-body">
                 <canvas id="security-alerts-chart" style="height: 300px;"></canvas>
@@ -115,8 +247,12 @@
     </div>
     <div class="col-lg-6">
         <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-pie-chart"></i> Risk Distribution</h6>
+            <div class="card-header d-flex align-items-center justify-content-between">
+                <h6 class="mb-0 d-flex align-items-center">
+                    <i class="bi bi-pie-chart"></i> Risk Distribution
+                    <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top" 
+                       data-bs-title="Distribution of security issues by severity: Critical (immediate action required), High (review soon), Medium (monitor), Low (informational)"></i>
+                </h6>
             </div>
             <div class="card-body">
                 <canvas id="risk-distribution-chart" style="height: 300px;"></canvas>
@@ -130,7 +266,11 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="bi bi-network-widescreen"></i> Network Security Overview</h6>
+                <h6 class="mb-0 d-flex align-items-center">
+                    <i class="bi bi-network-widescreen"></i> Network Security Overview
+                    <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top" 
+                       data-bs-title="Security status of all monitored devices including open ports, risk scores, and detected services. Use the scan button to check individual devices."></i>
+                </h6>
                 <div class="btn-group btn-group-sm">
                     <button class="btn btn-outline-secondary time-filter" data-hours="24">24h</button>
                     <button class="btn btn-outline-secondary time-filter" data-hours="168">7d</button>
@@ -155,8 +295,14 @@
     <div class="col-12">
         <div class="card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0"><i class="bi bi-shield-exclamation"></i> Recent Security Alerts</h6>
-                <button class="btn btn-sm btn-outline-secondary" id="acknowledge-all-alerts">
+                <h6 class="mb-0 d-flex align-items-center">
+                    <i class="bi bi-shield-exclamation"></i> Recent Security Alerts
+                    <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top" 
+                       data-bs-title="Security alerts generated by network scans. Review each alert to understand potential risks and take appropriate action. Acknowledging alerts marks them as reviewed."></i>
+                </h6>
+                <button class="btn btn-sm btn-outline-secondary" id="acknowledge-all-alerts"
+                        data-bs-toggle="tooltip" data-bs-placement="left" 
+                        data-bs-title="Mark all security alerts as acknowledged. Use this when you've reviewed all alerts and understand the risks.">
                     <i class="bi bi-check-all"></i> Acknowledge All
                 </button>
             </div>
@@ -178,7 +324,11 @@
     <div class="col-lg-8">
         <div class="card">
             <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-clipboard-data"></i> Security Recommendations</h6>
+                <h6 class="mb-0 d-flex align-items-center">
+                    <i class="bi bi-clipboard-data"></i> Security Recommendations
+                    <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top" 
+                       data-bs-title="AI-generated security recommendations based on your network's current state and detected issues. Follow these suggestions to improve your security posture."></i>
+                </h6>
             </div>
             <div class="card-body">
                 <div id="security-recommendations">
@@ -194,35 +344,51 @@
     <div class="col-lg-4">
         <div class="card">
             <div class="card-header">
-                <h6 class="mb-0"><i class="bi bi-gear"></i> Security Settings</h6>
+                <h6 class="mb-0 d-flex align-items-center">
+                    <i class="bi bi-gear"></i> Security Settings
+                    <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="top" 
+                       data-bs-title="Configure security scan parameters. More frequent scans provide better monitoring but use more system resources. Higher port counts give more comprehensive results."></i>
+                </h6>
             </div>
             <div class="card-body">
                 <form id="security-settings-form">
                     <div class="mb-3">
-                        <label class="form-label">Scan Interval (hours)</label>
+                        <label class="form-label d-flex align-items-center">
+                            Scan Interval (hours)
+                            <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="right" 
+                               data-bs-title="How often to automatically scan the network. 24 hours is recommended for most home networks. More frequent scanning uses more resources."></i>
+                        </label>
                         <input type="number" class="form-control" id="scan-interval" min="1" max="168" value="24">
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Top Ports to Scan</label>
+                        <label class="form-label d-flex align-items-center">
+                            Top Ports to Scan
+                            <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="right" 
+                               data-bs-title="Number of most common ports to check. Top 1000 provides good coverage for most threats. Higher numbers take longer but are more thorough."></i>
+                        </label>
                         <select class="form-select" id="top-ports">
-                            <option value="100">Top 100 ports</option>
-                            <option value="1000" selected>Top 1000 ports</option>
-                            <option value="10000">Top 10000 ports</option>
+                            <option value="100">Top 100 ports (fast)</option>
+                            <option value="1000" selected>Top 1000 ports (recommended)</option>
+                            <option value="10000">Top 10000 ports (comprehensive)</option>
                         </select>
                     </div>
                     <div class="mb-3">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="service-detection" checked>
-                            <label class="form-check-label" for="service-detection">
+                            <label class="form-check-label d-flex align-items-center" for="service-detection">
                                 Service Detection
+                                <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="right" 
+                                   data-bs-title="Identify what services are running on open ports (e.g., web server, SSH). Provides more detailed security information but takes longer."></i>
                             </label>
                         </div>
                     </div>
                     <div class="mb-3">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="version-detection" checked>
-                            <label class="form-check-label" for="version-detection">
+                            <label class="form-check-label d-flex align-items-center" for="version-detection">
                                 Version Detection
+                                <i class="bi bi-info-circle ms-2" data-bs-toggle="tooltip" data-bs-placement="right" 
+                                   data-bs-title="Detect software versions of running services. Helps identify outdated software with known vulnerabilities. Recommended for security monitoring."></i>
                             </label>
                         </div>
                     </div>
@@ -237,11 +403,478 @@
 {% endblock %}
 
 {% block scripts %}
+<style>
+/* Priority indicator styles */
+.priority-indicator {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+
+.priority-indicator:hover {
+    transform: scale(1.1);
+}
+
+.priority-critical {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+    border: 2px solid #dc3545;
+    box-shadow: 0 2px 4px rgba(220, 53, 69, 0.3);
+}
+
+.priority-high {
+    background: linear-gradient(135deg, #fd7e14, #e8590c);
+    color: white;
+    border: 2px solid #fd7e14;
+    box-shadow: 0 2px 4px rgba(253, 126, 20, 0.3);
+}
+
+.priority-medium {
+    background: linear-gradient(135deg, #ffc107, #e0a800);
+    color: #000;
+    border: 2px solid #ffc107;
+    box-shadow: 0 2px 4px rgba(255, 193, 7, 0.3);
+}
+
+.priority-low {
+    background: linear-gradient(135deg, #17a2b8, #117a8b);
+    color: white;
+    border: 2px solid #17a2b8;
+    box-shadow: 0 2px 4px rgba(23, 162, 184, 0.3);
+}
+
+/* Enhanced card styling */
+.card {
+    transition: box-shadow 0.3s ease, border 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+}
+
+/* Risk Level Indicators */
+.risk-indicator {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.risk-indicator.risk-low {
+    background: linear-gradient(135deg, #d4edda, #c3e6cb);
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.risk-indicator.risk-medium {
+    background: linear-gradient(135deg, #fff3cd, #ffeeba);
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+.risk-indicator.risk-high {
+    background: linear-gradient(135deg, #f8d7da, #f1b0b7);
+    color: #721c24;
+    border: 1px solid #f1b0b7;
+}
+
+.risk-indicator.risk-critical {
+    background: linear-gradient(135deg, #721c24, #491217);
+    color: white;
+    border: 1px solid #721c24;
+    box-shadow: 0 2px 4px rgba(114, 28, 36, 0.3);
+}
+
+/* Risk Score Visualization */
+.risk-score-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.risk-score-bar {
+    width: 60px;
+    height: 8px;
+    background: #e9ecef;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.risk-score-fill {
+    height: 100%;
+    transition: width 0.5s ease;
+    border-radius: 4px;
+}
+
+/* Network Overview Enhancements */
+.device-security-badge {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 6px;
+    border-radius: 8px;
+    font-size: 0.7rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.device-security-badge::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    margin-right: 4px;
+}
+
+.device-security-badge.secure::before {
+    background: #28a745;
+}
+
+.device-security-badge.low-risk::before {
+    background: #17a2b8;
+}
+
+.device-security-badge.medium-risk::before {
+    background: #ffc107;
+}
+
+.device-security-badge.high-risk::before {
+    background: #fd7e14;
+}
+
+.device-security-badge.critical-risk::before {
+    background: #dc3545;
+    box-shadow: 0 0 8px rgba(220, 53, 69, 0.5);
+}
+
+/* Alert details styling */
+.alert-details {
+    max-width: 200px;
+}
+
+.impact-assessment {
+    min-width: 120px;
+}
+
+.time-info {
+    min-width: 80px;
+}
+
+/* Mobile-First Responsive Design */
+
+/* Mobile Summary Cards */
+@media (max-width: 991px) {
+    .security-cards-mobile {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-bottom: 1.5rem;
+    }
+    
+    .security-cards-desktop {
+        display: none;
+    }
+    
+    .mobile-card {
+        background: white;
+        border-radius: 8px;
+        padding: 1rem;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        text-align: center;
+    }
+    
+    .mobile-card-icon {
+        font-size: 1.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .mobile-card-value {
+        font-size: 1.25rem;
+        font-weight: 700;
+        margin-bottom: 0.25rem;
+    }
+    
+    .mobile-card-label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+}
+
+@media (min-width: 992px) {
+    .security-cards-mobile {
+        display: none;
+    }
+    
+    .security-cards-desktop {
+        display: flex;
+    }
+}
+
+/* Mobile Alert Filters */
+@media (max-width: 768px) {
+    .alert-filters .row {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .alert-filters .col-md-3 {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .btn-group {
+        flex-direction: column;
+        width: 100%;
+    }
+    
+    .btn-group .btn {
+        border-radius: 0.375rem !important;
+        margin-bottom: 0.25rem;
+    }
+}
+
+/* Mobile Table Improvements */
+@media (max-width: 768px) {
+    .table-responsive {
+        font-size: 0.8rem;
+    }
+    
+    /* Stack table cells vertically on mobile */
+    .mobile-alert-card {
+        display: block;
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: white;
+    }
+    
+    .mobile-alert-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+        padding-bottom: 0.5rem;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .mobile-alert-body {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .mobile-alert-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.25rem 0;
+    }
+    
+    .mobile-alert-label {
+        font-weight: 600;
+        color: #495057;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    
+    .mobile-alert-value {
+        text-align: right;
+        flex: 1;
+        margin-left: 1rem;
+    }
+    
+    .priority-indicator {
+        width: 24px;
+        height: 24px;
+        font-size: 0.75rem;
+    }
+    
+    .alert-details {
+        max-width: none;
+    }
+    
+    .btn-group-vertical .btn {
+        font-size: 0.75rem;
+        padding: 0.375rem 0.75rem;
+        margin-bottom: 0.25rem;
+    }
+    
+    /* Hide desktop table on mobile */
+    .desktop-table {
+        display: none;
+    }
+}
+
+@media (min-width: 769px) {
+    .mobile-alerts-view {
+        display: none;
+    }
+}
+
+/* Mobile Network Overview */
+@media (max-width: 768px) {
+    .network-device-card {
+        border: 1px solid #dee2e6;
+        border-radius: 8px;
+        padding: 1rem;
+        margin-bottom: 1rem;
+        background: white;
+    }
+    
+    .device-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 0.75rem;
+    }
+    
+    .device-stats {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .device-stat {
+        text-align: center;
+        padding: 0.5rem;
+        background: #f8f9fa;
+        border-radius: 4px;
+    }
+    
+    .device-stat-value {
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+    }
+    
+    .device-stat-label {
+        font-size: 0.75rem;
+        color: #6c757d;
+    }
+}
+
+/* Touch-friendly interactions */
+@media (max-width: 768px) {
+    .btn {
+        min-height: 44px;
+        padding: 0.75rem 1rem;
+    }
+    
+    .btn-sm {
+        min-height: 36px;
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .form-control, .form-select {
+        min-height: 44px;
+        font-size: 1rem;
+    }
+    
+    .form-check-input {
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+    
+    /* Larger tap targets for tooltips */
+    [data-bs-toggle="tooltip"] {
+        min-width: 44px;
+        min-height: 44px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+    }
+}
+
+/* Mobile Charts */
+@media (max-width: 768px) {
+    .chart-container {
+        height: 200px;
+        margin-bottom: 1rem;
+    }
+    
+    .row .col-lg-6 {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Mobile Progress Indicators */
+@media (max-width: 768px) {
+    #scan-stats {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    #scan-stats .col-3 {
+        width: 100%;
+        margin-bottom: 0.5rem;
+    }
+    
+    .scan-stat-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.5rem;
+    }
+}
+
+/* Responsive text scaling */
+@media (max-width: 576px) {
+    .h1, h1 {
+        font-size: 1.5rem;
+    }
+    
+    .h4, h4 {
+        font-size: 1.1rem;
+    }
+    
+    .card-title {
+        font-size: 0.9rem;
+    }
+}
+
+/* Scan progress enhancements */
+.progress {
+    box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+/* Tooltip improvements */
+.tooltip {
+    font-size: 0.875rem;
+}
+
+.tooltip .tooltip-inner {
+    max-width: 300px;
+    text-align: left;
+    padding: 8px 12px;
+}
+</style>
 <script>
     let securityCharts = {};
     let currentTimeFilter = 24; // Default 24 hours
 
     document.addEventListener('DOMContentLoaded', function() {
+        // Initialize Bootstrap tooltips
+        const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
+            return new bootstrap.Tooltip(tooltipTriggerEl, {
+                trigger: 'hover focus',
+                delay: { "show": 500, "hide": 100 }
+            });
+        });
+        
         loadSecurityData();
         
         // Event listeners
@@ -268,6 +901,25 @@
         
         // Auto-refresh every 60 seconds
         setInterval(loadSecurityData, 60000);
+        
+        // Re-initialize tooltips after dynamic content updates
+        document.addEventListener('DOMContentLoaded', function() {
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.addedNodes.length > 0) {
+                        // Re-initialize tooltips for new elements
+                        const newTooltips = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]:not([data-bs-original-title])'));
+                        newTooltips.forEach(function (tooltipTriggerEl) {
+                            new bootstrap.Tooltip(tooltipTriggerEl, {
+                                trigger: 'hover focus',
+                                delay: { "show": 500, "hide": 100 }
+                            });
+                        });
+                    }
+                });
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+        });
     });
     
     async function loadSecurityData() {
@@ -281,6 +933,15 @@
         } catch (error) {
             console.error('Error loading security data:', error);
             showToast('Error loading security dashboard data', 'error');
+            
+            // Show fallback UI for offline/error state
+            document.getElementById('security-status').innerHTML = `
+                Error
+                <small class="d-block" style="font-size: 0.75rem; opacity: 0.9; font-weight: normal;">
+                    Unable to load data
+                </small>
+            `;
+            document.getElementById('security-status').closest('.card').className = 'card bg-secondary text-white';
         }
     }
     
@@ -292,11 +953,53 @@
             if (data.success) {
                 const summary = data.summary;
                 
-                // Update summary cards
-                document.getElementById('devices-scanned').textContent = summary.devices_scanned || 0;
-                document.getElementById('total-open-ports').textContent = summary.total_alerts || 0;
-                document.getElementById('high-risk-devices').textContent = 
-                    (summary.by_severity.high || 0) + (summary.by_severity.critical || 0);
+                // Update summary cards with enhanced display and visual indicators
+                const devicesScanned = summary.devices_scanned || 0;
+                const totalAlerts = summary.total_alerts || 0;
+                const highRiskDevices = (summary.by_severity.high || 0) + (summary.by_severity.critical || 0);
+                
+                // Calculate overall network risk level
+                const networkRiskScore = calculateNetworkRiskScore(summary);
+                const networkRiskLevel = getRiskLevelFromScore(networkRiskScore);
+                
+                document.getElementById('devices-scanned').innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <span class="h4 mb-0 me-2">${devicesScanned}</span>
+                        <div class="risk-indicator risk-${networkRiskLevel}" style="font-size: 0.6rem;">
+                            ${getRiskIcon(networkRiskScore)} ${networkRiskLevel}
+                        </div>
+                    </div>
+                    <small class="d-block" style="font-size: 0.75rem; opacity: 0.9; font-weight: normal;">
+                        ${devicesScanned === 1 ? 'device' : 'devices'} scanned
+                    </small>
+                `;
+                
+                document.getElementById('total-open-ports').innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <span class="h4 mb-0 me-2">${totalAlerts}</span>
+                        ${totalAlerts > 0 ? 
+                            `<div class="risk-indicator ${totalAlerts >= 5 ? 'risk-critical' : totalAlerts >= 3 ? 'risk-high' : 'risk-medium'}" style="font-size: 0.6rem;">
+                                ${totalAlerts >= 5 ? '🚨' : totalAlerts >= 3 ? '⚠️' : '🔶'}
+                            </div>` : 
+                            `<div class="risk-indicator risk-low" style="font-size: 0.6rem;">✅</div>`
+                        }
+                    </div>
+                    <small class="d-block" style="font-size: 0.75rem; opacity: 0.9; font-weight: normal;">
+                        security alert${totalAlerts === 1 ? '' : 's'}
+                    </small>
+                `;
+                
+                document.getElementById('high-risk-devices').innerHTML = `
+                    <div class="d-flex align-items-center">
+                        <span class="h4 mb-0 me-2">${highRiskDevices}</span>
+                        <div class="risk-indicator ${highRiskDevices > 0 ? 'risk-critical' : 'risk-low'}" style="font-size: 0.6rem;">
+                            ${highRiskDevices > 0 ? '🚨' : '✅'}
+                        </div>
+                    </div>
+                    <small class="d-block" style="font-size: 0.75rem; opacity: 0.9; font-weight: normal;">
+                        ${highRiskDevices === 0 ? 'all devices secure' : (highRiskDevices === 1 ? 'device' : 'devices') + ' need attention'}
+                    </small>
+                `;
                 
                 // Update security status
                 updateSecurityStatus(summary);
@@ -366,6 +1069,27 @@
             statusText.textContent = 'Starting scan...';
             detailsText.textContent = 'Initializing network security scan...';
             
+            // Show enhanced progress UI immediately
+            const statsDiv = document.getElementById('scan-stats');
+            const deviceInfo = document.getElementById('current-device-info');
+            const explanationDiv = document.getElementById('scan-explanation');
+            const scanStage = document.getElementById('scan-stage');
+            
+            statsDiv.style.display = 'flex';
+            explanationDiv.style.display = 'block';
+            scanStage.textContent = 'Starting';
+            scanStage.className = 'ms-3 badge bg-primary';
+            
+            // Start scan timer
+            let scanStartTime = Date.now();
+            const timerInterval = setInterval(() => {
+                const elapsed = Math.floor((Date.now() - scanStartTime) / 1000);
+                const minutes = Math.floor(elapsed / 60);
+                const seconds = elapsed % 60;
+                document.getElementById('scan-timer').textContent = 
+                    minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+            }, 1000);
+            
             // Start the scan
             const response = await fetch('/api/security/run-scan', {
                 method: 'POST',
@@ -397,31 +1121,81 @@
                         // Update progress bar
                         progressBar.style.width = progress.progress + '%';
                         
-                        // Update status text
+                        // Update enhanced status display
                         if (progress.status === 'running') {
+                            scanStage.textContent = 'Scanning';
+                            scanStage.className = 'ms-3 badge bg-warning';
+                            
+                            // Update current device info
                             if (progress.current_device) {
-                                statusText.textContent = `Scanning device: ${progress.current_device}`;
-                                detailsText.textContent = `Device ${progress.devices_completed + 1}/${progress.total_devices} • ${progress.open_ports_found} open ports found • ${progress.alerts_generated} alerts generated`;
+                                deviceInfo.style.display = 'block';
+                                document.getElementById('current-device-name').textContent = progress.current_device;
+                                document.getElementById('current-device-progress').style.width = progress.current_device_progress + '%';
+                                
+                                statusText.textContent = `Scanning ${progress.current_device}`;
+                                
+                                // Update explanation based on scan phase
+                                const explanationText = document.getElementById('scan-explanation-text');
+                                explanationText.textContent = `Currently checking ${progress.current_device} for open network ports. The scanner tests the most common ports to identify running services and potential security risks.`;
                             } else {
-                                statusText.textContent = 'Scanning devices...';
-                                detailsText.textContent = `${progress.devices_completed}/${progress.total_devices} devices scanned`;
+                                statusText.textContent = 'Scanning network devices...';
+                                deviceInfo.style.display = 'none';
                             }
                             
-                            // Show elapsed time
-                            if (progress.duration_formatted) {
-                                detailsText.textContent += ` • Duration: ${progress.duration_formatted}`;
-                            }
+                            // Update statistics
+                            document.getElementById('devices-progress').textContent = `${progress.devices_completed}/${progress.total_devices}`;
+                            document.getElementById('ports-scanned').textContent = progress.total_ports_scanned || 0;
+                            document.getElementById('open-ports-found').textContent = progress.open_ports_found || 0;
+                            document.getElementById('alerts-generated').textContent = progress.alerts_generated || 0;
+                            
+                            // Update progress percentage display
+                            document.getElementById('scan-percentage').textContent = progress.progress + '%';
+                            
+                            // Enhanced details
+                            detailsText.textContent = `Scanned ${progress.devices_completed} of ${progress.total_devices} devices • Found ${progress.open_ports_found} open ports • Generated ${progress.alerts_generated} security alerts`;
                             
                         } else if (progress.status === 'completed') {
                             clearInterval(progressInterval);
+                            clearInterval(timerInterval);
+                            
+                            // Update UI for completion
+                            scanStage.textContent = 'Completed';
+                            scanStage.className = 'ms-3 badge bg-success';
                             
                             progressBar.style.width = '100%';
-                            statusText.textContent = 'Scan completed successfully!';
-                            detailsText.textContent = `Scanned ${progress.total_devices} devices • Found ${progress.open_ports_found} open ports • Generated ${progress.alerts_generated} security alerts`;
+                            progressBar.className = 'progress-bar bg-success';
+                            document.getElementById('scan-spinner').style.display = 'none';
                             
-                            if (progress.duration_formatted) {
-                                detailsText.textContent += ` • Completed in ${progress.duration_formatted}`;
-                            }
+                            statusText.textContent = '✅ Security scan completed successfully!';
+                            deviceInfo.style.display = 'none';
+                            
+                            // Final statistics update
+                            document.getElementById('devices-progress').textContent = `${progress.total_devices}/${progress.total_devices}`;
+                            document.getElementById('ports-scanned').textContent = progress.total_ports_scanned || 0;
+                            document.getElementById('open-ports-found').textContent = progress.open_ports_found || 0;
+                            document.getElementById('alerts-generated').textContent = progress.alerts_generated || 0;
+                            document.getElementById('scan-percentage').textContent = '100%';
+                            
+                            // Summary message
+                            const scanSummary = `
+                                <div class="d-flex align-items-center">
+                                    <i class="bi bi-check-circle text-success me-2"></i>
+                                    <div>
+                                        <div class="fw-medium text-success">Scan completed successfully!</div>
+                                        <div class="small text-muted">
+                                            Analyzed ${progress.total_devices} devices, checked ${progress.total_ports_scanned} ports, 
+                                            found ${progress.open_ports_found} open services, and identified ${progress.alerts_generated} security concerns.
+                                            ${progress.duration_formatted ? ` Completed in ${progress.duration_formatted}.` : ''}
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            detailsText.innerHTML = scanSummary;
+                            
+                            // Update explanation for completion
+                            document.getElementById('scan-explanation-text').textContent = 
+                                'The security scan has analyzed your entire network and identified any potential security issues. Review the alerts above to understand and address any risks found.';
                             
                             showToast('Network security scan completed successfully', 'success');
                             
@@ -433,17 +1207,44 @@
                             
                         } else if (progress.status === 'failed') {
                             clearInterval(progressInterval);
+                            clearInterval(timerInterval);
+                            
+                            // Update UI for failure
+                            scanStage.textContent = 'Failed';
+                            scanStage.className = 'ms-3 badge bg-danger';
                             
                             progressBar.classList.add('bg-danger');
-                            statusText.textContent = 'Scan failed';
-                            detailsText.textContent = progress.error_message || 'An error occurred during the scan';
+                            progressBar.classList.remove('progress-bar-animated');
+                            document.getElementById('scan-spinner').style.display = 'none';
                             
-                            showToast(`Scan failed: ${progress.error_message}`, 'error');
+                            statusText.textContent = '❌ Security scan failed';
+                            deviceInfo.style.display = 'none';
+                            
+                            // Error details
+                            const errorMessage = progress.error_message || 'An unexpected error occurred during the security scan.';
+                            detailsText.innerHTML = `
+                                <div class="d-flex align-items-start">
+                                    <i class="bi bi-exclamation-triangle text-danger me-2 mt-1"></i>
+                                    <div>
+                                        <div class="fw-medium text-danger">Scan Failed</div>
+                                        <div class="small text-muted">${errorMessage}</div>
+                                        <div class="small text-muted mt-1">
+                                            Try running the scan again. If the problem persists, check your network connectivity and scanner permissions.
+                                        </div>
+                                    </div>
+                                </div>
+                            `;
+                            
+                            // Update explanation for failure
+                            document.getElementById('scan-explanation-text').textContent = 
+                                'The security scan encountered an error and could not complete. This may be due to network connectivity issues or scanner configuration problems.';
+                            
+                            showToast(`Scan failed: ${errorMessage}`, 'error');
                             
                             setTimeout(() => {
                                 progressContainer.style.display = 'none';
                                 progressBar.classList.remove('bg-danger');
-                            }, 5000);
+                            }, 8000);
                         }
                     }
                 } catch (error) {
@@ -455,6 +1256,9 @@
             setTimeout(() => {
                 if (progressInterval) {
                     clearInterval(progressInterval);
+                }
+                if (timerInterval) {
+                    clearInterval(timerInterval);
                 }
             }, 30 * 60 * 1000);
             
@@ -493,19 +1297,47 @@
         
         const criticalIssues = summary.by_severity?.critical || 0;
         const highIssues = summary.by_severity?.high || 0;
+        const mediumIssues = summary.by_severity?.medium || 0;
+        const totalIssues = criticalIssues + highIssues + mediumIssues;
+        
+        let statusText, explanation, cardClass;
         
         if (criticalIssues > 0) {
-            statusElement.textContent = 'Critical';
-            statusCard.className = 'card bg-danger text-white';
+            statusText = 'Critical Risk';
+            explanation = `${criticalIssues} critical security issue${criticalIssues > 1 ? 's' : ''} need immediate attention`;
+            cardClass = 'card bg-danger text-white';
         } else if (highIssues > 0) {
-            statusElement.textContent = 'At Risk';
-            statusCard.className = 'card bg-warning text-white';
-        } else if ((summary.by_severity?.medium || 0) > 0) {
-            statusElement.textContent = 'Moderate';
-            statusCard.className = 'card bg-info text-white';
+            statusText = 'High Risk';
+            explanation = `${highIssues} high-risk issue${highIssues > 1 ? 's' : ''} should be reviewed soon`;
+            cardClass = 'card bg-warning text-white';
+        } else if (mediumIssues > 0) {
+            statusText = 'Moderate Risk';
+            explanation = `${mediumIssues} medium-risk issue${mediumIssues > 1 ? 's' : ''} to monitor`;
+            cardClass = 'card bg-info text-white';
         } else {
-            statusElement.textContent = 'Secure';
-            statusCard.className = 'card bg-success text-white';
+            statusText = 'Secure';
+            explanation = 'No significant security issues detected';
+            cardClass = 'card bg-success text-white';
+        }
+        
+        statusElement.innerHTML = `
+            ${statusText}
+            <small class="d-block" style="font-size: 0.75rem; opacity: 0.9; font-weight: normal;">
+                ${explanation}
+            </small>
+        `;
+        statusCard.className = cardClass;
+        
+        // Update tooltip with more detailed information
+        const helpIcon = statusCard.querySelector('[data-bs-toggle="tooltip"]');
+        if (helpIcon && window.bootstrap) {
+            const tooltip = bootstrap.Tooltip.getInstance(helpIcon);
+            if (tooltip) {
+                tooltip.dispose();
+            }
+            new bootstrap.Tooltip(helpIcon, {
+                title: `Security Status: ${statusText}. ${explanation}. ${totalIssues > 0 ? 'Review the alerts below for details.' : 'Keep monitoring to maintain security.'}`
+            });
         }
     }
     
@@ -590,7 +1422,20 @@
         const container = document.getElementById('network-overview-table');
         
         if (!overview || !overview.devices || overview.devices.length === 0) {
-            container.innerHTML = '<div class="text-muted text-center py-4">No security scan data available for the selected time period.</div>';
+            container.innerHTML = `
+                <div class="text-center py-4">
+                    <div class="text-info mb-2">
+                        <i class="bi bi-search" style="font-size: 2rem;"></i>
+                    </div>
+                    <div class="text-muted">
+                        <strong>No scan data available</strong><br>
+                        <small>Run a network scan to see security information for your devices.</small>
+                    </div>
+                    <button class="btn btn-outline-primary btn-sm mt-2" onclick="document.getElementById('run-security-scan').click()">
+                        <i class="bi bi-search"></i> Start Network Scan
+                    </button>
+                </div>
+            `;
             return;
         }
         
@@ -621,21 +1466,37 @@
                                     <span class="badge bg-info">${device.open_ports}</span>
                                 </td>
                                 <td>
-                                    <div class="progress" style="width: 60px; height: 8px;">
-                                        <div class="progress-bar bg-${getRiskColor(device.avg_risk_score)}" 
-                                             style="width: ${(device.avg_risk_score / 10) * 100}%"></div>
+                                    <div class="risk-score-display">
+                                        <div class="risk-score-bar">
+                                            <div class="risk-score-fill bg-${getRiskColor(device.avg_risk_score)}" 
+                                                 style="width: ${(device.avg_risk_score / 10) * 100}%"></div>
+                                        </div>
+                                        <span class="small fw-medium">${device.avg_risk_score.toFixed(1)}</span>
                                     </div>
-                                    <small>${device.avg_risk_score.toFixed(1)}/10</small>
+                                    <div class="mt-1">
+                                        <span class="risk-indicator risk-${device.security_status.replace(' ', '-')}">
+                                            ${getRiskIcon(device.avg_risk_score)} ${device.security_status}
+                                        </span>
+                                    </div>
                                 </td>
                                 <td>
-                                    <span class="badge bg-${getSecurityStatusColor(device.security_status)}">${device.security_status.toUpperCase()}</span>
+                                    <div class="device-security-badge ${getSecurityBadgeClass(device.security_status)}">
+                                        ${device.security_status.replace('-', ' ')}
+                                    </div>
+                                    <div class="mt-1">
+                                        <small class="text-muted">
+                                            ${device.open_ports} port${device.open_ports === 1 ? '' : 's'} open
+                                        </small>
+                                    </div>
                                 </td>
                                 <td>
                                     <small>${device.services.slice(0, 3).join(', ')}${device.services.length > 3 ? '...' : ''}</small>
                                 </td>
                                 <td>
-                                    <button class="btn btn-sm btn-outline-primary" onclick="scanDevice(${device.id})">
-                                        <i class="bi bi-search"></i>
+                                    <button class="btn btn-sm btn-outline-primary" onclick="scanDevice(${device.id})"
+                                            data-bs-toggle="tooltip" data-bs-placement="left" 
+                                            data-bs-title="Run a detailed security scan on this specific device">
+                                        <i class="bi bi-search"></i> Scan
                                     </button>
                                 </td>
                             </tr>
@@ -652,7 +1513,17 @@
         const container = document.getElementById('security-alerts-table');
         
         if (!alerts || alerts.length === 0) {
-            container.innerHTML = '<div class="text-muted text-center py-4">No security alerts found for the selected time period.</div>';
+            container.innerHTML = `
+                <div class="text-center py-4">
+                    <div class="text-success mb-2">
+                        <i class="bi bi-shield-check" style="font-size: 2rem;"></i>
+                    </div>
+                    <div class="text-muted">
+                        <strong>No security alerts found</strong><br>
+                        <small>Your network appears secure for the selected time period. Keep monitoring with regular scans.</small>
+                    </div>
+                </div>
+            `;
             return;
         }
         
@@ -661,45 +1532,92 @@
                 <table class="table table-hover">
                     <thead>
                         <tr>
+                            <th class="text-center" style="width: 40px;">
+                                <input type="checkbox" class="form-check-input" id="select-all-alerts" 
+                                       data-bs-toggle="tooltip" data-bs-placement="right" 
+                                       data-bs-title="Select all visible alerts">
+                            </th>
+                            <th class="text-nowrap">Priority</th>
                             <th>Device</th>
-                            <th>Alert Type</th>
-                            <th>Severity</th>
-                            <th>Port/Service</th>
-                            <th>Message</th>
-                            <th>Time</th>
-                            <th>Status</th>
+                            <th>Threat Type</th>
+                            <th>Impact</th>
+                            <th>Details</th>
+                            <th>Detected</th>
+                            <th class="text-center">Actions</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${alerts.map(alert => `
-                            <tr>
-                                <td>
-                                    <span class="fw-bold">${alert.device_name}</span>
+                        ${alerts.map(alert => {
+                            const alertInfo = getAlertTypeInfo(alert.alert_type, alert.severity);
+                            const impactInfo = getAlertImpactInfo(alert);
+                            const timeAgo = getTimeAgo(new Date(alert.created_at));
+                            
+                            return `
+                            <tr class="${alert.severity === 'critical' ? 'table-danger' : alert.severity === 'high' ? 'table-warning' : ''}">
+                                <td class="text-center">
+                                    <div class="d-flex flex-column align-items-center">
+                                        <div class="priority-indicator priority-${alert.severity} mb-1" 
+                                             data-bs-toggle="tooltip" data-bs-placement="right"
+                                             data-bs-title="${alertInfo.priorityExplanation}">
+                                            <i class="bi bi-${alertInfo.priorityIcon}"></i>
+                                        </div>
+                                        <small class="text-muted">${alert.severity.toUpperCase()}</small>
+                                    </div>
                                 </td>
                                 <td>
-                                    <span class="badge bg-info">${alert.alert_type.replace('_', ' ')}</span>
+                                    <div class="fw-medium">${alert.device_name}</div>
+                                    <small class="text-muted">Device</small>
                                 </td>
                                 <td>
-                                    <span class="badge bg-${getSeverityColor(alert.severity)}">${alert.severity.toUpperCase()}</span>
+                                    <div class="d-flex align-items-center mb-1">
+                                        <i class="bi bi-${alertInfo.icon} me-2 ${alertInfo.iconColor}"></i>
+                                        <span class="fw-medium">${alertInfo.displayName}</span>
+                                    </div>
+                                    <small class="text-muted">${alertInfo.description}</small>
                                 </td>
                                 <td>
-                                    ${alert.port ? `<code>${alert.port}</code>` : ''}
-                                    ${alert.service ? `<br><small>${alert.service}</small>` : ''}
+                                    <div class="impact-assessment">
+                                        <div class="fw-medium text-${impactInfo.color}">${impactInfo.level}</div>
+                                        <small class="text-muted">${impactInfo.description}</small>
+                                        ${alert.risk_score ? `<div class="mt-1"><small class="text-muted">Risk: ${alert.risk_score}/10</small></div>` : ''}
+                                    </div>
                                 </td>
                                 <td>
-                                    <small>${alert.message.replace('[SECURITY] ', '')}</small>
+                                    <div class="alert-details">
+                                        <div class="mb-1">${alert.message.replace('[SECURITY] ', '')}</div>
+                                        ${alert.port ? `<div><code class="bg-light px-1 rounded">Port ${alert.port}</code></div>` : ''}
+                                        ${alert.service ? `<div class="mt-1"><small class="text-muted">Service: ${alert.service}</small></div>` : ''}
+                                        ${alert.version ? `<div><small class="text-muted">Version: ${alert.version}</small></div>` : ''}
+                                    </div>
                                 </td>
                                 <td>
-                                    <small>${new Date(alert.created_at).toLocaleString()}</small>
+                                    <div class="time-info">
+                                        <div class="fw-medium">${timeAgo}</div>
+                                        <small class="text-muted">${new Date(alert.created_at).toLocaleDateString()}</small>
+                                    </div>
                                 </td>
-                                <td>
-                                    ${alert.acknowledged ? 
-                                        '<span class="badge bg-success">Acknowledged</span>' : 
-                                        '<button class="btn btn-sm btn-outline-warning" onclick="acknowledgeAlert(' + alert.id + ')">Acknowledge</button>'
-                                    }
+                                <td class="text-center">
+                                    <div class="btn-group-vertical btn-group-sm">
+                                        ${alert.acknowledged ? 
+                                            '<span class="badge bg-success mb-1"><i class="bi bi-check-circle"></i> Reviewed</span>' : 
+                                            `<button class="btn btn-outline-success btn-sm mb-1" onclick="acknowledgeAlert(${alert.id})" 
+                                                     data-bs-toggle="tooltip" data-bs-placement="left" 
+                                                     data-bs-title="Mark this alert as reviewed and understood">
+                                                <i class="bi bi-check"></i> Review
+                                             </button>`
+                                        }
+                                        ${alertInfo.hasRemediation ? 
+                                            `<button class="btn btn-outline-primary btn-sm" onclick="showRemediationInfo('${alert.alert_type}', '${alert.severity}')"
+                                                     data-bs-toggle="tooltip" data-bs-placement="left" 
+                                                     data-bs-title="Get guidance on how to address this security issue">
+                                                <i class="bi bi-question-circle"></i> Help
+                                             </button>` : ''
+                                        }
+                                    </div>
                                 </td>
                             </tr>
-                        `).join('')}
+                            `;
+                        }).join('')}
                     </tbody>
                 </table>
             </div>
@@ -712,29 +1630,115 @@
         const container = document.getElementById('security-recommendations');
         
         if (!riskAssessment || !riskAssessment.recommendations) {
-            container.innerHTML = '<div class="text-muted">No recommendations available.</div>';
+            container.innerHTML = `
+                <div class="text-center py-3">
+                    <div class="text-info mb-2">
+                        <i class="bi bi-lightbulb" style="font-size: 1.5rem;"></i>
+                    </div>
+                    <div class="text-muted">
+                        <strong>Analysis in progress</strong><br>
+                        <small>Security recommendations will appear after scanning your network.</small>
+                    </div>
+                </div>
+            `;
             return;
         }
         
-        const recommendations = riskAssessment.recommendations.map(rec => `
-            <div class="d-flex align-items-start mb-2">
-                <i class="bi bi-check-circle text-success me-2 mt-1"></i>
-                <div>${rec}</div>
-            </div>
-        `).join('');
+        const riskLevel = riskAssessment.overall_risk_level || 'low';
+        const riskScore = riskAssessment.risk_score || 0;
         
-        const riskLevel = riskAssessment.overall_risk_level;
-        const riskColor = getRiskColor(riskAssessment.risk_score || 0);
+        // Enhanced risk level explanations
+        const riskLevelInfo = {
+            'low': {
+                title: 'Low Risk - Good Security Posture',
+                explanation: 'Your network shows good security practices with minimal risks detected.',
+                color: 'success',
+                icon: 'shield-check'
+            },
+            'medium': {
+                title: 'Medium Risk - Some Attention Needed',
+                explanation: 'Minor security issues detected that should be addressed when convenient.',
+                color: 'warning',
+                icon: 'shield-exclamation'
+            },
+            'high': {
+                title: 'High Risk - Review Required',
+                explanation: 'Security concerns found that should be reviewed and addressed soon.',
+                color: 'danger',
+                icon: 'shield-exclamation'
+            },
+            'critical': {
+                title: 'Critical Risk - Immediate Action Required',
+                explanation: 'Serious security vulnerabilities detected that need immediate attention.',
+                color: 'danger',
+                icon: 'shield-x'
+            }
+        };
+        
+        const riskInfo = riskLevelInfo[riskLevel] || riskLevelInfo['low'];
+        
+        // Prioritize recommendations by importance
+        const prioritizedRecommendations = riskAssessment.recommendations.map((rec, index) => {
+            let priority = 'medium';
+            let icon = 'check-circle';
+            
+            if (rec.toLowerCase().includes('immediate') || rec.toLowerCase().includes('critical')) {
+                priority = 'high';
+                icon = 'exclamation-triangle';
+            } else if (rec.toLowerCase().includes('enable') || rec.toLowerCase().includes('update')) {
+                priority = 'medium';
+                icon = 'gear';
+            } else {
+                priority = 'low';
+                icon = 'info-circle';
+            }
+            
+            return { text: rec, priority, icon, order: priority === 'high' ? 0 : (priority === 'medium' ? 1 : 2) };
+        }).sort((a, b) => a.order - b.order);
+        
+        const recommendations = prioritizedRecommendations.map(rec => {
+            const priorityColors = {
+                'high': 'text-danger',
+                'medium': 'text-warning', 
+                'low': 'text-info'
+            };
+            
+            return `
+                <div class="d-flex align-items-start mb-3 p-2 rounded" style="background-color: rgba(var(--bs-primary-rgb), 0.05);">
+                    <i class="bi bi-${rec.icon} ${priorityColors[rec.priority]} me-3 mt-1" style="font-size: 1.1rem;"></i>
+                    <div class="flex-grow-1">
+                        <div class="fw-medium mb-1">${rec.text}</div>
+                        <small class="text-muted">
+                            ${rec.priority === 'high' ? 'High Priority - Address soon' : 
+                              rec.priority === 'medium' ? 'Medium Priority - Plan to address' : 
+                              'Low Priority - Consider when convenient'}
+                        </small>
+                    </div>
+                </div>
+            `;
+        }).join('');
         
         container.innerHTML = `
-            <div class="alert alert-${riskColor} mb-3">
-                <strong>Network Risk Level: ${riskLevel.toUpperCase()}</strong>
-                <div class="mt-2">
-                    Risk Score: ${riskAssessment.risk_score || 0}/100
+            <div class="alert alert-${riskInfo.color} mb-4" style="border: 2px solid; border-radius: 8px;">
+                <div class="d-flex align-items-center mb-2">
+                    <i class="bi bi-${riskInfo.icon} me-2" style="font-size: 1.2rem;"></i>
+                    <strong>${riskInfo.title}</strong>
+                </div>
+                <div class="mb-2">${riskInfo.explanation}</div>
+                <div class="d-flex align-items-center">
+                    <span class="me-3">Risk Score: <strong>${riskScore}/100</strong></span>
+                    <div class="progress flex-grow-1" style="height: 8px;">
+                        <div class="progress-bar bg-${getRiskColor(riskScore)}" style="width: ${riskScore}%"></div>
+                    </div>
                 </div>
             </div>
-            <h6>Recommendations:</h6>
-            ${recommendations}
+            
+            <h6 class="mb-3 d-flex align-items-center">
+                <i class="bi bi-lightbulb me-2"></i>
+                Recommended Actions
+                ${prioritizedRecommendations.length > 0 ? `<span class="badge bg-primary ms-2">${prioritizedRecommendations.length}</span>` : ''}
+            </h6>
+            ${recommendations || '<div class="text-muted">No specific recommendations at this time. Keep monitoring your network regularly.</div>'}
         `;
     }
     
@@ -743,6 +1747,30 @@
         if (score >= 6) return 'warning';
         if (score >= 4) return 'info';
         return 'success';
+    }
+    
+    function getRiskIcon(score) {
+        if (score >= 8) return '⚠️';
+        if (score >= 6) return '🔶';
+        if (score >= 4) return '🔵';
+        return '✅';
+    }
+    
+    function getSecurityBadgeClass(status) {
+        const statusMap = {
+            'low': 'secure',
+            'medium': 'medium-risk',
+            'high': 'high-risk',
+            'critical': 'critical-risk'
+        };
+        return statusMap[status] || 'secure';
+    }
+    
+    function getRiskLevelFromScore(score) {
+        if (score >= 8) return 'critical';
+        if (score >= 6) return 'high';
+        if (score >= 4) return 'medium';
+        return 'low';
     }
     
     function getSecurityStatusColor(status) {
@@ -763,6 +1791,233 @@
             'critical': 'dark'
         };
         return colors[severity] || 'secondary';
+    }
+    
+    // Alert type information and categorization
+    function getAlertTypeInfo(alertType, severity) {
+        const alertTypes = {
+            'new_service': {
+                displayName: 'New Service Detected',
+                description: 'A previously unknown service has been discovered',
+                icon: 'plus-circle',
+                iconColor: 'text-info',
+                hasRemediation: true,
+                priorityExplanation: 'New services may indicate changes in your network or potential security risks'
+            },
+            'suspicious_port': {
+                displayName: 'Suspicious Port Open',
+                description: 'A port associated with security risks is open',
+                icon: 'door-open',
+                iconColor: 'text-warning',
+                hasRemediation: true,
+                priorityExplanation: 'Suspicious ports can provide entry points for attackers'
+            },
+            'vulnerability': {
+                displayName: 'Security Vulnerability',
+                description: 'A known security weakness has been identified',
+                icon: 'shield-exclamation',
+                iconColor: 'text-danger',
+                hasRemediation: true,
+                priorityExplanation: 'Vulnerabilities can be exploited by attackers to gain access'
+            },
+            'config_change': {
+                displayName: 'Configuration Change',
+                description: 'A security-related configuration has changed',
+                icon: 'gear',
+                iconColor: 'text-warning',
+                hasRemediation: true,
+                priorityExplanation: 'Unexpected configuration changes may indicate security issues'
+            }
+        };
+        
+        const info = alertTypes[alertType] || {
+            displayName: alertType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            description: 'Security alert requiring attention',
+            icon: 'exclamation-triangle',
+            iconColor: 'text-warning',
+            hasRemediation: false,
+            priorityExplanation: 'This alert indicates a potential security concern'
+        };
+        
+        // Set priority icon based on severity
+        info.priorityIcon = {
+            'critical': 'exclamation-triangle-fill',
+            'high': 'exclamation-circle',
+            'medium': 'info-circle',
+            'low': 'circle'
+        }[severity] || 'circle';
+        
+        return info;
+    }
+    
+    // Impact assessment for alerts
+    function getAlertImpactInfo(alert) {
+        const severity = alert.severity;
+        const alertType = alert.alert_type;
+        const riskScore = alert.risk_score || 0;
+        
+        let impact = {
+            level: 'Unknown',
+            description: 'Impact assessment unavailable',
+            color: 'muted'
+        };
+        
+        if (severity === 'critical') {
+            impact = {
+                level: 'Critical Impact',
+                description: 'Immediate security risk to network',
+                color: 'danger'
+            };
+        } else if (severity === 'high' || riskScore >= 7) {
+            impact = {
+                level: 'High Impact',
+                description: 'Significant security concern',
+                color: 'warning'
+            };
+        } else if (severity === 'medium' || riskScore >= 4) {
+            impact = {
+                level: 'Medium Impact',
+                description: 'Moderate security risk',
+                color: 'info'
+            };
+        } else {
+            impact = {
+                level: 'Low Impact',
+                description: 'Minor security concern',
+                color: 'success'
+            };
+        }
+        
+        return impact;
+    }
+    
+    // Time ago helper function
+    function getTimeAgo(date) {
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+        
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        if (diffDays < 30) return `${diffDays}d ago`;
+        return date.toLocaleDateString();
+    }
+    
+    // Show remediation information
+    function showRemediationInfo(alertType, severity) {
+        const remediationInfo = {
+            'new_service': {
+                title: 'New Service Detected - What to do',
+                content: `
+                    <div class="mb-3">
+                        <h6>Immediate Steps:</h6>
+                        <ol class="small">
+                            <li>Verify if this service was intentionally installed</li>
+                            <li>Check if the service is necessary for your operations</li>
+                            <li>Ensure the service is properly configured and secured</li>
+                            <li>Consider disabling the service if it's not needed</li>
+                        </ol>
+                    </div>
+                    <div class="alert alert-info small">
+                        <strong>Why this matters:</strong> New services can introduce vulnerabilities or provide unauthorized access points.
+                    </div>
+                `
+            },
+            'suspicious_port': {
+                title: 'Suspicious Port Open - What to do',
+                content: `
+                    <div class="mb-3">
+                        <h6>Immediate Steps:</h6>
+                        <ol class="small">
+                            <li>Identify what service is running on this port</li>
+                            <li>Check if the service is legitimate and necessary</li>
+                            <li>Review security settings for the service</li>
+                            <li>Consider blocking the port if the service is not needed</li>
+                            <li>Update the service to the latest version</li>
+                        </ol>
+                    </div>
+                    <div class="alert alert-warning small">
+                        <strong>Why this matters:</strong> Suspicious ports often run services that are commonly targeted by attackers.
+                    </div>
+                `
+            },
+            'vulnerability': {
+                title: 'Security Vulnerability - What to do',
+                content: `
+                    <div class="mb-3">
+                        <h6>Immediate Steps:</h6>
+                        <ol class="small">
+                            <li><strong>Update immediately:</strong> Install the latest software updates</li>
+                            <li>Review security patches for the affected service</li>
+                            <li>Consider temporarily disabling the service if updates aren't available</li>
+                            <li>Monitor for any suspicious activity</li>
+                            <li>Check vendor security advisories</li>
+                        </ol>
+                    </div>
+                    <div class="alert alert-danger small">
+                        <strong>Why this matters:</strong> Vulnerabilities can be exploited by attackers to gain unauthorized access to your network.
+                    </div>
+                `
+            }
+        };
+        
+        const info = remediationInfo[alertType] || {
+            title: 'Security Alert - General Guidance',
+            content: `
+                <div class="mb-3">
+                    <h6>General Security Steps:</h6>
+                    <ol class="small">
+                        <li>Review the alert details carefully</li>
+                        <li>Investigate the affected device or service</li>
+                        <li>Apply security updates if available</li>
+                        <li>Consider consulting security documentation</li>
+                        <li>Monitor for related security issues</li>
+                    </ol>
+                </div>
+                <div class="alert alert-info small">
+                    <strong>When in doubt:</strong> Consult with a security professional or your IT support team.
+                </div>
+            `
+        };
+        
+        // Create and show modal with remediation information
+        const modalHtml = `
+            <div class="modal fade" id="remediationModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">${info.title}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            ${info.content}
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if any
+        const existingModal = document.getElementById('remediationModal');
+        if (existingModal) {
+            existingModal.remove();
+        }
+        
+        // Add modal to page and show it
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        const modal = new bootstrap.Modal(document.getElementById('remediationModal'));
+        modal.show();
+        
+        // Clean up modal after it's hidden
+        document.getElementById('remediationModal').addEventListener('hidden.bs.modal', function() {
+            this.remove();
+        });
     }
     
     async function scanDevice(deviceId) {
@@ -832,6 +2087,267 @@
             console.error('Error updating settings:', error);
             showToast('Error updating security settings', 'error');
         }
+    }
+    
+    // Network risk calculation
+    function calculateNetworkRiskScore(summary) {
+        const critical = summary.by_severity?.critical || 0;
+        const high = summary.by_severity?.high || 0;
+        const medium = summary.by_severity?.medium || 0;
+        const low = summary.by_severity?.low || 0;
+        
+        // Weighted risk calculation
+        const riskScore = (critical * 10) + (high * 7) + (medium * 4) + (low * 1);
+        const totalAlerts = critical + high + medium + low;
+        
+        if (totalAlerts === 0) return 0;
+        
+        const averageRisk = riskScore / totalAlerts;
+        return Math.min(10, averageRisk);
+    }
+    
+    // Alert Management Functions
+    function toggleAlertFilters() {
+        const filtersDiv = document.getElementById('alert-filters');
+        const button = document.getElementById('filter-alerts-btn');
+        
+        if (filtersDiv.style.display === 'none') {
+            filtersDiv.style.display = 'block';
+            button.classList.add('btn-primary');
+            button.classList.remove('btn-outline-primary');
+        } else {
+            filtersDiv.style.display = 'none';
+            button.classList.remove('btn-primary');
+            button.classList.add('btn-outline-primary');
+        }
+    }
+    
+    function clearAlertFilters() {
+        document.getElementById('severity-filter').value = '';
+        document.getElementById('type-filter').value = '';
+        document.getElementById('status-filter').value = '';
+        applyAlertFilters();
+    }
+    
+    function handleAlertSelection(event) {
+        const alertId = parseInt(event.target.value);
+        
+        if (event.target.checked) {
+            selectedAlerts.add(alertId);
+        } else {
+            selectedAlerts.delete(alertId);
+        }
+        
+        updateBulkActionsBar();
+        updateSelectAllCheckbox();
+    }
+    
+    function toggleSelectAllAlerts(event) {
+        const checkboxes = document.querySelectorAll('.alert-checkbox');
+        
+        checkboxes.forEach(checkbox => {
+            checkbox.checked = event.target.checked;
+            const alertId = parseInt(checkbox.value);
+            
+            if (event.target.checked) {
+                selectedAlerts.add(alertId);
+            } else {
+                selectedAlerts.delete(alertId);
+            }
+        });
+        
+        updateBulkActionsBar();
+    }
+    
+    function updateSelectAllCheckbox() {
+        const selectAllCheckbox = document.getElementById('select-all-alerts');
+        const checkboxes = document.querySelectorAll('.alert-checkbox');
+        
+        if (checkboxes.length === 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        } else if (selectedAlerts.size === checkboxes.length) {
+            selectAllCheckbox.checked = true;
+            selectAllCheckbox.indeterminate = false;
+        } else if (selectedAlerts.size > 0) {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = true;
+        } else {
+            selectAllCheckbox.checked = false;
+            selectAllCheckbox.indeterminate = false;
+        }
+    }
+    
+    function updateBulkActionsBar() {
+        const bulkActionsBar = document.getElementById('bulk-actions-bar');
+        const selectedCount = document.getElementById('selected-count');
+        
+        if (selectedAlerts.size > 0) {
+            bulkActionsBar.style.display = 'block';
+            selectedCount.textContent = selectedAlerts.size;
+        } else {
+            bulkActionsBar.style.display = 'none';
+        }
+    }
+    
+    function clearAlertSelection() {
+        selectedAlerts.clear();
+        document.querySelectorAll('.alert-checkbox').forEach(checkbox => {
+            checkbox.checked = false;
+        });
+        updateBulkActionsBar();
+        updateSelectAllCheckbox();
+    }
+    
+    async function bulkAcknowledgeAlerts() {
+        if (selectedAlerts.size === 0) return;
+        
+        try {
+            const promises = Array.from(selectedAlerts).map(alertId => 
+                fetch(`/api/monitoring/alerts/${alertId}/acknowledge`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+            );
+            
+            await Promise.all(promises);
+            
+            showToast(`Successfully acknowledged ${selectedAlerts.size} alert${selectedAlerts.size > 1 ? 's' : ''}`, 'success');
+            
+            // Refresh alerts and clear selection
+            clearAlertSelection();
+            loadSecurityAlerts();
+            
+        } catch (error) {
+            console.error('Error acknowledging alerts:', error);
+            showToast('Error acknowledging selected alerts', 'error');
+        }
+    }
+    
+    async function acknowledgeAllVisibleAlerts() {
+        const unacknowledgedAlerts = filteredAlerts.filter(alert => !alert.acknowledged);
+        
+        if (unacknowledgedAlerts.length === 0) {
+            showToast('No unacknowledged alerts to process', 'info');
+            return;
+        }
+        
+        if (!confirm(`Are you sure you want to acknowledge all ${unacknowledgedAlerts.length} visible alert${unacknowledgedAlerts.length > 1 ? 's' : ''}?`)) {
+            return;
+        }
+        
+        try {
+            const promises = unacknowledgedAlerts.map(alert => 
+                fetch(`/api/monitoring/alerts/${alert.id}/acknowledge`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' }
+                })
+            );
+            
+            await Promise.all(promises);
+            
+            showToast(`Successfully acknowledged ${unacknowledgedAlerts.length} alert${unacknowledgedAlerts.length > 1 ? 's' : ''}`, 'success');
+            
+            // Refresh alerts
+            loadSecurityAlerts();
+            
+        } catch (error) {
+            console.error('Error acknowledging all alerts:', error);
+            showToast('Error acknowledging alerts', 'error');
+        }
+    }
+    
+    // Security Education Modal
+    function showSecurityGuideModal() {
+        const modalHtml = `
+            <div class="modal fade" id="securityGuideModal" tabindex="-1">
+                <div class="modal-dialog modal-lg">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title"><i class="bi bi-question-circle me-2"></i>Quick Security Guide</h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body">
+                            <h6 class="text-success"><i class="bi bi-shield-check"></i> Understanding Security Levels</h6>
+                            <div class="mb-3">
+                                <div class="mb-2"><span class="badge bg-success">SECURE</span> No significant issues found</div>
+                                <div class="mb-2"><span class="badge bg-warning">MODERATE</span> Minor security concerns to monitor</div>
+                                <div class="mb-2"><span class="badge bg-danger">AT RISK</span> Security issues need attention</div>
+                                <div class="mb-2"><span class="badge bg-dark">CRITICAL</span> Immediate action required</div>
+                            </div>
+                            
+                            <h6 class="text-info"><i class="bi bi-lightbulb"></i> What to Do About Alerts</h6>
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="card border-primary mb-3">
+                                        <div class="card-header bg-primary text-white">
+                                            <strong>New Service Detected:</strong>
+                                        </div>
+                                        <div class="card-body">
+                                            <ol class="small mb-0">
+                                                <li>Check if you recognize the service</li>
+                                                <li>Verify it's needed for your operations</li>
+                                                <li>Update if legitimate but outdated</li>
+                                                <li>Disable if unnecessary</li>
+                                            </ol>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="card border-warning mb-3">
+                                        <div class="card-header bg-warning text-dark">
+                                            <strong>Suspicious Port Open:</strong>
+                                        </div>
+                                        <div class="card-body">
+                                            <ol class="small mb-0">
+                                                <li>Research what uses that port</li>
+                                                <li>Check if the service is legitimate</li>
+                                                <li>Consider blocking if unneeded</li>
+                                                <li>Get help if you're unsure</li>
+                                            </ol>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="alert alert-info">
+                                <strong><i class="bi bi-info-circle"></i> Remember:</strong> When in doubt, it's safer to ask for help or disable services you don't recognize.
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // Remove existing modal if any
+        const existingModal = document.getElementById('securityGuideModal');
+        if (existingModal) existingModal.remove();
+        
+        // Add modal to page and show it
+        document.body.insertAdjacentHTML('beforeend', modalHtml);
+        const modal = new bootstrap.Modal(document.getElementById('securityGuideModal'));
+        modal.show();
+        
+        // Clean up modal after it's hidden
+        document.getElementById('securityGuideModal').addEventListener('hidden.bs.modal', function() {
+            this.remove();
+        });
+    }
+    
+    // Debounce utility function
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
     }
 </script>
 {% endblock %}

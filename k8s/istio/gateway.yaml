@@ -1,0 +1,202 @@
+apiVersion: networking.istio.io/v1beta1
+kind: Gateway
+metadata:
+  name: homenetmon-gateway
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: gateway
+spec:
+  selector:
+    istio: ingressgateway
+  servers:
+  # HTTP server for redirects
+  - port:
+      number: 80
+      name: http
+      protocol: HTTP
+    hosts:
+    - homenetmon.example.com
+    - www.homenetmon.example.com
+    - api.homenetmon.example.com
+    tls:
+      httpsRedirect: true
+  # HTTPS server
+  - port:
+      number: 443
+      name: https
+      protocol: HTTPS
+    hosts:
+    - homenetmon.example.com
+    - www.homenetmon.example.com
+    - api.homenetmon.example.com
+    tls:
+      mode: SIMPLE
+      credentialName: homenetmon-tls-cert
+  # Management interface (internal only)
+  - port:
+      number: 8443
+      name: https-mgmt
+      protocol: HTTPS
+    hosts:
+    - mgmt.homenetmon.internal
+    tls:
+      mode: MUTUAL
+      credentialName: homenetmon-mtls-cert
+
+---
+apiVersion: networking.istio.io/v1beta1
+kind: VirtualService
+metadata:
+  name: homenetmon-vs
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: virtualservice
+spec:
+  hosts:
+  - homenetmon.example.com
+  - www.homenetmon.example.com
+  - api.homenetmon.example.com
+  gateways:
+  - homenetmon-gateway
+  http:
+  # API routes with rate limiting
+  - match:
+    - uri:
+        prefix: /api/
+    headers:
+      x-api-version:
+        exact: v1
+    route:
+    - destination:
+        host: homenetmon-app
+        port:
+          number: 80
+        subset: v1
+    fault:
+      delay:
+        percentage:
+          value: 0.1
+        fixedDelay: 5s
+    retries:
+      attempts: 3
+      perTryTimeout: 10s
+      retryOn: 5xx,reset,connect-failure,refused-stream
+    timeout: 30s
+    
+  # WebSocket routes
+  - match:
+    - uri:
+        prefix: /socket.io/
+    route:
+    - destination:
+        host: homenetmon-app
+        port:
+          number: 80
+    timeout: 3600s
+    
+  # Static assets with caching
+  - match:
+    - uri:
+        prefix: /static/
+    route:
+    - destination:
+        host: homenetmon-app
+        port:
+          number: 80
+    headers:
+      response:
+        add:
+          cache-control: "public, max-age=31536000"
+          
+  # Health checks
+  - match:
+    - uri:
+        exact: /health
+    - uri:
+        exact: /ready
+    route:
+    - destination:
+        host: homenetmon-app
+        port:
+          number: 80
+    timeout: 5s
+    
+  # Main application routes
+  - match:
+    - uri:
+        prefix: /
+    route:
+    - destination:
+        host: homenetmon-app
+        port:
+          number: 80
+        subset: v1
+      weight: 90
+    - destination:
+        host: homenetmon-app
+        port:
+          number: 80
+        subset: canary
+      weight: 10
+    retries:
+      attempts: 2
+      perTryTimeout: 15s
+    timeout: 30s
+    
+---
+apiVersion: networking.istio.io/v1beta1
+kind: DestinationRule
+metadata:
+  name: homenetmon-dr
+  namespace: homenetmon
+  labels:
+    app.kubernetes.io/name: homenetmon
+    app.kubernetes.io/component: destinationrule
+spec:
+  host: homenetmon-app
+  trafficPolicy:
+    loadBalancer:
+      simple: LEAST_CONN
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 30s
+        tcpNoDelay: true
+      http:
+        http1MaxPendingRequests: 50
+        http2MaxRequests: 100
+        maxRequestsPerConnection: 10
+        maxRetries: 3
+        consecutiveGatewayErrors: 5
+        interval: 30s
+        baseEjectionTime: 30s
+        maxEjectionPercent: 50
+    circuitBreaker:
+      consecutiveGatewayErrors: 5
+      interval: 30s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50
+      minHealthPercent: 50
+  subsets:
+  - name: v1
+    labels:
+      version: v1
+    trafficPolicy:
+      portLevelSettings:
+      - port:
+          number: 80
+        connectionPool:
+          tcp:
+            maxConnections: 80
+  - name: canary
+    labels:
+      version: canary
+    trafficPolicy:
+      portLevelSettings:
+      - port:
+          number: 80
+        connectionPool:
+          tcp:
+            maxConnections: 20
