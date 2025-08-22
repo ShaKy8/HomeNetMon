@@ -31,3 +31,12 @@ All notable changes to HomeNetMon will be documented in this file.
 ---
 
 *Previous versions were managed manually. This changelog will be automatically maintained going forward.*
+
+## [2.3.2] - 2025-08-22
+
+### New Features
+- f5c8927 feat: implement comprehensive version management and accurate device counting
+
+### Other Changes
+- ce152f6 Remove GitHub Actions workflows due to permission restrictions
+
