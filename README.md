@@ -66,37 +66,66 @@ A comprehensive, self-hosted network monitoring solution designed for home netwo
 
 ## Quick Start
 
-### Docker Deployment (Recommended)
+### Manual Installation (Recommended for Development)
 
-1. **Clone the repository:**
+The fastest way to get HomeNetMon running:
+
+1. **Install system dependencies:**
    ```bash
-   git clone <repository-url>
-   cd HomeNetMon
+   # Ubuntu/Debian
+   sudo apt update
+   sudo apt install -y python3 python3-pip python3-venv nmap
    ```
 
-2. **Configure environment (optional):**
+2. **Clone and setup:**
+   ```bash
+   git clone https://github.com/ShaKy8/HomeNetMon.git
+   cd HomeNetMon
+   
+   # Create virtual environment
+   python3 -m venv venv
+   source venv/bin/activate
+   
+   # Install dependencies
+   pip install --upgrade pip
+   pip install -r requirements.txt
+   ```
+
+3. **Configure:**
    ```bash
    cp .env.example .env
-   # Edit .env with your settings
+   # Edit NETWORK_RANGE in .env to match your network (e.g., 192.168.1.0/24)
+   nano .env
    ```
 
-3. **Start with Docker Compose:**
+4. **Start HomeNetMon:**
    ```bash
+   python app.py
+   ```
+
+5. **Access dashboard:** http://localhost:5000
+
+### Docker Deployment 
+
+1. **Clone and start:**
+   ```bash
+   git clone https://github.com/ShaKy8/HomeNetMon.git
+   cd HomeNetMon
+   cp .env.example .env
+   # Edit .env with your settings
    docker-compose up -d
    ```
 
-4. **Access the dashboard:**
-   Open http://localhost:5000 in your browser
+2. **Access dashboard:** http://localhost:5000
 
-### Native Installation
+### Production Installation (Ubuntu/Debian)
 
-1. **Run the installation script:**
+1. **Run the automated installer:**
    ```bash
    sudo ./install.sh
    ```
 
-2. **Access the dashboard:**
-   Open http://your-server-ip in your browser
+2. **Access dashboard:** http://your-server-ip:5000
 
 ## Installation Methods
 
@@ -176,28 +205,59 @@ If you prefer manual installation or are using a different OS:
 1. **Install system dependencies:**
    ```bash
    # Ubuntu/Debian
-   sudo apt-get update
-   sudo apt-get install python3 python3-pip python3-venv nmap iputils-ping net-tools
+   sudo apt update
+   sudo apt install -y python3 python3-pip python3-venv nmap iputils-ping net-tools
    
-   # CentOS/RHEL
-   sudo yum install python3 python3-pip nmap iputils net-tools
+   # CentOS/RHEL  
+   sudo yum install python3 python3-pip python3-venv nmap iputils net-tools
    
    # Arch Linux
    sudo pacman -S python python-pip nmap iputils net-tools
    ```
 
-2. **Create virtual environment:**
+2. **Clone the repository:**
+   ```bash
+   git clone https://github.com/ShaKy8/HomeNetMon.git
+   cd HomeNetMon
+   ```
+
+3. **Create and activate virtual environment:**
    ```bash
    python3 -m venv venv
    source venv/bin/activate
+   ```
+
+4. **Install Python dependencies:**
+   ```bash
+   pip install --upgrade pip
    pip install -r requirements.txt
    ```
 
-3. **Configure and run:**
+5. **Create configuration file:**
    ```bash
-   export NETWORK_RANGE="192.168.1.0/24"
+   cp .env.example .env
+   # Edit .env with your network settings
+   nano .env
+   ```
+   Update at minimum:
+   - `NETWORK_RANGE=192.168.1.0/24` (change to match your network)
+   - `DEBUG=true` (for development)
+
+6. **Start HomeNetMon:**
+   ```bash
    python app.py
    ```
+
+7. **Access the dashboard:**
+   Open http://localhost:5000 in your browser
+
+**To stop HomeNetMon:**
+```bash
+# Find the process ID
+ps aux | grep "python app.py"
+# Kill the process
+pkill -f "python app.py"
+```
 
 ## Configuration
 
@@ -441,45 +501,123 @@ Content-Type: application/json
 
 ### Common Issues
 
-**1. No devices discovered**
-- Check network range configuration
-- Verify homeNetMon can access the network
-- Ensure nmap is installed and working
+**1. Installation Issues**
+
+*Problem: "ModuleNotFoundError: No module named 'pip'"*
+```bash
+# Solution: Install pip for your system
+sudo apt install python3-pip python3-venv  # Ubuntu/Debian
+```
+
+*Problem: "externally-managed-environment" error*
+```bash
+# This is expected on newer Python versions
+# Solution: Always use virtual environments (already in our instructions)
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+```
+
+*Problem: "ModuleNotFoundError: No module named 'numpy'"*
+```bash
+# Solution: The requirements.txt now includes all needed packages
+# Make sure you're in the virtual environment and run:
+pip install -r requirements.txt
+```
+
+**2. Network Discovery Issues**
+
+*Problem: No devices discovered*
+- Check network range configuration in `.env`: `NETWORK_RANGE=192.168.1.0/24`
+- Verify HomeNetMon can access the network
+- Ensure nmap is installed: `which nmap`
 - Check firewall settings
+- Try manual nmap scan: `nmap -sn 192.168.1.0/24`
 
-**2. Permission errors**
-- Ensure user has necessary network capabilities
-- For Docker: verify `NET_RAW` capability
-- For native: check user permissions
+*Problem: nmap errors in logs*
+- Verify nmap installation: `nmap --version`
+- Check network permissions
+- Try running as sudo for testing: `sudo python app.py`
 
-**3. High CPU usage**
-- Reduce monitoring frequency
-- Decrease max_workers setting
+**3. Permission Issues**
+
+*Problem: Permission errors for ping operations*
+- For development: Run `./fix_ping_permissions.sh` (requires sudo)
+- For production: Use the systemd service which handles permissions
+- Alternative: Run with sudo (not recommended for production)
+
+**4. Application Startup Issues**
+
+*Problem: "Address already in use" error*
+```bash
+# Solution: Kill existing process or change port
+pkill -f "python app.py"
+# Or change PORT in .env file
+```
+
+*Problem: Web interface not accessible*
+- Check if service is running: `ps aux | grep "python app.py"`
+- Verify port setting in `.env`: `PORT=5000`
+- Check firewall: `sudo ufw allow 5000`
+- Try accessing via `http://localhost:5000`
+
+**5. Performance Issues**
+
+*Problem: High CPU usage*
+- Reduce monitoring frequency in `.env`: `PING_INTERVAL=60`
+- Decrease max_workers: `MAX_WORKERS=25`
 - Check for network connectivity issues
 
-**4. Memory usage growing**
-- Check data retention settings
+*Problem: Memory usage growing*
+- Check data retention settings: `DATA_RETENTION_DAYS=7`
 - Verify database cleanup is working
-- Monitor for memory leaks
+- Restart the service periodically
 
-**5. Alerts not working**
-- Test email/webhook configuration
-- Check SMTP credentials
+**6. Alert Issues**
+
+*Problem: Email alerts not working*
+- Test email/webhook configuration in `.env`
+- Check SMTP credentials and server settings
 - Verify network connectivity to SMTP server
-- Review alert thresholds
+- Review alert thresholds in web interface
 
 ### Log Files
 
-**Docker:**
+**Manual Installation (Development):**
+```bash
+# View logs in real-time
+tail -f homenetmon.log
+
+# View recent logs
+tail -50 homenetmon.log
+
+# Check application status
+ps aux | grep "python app.py"
+```
+
+**Docker Installation:**
 ```bash
 docker-compose logs -f homeNetMon
 ```
 
-**Native Installation:**
+**Systemd Service Installation:**
 ```bash
+# View service logs
 sudo journalctl -u homeNetMon -f
+
+# Check service status
+sudo systemctl status homeNetMon
+
+# View log file
 tail -f /var/log/homeNetMon/homeNetMon.log
 ```
+
+**Log Analysis Tips:**
+- Look for `ERROR` entries for critical issues
+- `WARNING` entries may indicate configuration problems
+- `INFO` entries show normal operation
+- Device discovery logs show: "Found X devices with nmap scan"
+- Monitoring logs show: "Monitoring cycle completed for X devices"
 
 ### Performance Tuning
 
