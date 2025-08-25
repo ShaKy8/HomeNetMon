@@ -611,37 +611,34 @@ class AlertsManager {
     
     initWebSocket() {
         try {
-            const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-            const wsUrl = `${protocol}//${window.location.host}/ws`;
+            // Use Socket.IO instead of native WebSocket
+            this.socket = io();
             
-            this.socket = new WebSocket(wsUrl);
-            
-            this.socket.onopen = () => {
-                console.log('WebSocket connected for real-time alerts');
+            this.socket.on('connect', () => {
+                console.log('Socket.IO connected for real-time alerts');
                 this.updateConnectionStatus(true);
                 this.showToast('Connected to real-time updates', 'success', 3000);
-            };
+            });
             
-            this.socket.onmessage = (event) => {
-                const data = JSON.parse(event.data);
-                if (data.type === 'alert_update') {
-                    this.handleRealtimeAlert(data.alert);
-                }
-            };
+            this.socket.on('alert_update', (data) => {
+                console.log('Real-time alert update received:', data);
+                this.handleRealtimeAlert(data);
+            });
             
-            this.socket.onclose = () => {
-                console.log('WebSocket disconnected');
+            this.socket.on('disconnect', () => {
+                console.log('Socket.IO disconnected');
                 this.updateConnectionStatus(false);
-                // Attempt to reconnect after 5 seconds
-                setTimeout(() => this.initWebSocket(), 5000);
-            };
+            });
             
-            this.socket.onerror = (error) => {
-                console.error('WebSocket error:', error);
+            this.socket.on('connect_error', (error) => {
+                console.error('Socket.IO connection error:', error);
                 this.updateConnectionStatus(false);
-            };
+            });
+            
+            // Request initial alerts update
+            this.socket.emit('request_alerts_update');
         } catch (error) {
-            console.error('Failed to initialize WebSocket:', error);
+            console.error('Failed to initialize Socket.IO:', error);
             this.updateConnectionStatus(false);
         }
     }

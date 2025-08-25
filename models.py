@@ -3,6 +3,22 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event
 import json
 
+# Import performance cache decorators
+try:
+    from services.performance_cache import cached_property, cache_invalidator
+except ImportError:
+    # Fallback if cache service not available
+    def cached_property(ttl=300, key_func=None, invalidate_on=None):
+        def decorator(func):
+            return property(func)
+        return decorator
+    
+    class DummyInvalidator:
+        def invalidate_device_cache(self, device_id):
+            pass
+    
+    cache_invalidator = DummyInvalidator()
+
 db = SQLAlchemy()
 
 class Device(db.Model):
@@ -32,7 +48,7 @@ class Device(db.Model):
     def display_name(self):
         return self.custom_name or self.hostname or self.ip_address
     
-    @property
+    @cached_property(ttl=30, key_func=lambda self: f"device_{self.id}_status")
     def status(self):
         if not self.last_seen:
             return 'unknown'
@@ -58,7 +74,7 @@ class Device(db.Model):
         
         return 'up'
     
-    @property
+    @cached_property(ttl=30, key_func=lambda self: f"device_{self.id}_response_time")
     def latest_response_time(self):
         """Get the latest response time for this device"""
         latest_data = MonitoringData.query.filter_by(device_id=self.id)\
@@ -66,7 +82,7 @@ class Device(db.Model):
                                          .first()
         return latest_data.response_time if latest_data else None
     
-    @property
+    @cached_property(ttl=60, key_func=lambda self: f"device_{self.id}_active_alerts")
     def active_alerts(self):
         """Get count of active (unresolved) alerts for this device"""
         return Alert.query.filter_by(device_id=self.id, resolved=False).count()
@@ -193,7 +209,7 @@ class Device(db.Model):
             pass
         return None
     
-    @property
+    @cached_property(ttl=120, key_func=lambda self: f"device_{self.id}_health_score")
     def current_health_score(self):
         """Get the latest health score for this device"""
         try:
@@ -204,7 +220,7 @@ class Device(db.Model):
         except Exception:
             return None
     
-    @property
+    @cached_property(ttl=120, key_func=lambda self: f"device_{self.id}_performance_grade")
     def performance_grade(self):
         """Get performance grade based on current health score"""
         health_score = self.current_health_score
@@ -229,7 +245,7 @@ class Device(db.Model):
         else:
             return 'F'
     
-    @property
+    @cached_property(ttl=120, key_func=lambda self: f"device_{self.id}_performance_status")
     def performance_status(self):
         """Get performance status based on current health score"""
         health_score = self.current_health_score
@@ -2243,3 +2259,32 @@ class OptimizationRecommendation(db.Model):
             'actual_improvement': self.actual_improvement,
             'success_rating': self.success_rating
         }
+
+# Cache invalidation event handlers
+@event.listens_for(MonitoringData, 'after_insert')
+@event.listens_for(MonitoringData, 'after_update')
+def invalidate_monitoring_data_cache(mapper, connection, target):
+    """Invalidate device cache when monitoring data changes"""
+    try:
+        cache_invalidator.invalidate_device_cache(target.device_id)
+    except:
+        pass  # Silently fail if cache service not available
+
+@event.listens_for(Alert, 'after_insert')
+@event.listens_for(Alert, 'after_update')
+@event.listens_for(Alert, 'after_delete')
+def invalidate_alert_cache(mapper, connection, target):
+    """Invalidate device cache when alerts change"""
+    try:
+        cache_invalidator.invalidate_device_cache(target.device_id)
+    except:
+        pass  # Silently fail if cache service not available
+
+@event.listens_for(PerformanceMetrics, 'after_insert')
+@event.listens_for(PerformanceMetrics, 'after_update')
+def invalidate_performance_cache(mapper, connection, target):
+    """Invalidate device cache when performance metrics change"""
+    try:
+        cache_invalidator.invalidate_device_cache(target.device_id)
+    except:
+        pass  # Silently fail if cache service not available

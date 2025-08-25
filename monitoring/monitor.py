@@ -20,6 +20,13 @@ class DeviceMonitor:
         self._stop_event = threading.Event()
         self.rule_engine_service = None
         
+        # Use adaptive thread pool for monitoring
+        try:
+            from services.thread_pool_manager import get_monitoring_pool
+            self._adaptive_pool = get_monitoring_pool()
+        except ImportError:
+            self._adaptive_pool = None
+        
     def get_config_value(self, key, default):
         """Get configuration value from database or use default"""
         try:
@@ -256,25 +263,32 @@ class DeviceMonitor:
             max_workers = min(10, len(devices_to_monitor))  # Cap at 10 workers max
             ping_timeout = float(self.get_config_value('ping_timeout', Config.PING_TIMEOUT))
             
-            # Use ThreadPoolExecutor with smaller batch size
-            with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                # PERFORMANCE OPTIMIZATION: Use ping-only tasks for batch processing
+            # PERFORMANCE OPTIMIZATION: Use adaptive thread pool for monitoring
+            if self._adaptive_pool:
                 future_to_device = {
-                    executor.submit(self._ping_device_for_batch, device): device 
+                    self._adaptive_pool.submit(self._ping_device_for_batch, device): device 
                     for device in devices_to_monitor
                 }
-                
-                results = []
-                
-                # Collect results with timeout
-                for future in as_completed(future_to_device, timeout=ping_timeout * 3):
-                    device = future_to_device[future]
-                    try:
-                        result = future.result(timeout=ping_timeout + 1)
-                        if result:
-                            results.append(result)
-                    except Exception as e:
-                        logger.error(f"Error getting result for device {device.ip_address}: {e}")
+            else:
+                # Fallback to regular ThreadPoolExecutor
+                future_to_device = {}
+                with ThreadPoolExecutor(max_workers=max_workers) as executor:
+                    future_to_device = {
+                        executor.submit(self._ping_device_for_batch, device): device 
+                        for device in devices_to_monitor
+                    }
+            
+            results = []
+            
+            # Collect results with timeout
+            for future in as_completed(future_to_device, timeout=ping_timeout * 3):
+                device = future_to_device[future]
+                try:
+                    result = future.result(timeout=ping_timeout + 1)
+                    if result:
+                        results.append(result)
+                except Exception as e:
+                    logger.error(f"Error getting result for device {device.ip_address}: {e}")
             
             # PERFORMANCE OPTIMIZATION: Batch process all monitoring results in a single transaction
             if results:

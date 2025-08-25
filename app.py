@@ -47,6 +47,7 @@ def create_app():
     from api.health import health_bp
     from api.escalation import escalation_bp
     from api.performance import performance_bp
+    from api.performance_optimization import performance_optimization_bp
     
     app.register_blueprint(devices_bp, url_prefix='/api/devices')
     app.register_blueprint(monitoring_bp, url_prefix='/api/monitoring')
@@ -63,6 +64,7 @@ def create_app():
     app.register_blueprint(health_bp, url_prefix='/api/health')
     app.register_blueprint(escalation_bp, url_prefix='/api/escalation')
     app.register_blueprint(performance_bp, url_prefix='/api/performance')
+    app.register_blueprint(performance_optimization_bp)
     
     # Initialize monitoring services
     scanner = NetworkScanner(app)
@@ -111,6 +113,31 @@ def create_app():
     app.configuration_service = configuration_service
     app.escalation_service = escalation_service
     app.performance_monitor = performance_monitor
+    
+    # Initialize WebSocket optimizer for performance
+    from services.websocket_optimizer import init_websocket_optimizer
+    websocket_optimizer = init_websocket_optimizer(db, socketio)
+    app.websocket_optimizer = websocket_optimizer
+    
+    # Initialize memory monitoring and cleanup
+    from services.memory_monitor import init_memory_monitoring
+    memory_monitor = init_memory_monitoring()
+    app.memory_monitor = memory_monitor
+    
+    # Initialize frontend resource optimization
+    from services.resource_optimizer import init_resource_optimization, generate_service_worker
+    from version import __version__
+    resource_bundler, static_optimizer = init_resource_optimization(app)
+    if resource_bundler and static_optimizer:
+        app.resource_bundler = resource_bundler
+        app.static_optimizer = static_optimizer
+        
+        # Generate service worker for PWA caching
+        try:
+            generate_service_worker(app, __version__)
+        except Exception as e:
+            logger.warning(f"Failed to generate service worker: {e}")
+    
     app.socketio = socketio
     
     # Start background services in separate threads
@@ -455,11 +482,35 @@ def create_app():
             emit('unsubscription_error', {'error': str(e)})
     
     @socketio.on('request_device_update')
-    def handle_device_update_request():
-        from models import Device
-        devices = Device.query.all()
-        devices_data = [device.to_dict() for device in devices]
-        emit('device_update', devices_data)
+    def handle_device_update_request(data=None):
+        try:
+            # Check if client supports delta updates
+            client_supports_delta = data and data.get('supports_delta', False)
+            
+            # Use optimized data fetching to prevent N+1 queries
+            from services.websocket_optimizer import websocket_optimizer
+            if websocket_optimizer:
+                if client_supports_delta:
+                    # Send delta update if client supports it
+                    delta_update = websocket_optimizer.get_device_delta_update()
+                    if delta_update:
+                        emit('device_delta_update', delta_update)
+                    else:
+                        # No changes to report
+                        emit('device_no_changes', {'timestamp': datetime.utcnow().isoformat() + 'Z'})
+                else:
+                    # Send full update
+                    devices_data = websocket_optimizer.get_optimized_device_data()
+                    emit('device_update', devices_data)
+            else:
+                # Fallback to original method
+                from models import Device
+                devices = Device.query.all()
+                devices_data = [device.to_dict() for device in devices]
+                emit('device_update', devices_data)
+        except Exception as e:
+            logger.error(f"Error in device update request: {e}")
+            emit('device_update_error', {'error': str(e)})
     
     @socketio.on('request_config_update')
     def handle_config_update_request():
@@ -586,25 +637,29 @@ def create_app():
     def handle_alert_updates_request():
         """Handle request for real-time alert updates"""
         try:
-            from models import Alert
-            
-            # Get active alerts summary
-            active_alerts = Alert.query.filter_by(resolved=False).all()
-            
-            alert_data = []
-            for alert in active_alerts:
-                alert_data.append({
-                    'id': alert.id,
-                    'device_id': alert.device_id,
-                    'device_name': alert.device.display_name,
-                    'device_ip': alert.device.ip_address,
-                    'alert_type': alert.alert_type,
-                    'severity': alert.severity,
-                    'message': alert.message,
-                    'created_at': alert.created_at.isoformat() + 'Z',
-                    'acknowledged': alert.acknowledged,
-                    'resolved': alert.resolved
-                })
+            # Use optimized data fetching to prevent N+1 queries
+            from services.websocket_optimizer import websocket_optimizer
+            if websocket_optimizer:
+                alert_data = websocket_optimizer.get_optimized_alert_data()
+            else:
+                # Fallback to original method with N+1 query issue
+                from models import Alert
+                active_alerts = Alert.query.filter_by(resolved=False).all()
+                
+                alert_data = []
+                for alert in active_alerts:
+                    alert_data.append({
+                        'id': alert.id,
+                        'device_id': alert.device_id,
+                        'device_name': alert.device.display_name,
+                        'device_ip': alert.device.ip_address,
+                        'alert_type': alert.alert_type,
+                        'severity': alert.severity,
+                        'message': alert.message,
+                        'created_at': alert.created_at.isoformat() + 'Z',
+                        'acknowledged': alert.acknowledged,
+                        'resolved': alert.resolved
+                    })
             
             emit('alert_updates', {
                 'alerts': alert_data,
@@ -726,6 +781,62 @@ def create_app():
             
         except Exception as e:
             emit('performance_error', {'error': str(e)})
+    
+    @socketio.on('subscribe_to_delta_updates')
+    def handle_delta_subscription(data):
+        """Handle subscription to efficient delta updates"""
+        try:
+            client_sid = request.sid
+            update_types = data.get('types', ['devices', 'alerts'])
+            
+            # Join rooms for delta updates
+            for update_type in update_types:
+                room_name = f"delta_{update_type}"
+                join_room(room_name)
+                logger.debug(f"Client {client_sid} subscribed to delta updates: {room_name}")
+            
+            emit('delta_subscription_confirmed', {
+                'subscribed_to': update_types,
+                'supports_delta': True,
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
+            })
+            
+        except Exception as e:
+            logger.error(f"Error in delta subscription: {e}")
+            emit('delta_subscription_error', {'error': str(e)})
+    
+    @socketio.on('request_performance_metrics')
+    def handle_performance_metrics_request():
+        """Handle request for performance metrics"""
+        try:
+            from services.performance_cache import get_cache_performance_metrics
+            from services.memory_monitor import get_memory_stats
+            from services.thread_pool_manager import thread_pool_manager
+            
+            # Get comprehensive performance metrics
+            cache_metrics = get_cache_performance_metrics()
+            memory_stats = get_memory_stats()
+            thread_pool_stats = thread_pool_manager.get_all_stats()
+            system_resources = thread_pool_manager.get_system_resource_summary()
+            
+            performance_data = {
+                'cache': cache_metrics,
+                'memory': {
+                    'total_mb': memory_stats.total_mb,
+                    'used_mb': memory_stats.used_mb,
+                    'percent_used': memory_stats.percent_used * 100,
+                    'cache_usage_mb': memory_stats.cache_usage_mb
+                },
+                'thread_pools': thread_pool_stats,
+                'system': system_resources,
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
+            }
+            
+            emit('performance_metrics_response', performance_data)
+            
+        except Exception as e:
+            logger.error(f"Error getting performance metrics: {e}")
+            emit('performance_metrics_error', {'error': str(e)})
     
     @socketio.on('trigger_performance_collection')
     def handle_performance_collection_trigger(data):

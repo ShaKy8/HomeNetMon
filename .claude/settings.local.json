@@ -80,7 +80,10 @@
       "Bash(git pull:*)",
       "Bash(git stash:*)",
       "Bash(FILTER_BRANCH_SQUELCH_WARNING=1 git filter-branch --force --index-filter 'git rm --cached --ignore-unmatch homeNetMon.db.backup_20250816_062107' --prune-empty --tag-name-filter cat -- --all)",
-      "Bash(git tag:*)"
+      "Bash(git tag:*)",
+      "Bash(./setup_backup_cron.sh)",
+      "Bash(./setup_systemd_service.sh:*)",
+      "Bash(./setup_log_rotation.sh:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",
