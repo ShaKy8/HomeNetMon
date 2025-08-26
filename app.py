@@ -28,11 +28,15 @@ def create_app():
     # Initialize database
     init_db(app)
     
+    # PERFORMANCE OPTIMIZATION: Initialize performance middleware
+    from performance_middleware import PerformanceMiddleware
+    PerformanceMiddleware(app)
+    
     # Initialize SocketIO for real-time updates
     socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True)
     
     # Import and register blueprints
-    from api.devices import devices_bp
+    from api.devices import devices_bp  # Use original for now
     from api.monitoring import monitoring_bp
     from api.config import config_bp
     from api.analytics import analytics_bp
@@ -262,7 +266,7 @@ def create_app():
         callback_thread = threading.Thread(target=register_config_callbacks, daemon=True)
         callback_thread.start()
     
-    # Template context processor to inject version info
+    # Template context processor to inject version info and settings
     @app.context_processor
     def inject_version():
         """Make version information available in all templates"""
@@ -271,6 +275,24 @@ def create_app():
             'app_version': get_version_string(),
             'version_info': get_version_info()
         }
+    
+    @app.context_processor
+    def inject_settings():
+        """Make configurable settings available in all templates"""
+        try:
+            from models import Configuration
+            # Get dashboard title setting
+            dashboard_title_config = Configuration.query.filter_by(key='dashboard_title').first()
+            dashboard_title = dashboard_title_config.value if dashboard_title_config else 'Home Network Dashboard'
+            
+            return {
+                'dashboard_title': dashboard_title
+            }
+        except Exception as e:
+            logger.warning(f"Could not load dashboard settings: {e}")
+            return {
+                'dashboard_title': 'Home Network Dashboard'
+            }
     
     # Start services in background
     services_thread = threading.Thread(target=start_monitoring_services, daemon=True)

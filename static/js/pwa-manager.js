@@ -6,13 +6,26 @@ class PWAManager {
         this.db = null;
         this.syncInProgress = false;
         
+        // Connection stability tracking
+        this.connectionState = {
+            lastOnlineTime: Date.now(),
+            lastOfflineTime: null,
+            consecutiveOfflineEvents: 0,
+            isStable: true,
+            transitionTimeout: null
+        };
+        
         // Configuration
         this.config = {
             dbName: 'HomeNetMonDB',
             dbVersion: 1,
             maxOfflineNotifications: 100,
             syncRetryDelay: 30000, // 30 seconds
-            offlineDataRetentionDays: 7
+            offlineDataRetentionDays: 7,
+            // Stability thresholds
+            minOfflineDuration: 3000, // Must be offline for 3 seconds before showing notification
+            transitionGracePeriod: 1000, // Grace period for rapid online/offline events
+            maxConsecutiveOfflineEvents: 3 // Threshold for considering connection unstable
         };
         
         // Initialize PWA functionality
@@ -141,17 +154,15 @@ class PWAManager {
     
     // Event Listeners Setup
     setupEventListeners() {
-        // Online/offline status
+        // Enhanced online/offline status with stability checking
         window.addEventListener('online', () => {
-            console.log('[PWAManager] Back online');
-            this.isOnline = true;
-            this.handleOnlineStatusChange(true);
+            console.log('[PWAManager] Browser online event');
+            this.handleConnectionEvent('online');
         });
         
         window.addEventListener('offline', () => {
-            console.log('[PWAManager] Gone offline');
-            this.isOnline = false;
-            this.handleOnlineStatusChange(false);
+            console.log('[PWAManager] Browser offline event');
+            this.handleConnectionEvent('offline');
         });
         
         // Service worker messages
@@ -170,30 +181,166 @@ class PWAManager {
             console.log('[PWAManager] PWA installed successfully');
             this.trackEvent('pwa_installed');
         });
+        
+        // Page visibility changes (to avoid false offline detection during page transitions)
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'visible') {
+                // Page became visible, verify connection
+                setTimeout(() => this.verifyConnection(), 500);
+            }
+        });
+        
+        // Window focus events
+        window.addEventListener('focus', () => {
+            // Window gained focus, verify connection
+            setTimeout(() => this.verifyConnection(), 200);
+        });
+        
+        // Page navigation events - suppress offline detection during navigation
+        window.addEventListener('beforeunload', () => {
+            this.isNavigating = true;
+            console.log('[PWAManager] Page navigation detected, suppressing offline events');
+        });
+        
+        // Page load complete
+        window.addEventListener('load', () => {
+            // Reset navigation flag after page loads
+            setTimeout(() => {
+                this.isNavigating = false;
+                // Verify connection after page navigation
+                this.verifyConnection();
+            }, 1000);
+        });
     }
     
-    // Handle online/offline status changes
-    handleOnlineStatusChange(isOnline) {
+    // Enhanced connection event handling with stability checking
+    handleConnectionEvent(eventType) {
+        // Skip connection events during page navigation
+        if (this.isNavigating) {
+            console.log('[PWAManager] Ignoring connection event during page navigation');
+            return;
+        }
+        
+        const now = Date.now();
+        
+        // Clear any pending transition timeout
+        if (this.connectionState.transitionTimeout) {
+            clearTimeout(this.connectionState.transitionTimeout);
+            this.connectionState.transitionTimeout = null;
+        }
+        
+        if (eventType === 'online') {
+            this.connectionState.lastOnlineTime = now;
+            this.connectionState.consecutiveOfflineEvents = 0;
+            
+            // If we were previously offline, verify the connection before showing online status
+            if (!this.isOnline) {
+                this.verifyConnection(true);
+            } else {
+                // Already online, just update without notification
+                this.isOnline = true;
+                this.updateConnectionIndicator(true);
+            }
+            
+        } else if (eventType === 'offline') {
+            this.connectionState.lastOfflineTime = now;
+            this.connectionState.consecutiveOfflineEvents++;
+            
+            // Check if this might be a transient offline event during page navigation
+            const timeSinceLastOnline = now - this.connectionState.lastOnlineTime;
+            
+            if (timeSinceLastOnline < this.config.transitionGracePeriod) {
+                console.log('[PWAManager] Ignoring rapid offline event during transition');
+                return;
+            }
+            
+            // Set a timeout to only show offline status if we stay offline
+            this.connectionState.transitionTimeout = setTimeout(() => {
+                if (!navigator.onLine) {
+                    console.log('[PWAManager] Confirmed offline status after grace period');
+                    this.isOnline = false;
+                    this.handleOnlineStatusChange(false);
+                }
+            }, this.config.minOfflineDuration);
+        }
+    }
+    
+    // Verify connection by making an actual network request
+    async verifyConnection(fromOnlineEvent = false) {
+        try {
+            // Make a lightweight request to check actual connectivity
+            const response = await fetch('/health', { 
+                method: 'HEAD',
+                cache: 'no-cache',
+                timeout: 5000
+            });
+            
+            const isActuallyOnline = response.ok;
+            
+            if (isActuallyOnline !== this.isOnline) {
+                console.log(`[PWAManager] Connection verification: ${isActuallyOnline ? 'online' : 'offline'}`);
+                this.isOnline = isActuallyOnline;
+                
+                // Only show notifications for verified status changes
+                if (fromOnlineEvent && isActuallyOnline) {
+                    this.handleOnlineStatusChange(true);
+                } else {
+                    this.updateConnectionIndicator(isActuallyOnline);
+                }
+            }
+            
+        } catch (error) {
+            // Network request failed, likely actually offline
+            if (this.isOnline) {
+                console.log('[PWAManager] Connection verification failed, going offline');
+                this.isOnline = false;
+                this.handleOnlineStatusChange(false);
+            }
+        }
+    }
+    
+    // Update connection indicator without notifications
+    updateConnectionIndicator(isOnline) {
         const statusIndicator = document.getElementById('connection-status');
         if (statusIndicator) {
             statusIndicator.className = isOnline ? 'online' : 'offline';
             statusIndicator.textContent = isOnline ? 'Online' : 'Offline';
         }
         
-        // Show notification
-        this.showNotification(
-            isOnline ? 'Back Online' : 'Offline Mode',
-            isOnline ? 'Connection restored' : 'Working offline with cached data',
-            isOnline ? 'success' : 'warning'
-        );
+        // Update UI state
+        document.body.classList.toggle('offline', !isOnline);
+    }
+    
+    // Handle online/offline status changes (with notifications)
+    handleOnlineStatusChange(isOnline) {
+        // Update UI indicators
+        this.updateConnectionIndicator(isOnline);
+        
+        // Only show notifications for significant offline periods or confirmed online restoration
+        const now = Date.now();
+        const shouldShowNotification = isOnline ? 
+            (this.connectionState.lastOfflineTime && (now - this.connectionState.lastOfflineTime) > this.config.minOfflineDuration) :
+            (this.connectionState.consecutiveOfflineEvents >= this.config.maxConsecutiveOfflineEvents);
+        
+        if (shouldShowNotification) {
+            // Show notification for genuine status changes only
+            this.showNotification(
+                isOnline ? 'Connection Restored' : 'Working Offline',
+                isOnline ? 'Successfully reconnected to HomeNetMon' : 'Using cached data while offline',
+                isOnline ? 'success' : 'warning'
+            );
+        }
         
         // Sync data when back online
         if (isOnline && !this.syncInProgress) {
             this.syncOfflineData();
         }
         
-        // Update UI state
-        document.body.classList.toggle('offline', !isOnline);
+        // Reset consecutive offline events when back online
+        if (isOnline) {
+            this.connectionState.consecutiveOfflineEvents = 0;
+            this.connectionState.lastOfflineTime = null;
+        }
     }
     
     // Service Worker Message Handler
@@ -508,8 +655,24 @@ class PWAManager {
         }
     }
     
-    // UI Notifications
-    showNotification(title, message, type = 'info') {
+    // UI Notifications with spam prevention
+    showNotification(title, message, type = 'info', duration = 4000) {
+        // Prevent notification spam by checking if same notification was recently shown
+        const notificationKey = `${title}:${type}`;
+        const now = Date.now();
+        
+        if (!this.lastNotifications) {
+            this.lastNotifications = new Map();
+        }
+        
+        const lastShown = this.lastNotifications.get(notificationKey);
+        if (lastShown && (now - lastShown) < 10000) { // 10 second cooldown
+            console.log(`[PWAManager] Suppressing duplicate notification: ${title}`);
+            return;
+        }
+        
+        this.lastNotifications.set(notificationKey, now);
+        
         // Create or update notification element
         let notification = document.getElementById('pwa-notification');
         
@@ -518,6 +681,50 @@ class PWAManager {
             notification.id = 'pwa-notification';
             notification.className = 'pwa-notification';
             document.body.appendChild(notification);
+            
+            // Add CSS styles if not already present
+            if (!document.getElementById('pwa-notification-styles')) {
+                const style = document.createElement('style');
+                style.id = 'pwa-notification-styles';
+                style.textContent = `
+                    .pwa-notification {
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        z-index: 10000;
+                        background: var(--bs-dark);
+                        color: white;
+                        padding: 12px 16px;
+                        border-radius: 8px;
+                        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                        transform: translateX(100%);
+                        opacity: 0;
+                        transition: all 0.3s ease;
+                        max-width: 320px;
+                    }
+                    .pwa-notification.show {
+                        transform: translateX(0);
+                        opacity: 1;
+                    }
+                    .pwa-notification.success { background: var(--bs-success); }
+                    .pwa-notification.warning { background: var(--bs-warning); color: var(--bs-dark); }
+                    .pwa-notification.info { background: var(--bs-info); }
+                    .pwa-notification .notification-content { display: flex; flex-direction: column; gap: 4px; }
+                    .pwa-notification .notification-close {
+                        position: absolute;
+                        top: 8px;
+                        right: 8px;
+                        background: none;
+                        border: none;
+                        color: inherit;
+                        font-size: 18px;
+                        cursor: pointer;
+                        opacity: 0.7;
+                    }
+                    .pwa-notification .notification-close:hover { opacity: 1; }
+                `;
+                document.head.appendChild(style);
+            }
         }
         
         notification.className = `pwa-notification ${type} show`;
@@ -529,10 +736,10 @@ class PWAManager {
             <button class="notification-close" onclick="this.parentElement.classList.remove('show')">&times;</button>
         `;
         
-        // Auto-hide after 5 seconds
+        // Auto-hide after specified duration
         setTimeout(() => {
             notification.classList.remove('show');
-        }, 5000);
+        }, duration);
     }
     
     showInstallPrompt(event) {

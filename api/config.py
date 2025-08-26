@@ -691,3 +691,29 @@ def reset_monitoring_data():
             'success': False,
             'error': f'Error resetting monitoring data: {str(e)}'
         }), 500
+
+@config_bp.route('/dashboard-title', methods=['PUT'])
+def update_dashboard_title():
+    """Update dashboard title configuration"""
+    try:
+        data = request.get_json()
+        
+        if not data or 'title' not in data:
+            return jsonify({'error': 'Title is required'}), 400
+        
+        title = data['title'].strip()
+        
+        # Validate title
+        if not title or len(title) < 1:
+            return jsonify({'error': 'Title cannot be empty'}), 400
+        
+        if len(title) > 50:
+            return jsonify({'error': 'Title must be 50 characters or less'}), 400
+        
+        # Update configuration
+        Configuration.set_value('dashboard_title', title, 'Custom title displayed on the main dashboard header')
+        
+        return jsonify({'success': True, 'message': 'Dashboard title updated successfully'})
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

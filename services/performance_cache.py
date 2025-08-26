@@ -188,7 +188,8 @@ def cached_property(ttl=300, key_func=None, invalidate_on=None):
             performance_cache.set(cache_key, result, ttl)
             return result
         
-        return wrapper
+        # Return a property that calls the wrapper
+        return property(wrapper)
     return decorator
 
 def cached_query(ttl=60, key_func=None):

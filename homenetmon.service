@@ -1,0 +1,24 @@
+[Unit]
+Description=HomeNetMon Network Monitoring Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=kyle
+Group=kyle
+WorkingDirectory=/home/kyle/ClaudeCode/HomeNetMon
+Environment="PATH=/home/kyle/ClaudeCode/HomeNetMon/venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+Environment="NETWORK_RANGE=192.168.86.0/24"
+ExecStart=/home/kyle/ClaudeCode/HomeNetMon/venv/bin/python /home/kyle/ClaudeCode/HomeNetMon/app.py
+Restart=always
+RestartSec=10
+StandardOutput=append:/home/kyle/ClaudeCode/HomeNetMon/homenetmon.log
+StandardError=append:/home/kyle/ClaudeCode/HomeNetMon/homenetmon.log
+
+# Grant necessary capabilities for network operations
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN
+
+[Install]
+WantedBy=multi-user.target

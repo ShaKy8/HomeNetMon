@@ -1,7 +1,14 @@
 #!/bin/bash
 # Setup script for HomeNetMon systemd service
 
+set -e
+
 echo "Setting up HomeNetMon systemd service..."
+
+# Stop any running Python app.py processes first
+echo "Stopping any existing HomeNetMon processes..."
+pkill -f "python.*app.py" || true
+sleep 2
 
 # Copy service file to systemd directory
 echo "Copying service file..."
@@ -19,9 +26,12 @@ sudo systemctl enable homenetmon
 echo "Starting HomeNetMon service..."
 sudo systemctl start homenetmon
 
+# Wait for service to start
+sleep 3
+
 # Check service status
 echo "Checking service status..."
-sudo systemctl status homenetmon
+sudo systemctl status homenetmon --no-pager
 
 echo ""
 echo "HomeNetMon service setup complete!"
@@ -31,5 +41,4 @@ echo "  sudo systemctl status homenetmon    - Check service status"
 echo "  sudo systemctl start homenetmon     - Start service"
 echo "  sudo systemctl stop homenetmon      - Stop service"
 echo "  sudo systemctl restart homenetmon   - Restart service"
-echo "  sudo systemctl logs homenetmon      - View logs"
-echo "  journalctl -u homenetmon -f         - Follow logs in real-time"
+echo "  sudo journalctl -u homenetmon -f    - Follow logs in real-time"

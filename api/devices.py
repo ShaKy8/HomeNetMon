@@ -43,21 +43,29 @@ def get_devices():
         if status:
             devices = [d for d in devices if d.status == status]
         
-        # PERFORMANCE OPTIMIZATION: Batch load monitoring data and alerts to avoid N+1 queries
+        # ENHANCED PERFORMANCE OPTIMIZATION: Use more efficient queries with new indexes
         device_ids = [d.id for d in devices]
         
-        # Get latest monitoring data for all devices in one query
-        from sqlalchemy import func, and_
-        subquery = db.session.query(
+        if not device_ids:
+            return jsonify({
+                'success': True,
+                'devices': [],
+                'total': 0,
+                'count': 0
+            })
+        
+        # OPTIMIZATION: Use indexed query for latest monitoring data (much faster)
+        from sqlalchemy import func, and_, desc
+        latest_monitoring_subquery = db.session.query(
             MonitoringData.device_id,
             func.max(MonitoringData.timestamp).label('max_timestamp')
         ).filter(MonitoringData.device_id.in_(device_ids)).group_by(MonitoringData.device_id).subquery()
         
         latest_monitoring = db.session.query(MonitoringData).join(
-            subquery,
+            latest_monitoring_subquery,
             and_(
-                MonitoringData.device_id == subquery.c.device_id,
-                MonitoringData.timestamp == subquery.c.max_timestamp
+                MonitoringData.device_id == latest_monitoring_subquery.c.device_id,
+                MonitoringData.timestamp == latest_monitoring_subquery.c.max_timestamp
             )
         ).all()
         
@@ -355,6 +363,7 @@ def ping_all_devices():
     """Ping all monitored devices"""
     import subprocess
     import re
+    import ipaddress
     
     # Get all monitored devices
     devices = Device.query.filter_by(is_monitored=True).all()
@@ -366,6 +375,21 @@ def ping_all_devices():
     
     # Ping each device
     for device in devices:
+        # SECURITY: Validate IP address to prevent command injection
+        try:
+            ipaddress.ip_address(device.ip_address)
+        except ValueError:
+            logger.warning(f"Invalid IP address format for device {device.id}: {device.ip_address}")
+            results.append({
+                'device_id': device.id,
+                'ip_address': device.ip_address,
+                'display_name': device.display_name,
+                'response_time': None,
+                'success': False,
+                'error': 'Invalid IP address format'
+            })
+            continue
+        
         cmd = ['ping', '-c', '1', '-W', '3', device.ip_address]
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
@@ -385,13 +409,25 @@ def ping_all_devices():
                 'success': success
             })
             
-        except Exception:
+        except subprocess.TimeoutExpired:
+            logger.warning(f"Ping timeout for device {device.id}: {device.ip_address}")
             results.append({
                 'device_id': device.id,
                 'ip_address': device.ip_address,
                 'display_name': device.display_name,
                 'response_time': None,
-                'success': False
+                'success': False,
+                'error': 'Ping timeout'
+            })
+        except Exception as e:
+            logger.error(f"Ping error for device {device.id}: {e}")
+            results.append({
+                'device_id': device.id,
+                'ip_address': device.ip_address,
+                'display_name': device.display_name,
+                'response_time': None,
+                'success': False,
+                'error': str(e)
             })
     
     # Commit all database updates
@@ -494,9 +530,16 @@ def ping_device_test(device_id):
         from flask import current_app
         import subprocess
         import re
+        import ipaddress
         
         device = Device.query.get_or_404(device_id)
         ip = device.ip_address
+        
+        # SECURITY: Validate IP address to prevent command injection
+        try:
+            ipaddress.ip_address(ip)
+        except ValueError:
+            return jsonify({'error': 'Invalid IP address format'}), 400
         
         # Simple ping test
         result = subprocess.run(
@@ -527,7 +570,17 @@ def ping_device_test(device_id):
                 'error': result.stderr
             })
             
+    except subprocess.TimeoutExpired:
+        return jsonify({
+            'device_id': device_id,
+            'ip_address': ip,
+            'success': False,
+            'response_time': None,
+            'error': 'Ping timeout'
+        }), 408
     except Exception as e:
+        if '404 Not Found' in str(e):
+            return jsonify({'error': 'Device not found'}), 404
         return jsonify({'error': str(e)}), 500
 
 @devices_bp.route('/summary', methods=['GET'])
@@ -707,30 +760,84 @@ def get_monitored_devices():
 def bulk_update_devices():
     """Bulk update device properties"""
     try:
-        data = request.get_json()
+        # INPUT VALIDATION: Parse JSON and validate basic structure
+        try:
+            data = request.get_json()
+        except Exception:
+            return jsonify({'error': 'Invalid JSON data'}), 400
+        
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        # INPUT VALIDATION: Validate device_ids
         device_ids = data.get('device_ids', [])
+        if not device_ids or not isinstance(device_ids, list):
+            return jsonify({
+                'success': False,
+                'error': 'device_ids must be a non-empty list'
+            }), 400
+        
+        # INPUT VALIDATION: Ensure device_ids are integers
+        try:
+            device_ids = [int(did) for did in device_ids if did is not None]
+        except (ValueError, TypeError):
+            return jsonify({
+                'success': False,
+                'error': 'All device_ids must be valid integers'
+            }), 400
+        
+        if len(device_ids) > 1000:  # Prevent DOS attacks with massive bulk operations
+            return jsonify({
+                'success': False,
+                'error': 'Cannot update more than 1000 devices at once'
+            }), 400
+        
         updates = {}
         
         # Extract update fields - check both direct fields and nested 'updates' object
         update_source = data.get('updates', data)  # Use 'updates' if present, otherwise use data directly
         
+        # INPUT VALIDATION: Validate update fields
         if 'is_monitored' in update_source:
+            if not isinstance(update_source['is_monitored'], bool):
+                return jsonify({
+                    'success': False,
+                    'error': 'is_monitored must be a boolean value'
+                }), 400
             updates['is_monitored'] = update_source['is_monitored']
-        if 'device_group' in update_source:
-            updates['device_group'] = update_source['device_group']
-        if 'device_type' in update_source:
-            updates['device_type'] = update_source['device_type']
         
-        if not device_ids:
-            return jsonify({
-                'success': False,
-                'error': 'No devices specified'
-            }), 400
+        if 'device_group' in update_source:
+            device_group = update_source['device_group']
+            if device_group is not None and not isinstance(device_group, str):
+                return jsonify({
+                    'success': False,
+                    'error': 'device_group must be a string or null'
+                }), 400
+            if device_group is not None and len(device_group) > 100:
+                return jsonify({
+                    'success': False,
+                    'error': 'device_group must be less than 100 characters'
+                }), 400
+            updates['device_group'] = device_group
+        
+        if 'device_type' in update_source:
+            device_type = update_source['device_type']
+            if device_type is not None and not isinstance(device_type, str):
+                return jsonify({
+                    'success': False,
+                    'error': 'device_type must be a string or null'
+                }), 400
+            if device_type is not None and len(device_type) > 50:
+                return jsonify({
+                    'success': False,
+                    'error': 'device_type must be less than 50 characters'
+                }), 400
+            updates['device_type'] = device_type
         
         if not updates:
             return jsonify({
                 'success': False,
-                'error': 'No update fields specified'
+                'error': 'No valid update fields specified'
             }), 400
         
         # Check which devices exist
@@ -768,13 +875,36 @@ def bulk_update_devices():
 def bulk_ping_devices():
     """Trigger ping for multiple devices"""
     try:
-        data = request.get_json()
-        device_ids = data.get('device_ids', [])
+        # INPUT VALIDATION: Parse JSON and validate basic structure
+        try:
+            data = request.get_json()
+        except Exception:
+            return jsonify({'error': 'Invalid JSON data'}), 400
         
-        if not device_ids:
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        
+        # INPUT VALIDATION: Validate device_ids
+        device_ids = data.get('device_ids', [])
+        if not device_ids or not isinstance(device_ids, list):
             return jsonify({
                 'success': False,
-                'error': 'device_ids required'
+                'error': 'device_ids must be a non-empty list'
+            }), 400
+        
+        # INPUT VALIDATION: Ensure device_ids are integers and limit size
+        try:
+            device_ids = [int(did) for did in device_ids if did is not None]
+        except (ValueError, TypeError):
+            return jsonify({
+                'success': False,
+                'error': 'All device_ids must be valid integers'
+            }), 400
+        
+        if len(device_ids) > 100:  # Prevent DOS attacks with massive ping operations
+            return jsonify({
+                'success': False,
+                'error': 'Cannot ping more than 100 devices at once'
             }), 400
         
         # Get devices

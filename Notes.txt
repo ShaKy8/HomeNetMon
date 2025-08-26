@@ -9,10 +9,14 @@ Service Management Commands:
 
 Management Commands:
 
-  sudo systemctl status homenetmon     # Check status
-  sudo systemctl restart homenetmon    # Restart service
-  sudo systemctl stop homenetmon       # Stop service
-  sudo journalctl -u homenetmon -f     # Follow logs
-
   The HomeNetMon service is now fully operational and will automatically start when the
    Linux server reboots.
+
+HomeNetMon service setup complete!
+
+Useful commands:
+  sudo systemctl status homenetmon    - Check service status
+  sudo systemctl start homenetmon     - Start service
+  sudo systemctl stop homenetmon      - Stop service
+  sudo systemctl restart homenetmon   - Restart service
+  sudo journalctl -u homenetmon -f    - Follow logs in real-time

@@ -40,6 +40,14 @@ class DeviceMonitor:
         
     def ping_device(self, device):
         """Ping a single device with retry logic and return response time using system ping command"""
+        # SECURITY: Validate IP address to prevent command injection
+        import ipaddress
+        try:
+            ipaddress.ip_address(device.ip_address)
+        except ValueError:
+            logger.warning(f"Invalid IP address format for device {device.id}: {device.ip_address}")
+            return None
+        
         # Get ping timeout from database configuration
         ping_timeout = float(self.get_config_value('ping_timeout', Config.PING_TIMEOUT))
         

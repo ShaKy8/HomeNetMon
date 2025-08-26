@@ -14,6 +14,9 @@
             <a class="list-group-item list-group-item-action active" data-bs-toggle="list" href="#network-settings">
                 <i class="bi bi-router"></i> Network
             </a>
+            <a class="list-group-item list-group-item-action" data-bs-toggle="list" href="#interface-settings">
+                <i class="bi bi-palette"></i> Interface
+            </a>
             <a class="list-group-item list-group-item-action" data-bs-toggle="list" href="#alert-settings">
                 <i class="bi bi-bell"></i> Alerts
             </a>
@@ -205,6 +208,65 @@
                                 </button>
                                 <div class="form-text mt-2" id="restart-notice">
                                     <i class="bi bi-info-circle text-muted"></i> <span class="text-muted">Configure your network settings above</span>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Interface Settings -->
+            <div class="tab-pane fade" id="interface-settings">
+                <div class="card">
+                    <div class="card-header">
+                        <h5 class="mb-0">Interface Customization</h5>
+                    </div>
+                    <div class="card-body">
+                        <form id="interface-settings-form">
+                            <div class="mb-4">
+                                <label for="dashboard-title" class="form-label">
+                                    <i class="bi bi-speedometer2"></i> Dashboard Title
+                                </label>
+                                <div class="input-group">
+                                    <input type="text" class="form-control" id="dashboard-title" 
+                                           value="{{ dashboard_title }}" 
+                                           placeholder="Home Network Dashboard"
+                                           maxlength="50">
+                                    <button type="button" class="btn btn-outline-success" id="save-dashboard-title-btn" 
+                                            onclick="saveDashboardTitle()" style="display: none;">
+                                        <i class="bi bi-check2"></i> Save
+                                    </button>
+                                </div>
+                                <div class="form-text">
+                                    Custom title displayed at the top of the dashboard page
+                                </div>
+                                <div class="invalid-feedback">
+                                    Please enter a valid title (1-50 characters)
+                                </div>
+                            </div>
+                            
+                            <div class="mb-4">
+                                <h6>Preview</h6>
+                                <div class="card bg-light">
+                                    <div class="card-body py-2">
+                                        <div class="d-flex align-items-center">
+                                            <i class="bi bi-speedometer2 me-2 text-primary"></i>
+                                            <span id="dashboard-title-preview" class="fw-bold">{{ dashboard_title }}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <button type="button" class="btn btn-outline-secondary" onclick="resetDashboardTitle()">
+                                        <i class="bi bi-arrow-clockwise"></i> Reset to Default
+                                    </button>
+                                </div>
+                                <div class="col-md-6 text-end">
+                                    <button type="submit" class="btn btn-success" id="save-interface-settings">
+                                        <i class="bi bi-check-lg"></i> Save Interface Settings
+                                    </button>
                                 </div>
                             </div>
                         </form>
@@ -831,6 +893,92 @@ async function saveNetworkRangeQuick() {
         saveButton.innerHTML = '<i class="bi bi-check2"></i> Save';
     }
 }
+
+// Dashboard title management functions
+async function saveDashboardTitle() {
+    try {
+        const title = document.getElementById('dashboard-title').value.trim();
+        
+        if (!title || title.length < 1 || title.length > 50) {
+            showToast('Please enter a valid title (1-50 characters)', 'warning');
+            document.getElementById('dashboard-title').classList.add('is-invalid');
+            return;
+        }
+        
+        const saveButton = document.getElementById('save-dashboard-title-btn');
+        const originalText = saveButton.innerHTML;
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<i class="bi bi-hourglass-split"></i> Saving...';
+        
+        const response = await fetch('/api/config/dashboard-title', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ title: title })
+        });
+        
+        const data = await response.json();
+        
+        if (response.ok && data.success) {
+            showToast('Dashboard title updated successfully!', 'success');
+            document.getElementById('dashboard-title-preview').textContent = title;
+            document.getElementById('dashboard-title').classList.remove('is-invalid');
+            document.getElementById('dashboard-title').classList.add('is-valid');
+            
+            // Hide save button after successful save
+            setTimeout(() => {
+                saveButton.style.display = 'none';
+                document.getElementById('dashboard-title').classList.remove('is-valid');
+            }, 1000);
+            
+        } else {
+            showToast(data.error || 'Error saving dashboard title', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error saving dashboard title:', error);
+        showToast('Error saving dashboard title', 'error');
+    } finally {
+        const saveButton = document.getElementById('save-dashboard-title-btn');
+        saveButton.disabled = false;
+        saveButton.innerHTML = '<i class="bi bi-check2"></i> Save';
+    }
+}
+
+function resetDashboardTitle() {
+    const defaultTitle = 'Home Network Dashboard';
+    document.getElementById('dashboard-title').value = defaultTitle;
+    document.getElementById('dashboard-title-preview').textContent = defaultTitle;
+    document.getElementById('save-dashboard-title-btn').style.display = 'inline-block';
+}
+
+// Handle dashboard title input changes
+document.addEventListener('DOMContentLoaded', function() {
+    const titleInput = document.getElementById('dashboard-title');
+    if (titleInput) {
+        titleInput.addEventListener('input', function() {
+            const saveButton = document.getElementById('save-dashboard-title-btn');
+            const preview = document.getElementById('dashboard-title-preview');
+            
+            if (this.value.trim() !== '{{ dashboard_title }}') {
+                saveButton.style.display = 'inline-block';
+            } else {
+                saveButton.style.display = 'none';
+            }
+            
+            // Update preview
+            preview.textContent = this.value.trim() || 'Home Network Dashboard';
+            
+            // Validation
+            if (this.value.length > 50) {
+                this.classList.add('is-invalid');
+            } else {
+                this.classList.remove('is-invalid');
+            }
+        });
+    }
+});
 
 // Toggle email settings visibility
 function toggleEmailSettings() {

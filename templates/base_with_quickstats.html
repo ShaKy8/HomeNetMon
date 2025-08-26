@@ -184,6 +184,85 @@
         .status-indicator.warning { background-color: var(--warning-color); }
         .status-indicator.unknown { background-color: var(--secondary-color); }
         
+        /* Ultra-Compact Sidebar Styles */
+        .compact-sidebar {
+            min-height: calc(100vh - 56px);
+            background-color: var(--sidebar-bg);
+            border-right: 1px solid var(--border-color);
+            padding: 8px 4px !important;
+            max-width: 80px;
+            width: 80px;
+        }
+        
+        .compact-stats {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 12px;
+            padding-top: 10px;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            min-width: 60px;
+            padding: 4px;
+            border-radius: 6px;
+            transition: background-color 0.2s;
+            cursor: help;
+        }
+        
+        .stat-item:hover {
+            background-color: rgba(0, 123, 255, 0.1);
+        }
+        
+        .stat-row {
+            display: flex;
+            gap: 4px;
+            width: 100%;
+            justify-content: space-between;
+        }
+        
+        .stat-row .stat-item {
+            flex: 1;
+            min-width: 25px;
+            padding: 3px 2px;
+        }
+        
+        .stat-icon {
+            font-size: 16px;
+            line-height: 1;
+            margin-bottom: 2px;
+        }
+        
+        .stat-value {
+            font-size: 14px;
+            font-weight: 600;
+            line-height: 1;
+            color: var(--text-color);
+            transition: all 0.2s ease;
+        }
+        
+        .stat-item:hover .stat-value {
+            font-size: 15px;
+            font-weight: 700;
+        }
+        
+        .stat-up .stat-value {
+            color: var(--success-color);
+        }
+        
+        .stat-down .stat-value {
+            color: var(--danger-color);
+        }
+        
+        .stat-alerts .stat-value {
+            color: var(--warning-color);
+        }
+        
+        /* Legacy sidebar styles for fallback */
         .sidebar {
             min-height: calc(100vh - 56px);
             background-color: var(--sidebar-bg);
@@ -259,28 +338,38 @@
             }
         }
         
-        /* Improved mobile experience */
+        /* Mobile-first responsive behavior */
         @media (max-width: 768px) {
-            .sidebar {
-                position: fixed;
-                top: 56px;
-                left: -100%;
-                width: 250px;
-                height: calc(100vh - 56px);
-                z-index: 1050;
-                transition: left 0.3s ease;
+            /* Hide compact sidebar completely on mobile */
+            .compact-sidebar {
+                display: none !important;
             }
             
-            .sidebar.show {
-                left: 0;
-            }
-            
+            /* Main content takes full width on mobile */
             .main-content {
                 padding: 15px;
+                flex: 0 0 100%;
+                max-width: 100%;
             }
             
             .device-card {
                 margin-bottom: 0.75rem;
+            }
+        }
+        
+        /* Tablet adjustments */
+        @media (min-width: 768px) and (max-width: 992px) {
+            .compact-sidebar {
+                max-width: 70px;
+                width: 70px;
+            }
+            
+            .stat-icon {
+                font-size: 14px;
+            }
+            
+            .stat-value {
+                font-size: 12px;
             }
         }
         
@@ -429,47 +518,43 @@
     <!-- Main Content -->
     <div class="container-fluid">
         <div class="row">
-            <!-- Sidebar with Quick Stats (ALWAYS VISIBLE) -->
-            <div class="col-md-2 sidebar p-3">
-                <div class="d-flex flex-column">
-                    <h6 class="text-muted mb-3">QUICK STATS</h6>
-                    
-                    <div class="mb-3">
-                        <small class="text-muted">Total Devices</small>
-                        <div class="h5 mb-0" id="total-devices">-</div>
+            <!-- Ultra-Compact Quick Stats Sidebar -->
+            <div class="col-xl-1 col-lg-1 col-md-1 d-none d-md-block compact-sidebar">
+                <div class="compact-stats">
+                    <!-- Total Devices -->
+                    <div class="stat-item" title="Total Devices">
+                        <div class="stat-icon">📊</div>
+                        <div class="stat-value" id="total-devices">-</div>
                     </div>
                     
-                    <div class="mb-3">
-                        <small class="text-muted">Devices Up</small>
-                        <div class="h5 mb-0 text-success" id="devices-up">-</div>
+                    <!-- Status Summary (Up/Down in one row) -->
+                    <div class="stat-row">
+                        <div class="stat-item stat-up" title="Devices Online">
+                            <div class="stat-icon">🟢</div>
+                            <div class="stat-value" id="devices-up">-</div>
+                        </div>
+                        <div class="stat-item stat-down" title="Devices Offline">
+                            <div class="stat-icon">🔴</div>
+                            <div class="stat-value" id="devices-down">-</div>
+                        </div>
                     </div>
                     
-                    <div class="mb-3">
-                        <small class="text-muted">Devices Down</small>
-                        <div class="h5 mb-0 text-danger" id="devices-down">-</div>
+                    <!-- Active Alerts -->
+                    <div class="stat-item stat-alerts" title="Active Alerts">
+                        <div class="stat-icon">⚠️</div>
+                        <div class="stat-value" id="active-alerts">-</div>
                     </div>
                     
-                    <div class="mb-3">
-                        <small class="text-muted">Active Alerts</small>
-                        <div class="h5 mb-0 text-warning" id="active-alerts">-</div>
-                    </div>
-                    
-                    <hr>
-                    
-                    <div class="mb-3">
-                        <small class="text-muted">Last Update</small>
-                        <div class="small" id="last-update">-</div>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <small class="text-muted">Network Range</small>
-                        <div class="small" id="network-range">Loading...</div>
+                    <!-- Hidden elements for mobile toggle access -->
+                    <div class="d-none">
+                        <div id="last-update">-</div>
+                        <div id="network-range">Loading...</div>
                     </div>
                 </div>
             </div>
             
-            <!-- Main Content Area with Sidebar -->
-            <div class="col-md-10 main-content">
+            <!-- Main Content Area (Now Much Wider) -->
+            <div class="col-xl-11 col-lg-11 col-md-11 main-content">
                 {% block content %}{% endblock %}
             </div>
         </div>
@@ -619,11 +704,8 @@
         </div>
     </div>
 
-    <!-- Mobile Sidebar Toggle -->
-    <button class="btn btn-primary d-md-none position-fixed" id="sidebar-toggle" 
-            style="bottom: 20px; left: 20px; z-index: 1040; border-radius: 50%; width: 50px; height: 50px;">
-        <i class="bi bi-list"></i>
-    </button>
+    <!-- Mobile Stats Toggle (Compact stats hidden on mobile, no toggle needed) -->
+    <!-- Ultra-compact sidebar is hidden on mobile for maximum screen real estate -->
 
     <!-- Search Results Overlay -->
     <div id="search-overlay" class="position-fixed w-100 h-100" 
@@ -2393,23 +2475,11 @@
             showToast('Pinging all devices...', 'info');
         }
         
-        // Mobile sidebar toggle
+        // Mobile sidebar toggle (No longer needed - compact sidebar hidden on mobile)
         function initializeMobileSidebar() {
-            const sidebarToggle = document.getElementById('sidebar-toggle');
-            const sidebar = document.querySelector('.sidebar');
-            
-            if (sidebarToggle && sidebar) {
-                sidebarToggle.addEventListener('click', () => {
-                    sidebar.classList.toggle('show');
-                });
-                
-                // Close sidebar when clicking outside
-                document.addEventListener('click', (e) => {
-                    if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
-                        sidebar.classList.remove('show');
-                    }
-                });
-            }
+            // Ultra-compact sidebar is hidden on mobile devices
+            // No toggle functionality needed as mobile uses full-width layout
+            console.log('Mobile detected: Using full-width layout (no sidebar)');
         }
         
         

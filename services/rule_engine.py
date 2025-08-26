@@ -257,13 +257,53 @@ class ActionExecutor:
             scan_type = params.get('type', 'network')
             
             if scan_type == 'network':
-                # Trigger network scan (this would need integration with scanner service)
+                # Trigger network scan with proper integration
                 logger.info("Network scan triggered by automation rule")
-                return {'success': True, 'message': 'Network scan triggered'}
+                
+                # Get the scanner service from app if available
+                if self.app and hasattr(self.app, '_scanner'):
+                    scanner = self.app._scanner
+                    # Check if scanner is currently running a scan
+                    if hasattr(scanner, 'is_scanning') and scanner.is_scanning:
+                        return {'success': False, 'message': 'Network scan already in progress'}
+                    
+                    # Trigger the scan in a background thread
+                    import threading
+                    def run_scan():
+                        try:
+                            scanner.scan_network()
+                        except Exception as e:
+                            logger.error(f"Background scan error: {e}")
+                    
+                    scan_thread = threading.Thread(target=run_scan, daemon=True, name='RuleEngine-NetworkScan')
+                    scan_thread.start()
+                    return {'success': True, 'message': 'Network scan triggered successfully'}
+                else:
+                    logger.warning("Scanner service not available")
+                    return {'success': False, 'message': 'Scanner service not available'}
+                    
             elif scan_type == 'security' and context.device_id:
                 # Trigger security scan for specific device
                 logger.info(f"Security scan triggered for device {context.device_id}")
-                return {'success': True, 'message': 'Security scan triggered'}
+                
+                # Get the security scanner service from app if available
+                if self.app and hasattr(self.app, 'security_scanner'):
+                    security_scanner = self.app.security_scanner
+                    # Trigger security scan for the device
+                    import threading
+                    def run_security_scan():
+                        try:
+                            with self.app.app_context():
+                                security_scanner.scan_device(context.device_id)
+                        except Exception as e:
+                            logger.error(f"Security scan error for device {context.device_id}: {e}")
+                    
+                    scan_thread = threading.Thread(target=run_security_scan, daemon=True, name='RuleEngine-SecurityScan')
+                    scan_thread.start()
+                    return {'success': True, 'message': f'Security scan triggered for device {context.device_id}'}
+                else:
+                    logger.warning("Security scanner service not available")
+                    return {'success': False, 'message': 'Security scanner service not available'}
             else:
                 return {'success': False, 'message': 'Invalid scan type or missing device'}
                 

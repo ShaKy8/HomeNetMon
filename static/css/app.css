@@ -1,5 +1,12 @@
 /* Custom styles for HomeNetMon */
 
+/* Dashboard title styling */
+.dashboard-title {
+    font-size: 1.5rem !important; /* Smaller than default h1 (2.5rem) */
+    font-weight: 600;
+    margin-bottom: 0.5rem;
+}
+
 /* Utility classes */
 .alert-item:hover {
     background-color: rgba(0, 123, 255, 0.05) !important;

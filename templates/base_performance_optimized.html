@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}HomeNetMon{% endblock %}</title>
+    
+    <!-- PERFORMANCE OPTIMIZATION: Critical resource hints -->
+    <link rel="preconnect" href="https://cdn.jsdelivr.net">
+    <link rel="preconnect" href="https://cdn.socket.io">
+    <link rel="dns-prefetch" href="//cdn.jsdelivr.net">
+    <link rel="dns-prefetch" href="//cdn.socket.io">
+    
+    <!-- PERFORMANCE: Critical CSS inlined for faster FCP -->
+    <style>
+        /* Critical above-the-fold styles */
+        :root {
+            --primary-color: #0d6efd;
+            --success-color: #28a745;
+            --danger-color: #dc3545;
+            --warning-color: #ffc107;
+            --bg-color: #ffffff;
+            --text-color: #212529;
+        }
+        
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg-color); 
+            color: var(--text-color); 
+            margin: 0;
+            line-height: 1.5;
+        }
+        
+        .navbar { 
+            background-color: var(--primary-color); 
+            color: white; 
+            padding: 0.5rem 1rem;
+            position: sticky;
+            top: 0;
+            z-index: 1020;
+        }
+        
+        .container-fluid { 
+            padding: 0 15px; 
+        }
+        
+        .status-up { color: var(--success-color); }
+        .status-down { color: var(--danger-color); }
+        .status-warning { color: var(--warning-color); }
+        
+        /* Loading placeholder to prevent layout shift */
+        .device-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); 
+            gap: 1rem; 
+            padding: 1rem;
+        }
+        
+        .device-card-placeholder {
+            height: 120px;
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 8px;
+        }
+        
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+    </style>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    <meta name="theme-color" content="#0d6efd">
+    
+    <!-- PERFORMANCE: Preload critical resources -->
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" as="style">
+    <link rel="preload" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" as="style">
+    
+    <!-- PERFORMANCE: Non-critical CSS loaded asynchronously -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" 
+          media="print" onload="this.media='all'; this.onload=null;">
+    <noscript>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    </noscript>
+    
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css"
+          media="print" onload="this.media='all'; this.onload=null;">
+    <noscript>
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    </noscript>
+</head>
+<body>
+    <!-- Navigation with minimal structure for fast rendering -->
+    <nav class="navbar navbar-expand-lg navbar-dark">
+        <div class="container-fluid">
+            <a class="navbar-brand" href="{{ url_for('dashboard') }}">
+                <i class="bi bi-router"></i> HomeNetMon
+            </a>
+            
+            <!-- Connection Status -->
+            <span class="navbar-text">
+                <span id="connection-status" class="badge bg-success">
+                    <span class="connection-text">Connected</span>
+                </span>
+            </span>
+        </div>
+    </nav>
+
+    <!-- Main Content with loading state -->
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-md-12 main-content">
+                {% block content %}
+                <!-- Default loading state -->
+                <div id="loading-placeholder">
+                    <div class="device-grid">
+                        <div class="device-card-placeholder"></div>
+                        <div class="device-card-placeholder"></div>
+                        <div class="device-card-placeholder"></div>
+                        <div class="device-card-placeholder"></div>
+                    </div>
+                </div>
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Container for Notifications -->
+    <div class="toast-container position-fixed bottom-0 end-0 p-3"></div>
+
+    <!-- PERFORMANCE: JavaScript loaded asynchronously at end of body -->
+    <script>
+        // Critical JavaScript for immediate functionality
+        let socket;
+        
+        // Performance timing
+        const perfStart = performance.now();
+        
+        // Initialize connection status
+        function updateConnectionStatus(connected) {
+            const statusElement = document.getElementById('connection-status');
+            if (statusElement) {
+                statusElement.className = connected ? 'badge bg-success' : 'badge bg-danger';
+                statusElement.innerHTML = `<span class="connection-text">${connected ? 'Connected' : 'Disconnected'}</span>`;
+            }
+        }
+        
+        // Show loading completion
+        function hideLoadingPlaceholder() {
+            const placeholder = document.getElementById('loading-placeholder');
+            if (placeholder) {
+                placeholder.style.display = 'none';
+            }
+        }
+        
+        // Measure performance
+        window.addEventListener('load', function() {
+            const loadTime = performance.now() - perfStart;
+            console.log(`Page load time: ${loadTime.toFixed(2)}ms`);
+        });
+    </script>
+    
+    <!-- PERFORMANCE: Defer non-critical scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
+    <script defer>
+        // Chart.js loaded only when needed
+        function loadChartJS(callback) {
+            if (window.Chart) {
+                callback();
+                return;
+            }
+            
+            const script = document.createElement('script');
+            script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+            script.onload = callback;
+            document.head.appendChild(script);
+        }
+        
+        // Socket.IO loaded asynchronously
+        function loadSocketIO(callback) {
+            if (window.io) {
+                callback();
+                return;
+            }
+            
+            const script = document.createElement('script');
+            script.src = 'https://cdn.socket.io/4.7.2/socket.io.min.js';
+            script.onload = callback;
+            document.head.appendChild(script);
+        }
+        
+        // Initialize socket connection after page load
+        window.addEventListener('load', function() {
+            loadSocketIO(function() {
+                socket = io();
+                
+                socket.on('connect', function() {
+                    console.log('Connected to HomeNetMon server');
+                    updateConnectionStatus(true);
+                });
+                
+                socket.on('disconnect', function() {
+                    console.log('Disconnected from HomeNetMon server');
+                    updateConnectionStatus(false);
+                });
+                
+                // Load initial data
+                setTimeout(hideLoadingPlaceholder, 100);
+            });
+        });
+    </script>
+    
+    {% block scripts %}{% endblock %}
+</body>
+</html>
