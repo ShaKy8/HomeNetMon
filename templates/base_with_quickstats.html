@@ -189,17 +189,17 @@
             min-height: calc(100vh - 56px);
             background-color: var(--sidebar-bg);
             border-right: 1px solid var(--border-color);
-            padding: 8px 4px !important;
-            max-width: 80px;
-            width: 80px;
+            padding: 6px 2px !important;
+            max-width: 50px;
+            width: 50px;
         }
         
         .compact-stats {
             display: flex;
             flex-direction: column;
             align-items: center;
-            gap: 12px;
-            padding-top: 10px;
+            gap: 8px;
+            padding-top: 8px;
         }
         
         .stat-item {
@@ -207,9 +207,9 @@
             flex-direction: column;
             align-items: center;
             text-align: center;
-            min-width: 60px;
-            padding: 4px;
-            border-radius: 6px;
+            min-width: 40px;
+            padding: 3px 2px;
+            border-radius: 4px;
             transition: background-color 0.2s;
             cursor: help;
         }
@@ -218,27 +218,16 @@
             background-color: rgba(0, 123, 255, 0.1);
         }
         
-        .stat-row {
-            display: flex;
-            gap: 4px;
-            width: 100%;
-            justify-content: space-between;
-        }
-        
-        .stat-row .stat-item {
-            flex: 1;
-            min-width: 25px;
-            padding: 3px 2px;
-        }
+        /* Removed .stat-row styles - all items are now individual vertical items */
         
         .stat-icon {
-            font-size: 16px;
+            font-size: 14px;
             line-height: 1;
-            margin-bottom: 2px;
+            margin-bottom: 1px;
         }
         
         .stat-value {
-            font-size: 14px;
+            font-size: 12px;
             font-weight: 600;
             line-height: 1;
             color: var(--text-color);
@@ -246,7 +235,7 @@
         }
         
         .stat-item:hover .stat-value {
-            font-size: 15px;
+            font-size: 13px;
             font-weight: 700;
         }
         
@@ -360,16 +349,16 @@
         /* Tablet adjustments */
         @media (min-width: 768px) and (max-width: 992px) {
             .compact-sidebar {
-                max-width: 70px;
-                width: 70px;
+                max-width: 45px;
+                width: 45px;
             }
             
             .stat-icon {
-                font-size: 14px;
+                font-size: 12px;
             }
             
             .stat-value {
-                font-size: 12px;
+                font-size: 10px;
             }
         }
         
@@ -527,16 +516,16 @@
                         <div class="stat-value" id="total-devices">-</div>
                     </div>
                     
-                    <!-- Status Summary (Up/Down in one row) -->
-                    <div class="stat-row">
-                        <div class="stat-item stat-up" title="Devices Online">
-                            <div class="stat-icon">🟢</div>
-                            <div class="stat-value" id="devices-up">-</div>
-                        </div>
-                        <div class="stat-item stat-down" title="Devices Offline">
-                            <div class="stat-icon">🔴</div>
-                            <div class="stat-value" id="devices-down">-</div>
-                        </div>
+                    <!-- Devices Online -->
+                    <div class="stat-item stat-up" title="Devices Online">
+                        <div class="stat-icon">🟢</div>
+                        <div class="stat-value" id="devices-up">-</div>
+                    </div>
+                    
+                    <!-- Devices Offline -->
+                    <div class="stat-item stat-down" title="Devices Offline">
+                        <div class="stat-icon">🔴</div>
+                        <div class="stat-value" id="devices-down">-</div>
                     </div>
                     
                     <!-- Active Alerts -->

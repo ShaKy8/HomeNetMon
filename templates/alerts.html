@@ -1044,6 +1044,17 @@ class AlertsManager {
         }
         
         try {
+            console.log('Starting clearAllAlerts request...');
+            
+            // Test connectivity first
+            try {
+                const healthResponse = await fetch('/api/health/overview');
+                console.log('Health check response:', healthResponse.status, healthResponse.statusText);
+            } catch (healthError) {
+                console.error('Health check failed:', healthError);
+                throw new Error('Unable to connect to server. Please refresh the page and try again.');
+            }
+            
             const response = await fetch('/api/monitoring/alerts/delete-all', {
                 method: 'DELETE',
                 headers: {
@@ -1054,7 +1065,21 @@ class AlertsManager {
                 })
             });
             
-            const data = await response.json();
+            console.log('Response received:', response.status, response.statusText);
+            
+            // Check if response is actually JSON
+            const contentType = response.headers.get('content-type');
+            console.log('Response content-type:', contentType);
+            
+            let data;
+            if (contentType && contentType.includes('application/json')) {
+                data = await response.json();
+            } else {
+                // If not JSON, get as text for debugging
+                const text = await response.text();
+                console.error('Non-JSON response received:', text);
+                throw new Error(`Server returned non-JSON response: ${response.status} ${response.statusText}`);
+            }
             
             if (response.ok) {
                 console.log('Cleared all alerts:', data);
@@ -1067,7 +1092,19 @@ class AlertsManager {
             
         } catch (error) {
             console.error('Error clearing alerts:', error);
-            this.showToast('Error clearing alerts: ' + error.message, 'danger');
+            
+            // Provide more detailed error information
+            let errorMessage = 'Failed to fetch';
+            if (error.message) {
+                errorMessage = error.message;
+            }
+            
+            // Special handling for common network errors
+            if (error.name === 'TypeError' && error.message.includes('fetch')) {
+                errorMessage = 'Network error: Unable to connect to server. Please check your connection and try again.';
+            }
+            
+            this.showToast('Error clearing alerts: ' + errorMessage, 'danger');
         }
     }
 

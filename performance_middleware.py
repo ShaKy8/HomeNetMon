@@ -92,40 +92,59 @@ class PerformanceMiddleware:
         return response
     
     def add_gzip_compression(self, app):
-        """Add gzip compression wrapper"""
+        """Add gzip compression wrapper - FIXED version"""
         def gzip_wrapper(environ, start_response):
+            # Store the original start_response
+            stored_status = None
+            stored_headers = None
+            stored_exc_info = None
+            
             def new_start_response(status, response_headers, exc_info=None):
-                # Check if client accepts gzip
-                accept_encoding = environ.get('HTTP_ACCEPT_ENCODING', '')
-                
-                if 'gzip' in accept_encoding and self.should_compress(response_headers):
-                    # Add gzip headers
-                    response_headers.append(('Content-Encoding', 'gzip'))
-                    response_headers = [(k, v) for k, v in response_headers if k.lower() != 'content-length']
-                
-                return start_response(status, response_headers, exc_info)
+                nonlocal stored_status, stored_headers, stored_exc_info
+                stored_status = status
+                stored_headers = response_headers
+                stored_exc_info = exc_info
+                # Don't call start_response yet - wait until we know if we're compressing
+                return None
             
             # Capture response
             response_data = []
-            def capture_response(data):
-                response_data.append(data)
-            
             app_iter = app(environ, new_start_response)
             
             # Collect response data
             for data in app_iter:
-                capture_response(data)
+                response_data.append(data)
             
             # Join all data
             full_response = b''.join(response_data)
             
-            # Compress if appropriate
+            # Determine if we should compress
             accept_encoding = environ.get('HTTP_ACCEPT_ENCODING', '')
-            if 'gzip' in accept_encoding and len(full_response) > 1024:  # Only compress if > 1KB
+            should_compress = (
+                'gzip' in accept_encoding and 
+                len(full_response) > 1024 and  # Only compress if > 1KB
+                self.should_compress(stored_headers)
+            )
+            
+            # Actually compress if appropriate
+            if should_compress:
                 try:
-                    full_response = gzip.compress(full_response)
-                except Exception:
-                    pass  # Fall back to uncompressed
+                    compressed_response = gzip.compress(full_response)
+                    # Only use compression if it actually reduces size
+                    if len(compressed_response) < len(full_response):
+                        full_response = compressed_response
+                        # Add gzip headers
+                        stored_headers.append(('Content-Encoding', 'gzip'))
+                        # Remove content-length as it will be wrong after compression
+                        stored_headers = [(k, v) for k, v in stored_headers if k.lower() != 'content-length']
+                        # Add new content length
+                        stored_headers.append(('Content-Length', str(len(full_response))))
+                except Exception as e:
+                    # Fall back to uncompressed on any error
+                    current_app.logger.debug(f"Compression failed: {e}")
+            
+            # Now call the real start_response with final headers
+            start_response(stored_status, stored_headers, stored_exc_info)
             
             return [full_response]
         

@@ -477,7 +477,34 @@ class DeviceMonitor:
                 
                 if self._cleanup_counter >= 10:
                     self.cleanup_old_data()
+                    
+                    # Also run alert retention cleanup (less frequent - every 10 cycles)
+                    try:
+                        from services.alert_retention_policy import alert_retention_policy
+                        if self.app:
+                            alert_retention_policy.app = self.app
+                        alert_retention_policy.run_retention_cleanup()
+                    except Exception as e:
+                        logger.error(f"Error in alert retention cleanup: {e}")
+                    
                     self._cleanup_counter = 0
+                
+                # Run alert auto-resolution periodically (every 5 cycles)
+                if hasattr(self, '_auto_resolve_counter'):
+                    self._auto_resolve_counter += 1
+                else:
+                    self._auto_resolve_counter = 1
+                
+                if self._auto_resolve_counter >= 5:
+                    try:
+                        from services.alert_auto_resolver import alert_auto_resolver
+                        if self.app:
+                            alert_auto_resolver.app = self.app
+                        alert_auto_resolver.run_auto_resolution_cycle()
+                        self._auto_resolve_counter = 0
+                    except Exception as e:
+                        logger.error(f"Error in alert auto-resolution: {e}")
+                        self._auto_resolve_counter = 0
                 
                 # Flush any pending WebSocket updates
                 if self.socketio:

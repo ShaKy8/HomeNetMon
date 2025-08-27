@@ -2852,6 +2852,21 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('refresh-btn').addEventListener('click', loadDevices);
     // Network scan button with progress tracking
     document.getElementById('scan-btn').addEventListener('click', async () => {
+        // Quick connectivity test before starting scan
+        console.log('Testing connectivity to scan API...');
+        try {
+            const testResponse = await fetch('/api/monitoring/quick-stats');
+            console.log('Quick stats test response:', testResponse.status, testResponse.ok);
+            if (!testResponse.ok) {
+                showToast(`Connection test failed (${testResponse.status}). Check if you're accessing the correct port.`, 'warning');
+                return;
+            }
+        } catch (testError) {
+            console.error('Connectivity test failed:', testError);
+            showToast('Cannot connect to HomeNetMon API. Are you accessing the correct URL/port?', 'danger');
+            return;
+        }
+        
         startNetworkScan();
     });
     document.getElementById('scan-network-btn').addEventListener('click', async () => {
@@ -2907,12 +2922,21 @@ document.addEventListener('DOMContentLoaded', function() {
             progressBar.setAttribute('aria-valuenow', '10');
             
             // Call the real scan API
+            console.log('Initiating network scan...');
             const scanResponse = await fetch('/api/monitoring/scan', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' }
             });
             
+            console.log('Scan response status:', scanResponse.status);
+            console.log('Scan response ok:', scanResponse.ok);
+            
+            if (!scanResponse.ok) {
+                throw new Error(`Network scan API returned status ${scanResponse.status}`);
+            }
+            
             const scanResult = await scanResponse.json();
+            console.log('Scan result:', scanResult);
             
             if (!scanResult.success) {
                 throw new Error(scanResult.error || 'Scan request failed');
@@ -2978,7 +3002,18 @@ document.addEventListener('DOMContentLoaded', function() {
             
         } catch (error) {
             console.error('Error during network scan:', error);
-            showToast('Network scan failed: ' + error.message, 'danger');
+            console.error('Error stack:', error.stack);
+            
+            let errorMessage = 'Network scan failed: ';
+            if (error.message.includes('fetch')) {
+                errorMessage += 'Unable to connect to server. Please check if HomeNetMon is running.';
+            } else if (error.message.includes('status')) {
+                errorMessage += error.message + '. Check server logs for details.';
+            } else {
+                errorMessage += error.message;
+            }
+            
+            showToast(errorMessage, 'danger');
             progressContainer.style.display = 'none';
         } finally {
             // Restore button state

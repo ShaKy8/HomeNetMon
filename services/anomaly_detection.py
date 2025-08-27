@@ -86,29 +86,29 @@ class AnomalyDetectionEngine:
         self.device_analytics = DeviceBehaviorAnalytics()
         self.failure_prediction = FailurePredictionEngine()
         
-        # Enhanced anomaly detection configuration
+        # Enhanced anomaly detection configuration - TUNED TO REDUCE FALSE POSITIVES
         self.enhanced_detection_config = {
             'statistical_algorithms': {
-                'z_score_threshold': 2.5,
-                'isolation_forest_contamination': 0.1,
-                'local_outlier_factor_neighbors': 20,
-                'confidence_threshold': 0.7
+                'z_score_threshold': 3.5,        # Increased from 2.5 - require stronger deviation
+                'isolation_forest_contamination': 0.05,  # Reduced from 0.1 - fewer outliers
+                'local_outlier_factor_neighbors': 30,    # Increased from 20 - more neighbors
+                'confidence_threshold': 0.85      # Increased from 0.7 - higher confidence required
             },
             'behavioral_analysis': {
-                'pattern_deviation_threshold': 0.4,
-                'usage_pattern_sensitivity': 0.3,
-                'communication_pattern_sensitivity': 0.5,
-                'baseline_days': 14
+                'pattern_deviation_threshold': 0.6,      # Increased from 0.4 - less sensitive
+                'usage_pattern_sensitivity': 0.5,        # Increased from 0.3 - less sensitive
+                'communication_pattern_sensitivity': 0.7, # Increased from 0.5 - less sensitive
+                'baseline_days': 21               # Increased from 14 - longer baseline
             },
             'network_wide_detection': {
-                'correlation_threshold': 0.3,
+                'correlation_threshold': 0.5,            # Increased from 0.3 - stronger correlation
                 'cascade_detection_enabled': True,
-                'distributed_anomaly_threshold': 0.25
+                'distributed_anomaly_threshold': 0.4     # Increased from 0.25 - more conservative
             },
             'real_time_monitoring': {
-                'sliding_window_minutes': 15,
-                'rapid_detection_threshold': 3.0,
-                'alert_debouncing_seconds': 300
+                'sliding_window_minutes': 30,            # Increased from 15 - longer window
+                'rapid_detection_threshold': 4.0,        # Increased from 3.0 - less sensitive
+                'alert_debouncing_seconds': 600          # Increased from 300 - longer debounce
             }
         }
         
@@ -127,11 +127,12 @@ class AnomalyDetectionEngine:
         
         # Monitoring and alerting systems
         self.anomaly_callbacks = []
+        # Alert thresholds - INCREASED to reduce false positives
         self.alert_thresholds = {
-            AnomalySeverity.LOW: 0.7,
-            AnomalySeverity.MEDIUM: 0.8,
-            AnomalySeverity.HIGH: 0.9,
-            AnomalySeverity.CRITICAL: 0.95
+            AnomalySeverity.LOW: 0.80,      # Increased from 0.7
+            AnomalySeverity.MEDIUM: 0.85,   # Increased from 0.8  
+            AnomalySeverity.HIGH: 0.92,     # Increased from 0.9
+            AnomalySeverity.CRITICAL: 0.97  # Increased from 0.95
         }
         
         # Performance tracking
@@ -193,32 +194,33 @@ class AnomalyDetectionEngine:
     
     def _load_default_configuration(self):
         """Load default configuration values"""
-        # Configuration - More conservative settings to reduce false positives
-        self.min_data_points = 50  # Increased minimum data points for more stable baselines
-        self.baseline_hours = 168  # 7 days for baseline calculation
-        self.anomaly_threshold = 3.0  # Increased standard deviations for anomaly detection
+        # Configuration - HEAVILY tuned to reduce false positives
+        self.min_data_points = 100  # Doubled minimum data points for much more stable baselines
+        self.baseline_hours = 336   # 14 days for baseline calculation (doubled)
+        self.anomaly_threshold = 4.0  # Increased standard deviations for anomaly detection
         
-        # Anomaly detection settings per metric - Tuned to reduce false positives
+        # Anomaly detection settings per metric - AGGRESSIVELY tuned to reduce false positives
         self.detection_settings = {
             'response_time': {
                 'enabled': True,
-                'threshold_multiplier': 2.5,  # Increased from 2.0 - more conservative
-                'min_change_threshold': 100,  # Increased from 50ms - only alert on significant changes
+                'threshold_multiplier': 4.0,  # Increased from 2.5 - much more conservative
+                'min_change_threshold': 300,  # Increased from 100ms - only alert on major changes
                 'severity_thresholds': {
-                    'low': 2.0,      # Increased from 1.5
-                    'medium': 2.5,   # Increased from 2.0 
-                    'high': 3.5,     # Increased from 3.0
-                    'critical': 5.0  # Increased from 4.0
+                    'low': 3.5,      # Increased from 2.0
+                    'medium': 4.5,   # Increased from 2.5
+                    'high': 6.0,     # Increased from 3.5
+                    'critical': 8.0  # Increased from 5.0
                 }
             },
             'uptime_pattern': {
                 'enabled': True,
-                'unexpected_down_threshold': 0.9,  # Increased from 0.8 - more conservative
-                'unexpected_up_threshold': 0.9     # Increased from 0.8 - more conservative
+                'unexpected_down_threshold': 0.95,  # Increased from 0.9 - very conservative
+                'unexpected_up_threshold': 0.95     # Increased from 0.9 - very conservative
             },
             'connectivity_pattern': {
                 'enabled': True,
-                'unusual_pattern_threshold': 1.5  # Increased from 0.7 - requires 150% change (vs 70%) to trigger
+                'unusual_pattern_threshold': 2.5,  # Increased from 1.5 - requires 250% change to trigger
+                'min_baseline_connections': 6.0    # Added minimum baseline activity requirement
             }
         }
     
@@ -459,8 +461,8 @@ class AnomalyDetectionEngine:
         
         threshold = self.detection_settings['connectivity_pattern']['unusual_pattern_threshold']
         
-        # Add minimum baseline frequency requirement to reduce noise
-        min_baseline_freq = 2.0  # connections/hour - ignore devices with very low baseline activity
+        # Add minimum baseline frequency requirement to reduce noise - INCREASED
+        min_baseline_freq = self.detection_settings['connectivity_pattern'].get('min_baseline_connections', 6.0)
         if baseline_freq < min_baseline_freq:
             return None
         
