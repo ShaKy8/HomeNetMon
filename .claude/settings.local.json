@@ -100,7 +100,8 @@
       "Bash(for page in \"/\" \"/dashboard\" \"/alerts\" \"/settings\")",
       "Bash(do echo \"Testing $page:\")",
       "Bash(done)",
-      "Bash(whereis:*)"
+      "Bash(whereis:*)",
+      "Bash(claude doctor)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",
