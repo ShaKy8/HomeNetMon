@@ -99,7 +99,8 @@
       "Read(//home/kyle/Pictures/Screenshots/**)",
       "Bash(for page in \"/\" \"/dashboard\" \"/alerts\" \"/settings\")",
       "Bash(do echo \"Testing $page:\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(whereis:*)"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",
