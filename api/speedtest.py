@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime
 from services.speedtest import speed_test_service
+from api.rate_limited_endpoints import create_endpoint_limiter
 import threading
 
 speedtest_bp = Blueprint('speedtest', __name__)
@@ -15,6 +16,7 @@ def get_speedtest_status():
         return jsonify({'error': str(e)}), 500
 
 @speedtest_bp.route('/run', methods=['POST'])
+@create_endpoint_limiter('critical')
 def run_speedtest():
     """Run a speed test"""
     try:

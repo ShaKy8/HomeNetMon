@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from models import db, Configuration
 from config import Config
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 config_bp = Blueprint('config', __name__)
 

@@ -101,7 +101,8 @@
       "Bash(do echo \"Testing $page:\")",
       "Bash(done)",
       "Bash(whereis:*)",
-      "Bash(claude doctor)"
+      "Bash(claude doctor)",
+      "Bash(for i in {1..15})"
     ],
     "deny": [],
     "defaultMode": "acceptEdits",

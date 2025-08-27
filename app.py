@@ -52,6 +52,7 @@ def create_app():
     from api.escalation import escalation_bp
     from api.performance import performance_bp
     from api.performance_optimization import performance_optimization_bp
+    from api.rate_limit_admin import rate_limit_admin_bp
     
     app.register_blueprint(devices_bp, url_prefix='/api/devices')
     app.register_blueprint(monitoring_bp, url_prefix='/api/monitoring')
@@ -69,6 +70,7 @@ def create_app():
     app.register_blueprint(escalation_bp, url_prefix='/api/escalation')
     app.register_blueprint(performance_bp, url_prefix='/api/performance')
     app.register_blueprint(performance_optimization_bp)
+    app.register_blueprint(rate_limit_admin_bp, url_prefix='/api/rate-limit')
     
     # Initialize monitoring services
     scanner = NetworkScanner(app)
@@ -100,6 +102,10 @@ def create_app():
     from services.escalation_service import escalation_service
     escalation_service.init_app(app)
     
+    # Initialize rate limiter service
+    from services.rate_limiter import init_rate_limiter
+    rate_limiter = init_rate_limiter(app)
+    
     # Initialize performance monitor service
     from services.performance_monitor import performance_monitor
     performance_monitor.app = app
@@ -116,6 +122,7 @@ def create_app():
     app.rule_engine_service = rule_engine_service
     app.configuration_service = configuration_service
     app.escalation_service = escalation_service
+    app.rate_limiter = rate_limiter
     app.performance_monitor = performance_monitor
     
     # Initialize WebSocket optimizer for performance

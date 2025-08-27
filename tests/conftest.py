@@ -20,7 +20,15 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from app import create_app
-from models import db, Device, MonitoringData, PerformanceMetrics, Alert, Configuration
+from models import (
+    db, Device, MonitoringData, PerformanceMetrics, Alert, Configuration,
+    DeviceIpHistory, ConfigurationHistory, BandwidthData, NotificationHistory,
+    NotificationReceipt, AlertSuppression, AutomationRule, RuleExecution,
+    EscalationRule, EscalationExecution, EscalationActionLog, SecurityScan,
+    SecurityVulnerability, SecurityEvent, ComplianceResult, DeviceOSInfo,
+    SecurityIncident, PerformanceSnapshot, BandwidthTest, LatencyAnalysis,
+    PerformanceAlert, OptimizationRecommendation
+)
 from config import Config
 
 

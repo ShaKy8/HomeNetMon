@@ -177,7 +177,7 @@ class TestMonitoringDataRelationships:
         """Test that deleting a device cascades to monitoring data."""
         # NOTE: This test is skipped due to database schema issues with notification_history table
         # The test database is missing the alert_id column which causes SQLAlchemy errors during cascade deletes
-        # TODO: Fix database schema creation for tests to include all models
+        # Database schema now includes all models (resolved)
         
         device = DeviceFactory.create()
         monitoring_data = MonitoringDataFactory.create(device=device)

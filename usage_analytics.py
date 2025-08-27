@@ -584,8 +584,51 @@ class UsageAnalyticsManager:
             f"(threshold: {threshold}%)"
         )
         
-        # TODO: Send email notification, webhook, etc.
-        # This would integrate with the existing alert system
+        # Send notification through existing alert system
+        self._send_quota_alert_notification(tenant, metric_type, percentage_used, threshold)
+    
+    def _send_quota_alert_notification(self, tenant, metric_type: UsageMetricType, 
+                                      percentage_used: float, threshold: int):
+        """Send quota alert notification through existing alert system"""
+        try:
+            # Import here to avoid circular imports
+            from monitoring.alerts import AlertManager
+            from models import Alert
+            
+            # Create alert record in database
+            alert_message = (
+                f"[QUOTA ALERT] {tenant.name}: {metric_type.value.replace('_', ' ').title()} "
+                f"usage at {percentage_used:.1f}% (threshold: {threshold}%)"
+            )
+            
+            alert = Alert(
+                device_id=None,  # This is a system/tenant alert, not device-specific
+                alert_type='quota_exceeded',
+                message=alert_message,
+                severity='warning' if threshold < 90 else 'critical',
+                created_at=datetime.utcnow(),
+                resolved=False,
+                metadata={
+                    'tenant_id': tenant.id,
+                    'tenant_name': tenant.name,
+                    'metric_type': metric_type.value,
+                    'percentage_used': percentage_used,
+                    'threshold': threshold,
+                    'alert_category': 'usage_quota'
+                }
+            )
+            
+            db.session.add(alert)
+            db.session.commit()
+            
+            # Send notifications through AlertManager
+            alert_manager = AlertManager()
+            alert_manager.send_alert_notifications(alert)
+            
+            logger.info(f"Quota alert notification sent for {tenant.name}: {metric_type.value}")
+            
+        except Exception as e:
+            logger.error(f"Failed to send quota alert notification: {e}")
     
     # ========================================================================
     # Background Processing

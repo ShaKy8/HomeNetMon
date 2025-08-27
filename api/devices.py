@@ -1,7 +1,8 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime, timedelta
-from models import db, Device, MonitoringData, Alert
+from models import db, Device, MonitoringData, Alert, DeviceIpHistory
 from monitoring.monitor import DeviceMonitor
+from api.rate_limited_endpoints import create_endpoint_limiter
 import logging
 import ping3
 
@@ -10,6 +11,7 @@ logger = logging.getLogger(__name__)
 devices_bp = Blueprint('devices', __name__)
 
 @devices_bp.route('', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_devices():
     """Get all devices with optional filtering"""
     try:
@@ -312,6 +314,7 @@ def update_device(device_id):
         return jsonify({'error': str(e)}), 500
 
 @devices_bp.route('/<int:device_id>', methods=['DELETE'])
+@create_endpoint_limiter('strict')
 def delete_device(device_id):
     """Delete a device"""
     try:
@@ -337,9 +340,12 @@ def get_device_ip_history(device_id):
     try:
         device = Device.query.get_or_404(device_id)
         
-        # TODO: Implement IP history tracking with device_ip_history table
-        # For now, return empty history as the table doesn't exist yet
-        history_list = []
+        # Get IP address change history from database
+        history_records = DeviceIpHistory.query.filter_by(device_id=device_id)\
+                                              .order_by(DeviceIpHistory.change_detected_at.desc())\
+                                              .limit(50).all()  # Limit to last 50 changes
+        
+        history_list = [record.to_dict() for record in history_records]
         
         return jsonify({
             'success': True,
@@ -358,7 +364,79 @@ def get_device_ip_history(device_id):
 
 # Removed duplicate ping_device function - using ping_single_device instead
 
+def track_ip_change(device_id, old_ip, new_ip, source='auto_discovery', notes=None):
+    """Utility function to track IP address changes"""
+    try:
+        # DeviceIpHistory already imported at module level
+        
+        # Don't create duplicate records for the same change
+        existing = DeviceIpHistory.query.filter_by(
+            device_id=device_id,
+            new_ip_address=new_ip
+        ).order_by(DeviceIpHistory.change_detected_at.desc()).first()
+        
+        # If the most recent record already has this IP, don't duplicate
+        if existing and existing.new_ip_address == new_ip:
+            return existing
+            
+        # Create new history record
+        history_record = DeviceIpHistory(
+            device_id=device_id,
+            old_ip_address=old_ip,
+            new_ip_address=new_ip,
+            change_source=source,
+            notes=notes
+        )
+        
+        db.session.add(history_record)
+        db.session.commit()
+        
+        logger.info(f"Tracked IP change for device {device_id}: {old_ip} -> {new_ip} (source: {source})")
+        return history_record
+        
+    except Exception as e:
+        logger.error(f"Failed to track IP change: {e}")
+        return None
+
+@devices_bp.route('/<int:device_id>/ip-history', methods=['POST'])
+def log_ip_change(device_id):
+    """Manually log an IP address change"""
+    try:
+        device = Device.query.get_or_404(device_id)
+        data = request.get_json()
+        
+        old_ip = data.get('old_ip_address')
+        new_ip = data.get('new_ip_address') 
+        notes = data.get('notes', '')
+        
+        if not new_ip:
+            return jsonify({'error': 'new_ip_address is required'}), 400
+            
+        # Track the change
+        history_record = track_ip_change(
+            device_id=device_id,
+            old_ip=old_ip,
+            new_ip=new_ip,
+            source='manual_log',
+            notes=notes
+        )
+        
+        if history_record:
+            return jsonify({
+                'success': True,
+                'message': 'IP change logged successfully',
+                'history_record': history_record.to_dict()
+            })
+        else:
+            return jsonify({'error': 'Failed to log IP change'}), 500
+            
+    except Exception as e:
+        if '404 Not Found' in str(e):
+            return jsonify({'error': 'Device not found'}), 404
+        return jsonify({'error': str(e)}), 500
+
 @devices_bp.route('/ping-all', methods=['POST'])
+@create_endpoint_limiter('intensive')
 def ping_all_devices():
     """Ping all monitored devices"""
     import subprocess
@@ -757,6 +835,7 @@ def get_monitored_devices():
         }), 500
 
 @devices_bp.route('/bulk-update', methods=['POST'])
+@create_endpoint_limiter('bulk')
 def bulk_update_devices():
     """Bulk update device properties"""
     try:
@@ -872,6 +951,7 @@ def bulk_update_devices():
         }), 500
 
 @devices_bp.route('/bulk-ping', methods=['POST'])
+@create_endpoint_limiter('intensive')
 def bulk_ping_devices():
     """Trigger ping for multiple devices"""
     try:

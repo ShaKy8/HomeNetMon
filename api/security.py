@@ -2,6 +2,7 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 from services.security_scanner import security_scanner
 from models import db, Device, SecurityScan, SecurityEvent, Alert
+from api.rate_limited_endpoints import create_endpoint_limiter
 import json
 
 security_bp = Blueprint('security', __name__)
@@ -145,6 +146,7 @@ def get_scan_results():
         return jsonify({'error': str(e)}), 500
 
 @security_bp.route('/device/<int:device_id>/scan', methods=['POST'])
+@create_endpoint_limiter('critical')
 def scan_device(device_id):
     """Manually trigger a security scan for a specific device"""
     try:
@@ -286,6 +288,7 @@ def get_network_security_overview():
         return jsonify({'error': str(e)}), 500
 
 @security_bp.route('/run-scan', methods=['POST'])
+@create_endpoint_limiter('critical')
 def run_network_scan():
     """Manually trigger a network-wide security scan"""
     try:

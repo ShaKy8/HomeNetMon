@@ -461,6 +461,35 @@ class Device(db.Model):
             'last_seen': (self.last_seen.isoformat() + 'Z') if self.last_seen else None,
         }
 
+class DeviceIpHistory(db.Model):
+    """Track IP address changes for devices over time"""
+    __tablename__ = 'device_ip_history'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    device_id = db.Column(db.Integer, db.ForeignKey('devices.id'), nullable=False, index=True)
+    old_ip_address = db.Column(db.String(15), nullable=True)  # Previous IP (null for first record)
+    new_ip_address = db.Column(db.String(15), nullable=False)  # New/current IP
+    change_detected_at = db.Column(db.DateTime, default=datetime.utcnow, nullable=False)
+    change_source = db.Column(db.String(50), default='auto_discovery')  # auto_discovery, manual_update, etc.
+    notes = db.Column(db.String(500))  # Optional notes about the change
+    
+    # Relationship back to device
+    device = db.relationship('Device', backref='ip_history', lazy=True)
+    
+    def __repr__(self):
+        return f'<DeviceIpHistory {self.device_id}: {self.old_ip_address} -> {self.new_ip_address}>'
+    
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'device_id': self.device_id,
+            'old_ip_address': self.old_ip_address,
+            'new_ip_address': self.new_ip_address,
+            'change_detected_at': self.change_detected_at.isoformat() + 'Z' if self.change_detected_at else None,
+            'change_source': self.change_source,
+            'notes': self.notes
+        }
+
 class MonitoringData(db.Model):
     __tablename__ = 'monitoring_data'
     
