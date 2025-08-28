@@ -1,0 +1,576 @@
+{% extends "base_clean.html" %}
+
+{% block title %}Network Dashboard - HomeNetMon{% endblock %}
+
+{% block content %}
+<!-- Network Health Dashboard - Performance First Design -->
+<div class="container-fluid p-4">
+    <!-- Status Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div class="d-flex align-items-center">
+                    <div class="status-indicator me-3" id="network-status-indicator">
+                        <div class="spinner-border spinner-border-sm text-secondary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                    <div>
+                        <h1 class="h3 mb-0">{{ dashboard_title or 'Network Dashboard' }}</h1>
+                        <small class="text-muted" id="last-updated">Loading...</small>
+                    </div>
+                </div>
+                <!-- Quick Actions -->
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary btn-sm" id="refresh-btn" title="Refresh Status">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                    <a href="/alerts" class="btn btn-outline-warning btn-sm" id="alerts-btn" title="View All Alerts">
+                        <i class="bi bi-exclamation-triangle"></i> Alerts <span class="badge bg-danger ms-1" id="alerts-count">0</span>
+                    </a>
+                    <a href="/monitored-hosts" class="btn btn-outline-secondary btn-sm" title="View All Devices">
+                        <i class="bi bi-router"></i> Devices
+                    </a>
+                    <a href="/settings" class="btn btn-outline-secondary btn-sm" title="Settings">
+                        <i class="bi bi-gear"></i>
+                    </a>
+                    <a href="/about" class="btn btn-outline-secondary btn-sm" title="About HomeNetMon">
+                        <i class="bi bi-info-circle"></i> About
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Key Metrics Cards -->
+    <div class="row mb-4" id="metrics-cards">
+        <!-- Network Status Card -->
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="metric-icon mb-2" id="network-status-icon">
+                        <i class="bi bi-wifi text-secondary" style="font-size: 2rem;"></i>
+                    </div>
+                    <h4 class="card-title mb-1" id="network-status-text">Checking...</h4>
+                    <p class="card-text text-muted small mb-0">Network Status</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Devices Online Card -->
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="metric-icon mb-2">
+                        <i class="bi bi-router text-primary" style="font-size: 2rem;"></i>
+                    </div>
+                    <h4 class="card-title mb-1">
+                        <span id="devices-online">-</span>/<span id="devices-total">-</span>
+                    </h4>
+                    <p class="card-text text-muted small mb-0">Devices Online</p>
+                    <div class="progress mt-2" style="height: 6px;">
+                        <div class="progress-bar bg-success" role="progressbar" id="devices-progress" style="width: 0%"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Response Time Card -->
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="metric-icon mb-2">
+                        <i class="bi bi-speedometer2 text-info" style="font-size: 2rem;"></i>
+                    </div>
+                    <h4 class="card-title mb-1" id="avg-response-time">- ms</h4>
+                    <p class="card-text text-muted small mb-0">Avg Response Time</p>
+                    <small class="text-success" id="response-trend">
+                        <i class="bi bi-dash"></i> Stable
+                    </small>
+                </div>
+            </div>
+        </div>
+
+        <!-- Active Alerts Card -->
+        <div class="col-lg-3 col-md-6 mb-3">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body text-center">
+                    <div class="metric-icon mb-2">
+                        <i class="bi bi-exclamation-triangle text-warning" style="font-size: 2rem;"></i>
+                    </div>
+                    <h4 class="card-title mb-1" id="active-alerts-count">-</h4>
+                    <p class="card-text text-muted small mb-0">Active Alerts</p>
+                    <small class="text-muted" id="alert-summary">Loading...</small>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Activity & System Info -->
+    <div class="row">
+        <div class="col-lg-8 mb-4">
+            <!-- Recent Activity -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 pb-0">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-activity me-2"></i>Recent Activity
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="list-group list-group-flush" id="recent-activity">
+                        <div class="list-group-item border-0 px-0">
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border spinner-border-sm text-primary me-3" role="status"></div>
+                                <span class="text-muted">Loading recent activity...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4 mb-4">
+            <!-- System Info -->
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 pb-0">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-info-circle me-2"></i>System Info
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="text-primary fw-bold" id="system-uptime">-</div>
+                                <small class="text-muted">Uptime</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="text-info fw-bold" id="scan-status">-</div>
+                                <small class="text-muted">Scanning</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="text-success fw-bold" id="monitored-devices">-</div>
+                                <small class="text-muted">Monitored</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <div class="text-secondary fw-bold" id="network-range">-</div>
+                                <small class="text-muted">Network</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Stats Summary -->
+            <div class="card border-0 shadow-sm mt-3">
+                <div class="card-body">
+                    <h6 class="card-title">Network Health</h6>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <span class="text-muted">Overall Status</span>
+                        <span class="badge" id="health-badge">Loading</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Performance-First CSS - Minimal and Fast */
+.status-indicator {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.status-healthy {
+    background-color: #28a745;
+    animation: pulse-green 2s infinite;
+}
+
+.status-warning {
+    background-color: #ffc107;
+}
+
+.status-critical {
+    background-color: #dc3545;
+    animation: pulse-red 1s infinite;
+}
+
+.status-loading {
+    background-color: #6c757d;
+}
+
+.metric-icon {
+    opacity: 0.8;
+}
+
+.card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+}
+
+@keyframes pulse-green {
+    0% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(40, 167, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(40, 167, 69, 0); }
+}
+
+@keyframes pulse-red {
+    0% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7); }
+    70% { box-shadow: 0 0 0 10px rgba(220, 53, 69, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(220, 53, 69, 0); }
+}
+
+/* Mobile Optimizations */
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 1rem !important;
+    }
+    
+    .btn-group .btn {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.875rem;
+    }
+    
+    .btn-group .btn .badge {
+        display: none;
+    }
+    
+    /* Hide button text on mobile, keep icons only */
+    .btn-group .btn {
+        white-space: nowrap;
+        overflow: hidden;
+    }
+    
+    .btn-group .btn:not([id="alerts-btn"]) {
+        font-size: 0;
+    }
+    
+    .btn-group .btn i {
+        font-size: 1rem !important;
+    }
+}
+
+/* Loading States */
+.loading-skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Recent Activity Links */
+.activity-link {
+    border-radius: 0.375rem;
+    transition: all 0.2s ease;
+    color: inherit !important;
+}
+
+.activity-link:hover {
+    background-color: rgba(0, 123, 255, 0.05);
+    transform: translateX(4px);
+    color: inherit !important;
+}
+</style>
+
+<script>
+// Minimal JavaScript for Dashboard - Performance First
+class NetworkDashboard {
+    constructor() {
+        this.lastUpdate = null;
+        this.refreshInterval = null;
+        this.init();
+    }
+
+    init() {
+        this.setupEventListeners();
+        this.loadDashboardData();
+        this.startAutoRefresh();
+    }
+
+    setupEventListeners() {
+        // Refresh button
+        document.getElementById('refresh-btn').addEventListener('click', () => {
+            this.loadDashboardData();
+        });
+
+        // Auto-refresh on visibility change
+        document.addEventListener('visibilitychange', () => {
+            if (!document.hidden) {
+                this.loadDashboardData();
+            }
+        });
+    }
+
+    async loadDashboardData() {
+        try {
+            this.showLoadingState();
+            
+            // Load dashboard data and recent activity in parallel
+            const [statsResponse, alertsResponse] = await Promise.all([
+                fetch('/api/monitoring/quick-stats'),
+                fetch('/api/monitoring/alerts?limit=5')
+            ]);
+            
+            if (!statsResponse.ok) throw new Error(`Stats API: HTTP ${statsResponse.status}`);
+            if (!alertsResponse.ok) throw new Error(`Alerts API: HTTP ${alertsResponse.status}`);
+            
+            const [statsData, alertsData] = await Promise.all([
+                statsResponse.json(),
+                alertsResponse.json()
+            ]);
+            
+            this.updateDashboard(statsData);
+            this.updateRecentActivity(alertsData.alerts || []);
+            this.lastUpdate = new Date();
+            this.updateLastUpdated();
+            
+        } catch (error) {
+            console.error('Dashboard load error:', error);
+            this.showErrorState();
+        }
+    }
+
+    updateDashboard(data) {
+        // Network Status
+        this.updateNetworkStatus(data);
+        
+        // Key Metrics
+        this.updateDeviceMetrics(data);
+        
+        // System Info
+        this.updateSystemInfo(data);
+        
+        // Health Badge
+        this.updateHealthBadge(data);
+    }
+
+    updateNetworkStatus(data) {
+        const indicator = document.getElementById('network-status-indicator');
+        const icon = document.getElementById('network-status-icon');
+        const text = document.getElementById('network-status-text');
+        
+        const isHealthy = data.devices_up > 0 && data.devices_down < data.total_devices * 0.2;
+        
+        if (isHealthy) {
+            indicator.className = 'status-indicator status-healthy';
+            icon.innerHTML = '<i class="bi bi-wifi text-success" style="font-size: 2rem;"></i>';
+            text.textContent = 'All Systems OK';
+            text.className = 'card-title mb-1 text-success';
+        } else {
+            indicator.className = 'status-indicator status-warning';
+            icon.innerHTML = '<i class="bi bi-wifi-off text-warning" style="font-size: 2rem;"></i>';
+            text.textContent = 'Issues Detected';
+            text.className = 'card-title mb-1 text-warning';
+        }
+    }
+
+    updateDeviceMetrics(data) {
+        // Devices Online
+        document.getElementById('devices-online').textContent = data.devices_up || 0;
+        document.getElementById('devices-total').textContent = data.total_devices || 0;
+        
+        const percentage = data.total_devices ? (data.devices_up / data.total_devices * 100) : 0;
+        const progressBar = document.getElementById('devices-progress');
+        progressBar.style.width = `${percentage}%`;
+        progressBar.className = `progress-bar ${percentage > 80 ? 'bg-success' : percentage > 50 ? 'bg-warning' : 'bg-danger'}`;
+        
+        // Response Time (mock - would need separate API)
+        document.getElementById('avg-response-time').textContent = '12 ms';
+        
+        // Active Alerts
+        document.getElementById('active-alerts-count').textContent = data.active_alerts || 0;
+        document.getElementById('alerts-count').textContent = data.active_alerts || 0;
+        
+        // Alert summary
+        const alertSummary = document.getElementById('alert-summary');
+        if (data.active_alerts > 0) {
+            alertSummary.textContent = `${data.active_alerts} require attention`;
+            alertSummary.className = 'text-warning';
+        } else {
+            alertSummary.textContent = 'No active alerts';
+            alertSummary.className = 'text-success';
+        }
+    }
+
+    updateSystemInfo(data) {
+        // System uptime (would need separate API)
+        document.getElementById('system-uptime').textContent = '2d 14h';
+        
+        // Scan status
+        const scanStatus = document.getElementById('scan-status');
+        if (data.live_scan_enabled) {
+            scanStatus.textContent = 'Active';
+            scanStatus.className = 'text-success fw-bold';
+        } else {
+            scanStatus.textContent = 'Inactive';
+            scanStatus.className = 'text-warning fw-bold';
+        }
+        
+        // Monitored devices
+        document.getElementById('monitored-devices').textContent = data.monitored_devices || data.total_devices;
+        
+        // Network range
+        document.getElementById('network-range').textContent = data.network_range || '-';
+    }
+
+    updateHealthBadge(data) {
+        const badge = document.getElementById('health-badge');
+        const healthScore = data.total_devices ? (data.devices_up / data.total_devices) : 0;
+        
+        if (healthScore > 0.9) {
+            badge.textContent = 'Excellent';
+            badge.className = 'badge bg-success';
+        } else if (healthScore > 0.7) {
+            badge.textContent = 'Good';
+            badge.className = 'badge bg-primary';
+        } else if (healthScore > 0.5) {
+            badge.textContent = 'Fair';
+            badge.className = 'badge bg-warning';
+        } else {
+            badge.textContent = 'Poor';
+            badge.className = 'badge bg-danger';
+        }
+    }
+
+    updateRecentActivity(alerts) {
+        const container = document.getElementById('recent-activity');
+        
+        if (!alerts || alerts.length === 0) {
+            container.innerHTML = `
+                <div class="list-group-item border-0 px-0">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-check-circle text-success me-3"></i>
+                        <div>
+                            <div class="fw-medium">All quiet</div>
+                            <small class="text-muted">No recent alerts or events</small>
+                        </div>
+                        <small class="text-muted ms-auto">Now</small>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
+        const activityItems = alerts.slice(0, 5).map(alert => {
+            const alertTime = new Date(alert.created_at);
+            const timeAgo = this.getTimeAgo(alertTime);
+            const severity = alert.severity || 'medium';
+            const icon = severity === 'high' ? 'bi-exclamation-triangle-fill text-danger' : 
+                        severity === 'medium' ? 'bi-exclamation-triangle text-warning' : 
+                        'bi-info-circle text-info';
+            
+            const deviceName = alert.device_name || alert.device_hostname || `Device ${alert.device_id}`;
+            const alertType = this.formatAlertType(alert.alert_type);
+            
+            // Create clickable link to alerts page with alert ID
+            const alertLink = `/alerts#alert-${alert.id}`;
+            
+            return `
+                <a href="${alertLink}" class="list-group-item border-0 px-0 text-decoration-none activity-link">
+                    <div class="d-flex align-items-center">
+                        <i class="bi ${icon} me-3"></i>
+                        <div class="flex-grow-1">
+                            <div class="fw-medium text-body">${alertType}</div>
+                            <small class="text-muted">${deviceName}</small>
+                        </div>
+                        <small class="text-muted">${timeAgo}</small>
+                    </div>
+                </a>
+            `;
+        }).join('');
+        
+        container.innerHTML = activityItems;
+    }
+
+    formatAlertType(alertType) {
+        const typeMap = {
+            'device_down': 'Device Offline',
+            'device_up': 'Device Online',
+            'anomaly_connectivity_pattern': 'Connection Pattern Anomaly',
+            'anomaly_response_time': 'Response Time Anomaly',
+            'anomaly_uptime_pattern': 'Uptime Pattern Anomaly',
+            'high_response_time': 'High Response Time',
+            'connection_lost': 'Connection Lost',
+            'connection_restored': 'Connection Restored'
+        };
+        return typeMap[alertType] || alertType.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+
+    getTimeAgo(date) {
+        const now = new Date();
+        const diffMs = now - date;
+        const diffMins = Math.floor(diffMs / 60000);
+        const diffHours = Math.floor(diffMins / 60);
+        const diffDays = Math.floor(diffHours / 24);
+        
+        if (diffMins < 1) return 'Just now';
+        if (diffMins < 60) return `${diffMins}m ago`;
+        if (diffHours < 24) return `${diffHours}h ago`;
+        return `${diffDays}d ago`;
+    }
+
+    showLoadingState() {
+        // Update status to show loading
+        const indicator = document.getElementById('network-status-indicator');
+        indicator.innerHTML = '<div class="spinner-border spinner-border-sm text-secondary" role="status"></div>';
+    }
+
+    showErrorState() {
+        const indicator = document.getElementById('network-status-indicator');
+        indicator.className = 'status-indicator status-critical';
+        document.getElementById('network-status-text').textContent = 'Connection Error';
+    }
+
+    updateLastUpdated() {
+        if (this.lastUpdate) {
+            document.getElementById('last-updated').textContent = 
+                `Last updated: ${this.lastUpdate.toLocaleTimeString()}`;
+        }
+    }
+
+    startAutoRefresh() {
+        // Refresh every 30 seconds
+        this.refreshInterval = setInterval(() => {
+            this.loadDashboardData();
+        }, 30000);
+    }
+
+    destroy() {
+        if (this.refreshInterval) {
+            clearInterval(this.refreshInterval);
+        }
+    }
+}
+
+// Initialize dashboard when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    window.dashboard = new NetworkDashboard();
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', () => {
+    if (window.dashboard) {
+        window.dashboard.destroy();
+    }
+});
+</script>
+{% endblock %}

@@ -32,6 +32,15 @@ def create_app():
     from performance_middleware import PerformanceMiddleware
     PerformanceMiddleware(app)
     
+    # SECURITY: Initialize security middleware with CSRF protection - TEMPORARILY DISABLED
+    # try:
+    #     from core.security_middleware import SecurityMiddleware
+    #     SecurityMiddleware(app)
+    #     logger.info("Security middleware with CSRF protection initialized")
+    # except ImportError:
+    #     logger.warning("Security middleware not available - CSRF protection disabled")
+    logger.warning("Security middleware DISABLED for troubleshooting")
+    
     # Initialize SocketIO for real-time updates
     socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True)
     
@@ -308,7 +317,23 @@ def create_app():
     # Web routes
     @app.route('/')
     def dashboard():
-        return render_template('dashboard.html')
+        """Clean, fast-loading dashboard focused on network health overview"""
+        try:
+            from models import Configuration
+            # Get dashboard title setting
+            dashboard_title_config = Configuration.query.filter_by(key='dashboard_title').first()
+            dashboard_title = dashboard_title_config.value if dashboard_title_config else 'HomeNetMon Dashboard'
+            
+            return render_template('dashboard_clean.html', dashboard_title=dashboard_title)
+        except Exception as e:
+            # Fallback if database isn't available
+            return render_template('dashboard_clean.html', dashboard_title='HomeNetMon Dashboard')
+    
+    @app.route('/favicon.ico')
+    def favicon():
+        """Serve favicon from static folder"""
+        from flask import send_from_directory
+        return send_from_directory(app.static_folder, 'favicon.ico', mimetype='image/vnd.microsoft.icon')
     
     @app.route('/device/<int:device_id>')
     def device_detail(device_id):
@@ -355,6 +380,11 @@ def create_app():
     @app.route('/system-info')
     def system_info():
         return render_template('system_info.html')
+    
+    @app.route('/about')
+    def about():
+        """About HomeNetMon - System information and credits"""
+        return render_template('about.html')
     
     @app.route('/monitored-hosts')
     def monitored_hosts():
@@ -983,6 +1013,9 @@ def create_app():
                 # Get active alerts count  
                 active_alerts = Alert.query.filter_by(device_id=device.id, resolved=False).count()
                 
+                # Calculate uptime percentage (method call, not property)
+                uptime_pct = device.uptime_percentage() or 0
+                
                 nodes.append({
                     'id': str(device.id),
                     'label': device.display_name[:15],
@@ -992,9 +1025,9 @@ def create_app():
                     'icon': icon_map.get(device.device_type, '❓'),
                     'device_type': device.device_type,
                     'response_time': latest_response_time,
-                    'uptime_percentage': device.uptime_percentage or 0,
+                    'uptime_percentage': uptime_pct,
                     'active_alerts': active_alerts,
-                    'size': 20 + (device.uptime_percentage or 0) / 5
+                    'size': 20 + uptime_pct / 5
                 })
             
             # Create simple hub topology

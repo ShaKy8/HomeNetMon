@@ -1,0 +1,296 @@
+{% extends "base_clean.html" %}
+
+{% block title %}About HomeNetMon{% endblock %}
+
+{% block content %}
+<div class="container-fluid p-4">
+    <!-- Header -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-info-circle text-primary me-3" style="font-size: 2rem;"></i>
+                    <div>
+                        <h1 class="h3 mb-0">About HomeNetMon</h1>
+                        <small class="text-muted">System Information & Credits</small>
+                    </div>
+                </div>
+                <div>
+                    <a href="/" class="btn btn-outline-primary btn-sm">
+                        <i class="bi bi-arrow-left"></i> Back to Dashboard
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Info Card -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 pb-0">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-router me-2"></i>HomeNetMon
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-lg-6">
+                            <p class="text-muted mb-3">Comprehensive Home Network Monitoring Solution</p>
+                            
+                            <div class="mb-3">
+                                <strong>Version:</strong> 
+                                <span class="badge bg-primary ms-1" id="version-info">Loading...</span>
+                                <span class="badge bg-secondary ms-1" id="build-info">Loading...</span>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <strong>Build Date:</strong> 
+                                <span id="build-date">Loading...</span>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <strong>Author:</strong> 
+                                <span id="build-author">Loading...</span>
+                            </div>
+                            
+                            <div class="mb-3">
+                                <strong>License:</strong> MIT License
+                            </div>
+                        </div>
+                        
+                        <div class="col-lg-6">
+                            <h6>Key Features</h6>
+                            <ul class="list-unstyled">
+                                <li><i class="bi bi-check-circle text-success me-2"></i>Real-time Device Monitoring</li>
+                                <li><i class="bi bi-check-circle text-success me-2"></i>Smart Anomaly Detection</li>
+                                <li><i class="bi bi-check-circle text-success me-2"></i>Network Security Scanning</li>
+                                <li><i class="bi bi-check-circle text-success me-2"></i>Push Notifications & Alerts</li>
+                                <li><i class="bi bi-check-circle text-success me-2"></i>Interactive Network Topology</li>
+                                <li><i class="bi bi-check-circle text-success me-2"></i>Speed Testing & Analytics</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <!-- System Information -->
+        <div class="col-lg-8 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 pb-0">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-cpu me-2"></i>System Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <div class="border rounded p-3">
+                                <h6 class="text-primary mb-2">Platform</h6>
+                                <div class="small">
+                                    <div><strong>OS:</strong> <span id="system-platform">Loading...</span></div>
+                                    <div><strong>Python:</strong> <span id="python-version">Loading...</span></div>
+                                    <div><strong>Architecture:</strong> <span id="system-machine">Loading...</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="border rounded p-3">
+                                <h6 class="text-success mb-2">Application</h6>
+                                <div class="small">
+                                    <div><strong>Process ID:</strong> <span id="process-pid">Loading...</span></div>
+                                    <div><strong>Memory Usage:</strong> <span id="memory-usage">Loading...</span></div>
+                                    <div><strong>Uptime:</strong> <span id="app-uptime">Loading...</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="border rounded p-3">
+                                <h6 class="text-info mb-2">Resources</h6>
+                                <div class="small">
+                                    <div><strong>CPU Cores:</strong> <span id="cpu-count">Loading...</span></div>
+                                    <div><strong>Total Memory:</strong> <span id="total-memory">Loading...</span></div>
+                                    <div><strong>Available Memory:</strong> <span id="available-memory">Loading...</span></div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="border rounded p-3">
+                                <h6 class="text-warning mb-2">Storage</h6>
+                                <div class="small">
+                                    <div><strong>Disk Total:</strong> <span id="disk-total">Loading...</span></div>
+                                    <div><strong>Disk Free:</strong> <span id="disk-free">Loading...</span></div>
+                                    <div><strong>Disk Usage:</strong> <span id="disk-usage">Loading...</span></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Technology Stack -->
+        <div class="col-lg-4 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 pb-0">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-stack me-2"></i>Technology Stack
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <h6 class="text-primary">Backend</h6>
+                        <ul class="list-unstyled small">
+                            <li><i class="bi bi-dot"></i>Python Flask</li>
+                            <li><i class="bi bi-dot"></i>SQLAlchemy ORM</li>
+                            <li><i class="bi bi-dot"></i>Socket.IO WebSockets</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6 class="text-success">Frontend</h6>
+                        <ul class="list-unstyled small">
+                            <li><i class="bi bi-dot"></i>Bootstrap 5 UI</li>
+                            <li><i class="bi bi-dot"></i>Chart.js Analytics</li>
+                            <li><i class="bi bi-dot"></i>D3.js Visualization</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <h6 class="text-info">Tools</h6>
+                        <ul class="list-unstyled small">
+                            <li><i class="bi bi-dot"></i>nmap Security Scanning</li>
+                            <li><i class="bi bi-dot"></i>ML Anomaly Detection</li>
+                            <li><i class="bi bi-dot"></i>Performance Optimization</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Git Information (if available) -->
+            <div class="card border-0 shadow-sm mt-3" id="git-info-card" style="display: none;">
+                <div class="card-header bg-transparent border-0 pb-0">
+                    <h5 class="card-title mb-0">
+                        <i class="bi bi-git me-2"></i>Repository Info
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="small">
+                        <div><strong>Branch:</strong> <span id="git-branch">-</span></div>
+                        <div><strong>Commit:</strong> <span id="git-commit">-</span></div>
+                        <div><strong>Status:</strong> <span id="git-status">-</span></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
+    transition: all 0.2s ease;
+}
+
+@media (max-width: 768px) {
+    .container-fluid {
+        padding: 1rem !important;
+    }
+}
+</style>
+
+<script>
+// Load system information when page loads
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const response = await fetch('/api/system/info');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        
+        const data = await response.json();
+        updateAboutPage(data);
+        
+    } catch (error) {
+        console.error('Failed to load system information:', error);
+        showErrorState();
+    }
+});
+
+function updateAboutPage(data) {
+    const version = data.version || {};
+    const system = data.system || {};
+    const application = data.application || {};
+    
+    // Version information
+    document.getElementById('version-info').textContent = version.full_version || version.version || 'Unknown';
+    document.getElementById('build-info').textContent = version.release_name || 'Release';
+    document.getElementById('build-date').textContent = version.build_date || 'Unknown';
+    document.getElementById('build-author').textContent = version.build_author || application.author || 'Unknown';
+    
+    // System information
+    if (system.system) {
+        document.getElementById('system-platform').textContent = system.system.platform || 'Unknown';
+        document.getElementById('python-version').textContent = system.system.python_version || 'Unknown';
+        document.getElementById('system-machine').textContent = system.system.machine || 'Unknown';
+        document.getElementById('cpu-count').textContent = system.system.cpu_count || 'Unknown';
+        document.getElementById('total-memory').textContent = (system.system.total_memory_gb || 0) + ' GB';
+        document.getElementById('available-memory').textContent = (system.system.available_memory_gb || 0) + ' GB';
+        document.getElementById('disk-total').textContent = (system.system.disk_total_gb || 0) + ' GB';
+        document.getElementById('disk-free').textContent = (system.system.disk_free_gb || 0) + ' GB';
+        document.getElementById('disk-usage').textContent = (system.system.disk_percent || 0) + '%';
+    }
+    
+    // Process information
+    if (system.process) {
+        document.getElementById('process-pid').textContent = system.process.pid || 'Unknown';
+        document.getElementById('memory-usage').textContent = (system.process.memory_usage_mb || 0) + ' MB';
+        
+        // Calculate uptime from process start time
+        if (system.process.started) {
+            const startTime = new Date(system.process.started);
+            const now = new Date();
+            const uptimeMs = now - startTime;
+            const uptimeHours = Math.floor(uptimeMs / (1000 * 60 * 60));
+            const uptimeMins = Math.floor((uptimeMs % (1000 * 60 * 60)) / (1000 * 60));
+            document.getElementById('app-uptime').textContent = `${uptimeHours}h ${uptimeMins}m`;
+        }
+    }
+    
+    // Git information (if available)
+    if (version.git) {
+        const gitCard = document.getElementById('git-info-card');
+        gitCard.style.display = 'block';
+        
+        document.getElementById('git-branch').textContent = version.git.branch || 'Unknown';
+        document.getElementById('git-commit').textContent = version.git.commit_short || 'Unknown';
+        document.getElementById('git-status').textContent = version.git.is_dirty ? 'Modified' : 'Clean';
+    }
+}
+
+function showErrorState() {
+    // Set fallback values if API call fails
+    document.getElementById('version-info').textContent = 'Unknown';
+    document.getElementById('build-info').textContent = 'Unknown';
+    document.getElementById('build-date').textContent = 'Unknown';
+    document.getElementById('build-author').textContent = 'Unknown';
+    
+    // System info fallbacks
+    const elements = [
+        'system-platform', 'python-version', 'system-machine', 'process-pid',
+        'memory-usage', 'app-uptime', 'cpu-count', 'total-memory', 
+        'available-memory', 'disk-total', 'disk-free', 'disk-usage'
+    ];
+    
+    elements.forEach(id => {
+        const elem = document.getElementById(id);
+        if (elem) elem.textContent = 'Unavailable';
+    });
+}
+</script>
+{% endblock %}
