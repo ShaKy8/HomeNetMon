@@ -27,48 +27,70 @@ class AlertCorrelationService:
     def _get_default_rules(self) -> List[AlertCorrelationRule]:
         """Define default correlation rules"""
         return [
-            # Anomaly alert correlation - very aggressive deduplication
+            # Optimized anomaly alert correlation with adaptive thresholds
             AlertCorrelationRule(
                 alert_types=['anomaly_connectivity_pattern'],
-                time_window_minutes=60,
-                max_similar_alerts=1,  # Only allow 1 per hour per device
+                time_window_minutes=180,  # 3 hours - more responsive
+                max_similar_alerts=1,  # Maintain single alert per window
                 suppress_duplicates=True
             ),
             AlertCorrelationRule(
                 alert_types=['anomaly_uptime_pattern'],
-                time_window_minutes=120,  # 2 hours
+                time_window_minutes=360,  # 6 hours - balanced response
                 max_similar_alerts=1,
                 suppress_duplicates=True
             ),
             AlertCorrelationRule(
                 alert_types=['anomaly_response_time'],
-                time_window_minutes=30,
-                max_similar_alerts=2,
-                escalation_severity='medium'  # Escalate if >2 in 30 min
+                time_window_minutes=90,   # 1.5 hours - more responsive
+                max_similar_alerts=2,    # Allow up to 2 for better visibility
+                escalation_severity='medium'  # Escalate to medium first
             ),
             
-            # Device status correlation
+            # Smart device status correlation with flap detection
             AlertCorrelationRule(
-                alert_types=['device_down', 'device_recovery'],
-                time_window_minutes=10,
-                max_similar_alerts=1,
+                alert_types=['device_down'],
+                time_window_minutes=60,   # 1 hour window
+                max_similar_alerts=1,    # Single down alert per hour
+                suppress_duplicates=True
+            ),
+            AlertCorrelationRule(
+                alert_types=['device_recovery'],
+                time_window_minutes=30,   # 30 minutes for recovery
+                max_similar_alerts=2,    # Allow multiple recovery notifications
+                suppress_duplicates=False
+            ),
+            
+            # Adaptive high latency correlation
+            AlertCorrelationRule(
+                alert_types=['high_latency'],
+                time_window_minutes=45,   # 45 minutes - more responsive
+                max_similar_alerts=2,    # Allow 2 alerts for visibility
                 suppress_duplicates=True
             ),
             
-            # High latency correlation
+            # Performance alert correlation with burst detection
             AlertCorrelationRule(
-                alert_types=['high_latency'],
-                time_window_minutes=15,
-                max_similar_alerts=2,
-                escalation_severity='critical'
+                alert_types=['performance', 'bandwidth_issue', 'cpu_high'],
+                time_window_minutes=120,  # 2 hours
+                max_similar_alerts=2,    # Allow up to 2 for trending
+                suppress_duplicates=True
             ),
             
-            # Security alert correlation
+            # Enhanced security alert correlation
             AlertCorrelationRule(
-                alert_types=['security_suspicious_port', 'security_vulnerability'],
-                time_window_minutes=30,
-                max_similar_alerts=3,
-                escalation_severity='high'
+                alert_types=['security_suspicious_port', 'security_vulnerability', 'security_new_service'],
+                time_window_minutes=240,  # 4 hours
+                max_similar_alerts=3,    # Allow more security alerts
+                suppress_duplicates=True
+            ),
+            
+            # Network-wide correlation rules
+            AlertCorrelationRule(
+                alert_types=['network_outage', 'gateway_down', 'dns_failure'],
+                time_window_minutes=30,   # Short window for critical network issues
+                max_similar_alerts=1,    # Single alert for network-wide issues
+                suppress_duplicates=True
             )
         ]
     
@@ -311,4 +333,145 @@ class AlertCorrelationService:
                 
             except Exception as e:
                 logger.error(f"Error getting correlation stats: {e}")
+                return {}
+    
+    def detect_network_wide_issues(self) -> List[Dict]:
+        """Detect network-wide issues that affect multiple devices"""
+        if not self.app:
+            return []
+            
+        with self.app.app_context():
+            try:
+                issues = []
+                cutoff_time = datetime.utcnow() - timedelta(minutes=30)
+                
+                # Check for widespread connectivity issues
+                down_devices = Alert.query.filter(
+                    Alert.alert_type == 'device_down',
+                    Alert.created_at >= cutoff_time,
+                    Alert.resolved == False
+                ).count()
+                
+                total_monitored = Device.query.filter_by(is_monitored=True).count()
+                if total_monitored > 0:
+                    down_percentage = (down_devices / total_monitored) * 100
+                    
+                    if down_percentage > 25:  # More than 25% of devices down
+                        issues.append({
+                            'type': 'network_outage',
+                            'severity': 'critical' if down_percentage > 50 else 'high',
+                            'affected_devices': down_devices,
+                            'total_devices': total_monitored,
+                            'percentage': round(down_percentage, 1),
+                            'message': f'Potential network outage: {down_devices}/{total_monitored} devices down ({down_percentage:.1f}%)'
+                        })
+                
+                # Check for widespread latency issues
+                high_latency_devices = Alert.query.filter(
+                    Alert.alert_type == 'high_latency',
+                    Alert.created_at >= cutoff_time,
+                    Alert.resolved == False
+                ).count()
+                
+                if high_latency_devices > 5:  # More than 5 devices with high latency
+                    issues.append({
+                        'type': 'network_degradation',
+                        'severity': 'medium',
+                        'affected_devices': high_latency_devices,
+                        'message': f'Network performance degradation: {high_latency_devices} devices experiencing high latency'
+                    })
+                
+                return issues
+                
+            except Exception as e:
+                logger.error(f"Error detecting network-wide issues: {e}")
+                return []
+    
+    def get_alert_trends(self, hours: int = 24) -> Dict:
+        """Get alert trends over specified time period"""
+        if not self.app:
+            return {}
+            
+        with self.app.app_context():
+            try:
+                cutoff_time = datetime.utcnow() - timedelta(hours=hours)
+                
+                # Get hourly alert counts
+                hourly_counts = []
+                for i in range(hours):
+                    hour_start = datetime.utcnow() - timedelta(hours=i+1)
+                    hour_end = datetime.utcnow() - timedelta(hours=i)
+                    
+                    count = Alert.query.filter(
+                        Alert.created_at >= hour_start,
+                        Alert.created_at < hour_end
+                    ).count()
+                    
+                    hourly_counts.append({
+                        'hour': hour_start.strftime('%H:00'),
+                        'count': count
+                    })
+                
+                # Calculate trend
+                recent_6h = sum(h['count'] for h in hourly_counts[:6])
+                previous_6h = sum(h['count'] for h in hourly_counts[6:12])
+                
+                trend = 'stable'
+                if recent_6h > previous_6h * 1.5:
+                    trend = 'increasing'
+                elif recent_6h < previous_6h * 0.5:
+                    trend = 'decreasing'
+                
+                return {
+                    'hourly_counts': list(reversed(hourly_counts)),
+                    'trend': trend,
+                    'recent_6h_total': recent_6h,
+                    'previous_6h_total': previous_6h,
+                    'total_24h': sum(h['count'] for h in hourly_counts)
+                }
+                
+            except Exception as e:
+                logger.error(f"Error getting alert trends: {e}")
+                return {}
+    
+    def optimize_thresholds_based_on_history(self) -> Dict:
+        """Analyze alert history to suggest threshold optimizations"""
+        if not self.app:
+            return {}
+            
+        with self.app.app_context():
+            try:
+                recommendations = {}
+                cutoff_time = datetime.utcnow() - timedelta(days=7)
+                
+                # Analyze false positive patterns
+                resolved_quickly = Alert.query.filter(
+                    Alert.created_at >= cutoff_time,
+                    Alert.resolved == True,
+                    Alert.resolved_at.isnot(None)
+                ).all()
+                
+                quick_resolutions = [
+                    alert for alert in resolved_quickly
+                    if alert.resolved_at and 
+                    (alert.resolved_at - alert.created_at).total_seconds() < 300  # Resolved within 5 minutes
+                ]
+                
+                if len(quick_resolutions) > 10:
+                    most_common_quick = defaultdict(int)
+                    for alert in quick_resolutions:
+                        most_common_quick[alert.alert_type] += 1
+                    
+                    for alert_type, count in most_common_quick.items():
+                        if count > 3:
+                            recommendations[alert_type] = {
+                                'issue': 'high_false_positive_rate',
+                                'quick_resolutions': count,
+                                'suggestion': 'Consider increasing threshold or extending validation period'
+                            }
+                
+                return recommendations
+                
+            except Exception as e:
+                logger.error(f"Error optimizing thresholds: {e}")
                 return {}

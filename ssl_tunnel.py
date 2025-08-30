@@ -463,7 +463,7 @@ tls-cipher TLS-DHE-RSA-WITH-AES-256-GCM-SHA384:TLS-DHE-RSA-WITH-AES-128-GCM-SHA2
                 # Generate DH params (this can take a while)
                 subprocess.run([
                     'openssl', 'dhparam', '-out', dh_file, '2048'
-                ], check=True, capture_output=True)
+                ], check=True, capture_output=True, shell=False)
                 
                 os.chmod(dh_file, 0o600)
                 logger.info(f"Generated DH parameters: {dh_file}")
@@ -484,7 +484,7 @@ tls-cipher TLS-DHE-RSA-WITH-AES-256-GCM-SHA384:TLS-DHE-RSA-WITH-AES-128-GCM-SHA2
             try:
                 subprocess.run([
                     'openvpn', '--genkey', '--secret', ta_file
-                ], check=True, capture_output=True)
+                ], check=True, capture_output=True, shell=False)
                 
                 os.chmod(ta_file, 0o600)
                 logger.info(f"Generated TLS auth key: {ta_file}")

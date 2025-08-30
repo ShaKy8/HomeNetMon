@@ -338,6 +338,29 @@
     };
 
     document.addEventListener('DOMContentLoaded', function() {
+        // Helper function to get CSRF token
+        function getCSRFToken() {
+            return document.cookie
+                .split('; ')
+                .find(row => row.startsWith('csrf_token='))
+                ?.split('=')[1];
+        }
+        
+        // Helper function to create headers with CSRF token
+        function getHeaders(additionalHeaders = {}) {
+            const headers = {
+                'Content-Type': 'application/json',
+                ...additionalHeaders
+            };
+            
+            const csrfToken = getCSRFToken();
+            if (csrfToken) {
+                headers['X-CSRF-Token'] = csrfToken;
+            }
+            
+            return headers;
+        }
+        
         // Initialize tooltips
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -603,9 +626,7 @@
             
             const response = await fetch('/api/anomaly/run-detection', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: getHeaders(),
                 body: JSON.stringify({})
             });
             
@@ -683,9 +704,7 @@
             
             const response = await fetch('/api/anomaly/settings', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: getHeaders(),
                 body: JSON.stringify(settings)
             });
             
@@ -1035,9 +1054,7 @@
             
             const response = await fetch(`/api/alerts/${alertId}/acknowledge`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+                headers: getHeaders()
             });
             
             const data = await response.json();

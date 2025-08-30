@@ -22,7 +22,7 @@ class ReleaseManager:
     def run_command(self, cmd: List[str], check: bool = True) -> subprocess.CompletedProcess:
         """Run a shell command and return the result"""
         print(f"Running: {' '.join(cmd)}")
-        return subprocess.run(cmd, capture_output=True, text=True, check=check)
+        return subprocess.run(cmd, capture_output=True, text=True, check=check, shell=False)
     
     def get_current_version(self) -> Tuple[int, int, int, str]:
         """Get current version from version.py"""

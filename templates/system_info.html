@@ -450,7 +450,23 @@ function populateSystemInfo(data) {
     
     const repoElement = document.getElementById('app-repository');
     if (data.application?.repository) {
-        repoElement.innerHTML = `<a href="${data.application.repository}" target="_blank" class="text-decoration-none">${data.application.repository}</a>`;
+        // Safe method to create repository link avoiding XSS
+        if (window.htmlSanitizer) {
+            repoElement.innerHTML = '';
+            const link = document.createElement('a');
+            const safeUrl = window.htmlSanitizer.sanitizeUrl(data.application.repository);
+            if (safeUrl) {
+                link.href = safeUrl;
+                link.target = '_blank';
+                link.className = 'text-decoration-none';
+                link.textContent = data.application.repository;
+                repoElement.appendChild(link);
+            } else {
+                repoElement.textContent = 'Invalid URL';
+            }
+        } else {
+            repoElement.innerHTML = `<a href="${data.application.repository}" target="_blank" class="text-decoration-none">${data.application.repository}</a>`;
+        }
     } else {
         repoElement.textContent = '-';
     }
@@ -493,7 +509,16 @@ function populateSystemInfo(data) {
         const branchElement = document.getElementById('git-branch');
         if (git.branch) {
             const branchClass = git.branch === 'main' ? 'badge bg-primary' : 'badge bg-info';
-            branchElement.innerHTML = `<span class="${branchClass}">${git.branch}</span>`;
+            // Safe method to create branch badge
+            if (window.htmlSanitizer) {
+                branchElement.innerHTML = '';
+                const badge = document.createElement('span');
+                badge.className = branchClass;
+                badge.textContent = git.branch;
+                branchElement.appendChild(badge);
+            } else {
+                branchElement.innerHTML = `<span class="${branchClass}">${git.branch}</span>`;
+            }
         } else {
             branchElement.textContent = '-';
         }
@@ -501,7 +526,16 @@ function populateSystemInfo(data) {
         // Tag with styling
         const tagElement = document.getElementById('git-tag');
         if (git.tag) {
-            tagElement.innerHTML = `<span class="badge bg-success">${git.tag}</span>`;
+            // Safe method to create tag badge
+            if (window.htmlSanitizer) {
+                tagElement.innerHTML = '';
+                const badge = document.createElement('span');
+                badge.className = 'badge bg-success';
+                badge.textContent = git.tag;
+                tagElement.appendChild(badge);
+            } else {
+                tagElement.innerHTML = `<span class="badge bg-success">${git.tag}</span>`;
+            }
         } else {
             tagElement.innerHTML = '<span class="text-muted">No tag</span>';
         }
@@ -536,8 +570,17 @@ function populateSystemInfo(data) {
     if (data.application?.features) {
         data.application.features.forEach(feature => {
             const li = document.createElement('li');
-            li.innerHTML = `<i class="bi bi-check-circle text-success me-2"></i>${feature}`;
             li.className = 'mb-1';
+            // Safe method to create feature list item
+            if (window.htmlSanitizer) {
+                const icon = document.createElement('i');
+                icon.className = 'bi bi-check-circle text-success me-2';
+                const textNode = document.createTextNode(feature);
+                li.appendChild(icon);
+                li.appendChild(textNode);
+            } else {
+                li.innerHTML = `<i class="bi bi-check-circle text-success me-2"></i>${feature}`;
+            }
             featuresElement.appendChild(li);
         });
     }

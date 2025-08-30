@@ -344,7 +344,7 @@ def get_service_status():
         
         for tool in tools_to_check:
             try:
-                result = subprocess.run(['which', tool], capture_output=True, text=True)
+                result = subprocess.run(['which', tool], capture_output=True, text=True, shell=False)
                 tools_status[tool] = {
                     'available': result.returncode == 0,
                     'path': result.stdout.strip() if result.returncode == 0 else None

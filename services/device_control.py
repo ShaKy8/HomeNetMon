@@ -76,7 +76,7 @@ class DeviceControlService:
         """Ping a device to test connectivity"""
         try:
             # Use system ping command
-            if subprocess.run(['which', 'ping'], capture_output=True).returncode == 0:
+            if subprocess.run(['which', 'ping'], capture_output=True, shell=False).returncode == 0:
                 cmd = ['ping', '-c', str(count), '-W', '3', ip_address]
             else:
                 return {
@@ -85,7 +85,7 @@ class DeviceControlService:
                     'timestamp': datetime.utcnow().isoformat() + 'Z'
                 }
             
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, shell=False)
             
             # Parse ping output
             output_lines = result.stdout.split('\\n')
@@ -247,8 +247,8 @@ class DeviceControlService:
             
             for cmd in commands:
                 try:
-                    if subprocess.run(['which', cmd[0]], capture_output=True).returncode == 0:
-                        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60)
+                    if subprocess.run(['which', cmd[0]], capture_output=True, shell=False).returncode == 0:
+                        result = subprocess.run(cmd, capture_output=True, text=True, timeout=60, shell=False)
                         
                         if result.returncode == 0:
                             # Parse traceroute output

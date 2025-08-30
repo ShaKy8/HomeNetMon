@@ -3164,7 +3164,17 @@
         
         function showModalError(message) {
             document.getElementById('modal-device-name').textContent = 'Error';
-            document.getElementById('modal-device-ip').innerHTML = `<span class="text-danger">${message}</span>`;
+            const ipElement = document.getElementById('modal-device-ip');
+            // Safe method to display error message
+            if (window.htmlSanitizer) {
+                ipElement.innerHTML = '';
+                const errorSpan = document.createElement('span');
+                errorSpan.className = 'text-danger';
+                errorSpan.textContent = message;
+                ipElement.appendChild(errorSpan);
+            } else {
+                ipElement.innerHTML = `<span class="text-danger">${message}</span>`;
+            }
         }
         
         // Toggle device monitoring

@@ -17,7 +17,7 @@ def get_current_network_range():
     try:
         from models import Configuration
         return Configuration.get_value('network_range', '192.168.86.0/24')
-    except Exception:
+    except (ImportError, AttributeError) as e:
         # Fallback to config if database is not available
         from config import Config
         return Config.NETWORK_RANGE
@@ -28,7 +28,7 @@ def is_device_in_network_range(device_ip, network_range):
         network = ipaddress.ip_network(network_range, strict=False)
         ip = ipaddress.ip_address(device_ip)
         return ip in network
-    except Exception:
+    except (ipaddress.AddressValueError, ipaddress.NetmaskValueError, ValueError) as e:
         return False
 
 def filter_devices_by_network_range(query, network_range=None):
@@ -57,7 +57,7 @@ def filter_devices_by_network_range(query, network_range=None):
         else:
             # Larger networks - return all devices
             return query
-    except Exception:
+    except (ipaddress.AddressValueError, ipaddress.NetmaskValueError, ValueError, AttributeError) as e:
         # If network parsing fails, return original query
         return query
 
@@ -220,7 +220,7 @@ def _cached_live_ping_scan(network_range_str, cache_key):
         # Use fping for fast network-wide ping
         result = subprocess.run(
             ['fping', '-g', network_range_str, '-q', '-a'],
-            capture_output=True, text=True, timeout=30
+            capture_output=True, text=True, timeout=30, shell=False
         )
         
         if result.returncode in [0, 1]:  # 0 = all responded, 1 = some responded
@@ -930,6 +930,9 @@ def get_topology_test():
             # Get active alerts count
             active_alerts = Alert.query.filter_by(device_id=device.id, resolved=False).count()
             
+            # Calculate uptime percentage (method call, not property)
+            uptime_pct = device.uptime_percentage() or 0
+            
             nodes.append({
                 'id': str(device.id),
                 'label': device.display_name,
@@ -940,9 +943,9 @@ def get_topology_test():
                 'device_type': device.device_type,
                 'response_time': latest_response_time,
                 'last_seen': device.last_seen.isoformat() + 'Z' if device.last_seen else None,
-                'uptime_percentage': device.uptime_percentage or 0,
+                'uptime_percentage': uptime_pct,
                 'active_alerts': active_alerts,
-                'size': 20 + (device.uptime_percentage or 0) / 5  # Size based on uptime
+                'size': 20 + uptime_pct / 5  # Size based on uptime
             })
         
         # Create edges (connections) - hub topology with router at center
@@ -951,7 +954,8 @@ def get_topology_test():
         
         # Find the router (usually .1 in the network)
         for device in devices:
-            if device.ip_address.endswith('.1') or 'router' in device.device_type.lower():
+            device_type = device.device_type or ''
+            if device.ip_address.endswith('.1') or 'router' in device_type.lower():
                 router_device = device
                 break
         
@@ -1037,6 +1041,9 @@ def get_network_topology():
             # Get active alerts count
             active_alerts = Alert.query.filter_by(device_id=device.id, resolved=False).count()
             
+            # Calculate uptime percentage (method call, not property)
+            uptime_pct = device.uptime_percentage() or 0
+            
             nodes.append({
                 'id': str(device.id),
                 'label': device.display_name,
@@ -1047,9 +1054,9 @@ def get_network_topology():
                 'device_type': device.device_type,
                 'response_time': latest_response_time,
                 'last_seen': device.last_seen.isoformat() + 'Z' if device.last_seen else None,
-                'uptime_percentage': device.uptime_percentage or 0,
+                'uptime_percentage': uptime_pct,
                 'active_alerts': active_alerts,
-                'size': 20 + (device.uptime_percentage or 0) / 5  # Size based on uptime
+                'size': 20 + uptime_pct / 5  # Size based on uptime
             })
         
         # Create edges (connections) - for now, we'll connect everything to the router
@@ -1059,7 +1066,8 @@ def get_network_topology():
         
         # Find the router (usually .1 in the network)
         for device in devices:
-            if device.ip_address.endswith('.1') or 'router' in device.device_type.lower():
+            device_type = device.device_type or ''
+            if device.ip_address.endswith('.1') or 'router' in device_type.lower():
                 router_device = device
                 break
         

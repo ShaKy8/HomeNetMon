@@ -689,7 +689,8 @@ class MultiSiteManager:
                 ['ping', '-c', '1', '-W', '3000', hostname],
                 capture_output=True,
                 text=True,
-                timeout=10
+                timeout=10,
+                shell=False
             )
             
             if result.returncode == 0:

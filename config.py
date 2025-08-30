@@ -25,11 +25,28 @@ class Config:
     MAX_WORKERS = int(os.environ.get('MAX_WORKERS', '50'))
     DATA_RETENTION_DAYS = int(os.environ.get('DATA_RETENTION_DAYS', '30'))
     
-    # Web Interface
-    SECRET_KEY = os.environ.get('SECRET_KEY') or 'dev-secret-key-change-in-production'
-    HOST = os.environ.get('HOST', '0.0.0.0')
+    # Web Interface - Enhanced secret key validation
+    SECRET_KEY = None  # Will be set after class definition
+    # Default to localhost for security - use HOST env var to bind to 0.0.0.0 if needed
+    HOST = os.environ.get('HOST', '127.0.0.1')
     PORT = int(os.environ.get('PORT', '5000'))
-    DEBUG = os.environ.get('DEBUG', 'False').lower() == 'true'
+    # Disable debug in production environment
+    ENV = os.environ.get('ENV', 'development')
+    DEBUG = ENV != 'production' and os.environ.get('DEBUG', 'False').lower() == 'true'
+    
+    # Security validation for host binding
+    @staticmethod
+    def validate_host_binding():
+        """Validate host binding configuration for security"""
+        import warnings
+        if Config.HOST == '0.0.0.0' and Config.ENV == 'production':
+            warnings.warn(
+                "WARNING: Binding to 0.0.0.0 in production environment without authentication! "
+                "This exposes the service to external networks. Consider using proper authentication "
+                "or binding to a specific interface.",
+                UserWarning,
+                stacklevel=2
+            )
     
     # Logging Configuration
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
@@ -139,6 +156,74 @@ class Config:
         if not cls.DEBUG:
             logging.getLogger('socketio').setLevel(logging.WARNING)
             logging.getLogger('engineio').setLevel(logging.WARNING)
+    
+    @classmethod
+    def _get_validated_secret_key(cls):
+        """Get and validate secret key with security checks."""
+        import secrets
+        import warnings
+        
+        secret_key = os.environ.get('SECRET_KEY')
+        
+        # Check if secret key is provided
+        if not secret_key:
+            # Check if we're in production (not debug mode)
+            is_production = not os.environ.get('DEBUG', 'False').lower() == 'true'
+            
+            if is_production:
+                # Generate a secure random key for production if none provided
+                secret_key = secrets.token_urlsafe(32)
+                warnings.warn(
+                    "WARNING: No SECRET_KEY provided in production. Generated a random key. "
+                    "This will cause sessions to be invalidated on restart. "
+                    "Please set a permanent SECRET_KEY environment variable.",
+                    category=UserWarning
+                )
+            else:
+                # Use development key but warn about it
+                secret_key = 'dev-secret-key-change-in-production'
+                warnings.warn(
+                    "Using default development secret key. "
+                    "Set SECRET_KEY environment variable for production.",
+                    category=UserWarning
+                )
+        else:
+            # Validate provided secret key
+            if len(secret_key) < 32:
+                warnings.warn(
+                    "SECRET_KEY is shorter than recommended (32+ characters). "
+                    "Consider using a longer, more secure key.",
+                    category=UserWarning
+                )
+            
+            # Check for common insecure values
+            insecure_keys = [
+                'dev-secret-key-change-in-production',
+                'secret',
+                'password',
+                'key',
+                '123456',
+                'secret_key',
+                'flask_secret_key'
+            ]
+            
+            if secret_key.lower() in [key.lower() for key in insecure_keys]:
+                if not os.environ.get('DEBUG', 'False').lower() == 'true':
+                    raise ValueError(
+                        "Insecure SECRET_KEY detected in production environment. "
+                        "Please use a strong, random secret key."
+                    )
+                else:
+                    warnings.warn(
+                        "Insecure SECRET_KEY detected in development. "
+                        "Use a strong, random key for production.",
+                        category=UserWarning
+                    )
+        
+        return secret_key
+
+# Set SECRET_KEY after class definition to avoid circular reference
+Config.SECRET_KEY = Config._get_validated_secret_key()
 
 # Load configuration from file if it exists
 Config.load_from_file()

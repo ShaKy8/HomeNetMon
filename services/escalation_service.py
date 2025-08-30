@@ -467,7 +467,8 @@ class EscalationExecutionService:
                 cwd=working_directory,
                 capture_output=True,
                 text=True,
-                timeout=timeout
+                timeout=timeout,
+                shell=False
             )
             
             return {

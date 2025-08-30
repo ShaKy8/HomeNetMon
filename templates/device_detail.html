@@ -450,7 +450,7 @@ function loadUptimeChart() {
         uptimeChart.destroy();
     }
     
-    const uptime = device.uptime_percentage || 0;
+    const uptime = (typeof device.uptime_percentage === 'function' ? device.uptime_percentage() : device.uptime_percentage) || 0;
     const downtime = 100 - uptime;
     
     // Create interactive doughnut chart configuration with performance filtering

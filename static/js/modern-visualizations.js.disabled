@@ -1,0 +1,542 @@
+/**
+ * Modern Data Visualizations for HomeNetMon
+ * Beautiful, interactive charts and network visualizations
+ */
+
+class ModernVisualizations {
+    constructor() {
+        this.chartInstances = new Map();
+        this.init();
+    }
+
+    init() {
+        this.setupNetworkTopology();
+        this.createSparklines();
+        this.setupInteractiveCharts();
+    }
+
+    // ===== NETWORK TOPOLOGY VISUALIZATION =====
+    async setupNetworkTopology() {
+        const topologyContainer = document.getElementById('network-topology');
+        if (!topologyContainer) return;
+
+        // Load D3 if needed
+        if (!window.d3) {
+            await window.lazyLoader.loadD3();
+        }
+
+        this.createNetworkGraph(topologyContainer);
+    }
+
+    createNetworkGraph(container) {
+        if (!window.d3) return;
+
+        const width = container.clientWidth;
+        const height = 300;
+
+        // Clear existing content
+        d3.select(container).selectAll("*").remove();
+
+        const svg = d3.select(container)
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height)
+            .attr('class', 'network-topology-svg');
+
+        // Add gradient definitions
+        const defs = svg.append('defs');
+        
+        // Gradient for connections
+        const gradient = defs.append('linearGradient')
+            .attr('id', 'connection-gradient')
+            .attr('gradientUnits', 'userSpaceOnUse');
+        
+        gradient.append('stop')
+            .attr('offset', '0%')
+            .attr('stop-color', '#6366f1')
+            .attr('stop-opacity', 0.8);
+        
+        gradient.append('stop')
+            .attr('offset', '100%')
+            .attr('stop-color', '#8b5cf6')
+            .attr('stop-opacity', 0.3);
+
+        // Sample network data (replace with real data)
+        const nodes = [
+            { id: 'router', name: 'Router', type: 'router', x: width/2, y: height/2 },
+            { id: 'device1', name: 'Laptop', type: 'laptop', status: 'up' },
+            { id: 'device2', name: 'Phone', type: 'phone', status: 'up' },
+            { id: 'device3', name: 'TV', type: 'tv', status: 'down' },
+            { id: 'device4', name: 'Printer', type: 'printer', status: 'up' },
+        ];
+
+        const links = [
+            { source: 'router', target: 'device1' },
+            { source: 'router', target: 'device2' },
+            { source: 'router', target: 'device3' },
+            { source: 'router', target: 'device4' },
+        ];
+
+        // Create force simulation
+        const simulation = d3.forceSimulation(nodes)
+            .force('link', d3.forceLink(links).id(d => d.id).distance(100))
+            .force('charge', d3.forceManyBody().strength(-300))
+            .force('center', d3.forceCenter(width / 2, height / 2))
+            .force('collision', d3.forceCollide().radius(30));
+
+        // Create connections
+        const link = svg.append('g')
+            .attr('class', 'links')
+            .selectAll('line')
+            .data(links)
+            .enter()
+            .append('line')
+            .attr('class', 'topology-connection')
+            .attr('stroke', 'url(#connection-gradient)')
+            .attr('stroke-width', 3)
+            .attr('opacity', 0.6);
+
+        // Create nodes
+        const node = svg.append('g')
+            .attr('class', 'nodes')
+            .selectAll('g')
+            .data(nodes)
+            .enter()
+            .append('g')
+            .attr('class', 'topology-node-group')
+            .call(d3.drag()
+                .on('start', this.dragstarted.bind(this, simulation))
+                .on('drag', this.dragged)
+                .on('end', this.dragended.bind(this, simulation)));
+
+        // Add node circles
+        node.append('circle')
+            .attr('class', 'topology-node')
+            .attr('r', d => d.type === 'router' ? 25 : 20)
+            .attr('fill', d => this.getNodeColor(d))
+            .attr('stroke', '#fff')
+            .attr('stroke-width', 2);
+
+        // Add node icons
+        node.append('text')
+            .attr('class', 'topology-icon')
+            .attr('text-anchor', 'middle')
+            .attr('dy', '.35em')
+            .attr('font-family', 'bootstrap-icons')
+            .attr('font-size', d => d.type === 'router' ? '16px' : '14px')
+            .attr('fill', '#fff')
+            .text(d => this.getNodeIcon(d.type));
+
+        // Add node labels
+        node.append('text')
+            .attr('class', 'topology-label')
+            .attr('text-anchor', 'middle')
+            .attr('dy', '35px')
+            .attr('font-size', '12px')
+            .attr('fill', '#6b7280')
+            .text(d => d.name);
+
+        // Update positions on tick
+        simulation.on('tick', () => {
+            link
+                .attr('x1', d => d.source.x)
+                .attr('y1', d => d.source.y)
+                .attr('x2', d => d.target.x)
+                .attr('y2', d => d.target.y);
+
+            node
+                .attr('transform', d => `translate(${d.x},${d.y})`);
+        });
+
+        // Add hover effects
+        node.on('mouseenter', function(event, d) {
+            d3.select(this).select('circle')
+                .transition()
+                .duration(200)
+                .attr('r', d.type === 'router' ? 30 : 25)
+                .attr('filter', 'url(#glow)');
+        })
+        .on('mouseleave', function(event, d) {
+            d3.select(this).select('circle')
+                .transition()
+                .duration(200)
+                .attr('r', d.type === 'router' ? 25 : 20)
+                .attr('filter', null);
+        });
+
+        // Add glow filter
+        const filter = defs.append('filter')
+            .attr('id', 'glow');
+        filter.append('feGaussianBlur')
+            .attr('stdDeviation', '3')
+            .attr('result', 'coloredBlur');
+        const feMerge = filter.append('feMerge');
+        feMerge.append('feMergeNode')
+            .attr('in', 'coloredBlur');
+        feMerge.append('feMergeNode')
+            .attr('in', 'SourceGraphic');
+    }
+
+    getNodeColor(node) {
+        if (node.type === 'router') return '#6366f1';
+        if (node.status === 'up') return '#10b981';
+        if (node.status === 'down') return '#ef4444';
+        return '#6b7280';
+    }
+
+    getNodeIcon(type) {
+        const icons = {
+            router: '\uf6d4', // router icon
+            laptop: '\uf4b6', // laptop
+            phone: '\uf3cf', // phone
+            tv: '\uf53d', // tv
+            printer: '\uf5a9' // printer
+        };
+        return icons[type] || '\uf109'; // default device icon
+    }
+
+    dragstarted(simulation, event, d) {
+        if (!event.active) simulation.alphaTarget(0.3).restart();
+        d.fx = d.x;
+        d.fy = d.y;
+    }
+
+    dragged(event, d) {
+        d.fx = event.x;
+        d.fy = event.y;
+    }
+
+    dragended(simulation, event, d) {
+        if (!event.active) simulation.alphaTarget(0);
+        d.fx = null;
+        d.fy = null;
+    }
+
+    // ===== SPARKLINE VISUALIZATIONS =====
+    createSparklines() {
+        const sparklineContainers = document.querySelectorAll('[data-sparkline]');
+        sparklineContainers.forEach(container => {
+            this.createSparkline(container);
+        });
+    }
+
+    createSparkline(container) {
+        const data = this.generateSparklineData();
+        const width = container.clientWidth || 100;
+        const height = container.clientHeight || 30;
+
+        const svg = d3.select(container)
+            .append('svg')
+            .attr('width', width)
+            .attr('height', height);
+
+        const xScale = d3.scaleLinear()
+            .domain([0, data.length - 1])
+            .range([0, width]);
+
+        const yScale = d3.scaleLinear()
+            .domain(d3.extent(data))
+            .range([height - 2, 2]);
+
+        const line = d3.line()
+            .x((d, i) => xScale(i))
+            .y(d => yScale(d))
+            .curve(d3.curveCardinal);
+
+        // Add gradient
+        const gradient = svg.append('defs')
+            .append('linearGradient')
+            .attr('id', `sparkline-gradient-${Math.random().toString(36).substr(2, 9)}`)
+            .attr('gradientUnits', 'userSpaceOnUse')
+            .attr('x1', 0).attr('y1', 0)
+            .attr('x2', 0).attr('y2', height);
+
+        gradient.append('stop')
+            .attr('offset', '0%')
+            .attr('stop-color', '#6366f1')
+            .attr('stop-opacity', 0.8);
+
+        gradient.append('stop')
+            .attr('offset', '100%')
+            .attr('stop-color', '#6366f1')
+            .attr('stop-opacity', 0.1);
+
+        // Add area
+        const area = d3.area()
+            .x((d, i) => xScale(i))
+            .y0(height)
+            .y1(d => yScale(d))
+            .curve(d3.curveCardinal);
+
+        svg.append('path')
+            .datum(data)
+            .attr('fill', `url(#${gradient.attr('id')})`)
+            .attr('d', area);
+
+        // Add line
+        svg.append('path')
+            .datum(data)
+            .attr('fill', 'none')
+            .attr('stroke', '#6366f1')
+            .attr('stroke-width', 2)
+            .attr('d', line);
+
+        // Add dots for data points
+        svg.selectAll('.dot')
+            .data(data)
+            .enter().append('circle')
+            .attr('class', 'dot')
+            .attr('cx', (d, i) => xScale(i))
+            .attr('cy', d => yScale(d))
+            .attr('r', 0)
+            .attr('fill', '#6366f1')
+            .on('mouseenter', function(event, d) {
+                d3.select(this)
+                    .transition()
+                    .duration(200)
+                    .attr('r', 3);
+            })
+            .on('mouseleave', function(event, d) {
+                d3.select(this)
+                    .transition()
+                    .duration(200)
+                    .attr('r', 0);
+            });
+    }
+
+    generateSparklineData() {
+        // Generate sample data - replace with real metrics
+        return Array.from({length: 20}, () => Math.random() * 100 + 50);
+    }
+
+    // ===== INTERACTIVE CHARTS =====
+    async setupInteractiveCharts() {
+        // Load Chart.js if needed
+        if (!window.Chart) {
+            await window.lazyLoader.loadChartJS();
+        }
+
+        this.createResponseTimeChart();
+        this.createDeviceStatusChart();
+        this.createNetworkActivityChart();
+    }
+
+    createResponseTimeChart() {
+        const ctx = document.getElementById('response-time-chart');
+        if (!ctx || !window.Chart) return;
+
+        const gradient = ctx.getContext('2d').createLinearGradient(0, 0, 0, 400);
+        gradient.addColorStop(0, 'rgba(99, 102, 241, 0.4)');
+        gradient.addColorStop(1, 'rgba(99, 102, 241, 0.05)');
+
+        const chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: this.getLast24Hours(),
+                datasets: [{
+                    label: 'Response Time (ms)',
+                    data: this.generateResponseTimeData(),
+                    borderColor: '#6366f1',
+                    backgroundColor: gradient,
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 0,
+                    pointHoverRadius: 8,
+                    pointBackgroundColor: '#6366f1',
+                    pointBorderColor: '#fff',
+                    pointBorderWidth: 2,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                interaction: {
+                    intersect: false,
+                    mode: 'index'
+                },
+                plugins: {
+                    legend: {
+                        display: false
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        borderColor: '#6366f1',
+                        borderWidth: 1,
+                        cornerRadius: 8,
+                        displayColors: false,
+                        callbacks: {
+                            label: function(context) {
+                                return `Response: ${context.parsed.y}ms`;
+                            }
+                        }
+                    }
+                },
+                scales: {
+                    x: {
+                        display: true,
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#6b7280',
+                            maxTicksLimit: 6
+                        }
+                    },
+                    y: {
+                        display: true,
+                        grid: {
+                            color: 'rgba(107, 114, 128, 0.1)'
+                        },
+                        ticks: {
+                            color: '#6b7280',
+                            callback: function(value) {
+                                return value + 'ms';
+                            }
+                        }
+                    }
+                }
+            }
+        });
+
+        this.chartInstances.set('response-time', chart);
+    }
+
+    createDeviceStatusChart() {
+        const ctx = document.getElementById('device-status-chart');
+        if (!ctx || !window.Chart) return;
+
+        const chart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Online', 'Offline', 'Warning'],
+                datasets: [{
+                    data: [12, 2, 1],
+                    backgroundColor: [
+                        '#10b981',
+                        '#ef4444',
+                        '#f59e0b'
+                    ],
+                    borderWidth: 0,
+                    hoverOffset: 8
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            padding: 20,
+                            usePointStyle: true,
+                            color: '#6b7280'
+                        }
+                    },
+                    tooltip: {
+                        backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                        titleColor: '#fff',
+                        bodyColor: '#fff',
+                        cornerRadius: 8
+                    }
+                }
+            }
+        });
+
+        this.chartInstances.set('device-status', chart);
+    }
+
+    createNetworkActivityChart() {
+        const ctx = document.getElementById('network-activity-chart');
+        if (!ctx || !window.Chart) return;
+
+        const chart = new Chart(ctx, {
+            type: 'bar',
+            data: {
+                labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+                datasets: [{
+                    label: 'Network Activity',
+                    data: [65, 59, 80, 81, 56, 55, 40],
+                    backgroundColor: 'rgba(99, 102, 241, 0.8)',
+                    borderColor: '#6366f1',
+                    borderWidth: 1,
+                    borderRadius: 8,
+                    borderSkipped: false
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        display: false
+                    }
+                },
+                scales: {
+                    x: {
+                        grid: {
+                            display: false
+                        },
+                        ticks: {
+                            color: '#6b7280'
+                        }
+                    },
+                    y: {
+                        grid: {
+                            color: 'rgba(107, 114, 128, 0.1)'
+                        },
+                        ticks: {
+                            color: '#6b7280'
+                        }
+                    }
+                }
+            }
+        });
+
+        this.chartInstances.set('network-activity', chart);
+    }
+
+    // ===== UTILITY METHODS =====
+    getLast24Hours() {
+        const hours = [];
+        for (let i = 23; i >= 0; i--) {
+            const date = new Date();
+            date.setHours(date.getHours() - i);
+            hours.push(date.toLocaleTimeString('en', { hour: '2-digit', hour12: false }));
+        }
+        return hours;
+    }
+
+    generateResponseTimeData() {
+        return Array.from({length: 24}, () => Math.random() * 50 + 10);
+    }
+
+    // Update chart data with real-time information
+    updateChartData(chartName, newData) {
+        const chart = this.chartInstances.get(chartName);
+        if (!chart) return;
+
+        chart.data.datasets[0].data = newData;
+        chart.update('none'); // No animation for real-time updates
+    }
+
+    // Destroy all chart instances
+    destroyCharts() {
+        this.chartInstances.forEach(chart => chart.destroy());
+        this.chartInstances.clear();
+    }
+}
+
+// Initialize visualizations when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    window.modernVisualizations = new ModernVisualizations();
+    console.log('📊 Modern Visualizations initialized!');
+});
+
+// Export for external use
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = ModernVisualizations;
+}

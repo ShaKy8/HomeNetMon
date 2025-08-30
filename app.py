@@ -25,24 +25,50 @@ def create_app():
     app = Flask(__name__)
     app.config.from_object(Config)
     
+    # Validate security configuration
+    Config.validate_host_binding()
+    
     # Initialize database
     init_db(app)
     
     # PERFORMANCE OPTIMIZATION: Initialize performance middleware
-    from performance_middleware import PerformanceMiddleware
-    PerformanceMiddleware(app)
+    try:
+        from performance_middleware import PerformanceMiddleware
+        PerformanceMiddleware(app)
+        logger.info("Performance middleware initialized")
+    except ImportError:
+        logger.warning("Performance middleware not available - performance optimizations disabled")
     
-    # SECURITY: Initialize security middleware with CSRF protection - TEMPORARILY DISABLED
-    # try:
-    #     from core.security_middleware import SecurityMiddleware
-    #     SecurityMiddleware(app)
-    #     logger.info("Security middleware with CSRF protection initialized")
-    # except ImportError:
-    #     logger.warning("Security middleware not available - CSRF protection disabled")
-    logger.warning("Security middleware DISABLED for troubleshooting")
+    # SECURITY: Initialize security middleware with CSRF protection
+    try:
+        from core.security_middleware import SecurityMiddleware
+        app.security_middleware = SecurityMiddleware(app)
+        logger.info("Security middleware with CSRF protection initialized")
+    except ImportError:
+        logger.warning("Security middleware not available - CSRF protection disabled")
     
-    # Initialize SocketIO for real-time updates
-    socketio = SocketIO(app, cors_allowed_origins="*", logger=True, engineio_logger=True)
+    # Initialize SocketIO for real-time updates - Allow local network access
+    # Allow any origin from local networks for home network monitoring
+    import re
+    def cors_allowed_origins_callback(origin):
+        if not origin:
+            return False
+        # Allow localhost and common local network ranges
+        allowed_patterns = [
+            r'^http://localhost(:\d+)?$',
+            r'^http://127\.0\.0\.1(:\d+)?$',
+            r'^http://0\.0\.0\.0(:\d+)?$',
+            r'^http://192\.168\.\d+\.\d+(:\d+)?$',  # Common home network
+            r'^http://10\.\d+\.\d+\.\d+(:\d+)?$',    # Private network
+            r'^http://172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+(:\d+)?$',  # Private network
+            r'^http://[a-zA-Z0-9\-]+(\.local)?(:\d+)?$'  # Local hostnames
+        ]
+        for pattern in allowed_patterns:
+            if re.match(pattern, origin):
+                return True
+        return False
+    
+    socketio = SocketIO(app, cors_allowed_origins=cors_allowed_origins_callback, logger=False, engineio_logger=False)
     
     # Import and register blueprints
     from api.devices import devices_bp  # Use original for now
@@ -292,6 +318,20 @@ def create_app():
             'version_info': get_version_info()
         }
     
+    @app.context_processor 
+    def inject_csrf():
+        """Make CSRF token available in templates"""
+        def csrf_token():
+            try:
+                # Generate a token for template use
+                middleware = getattr(app, 'security_middleware', None)
+                if middleware:
+                    return middleware._generate_csrf_token()
+                return ''
+            except:
+                return ''
+        return {'csrf_token': csrf_token}
+
     @app.context_processor
     def inject_settings():
         """Make configurable settings available in all templates"""
@@ -958,14 +998,83 @@ def create_app():
     app.emit_alert_update = emit_alert_update
     
     # Error handlers
+    # Comprehensive error handling
+    @app.errorhandler(400)
+    def bad_request(error):
+        return jsonify({
+            'error': 'Bad Request',
+            'message': 'The request could not be processed due to invalid data',
+            'status_code': 400
+        }), 400
+    
+    @app.errorhandler(401)
+    def unauthorized(error):
+        return jsonify({
+            'error': 'Unauthorized',
+            'message': 'Authentication required',
+            'status_code': 401
+        }), 401
+    
+    @app.errorhandler(403)
+    def forbidden(error):
+        return jsonify({
+            'error': 'Forbidden',
+            'message': 'Access denied',
+            'status_code': 403
+        }), 403
+    
     @app.errorhandler(404)
     def not_found(error):
-        return jsonify({'error': 'Not found'}), 404
+        return jsonify({
+            'error': 'Not Found',
+            'message': 'The requested resource could not be found',
+            'status_code': 404
+        }), 404
+    
+    @app.errorhandler(405)
+    def method_not_allowed(error):
+        return jsonify({
+            'error': 'Method Not Allowed',
+            'message': f'The {request.method} method is not allowed for this endpoint',
+            'status_code': 405
+        }), 405
+    
+    @app.errorhandler(413)
+    def payload_too_large(error):
+        return jsonify({
+            'error': 'Payload Too Large',
+            'message': 'The request payload exceeds the maximum allowed size',
+            'status_code': 413
+        }), 413
+    
+    @app.errorhandler(429)
+    def rate_limit_exceeded(error):
+        return jsonify({
+            'error': 'Too Many Requests',
+            'message': 'Rate limit exceeded. Please try again later',
+            'status_code': 429
+        }), 429
     
     @app.errorhandler(500)
     def internal_error(error):
         db.session.rollback()
-        return jsonify({'error': 'Internal server error'}), 500
+        logger.error(f"Internal server error: {str(error)}")
+        return jsonify({
+            'error': 'Internal Server Error',
+            'message': 'An unexpected error occurred',
+            'status_code': 500
+        }), 500
+    
+    @app.errorhandler(Exception)
+    def handle_exception(error):
+        """Handle unexpected exceptions"""
+        db.session.rollback()
+        logger.exception(f"Unhandled exception: {str(error)}")
+        return jsonify({
+            'error': 'Internal Server Error',
+            'message': 'An unexpected error occurred',
+            'status_code': 500
+        }), 500
     
     # Health check endpoint
     @app.route('/health')
@@ -1065,6 +1174,7 @@ if __name__ == '__main__':
         app,
         host=Config.HOST,
         port=Config.PORT,
-        debug=Config.DEBUG,
+        debug=False,
+        use_reloader=False,
         allow_unsafe_werkzeug=True
     )

@@ -275,7 +275,7 @@ class NetworkSecurityMonitor:
         try:
             # Use netstat to get current connections
             result = subprocess.run(['netstat', '-tuln'], 
-                                  capture_output=True, text=True, timeout=10)
+                                  capture_output=True, text=True, timeout=10, shell=False)
             
             if result.returncode == 0:
                 connections = self._parse_netstat_output(result.stdout)
@@ -452,7 +452,7 @@ class NetworkSecurityMonitor:
         """Analyze current network connections for suspicious activity"""
         try:
             # Get current network connections
-            result = subprocess.run(['ss', '-tuln'], capture_output=True, text=True, timeout=10)
+            result = subprocess.run(['ss', '-tuln'], capture_output=True, text=True, timeout=10, shell=False)
             
             if result.returncode == 0:
                 connections = self._parse_ss_output(result.stdout)
@@ -855,7 +855,7 @@ class NetworkSecurityMonitor:
                     load_avg = float(f.read().split()[0])
                 
                 # Check memory usage
-                result = subprocess.run(['free', '-m'], capture_output=True, text=True, timeout=5)
+                result = subprocess.run(['free', '-m'], capture_output=True, text=True, timeout=5, shell=False)
                 if result.returncode == 0:
                     lines = result.stdout.split('\n')
                     if len(lines) >= 2:
@@ -1257,7 +1257,7 @@ class NetworkSecurityMonitor:
         """Analyze protocol distribution for anomalies"""
         try:
             # Get current protocol distribution
-            result = subprocess.run(['ss', '-s'], capture_output=True, text=True, timeout=10)
+            result = subprocess.run(['ss', '-s'], capture_output=True, text=True, timeout=10, shell=False)
             
             if result.returncode == 0:
                 # Parse socket statistics summary

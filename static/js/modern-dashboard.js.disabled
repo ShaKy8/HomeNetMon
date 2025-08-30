@@ -1,0 +1,441 @@
+/**
+ * Modern Dashboard Enhancements
+ * Advanced interactions and animations for the beautiful HomeNetMon UI
+ */
+
+class ModernDashboard {
+    constructor() {
+        this.fabMenuVisible = false;
+        this.init();
+    }
+
+    init() {
+        this.setupFABMenu();
+        this.setupHeroAnimations();
+        this.setupDeviceCardEnhancements();
+        this.setupLoadingAnimations();
+    }
+
+    // ===== FAB MENU FUNCTIONALITY =====
+    setupFABMenu() {
+        const fab = document.getElementById('more-options-fab');
+        const fabMenu = document.getElementById('fab-menu');
+
+        if (!fab || !fabMenu) return;
+
+        fab.addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.toggleFABMenu();
+        });
+
+        // Close FAB menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (this.fabMenuVisible && !fabMenu.contains(e.target) && e.target !== fab) {
+                this.hideFABMenu();
+            }
+        });
+
+        // Setup FAB menu actions
+        this.setupFABMenuActions();
+    }
+
+    toggleFABMenu() {
+        const fabMenu = document.getElementById('fab-menu');
+        if (this.fabMenuVisible) {
+            this.hideFABMenu();
+        } else {
+            this.showFABMenu();
+        }
+    }
+
+    showFABMenu() {
+        const fabMenu = document.getElementById('fab-menu');
+        const fab = document.getElementById('more-options-fab');
+        
+        fabMenu.style.display = 'block';
+        // Small delay to ensure display is set before animation
+        setTimeout(() => {
+            fabMenu.classList.add('show');
+        }, 10);
+        
+        fab.style.transform = 'rotate(45deg) scale(1.1)';
+        this.fabMenuVisible = true;
+    }
+
+    hideFABMenu() {
+        const fabMenu = document.getElementById('fab-menu');
+        const fab = document.getElementById('more-options-fab');
+        
+        fabMenu.classList.remove('show');
+        fab.style.transform = 'rotate(0deg) scale(1)';
+        
+        setTimeout(() => {
+            if (!fabMenu.classList.contains('show')) {
+                fabMenu.style.display = 'none';
+            }
+        }, 300);
+        
+        this.fabMenuVisible = false;
+    }
+
+    setupFABMenuActions() {
+        // Ping all devices
+        const pingAllBtn = document.getElementById('ping-all-btn');
+        if (pingAllBtn) {
+            pingAllBtn.addEventListener('click', () => {
+                this.pingAllDevices();
+                this.hideFABMenu();
+            });
+        }
+
+        // Toggle selection mode
+        const toggleSelectionBtn = document.getElementById('toggle-selection-btn');
+        if (toggleSelectionBtn) {
+            toggleSelectionBtn.addEventListener('click', () => {
+                this.toggleSelectionMode();
+                this.hideFABMenu();
+            });
+        }
+
+        // View toggle
+        const viewToggleBtn = document.getElementById('view-toggle-btn');
+        if (viewToggleBtn) {
+            viewToggleBtn.addEventListener('click', () => {
+                this.toggleViewMode();
+                this.hideFABMenu();
+            });
+        }
+    }
+
+    // ===== HERO SECTION ANIMATIONS =====
+    setupHeroAnimations() {
+        this.updateHeroStats();
+        // Update hero stats every 5 seconds
+        setInterval(() => {
+            this.updateHeroStats();
+        }, 5000);
+
+        // Setup floating animation for hero icon
+        const heroIcon = document.querySelector('.hero-title i');
+        if (heroIcon) {
+            heroIcon.classList.add('animate-float');
+        }
+    }
+
+    updateHeroStats() {
+        const deviceCountElement = document.getElementById('hero-device-count');
+        const responseTimeElement = document.getElementById('hero-response-time');
+
+        if (deviceCountElement && window.devices) {
+            const onlineDevices = window.devices.filter(d => d.status === 'up').length;
+            this.animateCounter(deviceCountElement, onlineDevices);
+        }
+
+        if (responseTimeElement && window.devices && window.devices.length > 0) {
+            const avgResponse = this.calculateAverageResponse();
+            responseTimeElement.textContent = avgResponse;
+        }
+    }
+
+    calculateAverageResponse() {
+        if (!window.devices || window.devices.length === 0) return 'N/A';
+        
+        const responseTimes = window.devices
+            .filter(d => d.last_response_time && d.last_response_time > 0)
+            .map(d => d.last_response_time);
+        
+        if (responseTimes.length === 0) return 'N/A';
+        
+        const avg = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
+        return avg < 1 ? '<1ms' : Math.round(avg) + 'ms';
+    }
+
+    animateCounter(element, targetValue) {
+        const currentValue = parseInt(element.textContent) || 0;
+        const duration = 1000; // 1 second
+        const steps = 30;
+        const stepValue = (targetValue - currentValue) / steps;
+        const stepDuration = duration / steps;
+
+        let currentStep = 0;
+        const timer = setInterval(() => {
+            currentStep++;
+            const newValue = Math.round(currentValue + (stepValue * currentStep));
+            element.textContent = newValue;
+            element.classList.add('count-animation');
+
+            if (currentStep >= steps) {
+                clearInterval(timer);
+                element.textContent = targetValue;
+                setTimeout(() => {
+                    element.classList.remove('count-animation');
+                }, 500);
+            }
+        }, stepDuration);
+    }
+
+    // ===== DEVICE CARD ENHANCEMENTS =====
+    setupDeviceCardEnhancements() {
+        this.enhanceExistingCards();
+        
+        // Watch for new device cards being added to the DOM
+        const observer = new MutationObserver((mutations) => {
+            mutations.forEach((mutation) => {
+                mutation.addedNodes.forEach((node) => {
+                    if (node.nodeType === 1 && (node.classList.contains('device-card') || node.querySelector('.device-card'))) {
+                        this.enhanceDeviceCard(node.classList.contains('device-card') ? node : node.querySelector('.device-card'));
+                    }
+                });
+            });
+        });
+
+        const deviceContainer = document.getElementById('devices-container') || document.body;
+        observer.observe(deviceContainer, { childList: true, subtree: true });
+    }
+
+    enhanceExistingCards() {
+        const deviceCards = document.querySelectorAll('.device-card');
+        deviceCards.forEach(card => this.enhanceDeviceCard(card));
+    }
+
+    enhanceDeviceCard(card) {
+        if (!card || card.dataset.enhanced) return;
+        
+        // Mark as enhanced to prevent double processing
+        card.dataset.enhanced = 'true';
+        
+        // Add staggered animation delay for grid layouts
+        const cards = document.querySelectorAll('.device-card');
+        const index = Array.from(cards).indexOf(card);
+        card.style.animationDelay = `${index * 0.1}s`;
+        
+        // Enhance status indicators with glow effects
+        const statusIndicator = card.querySelector('.status-indicator');
+        if (statusIndicator) {
+            statusIndicator.classList.add('status-glow');
+        }
+        
+        // Add ripple effect on click
+        card.addEventListener('click', (e) => {
+            this.createRippleEffect(e, card);
+        });
+        
+        // Add hover sound effect (optional)
+        card.addEventListener('mouseenter', () => {
+            // Optional: Add subtle hover sound effect
+            if (window.soundEnabled) {
+                this.playHoverSound();
+            }
+        });
+
+        // Enhanced loading states
+        if (card.classList.contains('loading')) {
+            this.addLoadingShimmer(card);
+        }
+    }
+
+    createRippleEffect(event, element) {
+        const ripple = document.createElement('div');
+        const rect = element.getBoundingClientRect();
+        const size = Math.max(rect.width, rect.height);
+        const x = event.clientX - rect.left - size / 2;
+        const y = event.clientY - rect.top - size / 2;
+
+        ripple.style.width = ripple.style.height = size + 'px';
+        ripple.style.left = x + 'px';
+        ripple.style.top = y + 'px';
+        ripple.classList.add('ripple');
+        ripple.style.cssText += `
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.3);
+            animation: ripple-effect 0.6s linear;
+            pointer-events: none;
+            z-index: 1;
+        `;
+
+        element.style.position = 'relative';
+        element.style.overflow = 'hidden';
+        element.appendChild(ripple);
+
+        // Add ripple animation keyframes if not already added
+        if (!document.getElementById('ripple-styles')) {
+            const style = document.createElement('style');
+            style.id = 'ripple-styles';
+            style.textContent = `
+                @keyframes ripple-effect {
+                    0% {
+                        transform: scale(0);
+                        opacity: 0.5;
+                    }
+                    100% {
+                        transform: scale(1);
+                        opacity: 0;
+                    }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+
+        setTimeout(() => {
+            ripple.remove();
+        }, 600);
+    }
+
+    // ===== LOADING ANIMATIONS =====
+    setupLoadingAnimations() {
+        // Replace standard loading indicators with modern shimmer effects
+        this.replaceLoadingIndicators();
+    }
+
+    replaceLoadingIndicators() {
+        const loadingElements = document.querySelectorAll('[data-loading="true"], .loading');
+        loadingElements.forEach(element => {
+            this.addLoadingShimmer(element);
+        });
+    }
+
+    addLoadingShimmer(element) {
+        if (element.dataset.shimmerAdded) return;
+        
+        element.dataset.shimmerAdded = 'true';
+        element.classList.add('skeleton-modern');
+        
+        // Add shimmer overlay
+        const shimmer = document.createElement('div');
+        shimmer.className = 'loading-shimmer';
+        shimmer.style.cssText = `
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(110deg, transparent 8%, rgba(255,255,255,0.4) 18%, transparent 33%);
+            background-size: 200% 100%;
+            animation: shimmer-sweep 1.5s infinite;
+            pointer-events: none;
+        `;
+        
+        element.style.position = 'relative';
+        element.appendChild(shimmer);
+        
+        // Add shimmer animation if not already added
+        if (!document.getElementById('shimmer-styles')) {
+            const style = document.createElement('style');
+            style.id = 'shimmer-styles';
+            style.textContent = `
+                @keyframes shimmer-sweep {
+                    0% { transform: translateX(-100%); }
+                    100% { transform: translateX(100%); }
+                }
+            `;
+            document.head.appendChild(style);
+        }
+    }
+
+    // ===== ACTION HANDLERS =====
+    pingAllDevices() {
+        console.log('Pinging all devices...');
+        if (typeof pingAllDevices === 'function') {
+            pingAllDevices();
+        }
+        this.showToast('Pinging all devices...', 'info');
+    }
+
+    toggleSelectionMode() {
+        const deviceCards = document.querySelectorAll('.device-card');
+        const isSelectionMode = document.body.classList.contains('selection-mode');
+        
+        if (isSelectionMode) {
+            document.body.classList.remove('selection-mode');
+            deviceCards.forEach(card => {
+                card.classList.remove('selection-mode');
+                const checkbox = card.querySelector('.device-checkbox');
+                if (checkbox) checkbox.style.display = 'none';
+            });
+            this.showToast('Selection mode disabled', 'info');
+        } else {
+            document.body.classList.add('selection-mode');
+            deviceCards.forEach(card => {
+                card.classList.add('selection-mode');
+                // Add selection checkbox if not exists
+                if (!card.querySelector('.device-checkbox')) {
+                    this.addSelectionCheckbox(card);
+                }
+            });
+            this.showToast('Selection mode enabled', 'info');
+        }
+    }
+
+    addSelectionCheckbox(card) {
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'device-checkbox position-absolute top-0 end-0 m-2';
+        checkbox.style.cssText = 'z-index: 10; transform: scale(1.2);';
+        card.style.position = 'relative';
+        card.appendChild(checkbox);
+    }
+
+    toggleViewMode() {
+        const container = document.querySelector('.devices-grid') || document.querySelector('[class*="devices"]');
+        if (!container) return;
+        
+        const isGridView = container.classList.contains('row');
+        
+        if (isGridView) {
+            // Switch to list view
+            container.classList.remove('row');
+            container.classList.add('list-view');
+            const cards = container.querySelectorAll('.device-card');
+            cards.forEach(card => {
+                card.style.width = '100%';
+                card.style.marginBottom = '1rem';
+            });
+            this.showToast('Switched to list view', 'info');
+        } else {
+            // Switch to grid view
+            container.classList.add('row');
+            container.classList.remove('list-view');
+            const cards = container.querySelectorAll('.device-card');
+            cards.forEach(card => {
+                card.style.width = '';
+                card.style.marginBottom = '';
+            });
+            this.showToast('Switched to grid view', 'info');
+        }
+    }
+
+    // ===== UTILITY METHODS =====
+    showToast(message, type = 'info') {
+        if (typeof showToast === 'function') {
+            showToast(message, type);
+        } else {
+            console.log(`${type.toUpperCase()}: ${message}`);
+        }
+    }
+
+    playHoverSound() {
+        // Optional: Play subtle hover sound effect
+        // This would require audio files and user permission
+        try {
+            const audio = new Audio('/static/sounds/hover.mp3');
+            audio.volume = 0.1;
+            audio.play().catch(() => {
+                // Silently fail if audio can't play
+            });
+        } catch (e) {
+            // Silently fail if no audio support
+        }
+    }
+}
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    window.modernDashboard = new ModernDashboard();
+    console.log('🚀 Modern Dashboard initialized!');
+});
+
+// Export for external use
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = ModernDashboard;
+}

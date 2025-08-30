@@ -42,14 +42,14 @@ class WebSocketDataOptimizer:
                 MonitoringData.response_time,
                 MonitoringData.timestamp.label('last_monitoring')
             ).outerjoin(
+                latest_monitoring_subquery,
+                Device.id == latest_monitoring_subquery.c.device_id
+            ).outerjoin(
                 MonitoringData,
                 and_(
                     Device.id == MonitoringData.device_id,
                     MonitoringData.timestamp == latest_monitoring_subquery.c.latest_timestamp
                 )
-            ).outerjoin(
-                latest_monitoring_subquery,
-                Device.id == latest_monitoring_subquery.c.device_id
             ).all()
             
             # Get alert counts in a single query

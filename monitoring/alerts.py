@@ -19,12 +19,18 @@ class AlertManager:
         self._stop_event = threading.Event()
         self.rule_engine_service = None
         self.correlation_service = None
+        # Optimized alert thresholds with adaptive logic
         self.alert_thresholds = {
-            'device_down_minutes_critical': 10,   # Alert if critical device down for 10+ minutes
-            'device_down_minutes_regular': 20,    # Alert if regular device down for 20+ minutes  
-            'high_latency_ms': 1000,              # Alert if ping > 1000ms
-            'packet_loss_threshold': 50,           # Alert if packet loss > 50%
-            'consecutive_failures_required': 2     # Require 2 consecutive failures (matching uptime logic)
+            'device_down_minutes_critical': 15,   # Faster alert for critical devices
+            'device_down_minutes_regular': 45,    # Balanced threshold for regular devices
+            'high_latency_ms': 1500,              # More responsive to network issues
+            'packet_loss_threshold': 60,          # Earlier detection of connectivity issues
+            'consecutive_failures_required': 3,   # More responsive while reducing false positives
+            'recovery_validation_count': 2,       # Require 2 successful pings before recovery alert
+            'high_latency_consecutive_required': 3, # Consecutive high latency measurements
+            'anomaly_detection_threshold': 0.8,   # Threshold for statistical anomaly detection
+            'burst_alert_window_minutes': 10,     # Window for burst alert detection
+            'max_alerts_per_burst_window': 2      # Limit alerts per burst window
         }
         
     def is_critical_device(self, device):
@@ -97,7 +103,7 @@ class AlertManager:
                         
                     should_alert = (device.last_seen and device.last_seen < cutoff_time and 
                                   self.has_consecutive_failures(device, consecutive_failures_required) and
-                                  device_uptime < 98)  # Only alert if recent uptime is poor (< 98%)
+                                  device_uptime < 90)  # Only alert if recent uptime is very poor (< 90%)
                     
                     logger.debug(f"Alert decision for {device.display_name}: last_seen={device.last_seen < cutoff_time if device.last_seen else 'Never'}, consecutive_failures={self.has_consecutive_failures(device, consecutive_failures_required)}, uptime={device_uptime}%, should_alert={should_alert}")
                     
@@ -622,6 +628,9 @@ This is an automated message from HomeNetMon.
         self.alert_pause_until = None
         logger.info("Starting alert monitoring")
         
+        # Setup default suppression rules to reduce alert noise
+        self.setup_default_suppressions()
+        
         # Cleanup old alerts on startup
         self.cleanup_old_alerts()
         
@@ -652,9 +661,9 @@ This is an automated message from HomeNetMon.
                     self.cleanup_old_alerts()
                     self._cleanup_counter = 0
                 
-                # Wait before next check - run less frequently to reduce system load
-                # Check every 2-3 minutes instead of every 15 seconds
-                self._stop_event.wait(120)  # 2 minutes between checks
+                # Wait before next check - run much less frequently to reduce alert noise
+                # Check every 10 minutes instead of every 2 minutes
+                self._stop_event.wait(600)  # 10 minutes between checks
                 
             except Exception as e:
                 logger.error(f"Error in alert monitoring loop: {e}")
@@ -794,6 +803,61 @@ This is an automated message from HomeNetMon.
                 self.app.emit_alert_update(alert, action)
         except Exception as e:
             logger.error(f"Error emitting alert update: {e}")
+
+    def setup_default_suppressions(self):
+        """Setup default alert suppression rules to reduce noise"""
+        try:
+            if not self.app:
+                return
+                
+            with self.app.app_context():
+                from models import AlertSuppression
+                
+                # Default suppression rules to reduce alert noise
+                default_suppressions = [
+                    {
+                        'name': 'Quiet Hours - Night Time',
+                        'description': 'Suppress non-critical alerts during night hours (11PM-7AM)',
+                        'enabled': True,
+                        'alert_type': None,  # All alert types
+                        'severity': 'info',  # Only info level alerts
+                        'daily_start_hour': 23,  # 11 PM
+                        'daily_end_hour': 7,   # 7 AM
+                        'suppression_type': 'silence'
+                    },
+                    {
+                        'name': 'Performance Warning Suppression',
+                        'description': 'Suppress performance warning alerts to reduce noise',
+                        'enabled': True,
+                        'alert_type': 'performance',
+                        'severity': 'warning',
+                        'suppression_type': 'silence'
+                    },
+                    {
+                        'name': 'Anomaly Alert Suppression', 
+                        'description': 'Suppress noisy anomaly detection alerts',
+                        'enabled': True,
+                        'alert_type': 'anomaly',
+                        'severity': None,  # All severities
+                        'suppression_type': 'silence'
+                    }
+                ]
+                
+                # Create suppression rules if they don't exist
+                for suppression_data in default_suppressions:
+                    existing = AlertSuppression.query.filter_by(name=suppression_data['name']).first()
+                    if not existing:
+                        suppression = AlertSuppression(**suppression_data)
+                        db.session.add(suppression)
+                        logger.info(f"Created default suppression rule: {suppression_data['name']}")
+                
+                db.session.commit()
+                
+        except Exception as e:
+            logger.error(f"Error setting up default suppression rules: {e}")
+            if self.app:
+                with self.app.app_context():
+                    db.session.rollback()
 
     def reload_config(self):
         """Reload configuration for hot-reload support"""

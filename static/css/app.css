@@ -27,21 +27,67 @@
 }
 
 .status-indicator.up {
-    background-color: #28a745;
+    background: radial-gradient(circle, #10b981, #059669);
+    box-shadow: 0 0 15px rgba(16, 185, 129, 0.4);
+    position: relative;
+}
+
+.status-indicator.up::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200%;
+    height: 200%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(16, 185, 129, 0.3) 0%, transparent 70%);
+    animation: pulse-glow 2s ease-in-out infinite;
+    z-index: -1;
 }
 
 .status-indicator.down {
-    background-color: #dc3545;
-    animation: blink 1s infinite;
+    background: radial-gradient(circle, #ef4444, #dc2626);
+    box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);
+    position: relative;
+}
+
+.status-indicator.down::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200%;
+    height: 200%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(239, 68, 68, 0.4) 0%, transparent 70%);
+    animation: pulse-glow-danger 1s ease-in-out infinite;
+    z-index: -1;
 }
 
 .status-indicator.warning {
-    background-color: #ffc107;
-    animation: pulse 1.5s infinite;
+    background: radial-gradient(circle, #f59e0b, #d97706);
+    box-shadow: 0 0 15px rgba(245, 158, 11, 0.4);
+    position: relative;
+}
+
+.status-indicator.warning::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 200%;
+    height: 200%;
+    border-radius: 50%;
+    background: radial-gradient(circle, rgba(245, 158, 11, 0.3) 0%, transparent 70%);
+    animation: pulse-glow 1.5s ease-in-out infinite;
+    z-index: -1;
 }
 
 .status-indicator.unknown {
-    background-color: #6c757d;
+    background: radial-gradient(circle, #6b7280, #4b5563);
     animation: none;
 }
 
@@ -112,14 +158,37 @@
 /* Device cards with enhanced animations */
 .device-card {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    border: 1px solid #dee2e6;
+    border: 1px solid rgba(255, 255, 255, 0.1);
     transform-origin: center;
+    background: linear-gradient(145deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 1rem;
+    box-shadow: 0 4px 15px 0 rgba(31, 38, 135, 0.2);
+    position: relative;
+    overflow: hidden;
+}
+
+.device-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(135deg, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
 }
 
 .device-card:hover {
-    transform: translateY(-4px) scale(1.01);
-    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
-    border-color: #007bff;
+    transform: translateY(-8px) scale(1.02);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    border-color: rgba(99, 102, 241, 0.3);
+}
+
+.device-card:hover::before {
+    opacity: 1;
 }
 
 .device-card.status-change {

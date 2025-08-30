@@ -18,6 +18,8 @@ class DeviceMonitor:
         self.is_running = False
         self.executor = None
         self._stop_event = threading.Event()
+        self._rotation_lock = threading.Lock()  # Thread safety for device rotation
+        self._device_rotation_index = 0
         self.rule_engine_service = None
         
         # Use adaptive thread pool for monitoring
@@ -75,7 +77,8 @@ class DeviceMonitor:
                     cmd,
                     capture_output=True,
                     text=True,
-                    timeout=actual_timeout + 2
+                    timeout=actual_timeout + 2,
+                    shell=False
                 )
                 
                 if result.returncode == 0:
@@ -243,25 +246,23 @@ class DeviceMonitor:
             
             # Rotate through regular devices (monitor subset each cycle)
             if regular_devices:
-                # Initialize rotation counter if not exists
-                if not hasattr(self, '_device_rotation_index'):
-                    self._device_rotation_index = 0
-                
-                # Monitor 10-15 regular devices per cycle (instead of all 50+)
-                batch_size = min(15, len(regular_devices))
-                start_idx = self._device_rotation_index
-                end_idx = start_idx + batch_size
-                
-                # Handle wrap-around
-                if end_idx <= len(regular_devices):
-                    regular_batch = regular_devices[start_idx:end_idx]
-                else:
-                    regular_batch = regular_devices[start_idx:] + regular_devices[:end_idx - len(regular_devices)]
+                # Thread-safe rotation counter access
+                with self._rotation_lock:
+                    # Monitor 10-15 regular devices per cycle (instead of all 50+)
+                    batch_size = min(15, len(regular_devices))
+                    start_idx = self._device_rotation_index
+                    end_idx = start_idx + batch_size
+                    
+                    # Handle wrap-around
+                    if end_idx <= len(regular_devices):
+                        regular_batch = regular_devices[start_idx:end_idx]
+                    else:
+                        regular_batch = regular_devices[start_idx:] + regular_devices[:end_idx - len(regular_devices)]
+                    
+                    # Update rotation index for next cycle
+                    self._device_rotation_index = (self._device_rotation_index + batch_size) % len(regular_devices)
                 
                 devices_to_monitor.extend(regular_batch)
-                
-                # Update rotation index for next cycle
-                self._device_rotation_index = (self._device_rotation_index + batch_size) % len(regular_devices)
                 
                 logger.debug(f"Regular device batch: {start_idx}-{end_idx % len(regular_devices)} ({len(regular_batch)} devices)")
             
@@ -289,14 +290,30 @@ class DeviceMonitor:
             results = []
             
             # Collect results with timeout
-            for future in as_completed(future_to_device, timeout=ping_timeout * 3):
-                device = future_to_device[future]
-                try:
-                    result = future.result(timeout=ping_timeout + 1)
-                    if result:
-                        results.append(result)
-                except Exception as e:
-                    logger.error(f"Error getting result for device {device.ip_address}: {e}")
+            try:
+                for future in as_completed(future_to_device, timeout=ping_timeout * 3):
+                    device = future_to_device[future]
+                    try:
+                        result = future.result(timeout=ping_timeout + 1)
+                        if result:
+                            results.append(result)
+                    except Exception as e:
+                        logger.error(f"Error getting result for device {device.ip_address}: {e}")
+            except TimeoutError:
+                # Some futures didn't complete in time - log and continue
+                unfinished = sum(1 for f in future_to_device if not f.done())
+                if unfinished > 0:
+                    logger.warning(f"{unfinished} device pings did not complete within timeout - continuing")
+                # Process the results we did get
+                for future in future_to_device:
+                    if future.done():
+                        device = future_to_device[future]
+                        try:
+                            result = future.result(timeout=0.1)
+                            if result and result not in results:
+                                results.append(result)
+                        except Exception:
+                            pass
             
             # PERFORMANCE OPTIMIZATION: Batch process all monitoring results in a single transaction
             if results:
@@ -792,16 +809,14 @@ class DeviceMonitor:
                 if monitoring_records:
                     db.session.add_all(monitoring_records)
                 
-                # Batch update device last_seen timestamps using bulk update
+                # Batch update device last_seen timestamps using ORM bulk update
                 if device_updates:
+                    from models import Device
                     for update in device_updates:
-                        db.session.execute(
-                            db.text("UPDATE devices SET last_seen = :last_seen WHERE id = :device_id"),
-                            {
-                                'last_seen': update['last_seen'],
-                                'device_id': update['device_id']
-                            }
-                        )
+                        # Use ORM update method instead of raw SQL
+                        Device.query.filter(Device.id == update['device_id']).update({
+                            'last_seen': update['last_seen']
+                        })
                 
                 # Commit all changes in single transaction
                 db.session.commit()

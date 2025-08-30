@@ -467,7 +467,7 @@ AllowedIPs = {client['ip']}/32
             os.chmod(config_path, 0o600)
             
             # Start WireGuard interface
-            subprocess.run(['wg-quick', 'up', config_path], check=True)
+            subprocess.run(['wg-quick', 'up', config_path], check=True, shell=False)
             
             tunnel['active'] = True
             tunnel['interface'] = interface_name
@@ -504,7 +504,7 @@ AllowedIPs = {client['ip']}/32
         
         try:
             config_path = os.path.join(self.config_dir, f"{interface_name}.conf")
-            subprocess.run(['wg-quick', 'down', config_path], check=False)
+            subprocess.run(['wg-quick', 'down', config_path], check=False, shell=False)
             
             tunnel['active'] = False
             self._save_tunnel_configs()

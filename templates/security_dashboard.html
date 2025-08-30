@@ -2,6 +2,11 @@
 
 {% block title %}Security Dashboard - HomeNetMon{% endblock %}
 
+{% block head %}
+{{ super() }}
+<meta name="csrf-token" content="{{ csrf_token() }}">
+{% endblock %}
+
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
     <div class="d-flex align-items-center">
@@ -864,8 +869,77 @@
 <script>
     let securityCharts = {};
     let currentTimeFilter = 24; // Default 24 hours
+    
+    // Toast notification function
+    function showToast(message, type = 'info') {
+        // Create toast container if it doesn't exist
+        let toastContainer = document.getElementById('toast-container');
+        if (!toastContainer) {
+            toastContainer = document.createElement('div');
+            toastContainer.id = 'toast-container';
+            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+            toastContainer.style.zIndex = '1055';
+            document.body.appendChild(toastContainer);
+        }
+        
+        // Create toast element
+        const toastEl = document.createElement('div');
+        toastEl.className = `toast align-items-center text-bg-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'primary'} border-0`;
+        toastEl.setAttribute('role', 'alert');
+        toastEl.innerHTML = `
+            <div class="d-flex">
+                <div class="toast-body">
+                    ${message}
+                </div>
+                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
+            </div>
+        `;
+        
+        toastContainer.appendChild(toastEl);
+        
+        // Initialize and show toast
+        const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+        toast.show();
+        
+        // Remove toast element after it's hidden
+        toastEl.addEventListener('hidden.bs.toast', function () {
+            toastEl.remove();
+        });
+    }
+
+    // CSRF Token Helper Functions
+    function getCSRFToken() {
+        // Try meta tag first
+        const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+        if (metaToken) return metaToken;
+        
+        // Fallback to cookie
+        return document.cookie
+            .split('; ')
+            .find(row => row.startsWith('csrf_token='))
+            ?.split('=')[1];
+    }
+    
+    function getHeaders(additionalHeaders = {}) {
+        const headers = {
+            'Content-Type': 'application/json',
+            ...additionalHeaders
+        };
+        
+        const csrfToken = getCSRFToken();
+        if (csrfToken) {
+            headers['X-CSRF-Token'] = csrfToken;
+        }
+        
+        return headers;
+    }
 
     document.addEventListener('DOMContentLoaded', function() {
+        // Debug CSRF token
+        console.log('CSRF Token from meta:', document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
+        console.log('CSRF Token from cookie:', document.cookie.split('; ').find(row => row.startsWith('csrf_token=')));
+        console.log('Final CSRF Token:', getCSRFToken());
+        
         // Initialize Bootstrap tooltips
         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -876,6 +950,7 @@
         });
         
         loadSecurityData();
+        checkScanStatus(); // Check if scan is already running on page load
         
         // Event listeners
         document.getElementById('refresh-security-data').addEventListener('click', loadSecurityData);
@@ -921,6 +996,110 @@
             observer.observe(document.body, { childList: true, subtree: true });
         });
     });
+    
+    async function checkScanStatus() {
+        try {
+            const response = await fetch('/api/security/scan-progress');
+            const data = await response.json();
+            
+            if (data.success && data.progress.active) {
+                const button = document.getElementById('run-security-scan');
+                const progress = data.progress;
+                
+                // Update button to show scan is running
+                button.disabled = true;
+                button.innerHTML = '<i class="bi bi-hourglass-split"></i> Scan Running...';
+                button.setAttribute('data-bs-title', `Security scan in progress (${progress.progress}% complete). Started ${progress.duration_formatted} ago.`);
+                
+                // Show progress container if scan is running
+                const progressContainer = document.getElementById('scan-progress-container');
+                if (progressContainer) {
+                    progressContainer.style.display = 'block';
+                    
+                    // Start monitoring the existing scan
+                    monitorExistingScan();
+                }
+            }
+        } catch (error) {
+            console.error('Error checking scan status:', error);
+        }
+    }
+    
+    function monitorExistingScan() {
+        const progressBar = document.getElementById('scan-progress-bar');
+        const statusText = document.getElementById('scan-status-text');
+        const detailsText = document.getElementById('scan-details');
+        const scanStage = document.getElementById('scan-stage');
+        const deviceInfo = document.getElementById('current-device-info');
+        
+        // Null checks to prevent errors
+        if (!progressBar || !statusText || !detailsText || !scanStage || !deviceInfo) {
+            console.error('Missing required DOM elements for monitoring scan');
+            return;
+        }
+        
+        let progressInterval = setInterval(async () => {
+            try {
+                const progressResponse = await fetch('/api/security/scan-progress');
+                const progressData = await progressResponse.json();
+                
+                if (progressData.success) {
+                    const progress = progressData.progress;
+                    
+                    if (!progress.active) {
+                        // Scan completed, reset UI
+                        clearInterval(progressInterval);
+                        const button = document.getElementById('run-security-scan');
+                        button.disabled = false;
+                        button.innerHTML = '<i class="bi bi-search"></i> Run Network Scan';
+                        button.setAttribute('data-bs-title', 'Start a comprehensive network scan to check all devices for open ports, services, and potential security risks');
+                        
+                        document.getElementById('scan-progress-container').style.display = 'none';
+                        loadSecurityData(); // Refresh data after scan completion
+                        return;
+                    }
+                    
+                    // Update progress UI
+                    progressBar.style.width = progress.progress + '%';
+                    
+                    if (progress.status === 'running') {
+                        scanStage.textContent = 'Scanning';
+                        scanStage.className = 'ms-3 badge bg-warning';
+                        
+                        if (progress.current_device) {
+                            deviceInfo.style.display = 'block';
+                            const deviceNameEl = document.getElementById('current-device-name');
+                            const deviceProgressEl = document.getElementById('current-device-progress');
+                            if (deviceNameEl) deviceNameEl.textContent = progress.current_device;
+                            if (deviceProgressEl) deviceProgressEl.style.width = progress.current_device_progress + '%';
+                            statusText.textContent = `Scanning ${progress.current_device}`;
+                        }
+                        
+                        // Update statistics with null checks
+                        const devicesProgressEl = document.getElementById('devices-progress');
+                        const portsScannedEl = document.getElementById('ports-scanned');
+                        const openPortsEl = document.getElementById('open-ports-found');
+                        const alertsEl = document.getElementById('alerts-generated');
+                        const percentageEl = document.getElementById('scan-percentage');
+                        
+                        if (devicesProgressEl) devicesProgressEl.textContent = `${progress.devices_completed}/${progress.total_devices}`;
+                        if (portsScannedEl) portsScannedEl.textContent = progress.total_ports_scanned || 0;
+                        if (openPortsEl) openPortsEl.textContent = progress.open_ports_found || 0;
+                        if (alertsEl) alertsEl.textContent = progress.alerts_generated || 0;
+                        if (percentageEl) percentageEl.textContent = progress.progress + '%';
+                        
+                        detailsText.textContent = `Scanned ${progress.devices_completed} of ${progress.total_devices} devices • Found ${progress.open_ports_found} open ports • Generated ${progress.alerts_generated} security alerts`;
+                    }
+                    
+                    // Update button tooltip with progress
+                    const button = document.getElementById('run-security-scan');
+                    button.setAttribute('data-bs-title', `Security scan in progress (${progress.progress}% complete). Started ${progress.duration_formatted} ago.`);
+                }
+            } catch (error) {
+                console.error('Error monitoring scan progress:', error);
+            }
+        }, 2000);
+    }
     
     async function loadSecurityData() {
         try {
@@ -1055,11 +1234,18 @@
     async function runNetworkScan() {
         try {
             const button = document.getElementById('run-security-scan');
-            const originalText = button.innerHTML;
+            const originalText = button ? button.innerHTML : '';
             const progressContainer = document.getElementById('scan-progress-container');
             const progressBar = document.getElementById('scan-progress-bar');
             const statusText = document.getElementById('scan-status-text');
             const detailsText = document.getElementById('scan-details');
+            
+            // Null checks for required elements
+            if (!button || !progressContainer || !progressBar || !statusText || !detailsText) {
+                console.error('Missing required DOM elements for scan');
+                showToast('Error: Missing UI elements', 'error');
+                return;
+            }
             
             // Show progress UI
             button.disabled = true;
@@ -1075,10 +1261,12 @@
             const explanationDiv = document.getElementById('scan-explanation');
             const scanStage = document.getElementById('scan-stage');
             
-            statsDiv.style.display = 'flex';
-            explanationDiv.style.display = 'block';
-            scanStage.textContent = 'Starting';
-            scanStage.className = 'ms-3 badge bg-primary';
+            if (statsDiv) statsDiv.style.display = 'flex';
+            if (explanationDiv) explanationDiv.style.display = 'block';
+            if (scanStage) {
+                scanStage.textContent = 'Starting';
+                scanStage.className = 'ms-3 badge bg-primary';
+            }
             
             // Start scan timer
             let scanStartTime = Date.now();
@@ -1086,22 +1274,32 @@
                 const elapsed = Math.floor((Date.now() - scanStartTime) / 1000);
                 const minutes = Math.floor(elapsed / 60);
                 const seconds = elapsed % 60;
-                document.getElementById('scan-timer').textContent = 
-                    minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+                const timerEl = document.getElementById('scan-timer');
+                if (timerEl) {
+                    timerEl.textContent = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+                }
             }, 1000);
             
             // Start the scan
             const response = await fetch('/api/security/run-scan', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
+                headers: getHeaders(),
                 body: JSON.stringify({})
             });
             
             const data = await response.json();
             
             if (!data.success) {
+                if (data.error && data.error.includes('already in progress')) {
+                    // Handle scan already in progress
+                    button.innerHTML = '<i class="bi bi-hourglass-split"></i> Scan Running...';
+                    statusText.textContent = 'Scan already in progress';
+                    detailsText.textContent = 'A security scan is currently running. Please wait for it to complete.';
+                    
+                    // Start monitoring the existing scan
+                    monitorExistingScan();
+                    return;
+                }
                 throw new Error(data.error || 'Failed to start scan');
             }
             
@@ -1128,28 +1326,36 @@
                             
                             // Update current device info
                             if (progress.current_device) {
-                                deviceInfo.style.display = 'block';
-                                document.getElementById('current-device-name').textContent = progress.current_device;
-                                document.getElementById('current-device-progress').style.width = progress.current_device_progress + '%';
+                                if (deviceInfo) deviceInfo.style.display = 'block';
+                                const deviceNameEl = document.getElementById('current-device-name');
+                                const deviceProgressEl = document.getElementById('current-device-progress');
+                                if (deviceNameEl) deviceNameEl.textContent = progress.current_device;
+                                if (deviceProgressEl) deviceProgressEl.style.width = progress.current_device_progress + '%';
                                 
                                 statusText.textContent = `Scanning ${progress.current_device}`;
                                 
                                 // Update explanation based on scan phase
                                 const explanationText = document.getElementById('scan-explanation-text');
-                                explanationText.textContent = `Currently checking ${progress.current_device} for open network ports. The scanner tests the most common ports to identify running services and potential security risks.`;
+                                if (explanationText) {
+                                    explanationText.textContent = `Currently checking ${progress.current_device} for open network ports. The scanner tests the most common ports to identify running services and potential security risks.`;
+                                }
                             } else {
                                 statusText.textContent = 'Scanning network devices...';
-                                deviceInfo.style.display = 'none';
+                                if (deviceInfo) deviceInfo.style.display = 'none';
                             }
                             
-                            // Update statistics
-                            document.getElementById('devices-progress').textContent = `${progress.devices_completed}/${progress.total_devices}`;
-                            document.getElementById('ports-scanned').textContent = progress.total_ports_scanned || 0;
-                            document.getElementById('open-ports-found').textContent = progress.open_ports_found || 0;
-                            document.getElementById('alerts-generated').textContent = progress.alerts_generated || 0;
+                            // Update statistics with null checks
+                            const devicesProgressEl2 = document.getElementById('devices-progress');
+                            const portsScannedEl2 = document.getElementById('ports-scanned');
+                            const openPortsEl2 = document.getElementById('open-ports-found');
+                            const alertsEl2 = document.getElementById('alerts-generated');
+                            const percentageEl2 = document.getElementById('scan-percentage');
                             
-                            // Update progress percentage display
-                            document.getElementById('scan-percentage').textContent = progress.progress + '%';
+                            if (devicesProgressEl2) devicesProgressEl2.textContent = `${progress.devices_completed}/${progress.total_devices}`;
+                            if (portsScannedEl2) portsScannedEl2.textContent = progress.total_ports_scanned || 0;
+                            if (openPortsEl2) openPortsEl2.textContent = progress.open_ports_found || 0;
+                            if (alertsEl2) alertsEl2.textContent = progress.alerts_generated || 0;
+                            if (percentageEl2) percentageEl2.textContent = progress.progress + '%';
                             
                             // Enhanced details
                             detailsText.textContent = `Scanned ${progress.devices_completed} of ${progress.total_devices} devices • Found ${progress.open_ports_found} open ports • Generated ${progress.alerts_generated} security alerts`;
@@ -1210,15 +1416,20 @@
                             clearInterval(timerInterval);
                             
                             // Update UI for failure
-                            scanStage.textContent = 'Failed';
-                            scanStage.className = 'ms-3 badge bg-danger';
+                            if (scanStage) {
+                                scanStage.textContent = 'Failed';
+                                scanStage.className = 'ms-3 badge bg-danger';
+                            }
                             
-                            progressBar.classList.add('bg-danger');
-                            progressBar.classList.remove('progress-bar-animated');
-                            document.getElementById('scan-spinner').style.display = 'none';
+                            if (progressBar) {
+                                progressBar.classList.add('bg-danger');
+                                progressBar.classList.remove('progress-bar-animated');
+                            }
+                            const spinnerEl = document.getElementById('scan-spinner');
+                            if (spinnerEl) spinnerEl.style.display = 'none';
                             
                             statusText.textContent = '❌ Security scan failed';
-                            deviceInfo.style.display = 'none';
+                            if (deviceInfo) deviceInfo.style.display = 'none';
                             
                             // Error details
                             const errorMessage = progress.error_message || 'An unexpected error occurred during the security scan.';
@@ -1236,8 +1447,10 @@
                             `;
                             
                             // Update explanation for failure
-                            document.getElementById('scan-explanation-text').textContent = 
-                                'The security scan encountered an error and could not complete. This may be due to network connectivity issues or scanner configuration problems.';
+                            const explanationTextEl = document.getElementById('scan-explanation-text');
+                            if (explanationTextEl) {
+                                explanationTextEl.textContent = 'The security scan encountered an error and could not complete. This may be due to network connectivity issues or scanner configuration problems.';
+                            }
                             
                             showToast(`Scan failed: ${errorMessage}`, 'error');
                             
@@ -1268,17 +1481,25 @@
             const progressBar = document.getElementById('scan-progress-bar');
             const statusText = document.getElementById('scan-status-text');
             const detailsText = document.getElementById('scan-details');
+            const button = document.getElementById('run-security-scan');
             
-            progressBar.style.width = '100%';
-            progressBar.classList.add('bg-danger');
-            statusText.textContent = 'Error!';
-            detailsText.textContent = error.message || 'Failed to start security scan';
+            if (progressBar) {
+                progressBar.style.width = '100%';
+                progressBar.classList.add('bg-danger');
+            }
+            if (statusText) statusText.textContent = '❌ Scan failed to start';
+            if (detailsText) detailsText.textContent = 'Failed to start security scan: ' + error.message;
+            if (button) {
+                button.disabled = false;
+                button.innerHTML = '<i class="bi bi-search"></i> Run Network Scan';
+            }
             
             showToast('Error running security scan: ' + (error.message || 'Unknown error'), 'error');
             
             setTimeout(() => {
-                document.getElementById('scan-progress-container').style.display = 'none';
-                progressBar.classList.remove('bg-danger');
+                const progressContainer = document.getElementById('scan-progress-container');
+                if (progressContainer) progressContainer.style.display = 'none';
+                if (progressBar) progressBar.classList.remove('bg-danger');
             }, 5000);
             
         } finally {
@@ -1628,6 +1849,7 @@
     
     function updateSecurityRecommendations(riskAssessment) {
         const container = document.getElementById('security-recommendations');
+        if (!container) return;
         
         if (!riskAssessment || !riskAssessment.recommendations) {
             container.innerHTML = `
@@ -2026,9 +2248,7 @@
             
             const response = await fetch(`/api/security/device/${deviceId}/scan`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+                headers: getHeaders()
             });
             
             const data = await response.json();
@@ -2049,9 +2269,7 @@
         try {
             const response = await fetch(`/api/monitoring/alerts/${alertId}/acknowledge`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                }
+                headers: getHeaders()
             });
             
             const data = await response.json();
@@ -2206,7 +2424,7 @@
             const promises = Array.from(selectedAlerts).map(alertId => 
                 fetch(`/api/monitoring/alerts/${alertId}/acknowledge`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: getHeaders()
                 })
             );
             
@@ -2240,7 +2458,7 @@
             const promises = unacknowledgedAlerts.map(alert => 
                 fetch(`/api/monitoring/alerts/${alert.id}/acknowledge`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' }
+                    headers: getHeaders()
                 })
             );
             

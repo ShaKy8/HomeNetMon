@@ -728,13 +728,33 @@ class PWAManager {
         }
         
         notification.className = `pwa-notification ${type} show`;
-        notification.innerHTML = `
-            <div class="notification-content">
-                <strong>${title}</strong>
-                <span>${message}</span>
-            </div>
-            <button class="notification-close" onclick="this.parentElement.classList.remove('show')">&times;</button>
-        `;
+        // Build notification content safely
+        const content = document.createElement('div');
+        content.className = 'notification-content';
+        
+        const titleElement = document.createElement('strong');
+        if (window.htmlSanitizer) {
+            window.htmlSanitizer.setText(titleElement, title);
+        } else {
+            titleElement.textContent = title;
+        }
+        
+        const messageElement = document.createElement('span');
+        if (window.htmlSanitizer) {
+            window.htmlSanitizer.setText(messageElement, message);
+        } else {
+            messageElement.textContent = message;
+        }
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'notification-close';
+        closeBtn.textContent = '×';
+        closeBtn.onclick = () => notification.classList.remove('show');
+        
+        content.appendChild(titleElement);
+        content.appendChild(messageElement);
+        notification.appendChild(content);
+        notification.appendChild(closeBtn);
         
         // Auto-hide after specified duration
         setTimeout(() => {
@@ -746,16 +766,37 @@ class PWAManager {
         // Show custom install prompt
         const installPrompt = document.createElement('div');
         installPrompt.className = 'install-prompt';
-        installPrompt.innerHTML = `
-            <div class="install-prompt-content">
-                <h3>Install HomeNetMon</h3>
-                <p>Install HomeNetMon for quick access and offline functionality</p>
-                <div class="install-prompt-actions">
-                    <button id="install-app" class="btn btn-primary">Install</button>
-                    <button id="dismiss-install" class="btn btn-secondary">Not now</button>
-                </div>
-            </div>
-        `;
+        // Build install prompt content safely
+        const promptContent = document.createElement('div');
+        promptContent.className = 'install-prompt-content';
+        
+        const title = document.createElement('h3');
+        title.textContent = 'Install HomeNetMon';
+        
+        const description = document.createElement('p');
+        description.textContent = 'Install HomeNetMon for quick access and offline functionality';
+        
+        const actions = document.createElement('div');
+        actions.className = 'install-prompt-actions';
+        
+        const installBtn = document.createElement('button');
+        installBtn.id = 'install-app';
+        installBtn.className = 'btn btn-primary';
+        installBtn.textContent = 'Install';
+        
+        const dismissBtn = document.createElement('button');
+        dismissBtn.id = 'dismiss-install';
+        dismissBtn.className = 'btn btn-secondary';
+        dismissBtn.textContent = 'Not now';
+        
+        actions.appendChild(installBtn);
+        actions.appendChild(dismissBtn);
+        
+        promptContent.appendChild(title);
+        promptContent.appendChild(description);
+        promptContent.appendChild(actions);
+        
+        installPrompt.appendChild(promptContent);
         
         document.body.appendChild(installPrompt);
         

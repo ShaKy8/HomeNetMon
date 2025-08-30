@@ -592,7 +592,7 @@ class SecurityResponseEngine:
             # Using UFW (Ubuntu Firewall) as example
             result = subprocess.run(
                 ['sudo', 'ufw', 'insert', '1', 'deny', 'from', ip_address],
-                capture_output=True, text=True, timeout=30
+                capture_output=True, text=True, timeout=30, shell=False
             )
             
             if result.returncode == 0:
@@ -625,7 +625,7 @@ class SecurityResponseEngine:
             # Using UFW with limit rule
             result = subprocess.run(
                 ['sudo', 'ufw', 'limit', 'from', ip_address],
-                capture_output=True, text=True, timeout=30
+                capture_output=True, text=True, timeout=30, shell=False
             )
             
             if result.returncode == 0:
@@ -1008,7 +1008,7 @@ class SecurityResponseEngine:
             
             # Capture active connections
             try:
-                result = subprocess.run(['ss', '-tuln'], capture_output=True, text=True, timeout=10)
+                result = subprocess.run(['ss', '-tuln'], capture_output=True, text=True, timeout=10, shell=False)
                 if result.returncode == 0:
                     network_state['active_connections'] = result.stdout.split('\\n')[:50]  # Limit output
             except:
@@ -1016,7 +1016,7 @@ class SecurityResponseEngine:
             
             # Capture ARP table
             try:
-                result = subprocess.run(['arp', '-a'], capture_output=True, text=True, timeout=10)
+                result = subprocess.run(['arp', '-a'], capture_output=True, text=True, timeout=10, shell=False)
                 if result.returncode == 0:
                     network_state['arp_table'] = result.stdout.split('\\n')[:50]
             except:

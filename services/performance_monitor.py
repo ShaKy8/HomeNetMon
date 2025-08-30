@@ -364,7 +364,7 @@ class PerformanceMonitor:
                     db.text("""
                         SELECT 
                             d.id,
-                            d.display_name,
+                            COALESCE(d.custom_name, d.hostname, d.ip_address) as display_name,
                             d.ip_address,
                             d.device_type,
                             pm.health_score,
@@ -610,10 +610,10 @@ class PerformanceMonitor:
                 responsiveness_score = performance_record.responsiveness_score or 0
                 reliability_score = performance_record.reliability_score or 0
                 
-                # Get thresholds from configuration
-                critical_threshold = float(self.get_config_value('performance_alert_critical_threshold', '50'))
-                warning_threshold = float(self.get_config_value('performance_alert_warning_threshold', '70'))
-                recovery_threshold = float(self.get_config_value('performance_alert_recovery_threshold', '80'))
+                # Get thresholds from configuration - much less sensitive to reduce alert noise
+                critical_threshold = float(self.get_config_value('performance_alert_critical_threshold', '30'))  # Only very bad performance
+                warning_threshold = float(self.get_config_value('performance_alert_warning_threshold', '50'))   # Less sensitive warnings
+                recovery_threshold = float(self.get_config_value('performance_alert_recovery_threshold', '60'))  # Earlier recovery
                 
                 # Check for critical health score alerts
                 if health_score < critical_threshold:
@@ -647,21 +647,21 @@ class PerformanceMonitor:
                 elif health_score >= recovery_threshold:
                     self._resolve_performance_alerts(device, health_score)
                 
-                # Check component-specific alerts
-                if responsiveness_score < 40:
+                # Check component-specific alerts - much less sensitive to reduce noise
+                if responsiveness_score < 20:  # Only extremely poor responsiveness
                     if self._should_create_alert(device, 'performance_responsiveness', responsiveness_score):
                         self._create_performance_alert(
                             device, 'performance_responsiveness',
-                            f"Device responsiveness is poor: {responsiveness_score:.1f}% score",
-                            {'responsiveness_score': responsiveness_score, 'threshold': 40}
+                            f"Device responsiveness is extremely poor: {responsiveness_score:.1f}% score",
+                            {'responsiveness_score': responsiveness_score, 'threshold': 20}
                         )
                 
-                if reliability_score < 60:
+                if reliability_score < 30:  # Only extremely poor reliability
                     if self._should_create_alert(device, 'performance_reliability', reliability_score):
                         self._create_performance_alert(
                             device, 'performance_reliability',
-                            f"Device reliability is poor: {reliability_score:.1f}% score",
-                            {'reliability_score': reliability_score, 'threshold': 60}
+                            f"Device reliability is extremely poor: {reliability_score:.1f}% score",
+                            {'reliability_score': reliability_score, 'threshold': 30}
                         )
                 
         except Exception as e:

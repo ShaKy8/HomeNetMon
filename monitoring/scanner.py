@@ -103,11 +103,11 @@ class NetworkScanner:
         try:
             # Try different ARP commands based on OS
             try:
-                result = subprocess.run(['arp', '-a'], capture_output=True, text=True, timeout=10)
+                result = subprocess.run(['arp', '-a'], capture_output=True, text=True, timeout=10, shell=False)
                 arp_output = result.stdout
             except (subprocess.TimeoutExpired, FileNotFoundError):
                 try:
-                    result = subprocess.run(['ip', 'neigh'], capture_output=True, text=True, timeout=10)
+                    result = subprocess.run(['ip', 'neigh'], capture_output=True, text=True, timeout=10, shell=False)
                     arp_output = result.stdout
                 except (subprocess.TimeoutExpired, FileNotFoundError):
                     logger.warning("Could not execute ARP or ip neigh command")

@@ -24,7 +24,7 @@ class SpeedTestService:
         """Check if speedtest-cli is available"""
         try:
             result = subprocess.run(['speedtest', '--version'], 
-                                  capture_output=True, text=True, timeout=10)
+                                  capture_output=True, text=True, timeout=10, shell=False)
             return result.returncode == 0
         except (subprocess.TimeoutExpired, FileNotFoundError):
             return False
@@ -34,7 +34,7 @@ class SpeedTestService:
         try:
             logger.info("Attempting to install speedtest-cli...")
             result = subprocess.run(['pip', 'install', 'speedtest-cli'], 
-                                  capture_output=True, text=True, timeout=120)
+                                  capture_output=True, text=True, timeout=120, shell=False)
             if result.returncode == 0:
                 logger.info("speedtest-cli installed successfully")
                 return True
@@ -73,7 +73,7 @@ class SpeedTestService:
             start_time = time.time()
             
             logger.info("Executing subprocess.run...")
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, shell=False)
             
             execution_time = time.time() - start_time
             logger.info(f"Subprocess completed in {execution_time:.2f}s with return code: {result.returncode}")

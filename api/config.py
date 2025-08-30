@@ -2,10 +2,12 @@ from flask import Blueprint, request, jsonify
 from models import db, Configuration
 from config import Config
 from api.rate_limited_endpoints import create_endpoint_limiter
+from core.error_handler import handle_errors, ResourceNotFoundError, DatabaseError, ValidationError
 
 config_bp = Blueprint('config', __name__)
 
 @config_bp.route('', methods=['GET'])
+@handle_errors()
 def get_configuration():
     """Get all configuration settings"""
     try:
@@ -35,16 +37,17 @@ def get_configuration():
         })
         
     except Exception as e:
-        return jsonify({'error': str(e)}), 500
+        raise DatabaseError("Failed to retrieve configuration", operation="get_configuration") from e
 
 @config_bp.route('/<string:key>', methods=['GET'])
+@handle_errors()
 def get_config_value(key):
     """Get specific configuration value"""
     try:
         config = Configuration.query.filter_by(key=key).first()
         
         if not config:
-            return jsonify({'error': 'Configuration key not found'}), 404
+            raise ResourceNotFoundError("Configuration", key)
         
         return jsonify(config.to_dict())
         
@@ -532,17 +535,17 @@ def restart_services():
         # Method 1: Try using systemctl if running as service
         try:
             result = subprocess.run(['systemctl', 'is-active', 'homenetmon'], 
-                                  capture_output=True, text=True)
+                                  capture_output=True, text=True, shell=False)
             if result.returncode == 0:
                 # Service is running, restart it
                 subprocess.run(['sudo', 'systemctl', 'restart', 'homenetmon'], 
-                             check=True)
+                             check=True, shell=False)
                 return jsonify({
                     'success': True,
                     'message': 'HomeNetMon service restart initiated via systemctl.',
                     'note': 'Service will restart in a few seconds with new configuration.'
                 })
-        except:
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
             pass  # Fall through to other methods
         
         # Method 2: For development/manual runs, just return instructions
@@ -574,11 +577,11 @@ def restart_system():
         # Method 1: Try systemd service restart first
         try:
             result = subprocess.run(['systemctl', 'is-active', 'homenetmon'], 
-                                  capture_output=True, text=True, timeout=5)
+                                  capture_output=True, text=True, timeout=5, shell=False)
             if result.returncode == 0:  # Service is active
                 # Restart the systemd service
                 restart_result = subprocess.run(['sudo', 'systemctl', 'restart', 'homenetmon'], 
-                                              capture_output=True, text=True, timeout=30)
+                                              capture_output=True, text=True, timeout=30, shell=False)
                 if restart_result.returncode == 0:
                     return jsonify({
                         'success': True,

@@ -67,9 +67,21 @@
     
     <!-- Custom CSS -->
     <link href="{{ url_for('static', filename='css/app.css') }}" rel="stylesheet">
+    <!-- Modern Design System - DISABLED -->
+    <!-- <link href="{{ url_for('static', filename='css/modern-design-system.css') }}" rel="stylesheet"> -->
     
+    <!-- SECURITY: HTML Sanitizer (load first for XSS protection) -->
+    <script src="{{ url_for('static', filename='js/html-sanitizer.js') }}"></script>
+    <!-- SECURITY: CSRF Token Handler (load early for security) -->
+    <script src="{{ url_for('static', filename='js/csrf-handler.js') }}"></script>
     <!-- PERFORMANCE: Lazy loading script (load early, execute fast) -->
     <script src="{{ url_for('static', filename='js/lazy-loader.js') }}" defer></script>
+    <!-- Modern Dashboard Enhancements - DISABLED -->
+    <!-- <script src="{{ url_for('static', filename='js/modern-dashboard.js') }}" defer></script> -->
+    <!-- Modern Data Visualizations - DISABLED -->
+    <!-- <script src="{{ url_for('static', filename='js/modern-visualizations.js') }}" defer></script> -->
+    <!-- Modern Notifications System - DISABLED -->
+    <!-- <script src="{{ url_for('static', filename='js/modern-notifications.js') }}" defer></script> -->
     
     <style>
         /* Theme variables */
@@ -316,75 +328,64 @@
             
             <div class="collapse navbar-collapse" id="navbarNav">
                 <ul class="navbar-nav me-auto">
-                    <!-- Core Navigation -->
                     <li class="nav-item">
                         <a class="nav-link{% if request.endpoint == 'dashboard' %} active{% endif %}" href="{{ url_for('dashboard') }}">
                             <i class="bi bi-speedometer2"></i> Dashboard
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link{% if request.endpoint == 'monitored_hosts' %} active{% endif %}" href="{{ url_for('monitored_hosts') }}">
-                            <i class="bi bi-hdd-network"></i> Devices
+                        <a class="nav-link{% if request.endpoint == 'noc_view' %} active{% endif %}" href="{{ url_for('noc_view') }}" target="_blank">
+                            <i class="bi bi-display"></i> NOC View
                         </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link{% if request.endpoint == 'alerts' %} active{% endif %}" href="{{ url_for('alerts') }}">
-                            <i class="bi bi-exclamation-triangle"></i> Alerts & Issues
+                        <a class="nav-link{% if request.endpoint == 'monitored_hosts' %} active{% endif %}" href="{{ url_for('monitored_hosts') }}">
+                            <i class="bi bi-hdd-network"></i> Monitored Hosts
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{% if request.endpoint == 'health_overview' %} active{% endif %}" href="{{ url_for('health_overview') }}">
+                            <i class="bi bi-heart-pulse"></i> Health Overview
+                        </a>
+                    </li>
+                    <li class="nav-item dropdown">
+                        <a class="nav-link dropdown-toggle{% if request.endpoint in ['alerts', 'notifications'] %} active{% endif %}" href="#" id="alertsDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-exclamation-triangle"></i> Issues & Alerts
                             <span id="alert-count-badge" class="badge bg-danger ms-1" style="display: none;">0</span>
                         </a>
-                    </li>
-                    
-                    <!-- Monitoring & Analysis (Progressive Disclosure) -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle{% if request.endpoint in ['noc_view', 'health_overview', 'analytics', 'topology'] %} active{% endif %}" 
-                           href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-graph-up"></i> Monitoring
-                        </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item{% if request.endpoint == 'health_overview' %} active{% endif %}" 
-                                   href="{{ url_for('health_overview') }}">
-                                <i class="bi bi-heart-pulse"></i> Health Overview
-                            </a></li>
-                            <li><a class="dropdown-item{% if request.endpoint == 'analytics' %} active{% endif %}" 
-                                   href="{{ url_for('analytics') }}">
-                                <i class="bi bi-graph-up"></i> Analytics
-                            </a></li>
-                            <li><a class="dropdown-item{% if request.endpoint == 'topology' %} active{% endif %}" 
-                                   href="{{ url_for('topology') }}">
-                                <i class="bi bi-diagram-3"></i> Network Topology
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item{% if request.endpoint == 'noc_view' %} active{% endif %}" 
-                                   href="{{ url_for('noc_view') }}" target="_blank">
-                                <i class="bi bi-display"></i> NOC View
-                            </a></li>
+                        <ul class="dropdown-menu" aria-labelledby="alertsDropdown">
+                            <li>
+                                <a class="dropdown-item{% if request.endpoint == 'alerts' %} active{% endif %}" href="{{ url_for('alerts') }}">
+                                    <i class="bi bi-list-check"></i> Active Issues
+                                </a>
+                            </li>
+                            <li>
+                                <a class="dropdown-item{% if request.endpoint == 'notifications' %} active{% endif %}" href="{{ url_for('notifications') }}">
+                                    <i class="bi bi-bell"></i> Notification History
+                                </a>
+                            </li>
                         </ul>
                     </li>
-                    
-                    <!-- Advanced Features (Progressive Disclosure) -->
-                    <li class="nav-item dropdown">
-                        <a class="nav-link dropdown-toggle{% if request.endpoint in ['ai_dashboard', 'security_dashboard', 'notifications'] %} active{% endif %}" 
-                           href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-                            <i class="bi bi-gear-wide-connected"></i> Advanced
+                    <li class="nav-item">
+                        <a class="nav-link{% if request.endpoint == 'analytics' %} active{% endif %}" href="{{ url_for('analytics') }}">
+                            <i class="bi bi-graph-up"></i> Analytics
                         </a>
-                        <ul class="dropdown-menu">
-                            <li><a class="dropdown-item{% if request.endpoint == 'ai_dashboard' %} active{% endif %}" 
-                                   href="{{ url_for('ai_dashboard') }}">
-                                <i class="bi bi-robot"></i> AI Dashboard
-                            </a></li>
-                            <li><a class="dropdown-item{% if request.endpoint == 'security_dashboard' %} active{% endif %}" 
-                                   href="{{ url_for('security_dashboard') }}">
-                                <i class="bi bi-shield-check"></i> Security
-                            </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item{% if request.endpoint == 'notifications' %} active{% endif %}" 
-                                   href="{{ url_for('notifications') }}">
-                                <i class="bi bi-bell"></i> Notification History
-                            </a></li>
-                        </ul>
                     </li>
-                    
-                    <!-- Settings -->
+                    <li class="nav-item">
+                        <a class="nav-link{% if request.endpoint == 'topology' %} active{% endif %}" href="{{ url_for('topology') }}">
+                            <i class="bi bi-diagram-3"></i> Network Topology
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{% if request.endpoint == 'ai_dashboard' %} active{% endif %}" href="{{ url_for('ai_dashboard') }}">
+                            <i class="bi bi-robot"></i> AI Dashboard
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link{% if request.endpoint == 'security_dashboard' %} active{% endif %}" href="{{ url_for('security_dashboard') }}">
+                            <i class="bi bi-shield-check"></i> Security
+                        </a>
+                    </li>
                     <li class="nav-item">
                         <a class="nav-link{% if request.endpoint == 'settings' %} active{% endif %}" href="{{ url_for('settings') }}">
                             <i class="bi bi-gear"></i> Settings

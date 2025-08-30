@@ -136,7 +136,7 @@ class NetworkSecurityScanner:
     def __init__(self, app=None):
         self.app = app
         self.running = False
-        self.scan_interval = 3600  # 1 hour default
+        self.scan_interval = 86400  # 24 hours default - much less aggressive to reduce alerts
         self.nm = nmap.PortScanner()
         self.anomaly_detection = AnomalyDetectionEngine()
         
@@ -403,8 +403,8 @@ class NetworkSecurityScanner:
             if self.scan_config['skip_host_discovery']:
                 nmap_args += " -Pn"
             
-            # Add OS detection for better service classification
-            nmap_args += " -O --osscan-limit"
+            # OS detection requires root privileges - disabled for CAP_NET_RAW mode
+            # nmap_args += " -O --osscan-limit"
             
             # Add script scanning for vulnerability detection
             nmap_args += " --script=vuln,safe,version"
@@ -508,7 +508,7 @@ class NetworkSecurityScanner:
         for result in scan_results:
             if result.state == 'open':
                 risk_score = self.calculate_risk_score(result.port, result.service)
-                if risk_score >= 7:  # High risk threshold
+                if risk_score >= 9:  # Much higher risk threshold to reduce false alarms
                     alert = SecurityAlert(
                         device_id=device.id,
                         device_name=device.display_name,
@@ -547,11 +547,12 @@ class NetworkSecurityScanner:
         """Calculate severity level for a service"""
         risk_score = self.calculate_risk_score(port, service)
         
-        if risk_score >= 8:
+        # Much higher thresholds to reduce alert sensitivity
+        if risk_score >= 9.5:
             return 'critical'
-        elif risk_score >= 6:
+        elif risk_score >= 8:
             return 'high'
-        elif risk_score >= 4:
+        elif risk_score >= 6:
             return 'medium'
         else:
             return 'low'
@@ -961,12 +962,17 @@ class NetworkSecurityScanner:
                 SecurityVulnerability.discovered_at >= start_time
             ).all()
             
-            # Count recent scans
-            recent_scans = db.session.query(db.func.count(db.distinct(
-                db.text("DATE(scanned_at)")
-            ))).select_from(db.text("security_scans")).filter(
-                db.text("scanned_at >= :start_time")
-            ).params(start_time=start_time).scalar() or 0
+            # Count recent scans (safely handle missing table)
+            try:
+                from models import SecurityScan
+                recent_scans = db.session.query(db.func.count(db.distinct(
+                    db.func.date(SecurityScan.scanned_at)
+                ))).filter(
+                    SecurityScan.scanned_at >= start_time
+                ).scalar() or 0
+            except Exception as e:
+                logger.debug(f"Could not query security scans table: {e}")
+                recent_scans = 0
             
             summary = {
                 'total_alerts': len(security_alerts),

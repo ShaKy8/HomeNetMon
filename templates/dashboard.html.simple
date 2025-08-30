@@ -1,0 +1,106 @@
+{% extends "base_clean.html" %}
+
+{% block title %}Dashboard - HomeNetMon{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="mb-0">{{ dashboard_title }}</h1>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-outline-primary" id="refresh-btn" title="Refresh device status">
+                        <i class="bi bi-arrow-clockwise"></i> Refresh
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" id="toggle-selection-btn" title="Toggle selection mode">
+                        <i class="bi bi-check-square"></i> Select
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Device Status Cards -->
+    <div class="row" id="devices-container">
+        <!-- Device cards will be loaded here -->
+    </div>
+</div>
+
+<script>
+// Simple dashboard JavaScript
+document.addEventListener('DOMContentLoaded', function() {
+    loadDevices();
+    
+    // Refresh button
+    document.getElementById('refresh-btn').addEventListener('click', function() {
+        loadDevices();
+    });
+});
+
+function loadDevices() {
+    fetch('/api/devices')
+        .then(response => response.json())
+        .then(data => {
+            const container = document.getElementById('devices-container');
+            container.innerHTML = '';
+            
+            // Handle API response format: data.devices should contain the array
+            let devices = [];
+            if (data && data.success && Array.isArray(data.devices)) {
+                devices = data.devices;
+            } else if (Array.isArray(data)) {
+                devices = data; // Fallback for direct array response
+            }
+            
+            if (devices.length === 0) {
+                container.innerHTML = '<div class="col-12"><div class="alert alert-info">No devices found. Try scanning for devices in settings.</div></div>';
+                return;
+            }
+            
+            devices.forEach(device => {
+                const deviceCard = createDeviceCard(device);
+                container.appendChild(deviceCard);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading devices:', error);
+            const container = document.getElementById('devices-container');
+            container.innerHTML = '<div class="col-12"><div class="alert alert-danger">Error loading devices. Please try refreshing the page.</div></div>';
+        });
+}
+
+function createDeviceCard(device) {
+    const col = document.createElement('div');
+    col.className = 'col-xl-3 col-lg-4 col-md-6 col-sm-12 mb-3';
+    
+    // Fix: Use device.status instead of device.is_up
+    const isOnline = device.status === 'up';
+    const statusClass = isOnline ? 'text-success' : 'text-danger';
+    const statusIcon = isOnline ? 'bi-check-circle-fill' : 'bi-x-circle-fill';
+    const statusText = isOnline ? 'Online' : 'Offline';
+    
+    // Fix: Use device.latest_response_time instead of device.response_time
+    const responseTime = device.latest_response_time;
+    
+    col.innerHTML = `
+        <div class="card device-card" data-device-id="${device.id}">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <h6 class="card-title mb-0">${device.display_name || device.hostname || device.ip_address}</h6>
+                    <span class="${statusClass}">
+                        <i class="bi ${statusIcon}"></i>
+                    </span>
+                </div>
+                <p class="card-text small text-muted mb-2">${device.ip_address}</p>
+                <div class="d-flex justify-content-between align-items-center">
+                    <span class="badge ${isOnline ? 'bg-success' : 'bg-danger'}">${statusText}</span>
+                    ${responseTime ? `<small class="text-muted">${responseTime.toFixed(1)}ms</small>` : ''}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    return col;
+}
+</script>
+{% endblock %}

@@ -278,7 +278,7 @@ def debug_speedtest():
         import time
         
         start_time = time.time()
-        result = subprocess.run(['speedtest'], capture_output=True, text=True, timeout=90)
+        result = subprocess.run(['speedtest'], capture_output=True, text=True, timeout=90, shell=False)
         execution_time = time.time() - start_time
         
         return jsonify({

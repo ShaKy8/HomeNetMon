@@ -1,0 +1,4420 @@
+{% extends "base_with_quickstats.html" %}
+
+{% block title %}Dashboard - HomeNetMon{% endblock %}
+
+{% block content %}
+<!-- Skip link for accessibility -->
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<!-- Modern Hero Dashboard Header -->
+<div class="hero-dashboard mb-4">
+    <div class="modern-card hero-card position-relative overflow-hidden">
+        <!-- Animated Background -->
+        <div class="position-absolute top-0 start-0 w-100 h-100" style="z-index: -1;">
+            <div class="hero-bg-animation"></div>
+        </div>
+        
+        <!-- Hero Content -->
+        <div class="d-flex justify-content-between align-items-start p-4">
+            <div class="hero-title-section">
+                <h1 class="hero-title mb-3">
+                    <i class="bi bi-speedometer2 me-3 animate-float"></i>
+                    <span class="text-gradient-primary">{{ dashboard_title }}</span>
+                </h1>
+                <div class="hero-stats d-flex align-items-center gap-4 flex-wrap">
+                    <div class="stat-item">
+                        <div id="network-pulse" class="status-glow up">
+                            <div class="status-indicator up"></div>
+                        </div>
+                        <span class="stat-text">Network Active</span>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="hero-device-count">
+                            <span class="loading-dots">...</span>
+                        </div>
+                        <small class="stat-label">Devices Online</small>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-number" id="hero-response-time">
+                            <span class="loading-dots">...</span>
+                        </div>
+                        <small class="stat-label">Avg Response</small>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Modern Action Buttons -->
+            <div class="hero-actions d-flex gap-3 align-items-center">
+                <button type="button" class="btn-modern" id="refresh-btn" 
+                        title="Refresh device status (R)"
+                        data-bs-toggle="tooltip" data-bs-placement="bottom">
+                    <i class="bi bi-arrow-clockwise me-2"></i>
+                    <span>Refresh</span>
+                </button>
+                <button type="button" class="btn-modern btn-modern-secondary" id="scan-btn" 
+                        title="Discover new devices (S)"
+                        data-bs-toggle="tooltip" data-bs-placement="bottom">
+                    <i class="bi bi-search me-2"></i>
+                    <span>Scan Network</span>
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Floating Action Button for More Options -->
+<button class="fab" id="more-options-fab" title="More Actions">
+    <i class="bi bi-three-dots"></i>
+</button>
+
+<!-- More Options Menu -->
+<div class="position-fixed bottom-0 end-0 mb-5 me-4" style="z-index: 1040;">
+    <div class="fab-menu" id="fab-menu" style="display: none;">
+        <div class="modern-card p-3">
+            <div class="d-flex flex-column gap-2">
+                <button class="btn-modern btn-modern-small" id="ping-all-btn" title="Test all devices">
+                    <i class="bi bi-broadcast me-2"></i>Ping All
+                </button>
+                <button class="btn-modern btn-modern-small" id="toggle-selection-btn" title="Select multiple devices">
+                    <i class="bi bi-check-square me-2"></i>Multi-Select
+                </button>
+                <button class="btn-modern btn-modern-small" id="view-toggle-btn" title="Change view layout">
+                    <i class="bi bi-grid me-2"></i>View Options
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modern Data Visualization Section -->
+<div class="row mb-4" id="data-visualizations">
+    <!-- Network Topology Visualization -->
+    <div class="col-lg-8 mb-4">
+        <div class="modern-card">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h5 class="text-gradient-primary mb-0">
+                    <i class="bi bi-diagram-3 me-2"></i>Network Topology
+                </h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-modern-small active">Live</button>
+                    <button class="btn btn-modern-small">Static</button>
+                </div>
+            </div>
+            <div id="network-topology" style="height: 300px;"></div>
+        </div>
+    </div>
+    
+    <!-- Quick Stats & Charts -->
+    <div class="col-lg-4 mb-4">
+        <div class="row h-100">
+            <!-- Device Status Chart -->
+            <div class="col-12 mb-3">
+                <div class="modern-card h-100">
+                    <h6 class="text-gradient-primary mb-3">
+                        <i class="bi bi-pie-chart me-2"></i>Device Status
+                    </h6>
+                    <div style="height: 150px; position: relative;">
+                        <canvas id="device-status-chart"></canvas>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Network Activity Sparklines -->
+            <div class="col-12">
+                <div class="modern-card">
+                    <h6 class="text-gradient-primary mb-3">
+                        <i class="bi bi-activity me-2"></i>Activity
+                    </h6>
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <small class="text-muted">Traffic</small>
+                        <span class="badge bg-success">+12%</span>
+                    </div>
+                    <div data-sparkline="traffic" style="height: 40px; width: 100%;"></div>
+                    
+                    <div class="d-flex justify-content-between align-items-center mb-2 mt-3">
+                        <small class="text-muted">Response Time</small>
+                        <span class="badge bg-info">24ms avg</span>
+                    </div>
+                    <div data-sparkline="response" style="height: 40px; width: 100%;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Simplified System Status with Progressive Disclosure -->
+<div id="status-summary" class="mb-3 fade-in">
+    <div class="card border-0 bg-light">
+        <div class="card-body py-2">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center gap-3">
+                    <div class="d-flex align-items-center">
+                        <span id="system-status-indicator" class="status-indicator up me-2" 
+                              role="img" aria-label="System status indicator" 
+                              data-status-text="System operational"
+                              title="System status"></span>
+                        <span id="quick-device-count" class="fw-bold">Loading...</span>
+                        <small class="text-muted ms-1">devices</small>
+                    </div>
+                    <div class="d-none d-md-block">
+                        <small class="text-muted">Last update: </small>
+                        <span id="last-update-time" class="small">--:--</span>
+                    </div>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-secondary" id="show-system-details" title="Show detailed system information">
+                        <i class="bi bi-info-circle"></i> <span class="d-none d-lg-inline">Details</span>
+                    </button>
+                    <div id="activity-spinner" class="spinner-border spinner-border-sm text-primary" style="display: none;">
+                        <span class="visually-hidden">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Detailed System Status (Hidden by default) -->
+<div id="detailed-status" class="mb-3 fade-in" style="display: none;">
+    <div class="card border-primary">
+        <div class="card-header bg-primary text-white py-2">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <strong><i class="bi bi-activity me-2"></i>System Status Details</strong>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span id="system-status-text" class="badge bg-success">All Systems Operational</span>
+                    <button type="button" class="btn btn-sm btn-outline-light" id="hide-system-details" title="Hide details">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+        <div class="card-body py-2">
+            <div class="row g-0">
+                <!-- Current Date/Time -->
+                <div class="col-md-3 border-end pe-3">
+                    <div class="text-center">
+                        <small class="text-muted d-block">Current Date & Time</small>
+                        <strong class="text-primary">
+                            <i class="bi bi-calendar-check me-1"></i>
+                            <span id="current-date">-</span>
+                        </strong>
+                        <div class="small text-dark mt-1">
+                            <i class="bi bi-clock me-1"></i>
+                            <span id="current-time">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Service Uptime -->
+                <div class="col-md-3 border-end pe-3">
+                    <div class="text-center">
+                        <small class="text-muted d-block">Service Uptime</small>
+                        <strong class="text-success">
+                            <i class="bi bi-server me-1"></i>
+                            <span id="service-uptime">-</span>
+                        </strong>
+                        <div class="small text-muted mt-1">
+                            Started: <span id="service-start-time">-</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Network Scanning -->
+                <div class="col-md-3 border-end pe-3">
+                    <div class="text-center">
+                        <small class="text-muted d-block">Network Scanning</small>
+                        <div class="small">
+                            <div class="mb-1">
+                                <i class="bi bi-search text-info me-1"></i>
+                                Last: <span id="last-scan-time">-</span>
+                            </div>
+                            <div>
+                                <i class="bi bi-arrow-clockwise text-primary me-1"></i>
+                                Next: <span id="next-scan-time">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Device Monitoring -->
+                <div class="col-md-3">
+                    <div class="text-center">
+                        <small class="text-muted d-block">Device Monitoring</small>
+                        <div class="small">
+                            <div class="mb-1">
+                                <i class="bi bi-wifi text-success me-1"></i>
+                                Last: <span id="last-ping-time">-</span>
+                            </div>
+                            <div>
+                                <i class="bi bi-broadcast text-primary me-1"></i>
+                                Next: <span id="next-ping-time">-</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Ping All Progress Bar -->
+<div id="ping-progress-container" class="mb-4" style="display: none;">
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">Pinging All Devices</h6>
+                <span id="ping-progress-text">0 / 0 devices</span>
+            </div>
+            <div class="progress">
+                <div id="ping-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated" 
+                     role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                </div>
+            </div>
+            <div class="mt-2 d-flex justify-content-between">
+                <small class="text-success">
+                    <i class="bi bi-check-circle"></i> 
+                    <span id="ping-success-count">0</span> successful
+                </small>
+                <small class="text-danger">
+                    <i class="bi bi-x-circle"></i> 
+                    <span id="ping-fail-count">0</span> failed
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Network Scan Progress Bar -->
+<div id="scan-progress-container" class="mb-4" style="display: none;">
+    <div class="card">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="mb-0">
+                    <i class="bi bi-radar me-2"></i>
+                    Scanning Network
+                </h6>
+                <span id="scan-progress-text">Initializing...</span>
+            </div>
+            <div class="progress">
+                <div id="scan-progress-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-info" 
+                     role="progressbar" style="width: 0%" aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                </div>
+            </div>
+            <div class="mt-2 d-flex justify-content-between">
+                <small class="text-info">
+                    <i class="bi bi-search"></i> 
+                    <span id="scan-network-text">Discovering devices...</span>
+                </small>
+                <small class="text-success">
+                    <i class="bi bi-plus-circle"></i> 
+                    <span id="scan-new-devices">0</span> new devices found
+                </small>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+<!-- Streamlined Bulk Selection Controls -->
+<div id="bulk-selection-controls" class="alert alert-info d-flex justify-content-between align-items-center mb-3" style="display: none;" role="alert">
+    <div class="d-flex align-items-center gap-3">
+        <div class="form-check mb-0">
+            <input class="form-check-input" type="checkbox" id="select-all-devices">
+            <label class="form-check-label fw-bold" for="select-all-devices">
+                Select All
+            </label>
+        </div>
+        <span class="badge bg-primary" id="selected-count">0 devices selected</span>
+    </div>
+    <div class="d-flex align-items-center gap-2">
+        <button class="btn btn-sm btn-outline-secondary" id="clear-selection" title="Clear selection">
+            <i class="bi bi-x-circle"></i> Clear
+        </button>
+        <div class="dropdown">
+            <button class="btn btn-sm btn-primary dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-gear"></i> Actions
+            </button>
+            <ul class="dropdown-menu dropdown-menu-end">
+                <li><h6 class="dropdown-header">Device Control</h6></li>
+                <li><a class="dropdown-item" href="#" id="bulk-wake-on-lan"><i class="bi bi-power me-2"></i>Wake Selected</a></li>
+                <li><a class="dropdown-item" href="#" id="bulk-ping-devices"><i class="bi bi-wifi me-2"></i>Ping Selected</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><h6 class="dropdown-header">Management</h6></li>
+                <li><a class="dropdown-item" href="#" id="bulk-enable-monitoring"><i class="bi bi-check-circle me-2"></i>Enable Monitoring</a></li>
+                <li><a class="dropdown-item" href="#" id="bulk-disable-monitoring"><i class="bi bi-x-circle me-2"></i>Disable Monitoring</a></li>
+                <li><a class="dropdown-item" href="#" id="bulk-set-group"><i class="bi bi-collection me-2"></i>Set Group</a></li>
+                <li><hr class="dropdown-divider"></li>
+                <li><a class="dropdown-item text-danger" href="#" id="bulk-delete-devices"><i class="bi bi-trash me-2"></i>Delete Selected</a></li>
+            </ul>
+        </div>
+        <button class="btn btn-sm btn-outline-primary" id="toggle-selection-mode" title="Exit selection mode">
+            <i class="bi bi-x"></i> Exit
+        </button>
+    </div>
+</div>
+
+<!-- Smart Selection Tools (Hidden by default) -->
+<div id="advanced-selection-panel" class="card mb-3" style="display: none;">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="mb-0"><i class="bi bi-magic me-2"></i>Smart Selection</h6>
+            <button class="btn btn-sm btn-outline-secondary" id="hide-smart-selection">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        
+        <div class="row g-3">
+            <!-- Quick Selection by Type -->
+            <div class="col-md-8">
+                <label class="form-label small fw-semibold">Quick Select by Type:</label>
+                <div class="row g-2" id="quick-select-buttons">
+                    <!-- Buttons will be dynamically generated -->
+                </div>
+            </div>
+            
+            <!-- Pattern Selection -->
+            <div class="col-md-4">
+                <label class="form-label small fw-semibold">Pattern Search:</label>
+                <div class="input-group input-group-sm mb-2">
+                    <input type="text" class="form-control" id="pattern-select-input" placeholder="e.g., ring* or *.lan">
+                    <button class="btn btn-outline-secondary" type="button" id="pattern-select-btn">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+                <button class="btn btn-sm btn-outline-warning w-100" id="invert-selection">
+                    <i class="bi bi-arrow-repeat me-1"></i>Invert Selection
+                </button>
+            </div>
+        </div>
+        
+        <!-- Compact Selection Summary -->
+        <div class="mt-3 pt-2 border-top">
+            <div class="d-flex justify-content-between align-items-center">
+                <div class="small text-muted">
+                    <span id="selection-summary">No devices selected</span>
+                </div>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-outline-success" id="bulk-monitor-selected" title="Enable monitoring for selected">
+                        <i class="bi bi-play-circle"></i> Monitor
+                    </button>
+                    <button class="btn btn-outline-secondary" id="bulk-stop-monitor-selected" title="Disable monitoring for selected">
+                        <i class="bi bi-pause-circle"></i> Stop
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Enhanced Search and Filter Experience -->
+<div class="search-filter-section mb-4">
+    <!-- Mobile-First Search Container -->
+    <div class="search-container mb-3">
+        <div class="search-input-group">
+            <div class="search-input-wrapper">
+                <input type="text" class="form-control search-input" id="search-input" 
+                       placeholder="Find devices..." 
+                       aria-label="Search devices by name, IP, or type"
+                       autocomplete="off">
+                <i class="bi bi-search search-icon"></i>
+                <button type="button" class="btn search-clear-btn d-none" id="search-clear" 
+                        title="Clear search" aria-label="Clear search">
+                    <i class="bi bi-x"></i>
+                </button>
+            </div>
+            <div class="search-actions">
+                <button type="button" class="btn btn-success btn-add-device" id="add-device-btn" 
+                        data-bs-toggle="modal" data-bs-target="#addDeviceModal" 
+                        title="Add new device">
+                    <i class="bi bi-plus-circle"></i>
+                    <span class="d-none d-sm-inline ms-1">Add Device</span>
+                </button>
+            </div>
+        </div>
+        
+        <!-- Search Suggestions (Hidden by default) -->
+        <div class="search-suggestions d-none" id="search-suggestions">
+            <div class="suggestions-header">
+                <small class="text-muted">Quick suggestions:</small>
+            </div>
+            <div class="suggestions-list" id="suggestions-list">
+                <!-- Dynamic suggestions will be inserted here -->
+            </div>
+        </div>
+    </div>
+    
+    <!-- Filter Chips for Quick Filtering -->
+    <div class="filter-chips-container">
+        <div class="filter-chips d-flex flex-wrap gap-2 align-items-center">
+            <small class="filter-label text-muted me-2">Filter:</small>
+            
+            <!-- Status Filter Chips -->
+            <button type="button" class="filter-chip active" data-filter="status" data-value="" 
+                    id="filter-all">
+                <i class="bi bi-circle-fill me-1"></i>
+                All Devices
+                <span class="chip-count">--</span>
+            </button>
+            <button type="button" class="filter-chip filter-chip-success" data-filter="status" data-value="up" 
+                    id="filter-online">
+                <i class="bi bi-check-circle-fill me-1"></i>
+                Online
+                <span class="chip-count">--</span>
+            </button>
+            <button type="button" class="filter-chip filter-chip-danger" data-filter="status" data-value="down" 
+                    id="filter-offline">
+                <i class="bi bi-x-circle-fill me-1"></i>
+                Offline
+                <span class="chip-count">--</span>
+            </button>
+            <button type="button" class="filter-chip filter-chip-warning" data-filter="status" data-value="warning" 
+                    id="filter-warning">
+                <i class="bi bi-exclamation-triangle-fill me-1"></i>
+                Warning
+                <span class="chip-count">--</span>
+            </button>
+            
+            <!-- Advanced Filters Toggle -->
+            <button type="button" class="filter-chip filter-chip-secondary" id="show-advanced-filters" 
+                    title="More filter options">
+                <i class="bi bi-funnel me-1"></i>
+                More Filters
+            </button>
+            
+            <!-- Clear Filters (Hidden by default) -->
+            <button type="button" class="filter-chip filter-chip-outline d-none" id="clear-all-filters" 
+                    title="Clear all active filters">
+                <i class="bi bi-x-circle me-1"></i>
+                Clear All
+            </button>
+        </div>
+        
+        <!-- Active Filter Summary -->
+        <div class="active-filters d-none mt-2" id="active-filters">
+            <div class="d-flex flex-wrap gap-1 align-items-center">
+                <small class="text-muted me-2">Active filters:</small>
+                <div class="active-filter-tags" id="active-filter-tags">
+                    <!-- Dynamic active filter tags will be inserted here -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Legacy selects for JavaScript compatibility (hidden) -->
+    <div class="d-none">
+        <select id="filter-status">
+            <option value="">All Status</option>
+            <option value="up">Online</option>
+            <option value="down">Offline</option>
+            <option value="warning">Warning</option>
+            <option value="unknown">Unknown</option>
+        </select>
+        <button id="clear-filters"></button>
+    </div>
+</div>
+
+<!-- Advanced Filters (Hidden by default) -->
+<div id="advanced-filters" class="card mb-4" style="display: none;">
+    <div class="card-body">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="mb-0"><i class="bi bi-funnel me-2"></i>Advanced Filters</h6>
+            <button class="btn btn-sm btn-outline-secondary" id="hide-advanced-filters">
+                <i class="bi bi-x"></i>
+            </button>
+        </div>
+        <div class="row g-3">
+            <div class="col-md-4">
+                <label for="filter-type" class="form-label small">Device Type</label>
+                <select class="form-select form-select-sm" id="filter-type">
+                    <option value="">All Types</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label for="filter-group" class="form-label small">Group</label>
+                <select class="form-select form-select-sm" id="filter-group">
+                    <option value="">All Groups</option>
+                </select>
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small">Quick Actions</label>
+                <div class="d-flex gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-info" id="filter-monitored-only">
+                        <i class="bi bi-eye"></i> Monitored Only
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-warning" id="filter-alerts-only">
+                        <i class="bi bi-exclamation-triangle"></i> With Alerts
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Loading Indicator with Improved Accessibility -->
+<div class="text-center py-5" id="loading-indicator" role="status" aria-live="polite">
+    <div class="d-flex flex-column align-items-center">
+        <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" aria-hidden="true">
+            <span class="visually-hidden">Loading...</span>
+        </div>
+        <div class="loading-skeleton mb-2" style="width: 200px; height: 20px; border-radius: 4px;"></div>
+        <p class="mt-2 text-muted" id="loading-text">Loading devices...</p>
+    </div>
+</div>
+
+<!-- Main Content Area -->
+<main id="main-content" tabindex="-1">
+    <!-- Devices Grid/List -->
+    <div id="devices-container">
+    <!-- Grid View -->
+    <div id="grid-view" class="device-grid">
+        <!-- Device cards will be inserted here -->
+    </div>
+    
+    <!-- List View -->
+    <div id="list-view" class="card" style="display: none;">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th class="table-select-column" style="display: none;">
+                            <div class="form-check">
+                                <input class="form-check-input" type="checkbox" id="select-all-table">
+                                <label class="form-check-label" for="select-all-table">
+                                    Select
+                                </label>
+                            </div>
+                        </th>
+                        <th class="sortable-header" data-sort-field="status" style="cursor: pointer;">
+                            Status <i class="bi bi-chevron-expand sort-icon text-muted"></i>
+                        </th>
+                        <th class="sortable-header" data-sort-field="display_name" style="cursor: pointer;">
+                            Name <i class="bi bi-chevron-expand sort-icon text-muted"></i>
+                        </th>
+                        <th class="sortable-header" data-sort-field="ip_address" style="cursor: pointer;">
+                            IP Address <i class="bi bi-chevron-expand sort-icon text-muted"></i>
+                        </th>
+                        <th class="sortable-header" data-sort-field="device_type" style="cursor: pointer;">
+                            Type <i class="bi bi-chevron-expand sort-icon text-muted"></i>
+                        </th>
+                        <th class="sortable-header" data-sort-field="latest_response_time" style="cursor: pointer;">
+                            Response Time <i class="bi bi-chevron-expand sort-icon text-muted"></i>
+                        </th>
+                        <th class="sortable-header" data-sort-field="uptime_percentage" style="cursor: pointer;">
+                            Uptime <i class="bi bi-chevron-expand sort-icon text-muted"></i>
+                        </th>
+                        <th class="sortable-header" data-sort-field="current_bandwidth" style="cursor: pointer;">
+                            Bandwidth <i class="bi bi-chevron-expand sort-icon text-muted"></i>
+                        </th>
+                        <th class="sortable-header" data-sort-field="last_seen" style="cursor: pointer;">
+                            Last Seen <i class="bi bi-chevron-expand sort-icon text-muted"></i>
+                        </th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="devices-table-body">
+                    <!-- Device rows will be inserted here -->
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- No Devices Message -->
+<div class="text-center py-5" id="no-devices" style="display: none;">
+    <i class="bi bi-router display-1 text-muted"></i>
+    <h3 class="mt-3 text-muted">No devices found</h3>
+    <p class="text-muted">Try adjusting your filters or scan the network for new devices.</p>
+    <button type="button" class="btn btn-primary" id="scan-network-btn">
+        <i class="bi bi-search"></i> Scan Network
+    </button>
+</div>
+
+<!-- Add Device Modal -->
+<div class="modal fade" id="addDeviceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Add New Device</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-device-form">
+                    <div class="mb-3">
+                        <label for="device-ip" class="form-label">IP Address *</label>
+                        <input type="text" class="form-control" id="device-ip" required>
+                        <div class="form-text">Enter the IP address of the device to monitor</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="device-name" class="form-label">Custom Name</label>
+                        <input type="text" class="form-control" id="device-name">
+                        <div class="form-text">Optional: Give the device a friendly name</div>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="device-type" class="form-label">Device Type</label>
+                        <select class="form-select" id="device-type">
+                            <option value="unknown">Unknown</option>
+                            <option value="router">Router</option>
+                            <option value="computer">Computer</option>
+                            <option value="phone">Phone</option>
+                            <option value="iot">IoT Device</option>
+                            <option value="printer">Printer</option>
+                            <option value="camera">Camera</option>
+                            <option value="server">Server</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label for="device-group" class="form-label">Group</label>
+                        <input type="text" class="form-control" id="device-group">
+                        <div class="form-text">Optional: Organize devices into groups</div>
+                    </div>
+                    
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="device-monitor" checked>
+                        <label class="form-check-label" for="device-monitor">
+                            Monitor this device
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" id="save-device-btn">Add Device</button>
+            </div>
+        </div>
+    </div>
+</div>
+</main>
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Loading skeleton animation */
+.loading-skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Enhanced status indicators with better accessibility */
+.status-indicator {
+    display: inline-block;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
+    position: relative;
+    cursor: help;
+    min-width: 12px; /* Ensure minimum touch target size */
+}
+
+.status-indicator.up { background-color: #28a745; }
+.status-indicator.down { background-color: #dc3545; }
+.status-indicator.warning { background-color: #ffc107; }
+.status-indicator.unknown { background-color: #6c757d; }
+
+/* Improved focus states for better accessibility */
+.btn:focus, 
+.form-control:focus, 
+.form-select:focus {
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+    border-color: #86b7fe;
+    outline: 0;
+}
+
+/* Enhanced mobile experience */
+@media (max-width: 768px) {
+    /* Larger touch targets */
+    .btn-sm {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    /* Better spacing on mobile */
+    .gap-2 { gap: 1rem !important; }
+    .gap-3 { gap: 1.5rem !important; }
+    
+    /* Improved mobile search */
+    .search-box .form-control {
+        font-size: 16px; /* Prevents zoom on iOS */
+        min-height: 48px;
+    }
+    
+    /* Mobile-optimized cards */
+    .device-card {
+        margin-bottom: 1rem;
+    }
+    
+    /* Simplified mobile header */
+    .d-none.d-md-inline {
+        display: none !important;
+    }
+}
+
+/* Progressive disclosure animations */
+.fade-in {
+    opacity: 0;
+    animation: fadeIn 0.3s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Enhanced device cards with better interaction states */
+.device-card {
+    transition: all 0.2s ease-in-out;
+    border: 1px solid rgba(0,0,0,0.125);
+}
+
+.device-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    border-color: rgba(13, 110, 253, 0.25);
+}
+
+.device-card.selection-mode {
+    cursor: pointer;
+    position: relative;
+}
+
+.device-card.selection-mode::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    border: 2px solid transparent;
+    border-radius: 0.375rem;
+    transition: border-color 0.2s ease;
+}
+
+.device-card.selection-mode:hover::before {
+    border-color: rgba(13, 110, 253, 0.5);
+}
+
+/* Enhanced Dashboard Styles */
+
+/* Dashboard Header Enhancements */
+.dashboard-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-radius: 0.5rem;
+    padding: 1.5rem;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.dashboard-title {
+    font-size: 1.75rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0;
+}
+
+.header-status {
+    margin-top: 0.5rem;
+}
+
+.status-badge {
+    background: rgba(25, 135, 84, 0.1);
+    color: #198754;
+    padding: 0.25rem 0.75rem;
+    border-radius: 1rem;
+    font-size: 0.875rem;
+    border: 1px solid rgba(25, 135, 84, 0.2);
+}
+
+.device-summary {
+    font-size: 0.875rem;
+}
+
+.device-count {
+    font-weight: 600;
+    color: #495057;
+}
+
+/* Enhanced Action Buttons */
+.header-actions {
+    gap: 1rem;
+}
+
+.btn-action {
+    padding: 0.5rem 1rem;
+    border-radius: 0.375rem;
+    font-weight: 500;
+    border-width: 1.5px;
+    min-height: 44px;
+}
+
+.action-label {
+    font-size: 0.875rem;
+}
+
+/* Enhanced Search and Filter Experience */
+.search-filter-section {
+    background: #fff;
+    border-radius: 0.5rem;
+    padding: 1.25rem;
+    border: 1px solid rgba(0,0,0,0.05);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+}
+
+.search-input-group {
+    display: flex;
+    gap: 0.75rem;
+    align-items: stretch;
+}
+
+.search-input-wrapper {
+    position: relative;
+    flex: 1;
+}
+
+.search-input {
+    font-size: 16px !important;
+    min-height: 48px;
+    padding-left: 3rem;
+    padding-right: 3rem;
+    border: 2px solid #e9ecef;
+    border-radius: 0.5rem;
+    transition: all 0.2s ease;
+}
+
+.search-input:focus {
+    border-color: #0d6efd;
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.1);
+}
+
+.search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+    z-index: 2;
+}
+
+.search-clear-btn {
+    position: absolute;
+    right: 0.5rem;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: none;
+    color: #6c757d;
+    padding: 0.25rem;
+    z-index: 2;
+}
+
+.btn-add-device {
+    min-height: 48px;
+    border-radius: 0.5rem;
+    font-weight: 500;
+}
+
+/* Filter Chips */
+.filter-chips-container {
+    margin-top: 1rem;
+    padding-top: 1rem;
+    border-top: 1px solid #e9ecef;
+}
+
+.filter-chips {
+    margin-bottom: 0.5rem;
+}
+
+.filter-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.filter-chip {
+    background: #f8f9fa;
+    border: 1px solid #dee2e6;
+    border-radius: 1.5rem;
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    min-height: 36px;
+    cursor: pointer;
+}
+
+.filter-chip:hover {
+    background: #e9ecef;
+    border-color: #adb5bd;
+    transform: translateY(-1px);
+}
+
+.filter-chip.active {
+    background: #0d6efd;
+    border-color: #0d6efd;
+    color: white;
+}
+
+.filter-chip-success {
+    background: #d1eddd;
+    border-color: #badbcc;
+    color: #0f5132;
+}
+
+.filter-chip-success.active {
+    background: #198754;
+    border-color: #198754;
+    color: white;
+}
+
+.filter-chip-danger {
+    background: #f8d7da;
+    border-color: #f5c2c7;
+    color: #842029;
+}
+
+.filter-chip-danger.active {
+    background: #dc3545;
+    border-color: #dc3545;
+    color: white;
+}
+
+.filter-chip-warning {
+    background: #fff3cd;
+    border-color: #ffecb5;
+    color: #664d03;
+}
+
+.filter-chip-warning.active {
+    background: #ffc107;
+    border-color: #ffc107;
+    color: #000;
+}
+
+.filter-chip-secondary {
+    background: #e2e3e5;
+    border-color: #d3d6d8;
+    color: #41464b;
+}
+
+.filter-chip-outline {
+    background: transparent;
+    border-color: #6c757d;
+    color: #6c757d;
+}
+
+.chip-count {
+    margin-left: 0.5rem;
+    font-size: 0.75rem;
+    background: rgba(255,255,255,0.3);
+    padding: 0.125rem 0.375rem;
+    border-radius: 0.75rem;
+    font-weight: 600;
+}
+
+/* Enhanced Device Card Components */
+.device-card-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #fff 100%);
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    padding: 1rem;
+    position: relative;
+}
+
+.device-primary-info {
+    min-width: 0;
+}
+
+.device-name {
+    font-size: 1rem;
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.device-ip {
+    font-size: 0.875rem;
+    font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+}
+
+.device-status-text {
+    font-size: 0.875rem;
+    margin-top: 0.25rem;
+}
+
+.status-text.status-up {
+    color: #198754;
+    font-weight: 500;
+}
+
+.status-text.status-down {
+    color: #dc3545;
+    font-weight: 500;
+}
+
+.status-text.status-warning {
+    color: #fd7e14;
+    font-weight: 500;
+}
+
+.status-context {
+    color: #6c757d;
+    font-size: 0.8125rem;
+}
+
+/* Enhanced Status Indicators */
+.status-indicator-wrapper {
+    display: flex;
+    align-items: center;
+}
+
+.status-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    display: inline-block;
+    position: relative;
+}
+
+.status-dot.status-up {
+    background: #198754;
+    box-shadow: 0 0 0 2px rgba(25, 135, 84, 0.2);
+}
+
+.status-dot.status-down {
+    background: #dc3545;
+    box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2);
+}
+
+.status-dot.status-warning {
+    background: #fd7e14;
+    box-shadow: 0 0 0 2px rgba(253, 126, 20, 0.2);
+}
+
+.status-dot.status-unknown {
+    background: #6c757d;
+    box-shadow: 0 0 0 2px rgba(108, 117, 125, 0.2);
+}
+
+/* Device Card Body */
+.device-card-body {
+    padding: 1rem;
+}
+
+.device-meta {
+    margin-bottom: 0.75rem;
+}
+
+.last-seen {
+    display: flex;
+    align-items: center;
+    font-size: 0.875rem;
+    color: #6c757d;
+}
+
+.last-seen-text {
+    font-weight: 500;
+}
+
+/* Device Metrics */
+.device-metrics {
+    margin-top: 0.75rem;
+}
+
+.metric-value {
+    font-size: 0.875rem;
+    font-weight: 600;
+    color: #495057;
+    line-height: 1.2;
+}
+
+.metric-label {
+    font-size: 0.75rem;
+    color: #6c757d;
+    margin-top: 0.125rem;
+}
+
+.metrics-compact {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.metric-compact {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+.metric-value-sm {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #495057;
+}
+
+.metric-label-sm {
+    font-size: 0.6875rem;
+    color: #6c757d;
+    margin-top: 0.125rem;
+}
+
+/* Device Card Footer */
+.device-card-footer {
+    background: rgba(248, 249, 250, 0.5);
+    border-top: 1px solid rgba(0,0,0,0.05);
+    padding: 0.75rem 1rem;
+}
+
+.device-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.quick-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    border-radius: 0.375rem;
+    padding: 0.375rem 0.5rem;
+    border-width: 1px;
+    transition: all 0.2s ease;
+}
+
+.action-btn:hover {
+    transform: translateY(-1px);
+}
+
+.expand-indicator {
+    opacity: 0.7;
+    transition: all 0.2s ease;
+}
+
+.device-card:hover .expand-indicator {
+    opacity: 1;
+    transform: translateX(2px);
+}
+
+/* Enhanced Device Badges */
+.device-badges {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    align-items: flex-end;
+}
+
+.alert-indicator {
+    position: relative;
+}
+
+.badge-device-type {
+    background: #e7f1ff;
+    color: #0d6efd;
+    border: 1px solid rgba(13, 110, 253, 0.2);
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+.badge-group {
+    background: #f8f9fa;
+    color: #495057;
+    border: 1px solid #dee2e6;
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+}
+
+/* Device Selection Enhancements */
+.device-checkbox {
+    position: absolute;
+    top: 0.5rem;
+    left: 0.5rem;
+    z-index: 10;
+    background: rgba(255,255,255,0.9);
+    border-radius: 0.25rem;
+    padding: 0.25rem;
+}
+
+/* Search Suggestions */
+.search-suggestions {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    right: 0;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-radius: 0.375rem;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    z-index: 1000;
+    margin-top: 0.25rem;
+}
+
+.suggestions-header {
+    padding: 0.5rem 0.75rem;
+    background: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    border-radius: 0.375rem 0.375rem 0 0;
+}
+
+.suggestions-list {
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.suggestions-list .list-group-item {
+    border: none;
+    border-radius: 0;
+    padding: 0.75rem;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.suggestions-list .list-group-item:hover {
+    background: #f8f9fa;
+}
+
+.suggestions-list .list-group-item:last-child {
+    border-radius: 0 0 0.375rem 0.375rem;
+}
+
+/* Active Filter Tags */
+.active-filter-tags .badge {
+    font-size: 0.8125rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 1rem;
+}
+
+/* Mobile-First Responsive Enhancements */
+@media (max-width: 576px) {
+    .dashboard-header {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .dashboard-title {
+        font-size: 1.5rem;
+    }
+    
+    .header-actions {
+        flex-direction: column;
+        gap: 0.5rem;
+        align-items: stretch;
+    }
+    
+    .primary-actions {
+        display: flex;
+        gap: 0.5rem;
+    }
+    
+    .action-label {
+        display: none !important;
+    }
+    
+    .btn-action {
+        padding: 0.5rem;
+        min-width: 44px;
+        flex: 1;
+    }
+    
+    .search-filter-section {
+        padding: 1rem;
+        margin-bottom: 1rem;
+    }
+    
+    .search-input-group {
+        flex-direction: column;
+        gap: 0.5rem;
+    }
+    
+    .search-input-wrapper {
+        width: 100%;
+    }
+    
+    .filter-chips {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+    
+    .filter-chip {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.8125rem;
+        min-height: 44px;
+    }
+    
+    .device-card {
+        margin-bottom: 1rem;
+    }
+    
+    .device-card-header {
+        padding: 0.75rem;
+    }
+    
+    .device-card-body {
+        padding: 0.75rem;
+    }
+    
+    .device-card-footer {
+        padding: 0.5rem 0.75rem;
+    }
+    
+    .device-name {
+        font-size: 0.9375rem;
+    }
+    
+    .device-ip {
+        font-size: 0.8125rem;
+    }
+    
+    .metrics-summary {
+        display: none;
+    }
+    
+    .metrics-compact {
+        display: flex;
+    }
+}
+
+/* Tablet-specific optimizations */
+@media (min-width: 577px) and (max-width: 991px) {
+    .dashboard-header {
+        padding: 1.25rem;
+    }
+    
+    .header-actions {
+        gap: 0.75rem;
+    }
+    
+    .btn-action .action-label {
+        display: none;
+    }
+    
+    .search-filter-section {
+        padding: 1rem;
+    }
+    
+    .filter-chips {
+        gap: 0.5rem;
+    }
+    
+    .device-card-header {
+        padding: 0.875rem;
+    }
+    
+    .device-card-body {
+        padding: 0.875rem;
+    }
+    
+    .metrics-summary {
+        display: none;
+    }
+    
+    .metrics-compact {
+        display: flex;
+    }
+}
+
+/* Large screen enhancements */
+@media (min-width: 992px) {
+    .search-input-group {
+        max-width: 600px;
+    }
+    
+    .filter-chips {
+        gap: 0.75rem;
+    }
+    
+    .device-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 30px rgba(0,0,0,0.15);
+    }
+    
+    .metrics-summary {
+        display: block;
+    }
+    
+    .metrics-compact {
+        display: none;
+    }
+}
+
+/* Touch interaction improvements */
+@media (hover: none) and (pointer: coarse) {
+    .filter-chip:hover {
+        transform: none;
+    }
+    
+    .device-card:hover {
+        transform: none;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    
+    .action-btn:hover {
+        transform: none;
+    }
+    
+    .filter-chip {
+        min-height: 48px;
+        padding: 0.625rem 1rem;
+    }
+    
+    .btn-action {
+        min-height: 48px;
+        padding: 0.75rem 1rem;
+    }
+    
+    .action-btn {
+        min-height: 48px;
+        min-width: 48px;
+        padding: 0.75rem;
+    }
+}
+
+/* Dark mode support */
+@media (prefers-color-scheme: dark) {
+    .dashboard-header {
+        background: linear-gradient(135deg, #2d3748 0%, #1a202c 100%);
+        border-color: rgba(255,255,255,0.1);
+    }
+    
+    .dashboard-title {
+        color: #e2e8f0;
+    }
+    
+    .search-filter-section {
+        background: #2d3748;
+        border-color: rgba(255,255,255,0.1);
+        color: #e2e8f0;
+    }
+    
+    .search-input {
+        background: #4a5568;
+        border-color: #718096;
+        color: #e2e8f0;
+    }
+    
+    .device-card {
+        background: #2d3748;
+        border-color: rgba(255,255,255,0.1);
+        color: #e2e8f0;
+    }
+    
+    .device-card-header {
+        background: linear-gradient(135deg, #4a5568 0%, #2d3748 100%);
+        border-color: rgba(255,255,255,0.1);
+    }
+    
+    .device-name {
+        color: #e2e8f0;
+    }
+    
+    .device-card-footer {
+        background: rgba(74, 85, 104, 0.5);
+        border-color: rgba(255,255,255,0.1);
+    }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .status-indicator {
+        border-width: 3px;
+        border-color: #000;
+    }
+    
+    .card {
+        border-width: 2px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .loading-skeleton,
+    .fade-in,
+    .device-card,
+    .btn {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* Dark mode improvements */
+@media (prefers-color-scheme: dark) {
+    .loading-skeleton {
+        background: linear-gradient(90deg, #2d3748 25%, #4a5568 50%, #2d3748 75%);
+    }
+    
+    .status-indicator {
+        border-color: #2d3748;
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
+    }
+}
+
+/* Real-time feedback animations */
+.status-changed {
+    animation: statusChanged 2s ease-in-out;
+    border-color: #ffc107 !important;
+}
+
+@keyframes statusChanged {
+    0% { 
+        background-color: rgba(255, 193, 7, 0.1);
+        transform: scale(1);
+    }
+    50% { 
+        background-color: rgba(255, 193, 7, 0.2);
+        transform: scale(1.02);
+    }
+    100% { 
+        background-color: transparent;
+        transform: scale(1);
+    }
+}
+
+/* Enhanced toast positioning */
+#toast-container {
+    z-index: 1060 !important;
+    max-width: 350px;
+}
+
+.toast {
+    max-width: 100%;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    border: none;
+}
+
+.toast.fade-in {
+    animation: toastSlideIn 0.3s ease-out;
+}
+
+@keyframes toastSlideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+/* Pulse animation for critical status indicators */
+.status-indicator.down {
+    animation: criticalPulse 2s infinite;
+}
+
+@keyframes criticalPulse {
+    0%, 100% { 
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
+}
+
+/* Success animation for status changes */
+.status-indicator.up.status-just-changed {
+    animation: successPulse 1s ease-out;
+}
+
+@keyframes successPulse {
+    0% { 
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    70% { 
+        transform: scale(1.1);
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+    100% { 
+        transform: scale(1);
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+    }
+}
+
+/* Improved focus indicators for keyboard navigation */
+.device-card:focus-within {
+    outline: 3px solid rgba(13, 110, 253, 0.5);
+    outline-offset: 2px;
+}
+
+/* Skip links for accessibility */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: #000;
+    color: #fff;
+    padding: 8px;
+    text-decoration: none;
+    border-radius: 4px;
+    z-index: 1070;
+}
+
+.skip-link:focus {
+    top: 6px;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let currentView = 'grid';
+let filteredDevices = [];
+
+// Sorting state
+let currentSortField = null;
+let currentSortDirection = 'asc'; // 'asc' or 'desc'
+
+// Load devices data with enhanced feedback
+async function loadDevices() {
+    try {
+        setLoadingState(true, 'Loading devices...');
+        document.getElementById('no-devices').style.display = 'none';
+        
+        const response = await fetch('/api/devices');
+        const data = await response.json();
+        
+        devices = data.devices || [];
+        filteredDevices = devices;
+        
+        // Load filter options
+        setLoadingState(true, 'Loading filter options...');
+        await loadFilterOptions();
+        
+        // Update enhanced features
+        updateFilterCounts();
+        updateQuickDeviceSummary();
+        
+        // Display devices
+        setLoadingState(true, 'Rendering devices...');
+        displayDevices();
+        
+        // Update sidebar Quick Stats with device data 
+        updateQuickStats(devices);
+        
+        setLoadingState(false);
+        
+    } catch (error) {
+        console.error('Error loading devices:', error);
+        
+        let errorMessage = 'Failed to load device data';
+        let recoveryAction = 'Check your connection and try again';
+        
+        if (error.name === 'TypeError' && error.message.includes('fetch')) {
+            errorMessage = 'Cannot connect to HomeNetMon server';
+            recoveryAction = 'Verify the service is running and refresh the page';
+        } else if (error.message && error.message.includes('timeout')) {
+            errorMessage = 'Device data request timed out';
+            recoveryAction = 'The server may be processing many devices. Try again in a moment';
+        }
+        
+        showEnhancedToast(errorMessage, recoveryAction, 'error', function() {
+            loadDevices();
+        });
+        
+        setLoadingState(false);
+    }
+}
+
+// Load filter options
+async function loadFilterOptions() {
+    try {
+        // Load device types
+        const typesResponse = await fetch('/api/devices/types');
+        const typesData = await typesResponse.json();
+        
+        const typeSelect = document.getElementById('filter-type');
+        typeSelect.innerHTML = '<option value="">All Types</option>';
+        typesData.types.forEach(type => {
+            const option = document.createElement('option');
+            option.value = type;
+            option.textContent = getDeviceTypeDisplayName(type);
+            typeSelect.appendChild(option);
+        });
+        
+        // Load device groups
+        const groupsResponse = await fetch('/api/devices/groups');
+        const groupsData = await groupsResponse.json();
+        
+        const groupSelect = document.getElementById('filter-group');
+        groupSelect.innerHTML = '<option value="">All Groups</option>';
+        groupsData.groups.forEach(group => {
+            const option = document.createElement('option');
+            option.value = group;
+            option.textContent = group;
+            groupSelect.appendChild(option);
+        });
+        
+    } catch (error) {
+        console.error('Error loading filter options:', error);
+    }
+}
+
+// Get device icon based on device type
+function getDeviceIcon(deviceType) {
+    const icons = {
+        'camera': 'camera-video',
+        'router': 'router',
+        'apple': 'apple',
+        'phone': 'phone',
+        'computer': 'laptop',
+        'smart_home': 'house-gear',
+        'iot': 'cpu',
+        'gaming': 'controller',
+        'media': 'tv',
+        'printer': 'printer',
+        'storage': 'hdd-stack',
+        'unknown': 'question-circle'
+    };
+    
+    return icons[deviceType] || 'question-circle';
+}
+
+// Get device type display name
+function getDeviceTypeDisplayName(deviceType) {
+    const displayNames = {
+        'camera': 'Camera',
+        'router': 'Router',
+        'apple': 'Apple Device',
+        'phone': 'Phone',
+        'computer': 'Computer',
+        'smart_home': 'Smart Home',
+        'iot': 'IoT Device',
+        'gaming': 'Gaming',
+        'media': 'Media Device',
+        'printer': 'Printer',
+        'storage': 'Storage',
+        'unknown': 'Unknown'
+    };
+    
+    return displayNames[deviceType] || 'Unknown';
+}
+
+
+// Sort devices by specified field and direction
+function sortDevices(field, direction) {
+    if (!field) return;
+    
+    filteredDevices.sort((a, b) => {
+        let valueA = getValueForSort(a, field);
+        let valueB = getValueForSort(b, field);
+        
+        // Handle null/undefined values
+        if (valueA === null || valueA === undefined) valueA = '';
+        if (valueB === null || valueB === undefined) valueB = '';
+        
+        // Convert to appropriate types for comparison
+        if (typeof valueA === 'string' && typeof valueB === 'string') {
+            valueA = valueA.toLowerCase();
+            valueB = valueB.toLowerCase();
+        }
+        
+        let result = 0;
+        if (valueA < valueB) result = -1;
+        else if (valueA > valueB) result = 1;
+        
+        return direction === 'desc' ? -result : result;
+    });
+}
+
+// Get value for sorting from device object
+function getValueForSort(device, field) {
+    switch (field) {
+        case 'status':
+            // Sort by status priority: up, warning, down, unknown
+            const statusPriority = { 'up': 1, 'warning': 2, 'down': 3, 'unknown': 4 };
+            return statusPriority[device.status] || 5;
+        case 'display_name':
+            return device.display_name || device.hostname || device.ip_address;
+        case 'ip_address':
+            // Convert IP to numeric for proper sorting
+            const ip = device.ip_address || '';
+            const parts = ip.split('.').map(num => parseInt(num) || 0);
+            return (parts[0] * 16777216) + (parts[1] * 65536) + (parts[2] * 256) + parts[3];
+        case 'device_type':
+            return device.device_type || 'unknown';
+        case 'latest_response_time':
+            return parseFloat(device.latest_response_time) || 9999; // Put null values at end
+        case 'uptime_percentage':
+            return parseFloat(device.uptime_percentage) || 0;
+        case 'current_bandwidth':
+            return parseFloat(device.current_bandwidth) || 0;
+        case 'last_seen':
+            return device.last_seen ? new Date(device.last_seen).getTime() : 0;
+        default:
+            return device[field] || '';
+    }
+}
+
+// Update sort icons in table headers
+function updateSortIcons() {
+    // Reset all icons
+    document.querySelectorAll('.sort-icon').forEach(icon => {
+        icon.className = 'bi bi-chevron-expand sort-icon text-muted';
+    });
+    
+    // Update active sort icon
+    if (currentSortField) {
+        const activeHeader = document.querySelector(`[data-sort-field="${currentSortField}"] .sort-icon`);
+        if (activeHeader) {
+            const iconClass = currentSortDirection === 'asc' ? 'bi bi-chevron-up' : 'bi bi-chevron-down';
+            activeHeader.className = `${iconClass} sort-icon text-primary`;
+        }
+    }
+}
+
+// Handle header clicks for sorting
+function handleSortClick(field) {
+    if (currentSortField === field) {
+        // Toggle direction if same field
+        currentSortDirection = currentSortDirection === 'asc' ? 'desc' : 'asc';
+    } else {
+        // New field, default to ascending
+        currentSortField = field;
+        currentSortDirection = 'asc';
+    }
+    
+    sortDevices(currentSortField, currentSortDirection);
+    updateSortIcons();
+    
+    // Only re-render if in list view (grid view doesn't change with sorting)
+    if (currentView === 'list') {
+        displayListView();
+    }
+}
+
+// Display devices based on current view
+function displayDevices() {
+    if (filteredDevices.length === 0) {
+        document.getElementById('devices-container').style.display = 'none';
+        document.getElementById('no-devices').style.display = 'block';
+        return;
+    }
+    
+    document.getElementById('devices-container').style.display = 'block';
+    document.getElementById('no-devices').style.display = 'none';
+    
+    // Apply current sorting
+    if (currentSortField) {
+        sortDevices(currentSortField, currentSortDirection);
+        updateSortIcons();
+    }
+    
+    if (currentView === 'grid') {
+        displayGridView();
+    } else {
+        displayListView();
+    }
+}
+
+// Display devices in grid view
+function displayGridView() {
+    const gridContainer = document.getElementById('grid-view');
+    gridContainer.innerHTML = '';
+    
+    filteredDevices.forEach((device, index) => {
+        const card = createDeviceCard(device, index);
+        gridContainer.appendChild(card);
+    });
+}
+
+// Create enhanced device card with mobile-first progressive disclosure
+function createDeviceCard(device, index = 0) {
+    const cardWrapper = document.createElement('div');
+    cardWrapper.className = `device-card-wrapper fade-in-delay-${Math.min(index % 3 + 1, 3)}`;
+    
+    // Enhanced status with context
+    const statusInfo = getStatusInfo(device.status, device.latest_response_time);
+    const alertBadge = device.active_alerts > 0 ? 
+        `<div class="alert-indicator"><span class="badge bg-danger">${device.active_alerts}</span></div>` : '';
+    
+    // Format last seen as relative time
+    const lastSeenText = device.last_seen ? getRelativeTime(device.last_seen) : 'Never seen';
+    
+    cardWrapper.innerHTML = `
+        <div class="card device-card" onclick="handleDeviceCardClick(event, ${device.id})" 
+             data-device-id="${device.id}" tabindex="0" role="button" 
+             aria-label="Device ${device.display_name}">
+             
+            <!-- Card Header with Essential Info -->
+            <div class="card-header device-card-header">
+                <div class="d-flex justify-content-between align-items-start">
+                    <div class="device-primary-info flex-grow-1">
+                        <div class="d-flex align-items-center mb-1">
+                            <div class="status-indicator-wrapper me-2">
+                                <span class="status-dot status-${device.status}" 
+                                      title="${statusInfo.title}" 
+                                      aria-label="${statusInfo.title}"></span>
+                            </div>
+                            <h6 class="device-name mb-0">${device.display_name}</h6>
+                        </div>
+                        <div class="device-secondary-info">
+                            <div class="device-ip text-muted">${device.ip_address}</div>
+                            <div class="device-status-text">
+                                <span class="status-text status-${device.status}">${statusInfo.text}</span>
+                                ${statusInfo.context ? `<span class="status-context"> • ${statusInfo.context}</span>` : ''}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="device-badges">
+                        ${alertBadge}
+                        <div class="device-type-badge">
+                            <span class="badge badge-device-type">
+                                <i class="bi bi-${getDeviceIcon(device.device_type)}"></i>
+                                <span class="d-none d-md-inline ms-1">${getDeviceTypeDisplayName(device.device_type)}</span>
+                            </span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Selection checkbox (hidden by default) -->
+                <div class="form-check device-checkbox" style="display: none;">
+                    <input class="form-check-input device-select" type="checkbox" 
+                           value="${device.id}" ${selectedDevices.has(device.id) ? 'checked' : ''} 
+                           onclick="event.stopPropagation();" aria-label="Select device">
+                </div>
+            </div>
+            
+            <!-- Card Body with Progressive Disclosure -->
+            <div class="card-body device-card-body">
+                <!-- Always visible: Last seen -->
+                <div class="device-meta mb-2">
+                    <div class="last-seen">
+                        <i class="bi bi-clock text-muted me-1"></i>
+                        <span class="last-seen-text">${lastSeenText}</span>
+                    </div>
+                </div>
+                
+                <!-- Expandable metrics (show on hover/focus on desktop, always visible on mobile) -->
+                <div class="device-metrics">
+                    <div class="metrics-summary d-md-none d-lg-block">
+                        <div class="row text-center">
+                            <div class="col-4">
+                                <div class="metric-value">${formatResponseTime(device.latest_response_time)}</div>
+                                <div class="metric-label">Response</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="metric-value">${formatUptime(device.uptime_percentage)}</div>
+                                <div class="metric-label">Uptime</div>
+                            </div>
+                            <div class="col-4">
+                                <div class="metric-value">${formatBandwidth(device.current_bandwidth)}</div>
+                                <div class="metric-label">Bandwidth</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Compact metrics for medium screens -->
+                    <div class="metrics-compact d-none d-md-block d-lg-none">
+                        <div class="d-flex justify-content-between text-center">
+                            <div class="metric-compact">
+                                <span class="metric-value-sm">${formatResponseTime(device.latest_response_time)}</span>
+                                <span class="metric-label-sm">Response</span>
+                            </div>
+                            <div class="metric-compact">
+                                <span class="metric-value-sm">${formatUptime(device.uptime_percentage)}</span>
+                                <span class="metric-label-sm">Uptime</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Device group badge (if present) -->
+                ${device.device_group ? `
+                    <div class="device-group mt-2">
+                        <span class="badge badge-group">
+                            <i class="bi bi-collection me-1"></i>
+                            ${device.device_group}
+                        </span>
+                    </div>
+                ` : ''}
+            </div>
+            
+            <!-- Card Footer with Mobile-Optimized Actions -->
+            <div class="card-footer device-card-footer">
+                <!-- Mobile actions (always visible on mobile) -->
+                <div class="device-actions mobile-actions d-md-none">
+                    <div class="btn-group w-100" role="group" aria-label="Device actions for ${device.display_name}">
+                        <button class="btn btn-outline-primary" 
+                                onclick="event.stopPropagation(); pingDevice(${device.id})"
+                                title="Ping device" aria-label="Ping ${device.display_name}">
+                            <i class="bi bi-wifi me-1"></i><span class="action-text">Ping</span>
+                        </button>
+                        <button class="btn btn-outline-secondary" 
+                                onclick="event.stopPropagation(); editDevice(${device.id})"
+                                title="Edit device" aria-label="Edit ${device.display_name}">
+                            <i class="bi bi-pencil me-1"></i><span class="action-text">Edit</span>
+                        </button>
+                        <button class="btn btn-outline-info" 
+                                onclick="event.stopPropagation(); viewDeviceDetails(${device.id})"
+                                title="View details" aria-label="View ${device.display_name} details">
+                            <i class="bi bi-eye me-1"></i><span class="action-text">View</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Desktop actions (hover-based) -->
+                <div class="device-actions desktop-actions d-none d-md-flex justify-content-between align-items-center">
+                    <div class="quick-actions">
+                        <button class="btn btn-sm btn-outline-primary action-btn" 
+                                onclick="event.stopPropagation(); pingDevice(${device.id})"
+                                title="Ping device" aria-label="Ping ${device.display_name}">
+                            <i class="bi bi-wifi"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-secondary action-btn" 
+                                onclick="event.stopPropagation(); editDevice(${device.id})"
+                                title="Edit device" aria-label="Edit ${device.display_name}">
+                            <i class="bi bi-pencil"></i>
+                        </button>
+                    </div>
+                    <div class="expand-indicator">
+                        <small class="text-muted">
+                            <i class="bi bi-arrow-right"></i>
+                        </small>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    return cardWrapper;
+}
+
+// View device details (mobile-friendly)
+function viewDeviceDetails(deviceId) {
+    const device = devices.find(d => d.id === deviceId);
+    if (!device) {
+        showToast('Device not found', 'error');
+        return;
+    }
+    
+    // For mobile, show a modal with device details
+    if (window.innerWidth <= 768) {
+        showMobileDeviceModal(device);
+    } else {
+        // For desktop, navigate to device page
+        window.location.href = `/device/${deviceId}`;
+    }
+}
+
+// Show mobile-optimized device details modal
+function showMobileDeviceModal(device) {
+    const modalHtml = `
+        <div class="modal fade" id="mobileDeviceModal" tabindex="-1" aria-labelledby="mobileDeviceModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-fullscreen-sm-down">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" id="mobileDeviceModalLabel">
+                            <i class="bi bi-${getDeviceIcon(device.device_type)} me-2"></i>
+                            ${device.display_name}
+                        </h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="device-details">
+                            <!-- Status -->
+                            <div class="detail-section mb-3">
+                                <h6 class="detail-title">Status</h6>
+                                <div class="d-flex align-items-center">
+                                    <span class="status-dot status-${device.status} me-2"></span>
+                                    <span class="status-text status-${device.status}">${getStatusInfo(device.status).text}</span>
+                                </div>
+                            </div>
+                            
+                            <!-- Connection Info -->
+                            <div class="detail-section mb-3">
+                                <h6 class="detail-title">Connection</h6>
+                                <div class="detail-grid">
+                                    <div class="detail-item">
+                                        <span class="detail-label">IP Address:</span>
+                                        <span class="detail-value">${device.ip_address}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">MAC Address:</span>
+                                        <span class="detail-value">${device.mac_address || 'Unknown'}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Response Time:</span>
+                                        <span class="detail-value">${formatResponseTime(device.latest_response_time)}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Performance -->
+                            <div class="detail-section mb-3">
+                                <h6 class="detail-title">Performance</h6>
+                                <div class="detail-grid">
+                                    <div class="detail-item">
+                                        <span class="detail-label">Uptime:</span>
+                                        <span class="detail-value">${formatUptime(device.uptime_percentage)}</span>
+                                    </div>
+                                    <div class="detail-item">
+                                        <span class="detail-label">Last Seen:</span>
+                                        <span class="detail-value">${device.last_seen ? getRelativeTime(device.last_seen) : 'Never'}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Alerts -->
+                            ${device.active_alerts > 0 ? `
+                                <div class="detail-section mb-3">
+                                    <h6 class="detail-title text-danger">
+                                        <i class="bi bi-exclamation-triangle me-1"></i>
+                                        Active Alerts (${device.active_alerts})
+                                    </h6>
+                                    <div class="alert alert-warning">
+                                        This device has ${device.active_alerts} active alert${device.active_alerts > 1 ? 's' : ''}.
+                                    </div>
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <div class="btn-group w-100" role="group">
+                            <button type="button" class="btn btn-outline-primary" onclick="pingDevice(${device.id})">
+                                <i class="bi bi-wifi me-1"></i>Ping
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary" onclick="editDevice(${device.id})">
+                                <i class="bi bi-pencil me-1"></i>Edit
+                            </button>
+                            <button type="button" class="btn btn-primary" onclick="window.location.href='/device/${device.id}'">
+                                <i class="bi bi-arrow-right me-1"></i>Full View
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    // Remove existing modal if present
+    const existingModal = document.getElementById('mobileDeviceModal');
+    if (existingModal) {
+        existingModal.remove();
+    }
+    
+    // Add modal to page
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+    
+    // Show modal
+    const modal = new bootstrap.Modal(document.getElementById('mobileDeviceModal'));
+    modal.show();
+    
+    // Clean up when modal is hidden
+    document.getElementById('mobileDeviceModal').addEventListener('hidden.bs.modal', function() {
+        this.remove();
+    });
+}
+
+// Display devices in list view
+function displayListView() {
+    const tbody = document.getElementById('devices-table-body');
+    tbody.innerHTML = '';
+    
+    filteredDevices.forEach(device => {
+        const row = createDeviceRow(device);
+        tbody.appendChild(row);
+    });
+}
+
+// Create device table row
+function createDeviceRow(device) {
+    const row = document.createElement('tr');
+    row.style.cursor = 'pointer';
+    row.onclick = () => viewDevice(device.id);
+    
+    const alertBadge = device.active_alerts > 0 ? 
+        `<span class="badge bg-danger ms-1">${device.active_alerts}</span>` : '';
+    
+    row.innerHTML = `
+        <td class="table-select-column" style="display: none;" onclick="event.stopPropagation()">
+            <div class="form-check">
+                <input class="form-check-input device-select table-device-select" type="checkbox" value="${device.id}" ${selectedDevices.has(device.id) ? 'checked' : ''}>
+            </div>
+        </td>
+        <td>
+            <span class="status-indicator ${device.status}"></span>
+            ${device.status}
+        </td>
+        <td>
+            <i class="bi bi-${getDeviceIcon(device.device_type)} me-2 text-primary"></i>
+            ${device.display_name}
+            ${alertBadge}
+        </td>
+        <td>${device.ip_address}</td>
+        <td>
+            <span class="badge bg-light text-dark">
+                <i class="bi bi-${getDeviceIcon(device.device_type)} me-1"></i>
+                ${getDeviceTypeDisplayName(device.device_type)}
+            </span>
+            ${device.device_group ? `<br><span class="badge bg-secondary">${device.device_group}</span>` : ''}
+        </td>
+        <td>${formatResponseTime(device.latest_response_time)}</td>
+        <td>${formatUptime(device.uptime_percentage)}</td>
+        <td>${formatBandwidth(device.current_bandwidth)}</td>
+        <td>${device.last_seen ? new Date(device.last_seen).toLocaleString() : 'Never'}</td>
+        <td onclick="event.stopPropagation()">
+            <div class="btn-group btn-group-sm">
+                <button class="btn btn-outline-primary" onclick="pingDevice(${device.id})">
+                    <i class="bi bi-wifi"></i>
+                </button>
+                <button class="btn btn-outline-secondary" onclick="editDevice(${device.id})">
+                    <i class="bi bi-pencil"></i>
+                </button>
+            </div>
+        </td>
+    `;
+    
+    return row;
+}
+
+// Filter devices based on current filters
+function filterDevices() {
+    const search = document.getElementById('search-input').value.toLowerCase();
+    const status = document.getElementById('filter-status').value;
+    const type = document.getElementById('filter-type').value;
+    const group = document.getElementById('filter-group').value;
+    
+    filteredDevices = devices.filter(device => {
+        // Search filter
+        const matchesSearch = !search || 
+            device.display_name.toLowerCase().includes(search) ||
+            device.ip_address.toLowerCase().includes(search) ||
+            (device.hostname && device.hostname.toLowerCase().includes(search));
+        
+        // Status filter
+        const matchesStatus = !status || device.status === status;
+        
+        // Type filter
+        const matchesType = !type || device.device_type === type;
+        
+        // Group filter
+        const matchesGroup = !group || device.device_group === group;
+        
+        return matchesSearch && matchesStatus && matchesType && matchesGroup;
+    });
+    
+    displayDevices();
+}
+
+// Clear all filters
+function clearFilters() {
+    document.getElementById('search-input').value = '';
+    document.getElementById('filter-status').value = '';
+    document.getElementById('filter-type').value = '';
+    document.getElementById('filter-group').value = '';
+    
+    filteredDevices = devices;
+    displayDevices();
+}
+
+// Switch view mode
+function switchView(viewType) {
+    currentView = viewType;
+    
+    if (viewType === 'grid') {
+        document.getElementById('grid-view').style.display = 'block';
+        document.getElementById('list-view').style.display = 'none';
+    } else {
+        document.getElementById('grid-view').style.display = 'none';
+        document.getElementById('list-view').style.display = 'block';
+    }
+    
+    displayDevices();
+}
+
+// View device details
+function viewDevice(deviceId) {
+    window.location.href = `/device/${deviceId}`;
+}
+
+// Edit device
+function editDevice(deviceId) {
+    // Implementation for edit device modal
+    console.log('Edit device:', deviceId);
+}
+
+// Ping device manually
+async function pingDevice(deviceId) {
+    try {
+        const response = await fetch(`/api/devices/${deviceId}/ping`, {
+            method: 'POST'
+        });
+        
+        const data = await response.json();
+        
+        if (data.success) {
+            showToast(`Device pinged successfully: ${formatResponseTime(data.response_time)}`, 'success');
+        } else {
+            showToast('Device ping failed', 'error');
+        }
+        
+        // Refresh devices after ping
+        setTimeout(loadDevices, 1000);
+        
+    } catch (error) {
+        console.error('Error pinging device:', error);
+        showToast('Error pinging device', 'error');
+    }
+}
+
+// Add new device
+async function addDevice() {
+    try {
+        const ip = document.getElementById('device-ip').value.trim();
+        const name = document.getElementById('device-name').value.trim();
+        const type = document.getElementById('device-type').value;
+        const group = document.getElementById('device-group').value.trim();
+        const monitor = document.getElementById('device-monitor').checked;
+        
+        if (!ip) {
+            showToast('IP address is required', 'error');
+            return;
+        }
+        
+        const deviceData = {
+            ip_address: ip,
+            custom_name: name || null,
+            device_type: type,
+            device_group: group || null,
+            is_monitored: monitor
+        };
+        
+        const response = await fetch('/api/devices', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(deviceData)
+        });
+        
+        if (response.ok) {
+            showToast('Device added successfully', 'success');
+            
+            // Close modal and reset form
+            const modal = bootstrap.Modal.getInstance(document.getElementById('addDeviceModal'));
+            modal.hide();
+            document.getElementById('add-device-form').reset();
+            
+            // Reload devices
+            loadDevices();
+        } else {
+            const error = await response.json();
+            showToast(error.error || 'Error adding device', 'error');
+        }
+        
+    } catch (error) {
+        console.error('Error adding device:', error);
+        showToast('Error adding device', 'error');
+    }
+}
+
+// Enhanced real-time device status updates with visual feedback
+function updateDeviceStatus(data) {
+    const device = devices.find(d => d.id === data.device_id);
+    if (device) {
+        const oldStatus = device.status;
+        device.latest_response_time = data.response_time;
+        device.status = data.status;
+        device.last_seen = data.timestamp;
+        
+        // Provide visual feedback for status changes
+        if (oldStatus !== data.status) {
+            showStatusChangeNotification(device, oldStatus, data.status);
+            highlightDeviceCard(data.device_id);
+        }
+        
+        // Update display if device is currently visible
+        if (filteredDevices.includes(device)) {
+            displayDevices();
+        }
+        
+        // Update quick status summary
+        updateQuickStatusSummary({}, { status: 'healthy' });
+    }
+}
+
+// Show subtle notification for status changes
+function showStatusChangeNotification(device, oldStatus, newStatus) {
+    const statusMessages = {
+        'up': '✅ Online',
+        'down': '❌ Offline', 
+        'warning': '⚠️ Warning',
+        'unknown': '❓ Unknown'
+    };
+    
+    const message = `${device.display_name} is now ${statusMessages[newStatus] || newStatus}`;
+    
+    // Only show notification for significant changes
+    if ((oldStatus === 'down' && newStatus === 'up') || (oldStatus === 'up' && newStatus === 'down')) {
+        showToast(message, newStatus === 'up' ? 'success' : 'warning', 3000);
+    }
+}
+
+// Highlight device card temporarily
+function highlightDeviceCard(deviceId) {
+    const deviceCards = document.querySelectorAll(`[onclick*="${deviceId}"]`);
+    deviceCards.forEach(card => {
+        card.classList.add('status-changed');
+        setTimeout(() => {
+            card.classList.remove('status-changed');
+        }, 2000);
+    });
+}
+
+// Enhanced toast notifications with better positioning and timing
+function showToast(message, type = 'info', duration = 5000) {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '1050';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Create toast element
+    const toastId = 'toast-' + Date.now();
+    const toastHTML = `
+        <div id="${toastId}" class="toast fade-in" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
+            <div class="toast-header bg-${type === 'error' ? 'danger' : type} text-white">
+                <strong class="me-auto">
+                    <i class="bi bi-${getToastIcon(type)} me-1"></i>
+                    ${getToastTitle(type)}
+                </strong>
+                <small class="text-white-50">${new Date().toLocaleTimeString()}</small>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                ${message}
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+    
+    // Initialize and show toast
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+    
+    // Auto-hide after duration
+    setTimeout(() => {
+        toast.hide();
+        setTimeout(() => {
+            toastElement.remove();
+        }, 300);
+    }, duration);
+}
+
+function getToastIcon(type) {
+    const icons = {
+        'success': 'check-circle',
+        'error': 'exclamation-circle',
+        'warning': 'exclamation-triangle',
+        'info': 'info-circle',
+        'danger': 'exclamation-circle'
+    };
+    return icons[type] || 'info-circle';
+}
+
+function getToastTitle(type) {
+    const titles = {
+        'success': 'Success',
+        'error': 'Error',
+        'warning': 'Warning', 
+        'info': 'Information',
+        'danger': 'Error'
+    };
+    return titles[type] || 'Notification';
+}
+
+// System status management  
+let systemStatus = {
+    nextScanTime: null,
+    lastPingTime: null,
+    lastScanTime: null,
+    nextPingTime: null,
+    intervalIds: []
+};
+
+async function updateSystemStatus() {
+    try {
+        // Fetch background activity data
+        const cacheBuster = Date.now();
+        const [activityResponse, healthResponse] = await Promise.all([
+            fetch(`/api/monitoring/background-activity?_=${cacheBuster}`),
+            fetch(`/health?_=${cacheBuster}`)
+        ]);
+        
+        if (!activityResponse.ok || !healthResponse.ok) {
+            throw new Error('Failed to fetch system status data');
+        }
+        
+        const activityData = await activityResponse.json();
+        const healthData = await healthResponse.json();
+        
+        // Update system status data
+        systemStatus.lastPingTime = activityData.last_ping_time;
+        systemStatus.lastScanTime = activityData.last_scan_time;
+        systemStatus.nextScanTime = activityData.next_scan_time;
+        systemStatus.nextPingTime = activityData.next_ping_time;
+        
+        // Update simplified status summary
+        updateQuickStatusSummary(activityData, healthData);
+        
+        const statusBar = document.getElementById('detailed-status');
+        
+        // Show the status bar if monitoring is active
+        if (activityData.monitoring_active && healthData.status === 'healthy') {
+            statusBar.style.display = 'block';
+        } else {
+            statusBar.style.display = 'none';
+            return;
+        }
+        
+        // Update service uptime
+        if (healthData.uptime_seconds !== undefined) {
+            const uptimeText = formatUptimeDuration(healthData.uptime_seconds);
+            document.getElementById('service-uptime').textContent = uptimeText;
+        }
+        
+        if (healthData.started_at) {
+            const startTime = new Date(healthData.started_at);
+            document.getElementById('service-start-time').textContent = startTime.toLocaleString();
+        }
+        
+        // Update last ping time
+        if (activityData.last_ping_time) {
+            const lastPing = new Date(activityData.last_ping_time);
+            document.getElementById('last-ping-time').textContent = formatTimeAgo(lastPing);
+        } else {
+            document.getElementById('last-ping-time').textContent = 'never';
+        }
+        
+        // Update next ping time
+        if (activityData.next_ping_time) {
+            const nextPing = new Date(activityData.next_ping_time);
+            const now = new Date();
+            const timeUntilNext = Math.max(0, nextPing - now);
+            
+            if (timeUntilNext > 0) {
+                const minutesLeft = Math.ceil(timeUntilNext / (1000 * 60));
+                if (minutesLeft < 1) {
+                    document.getElementById('next-ping-time').textContent = 'in < 1m';
+                } else if (minutesLeft <= 60) {
+                    document.getElementById('next-ping-time').textContent = `in ${minutesLeft}m`;
+                } else {
+                    document.getElementById('next-ping-time').textContent = nextPing.toLocaleTimeString();
+                }
+            } else {
+                document.getElementById('next-ping-time').textContent = 'due now';
+            }
+        } else {
+            document.getElementById('next-ping-time').textContent = 'unknown';
+        }
+        
+        // Update last scan time
+        if (activityData.last_scan_time) {
+            const lastScan = new Date(activityData.last_scan_time);
+            document.getElementById('last-scan-time').textContent = formatTimeAgo(lastScan);
+        } else {
+            document.getElementById('last-scan-time').textContent = 'never';
+        }
+        
+        // Update next scan time
+        if (activityData.next_scan_time) {
+            const nextScan = new Date(activityData.next_scan_time);
+            const now = new Date();
+            const timeUntilNext = Math.max(0, nextScan - now);
+            
+            if (timeUntilNext > 0) {
+                const minutesLeft = Math.ceil(timeUntilNext / (1000 * 60));
+                if (minutesLeft < 1) {
+                    document.getElementById('next-scan-time').textContent = 'in < 1m';
+                } else if (minutesLeft <= 60) {
+                    document.getElementById('next-scan-time').textContent = `in ${minutesLeft}m`;
+                } else {
+                    document.getElementById('next-scan-time').textContent = nextScan.toLocaleTimeString();
+                }
+            } else {
+                document.getElementById('next-scan-time').textContent = 'due now';
+            }
+        } else {
+            document.getElementById('next-scan-time').textContent = 'unknown';
+        }
+        
+        // Update system status badge
+        const recentPings = activityData.recent_activity?.ping_count_1h || 0;
+        const statusText = document.getElementById('system-status-text');
+        if (recentPings > 0) {
+            statusText.textContent = `Monitoring Active (${recentPings} pings/hour)`;
+            statusText.className = 'badge bg-success';
+        } else {
+            statusText.textContent = 'Monitoring Standby';
+            statusText.className = 'badge bg-warning';
+        }
+        
+    } catch (error) {
+        console.error('Error updating system status:', error);
+        // Show error status
+        const statusBar = document.getElementById('status-bar');
+        if (statusBar) {
+            const statusText = document.getElementById('system-status-text');
+            if (statusText) {
+                statusText.textContent = 'System Error';
+                statusText.className = 'badge bg-danger';
+            }
+        }
+    }
+}
+
+function formatTimeAgo(date) {
+    const now = new Date();
+    const diff = now - date;
+    const minutes = Math.floor(diff / (1000 * 60));
+    const hours = Math.floor(minutes / 60);
+    
+    if (minutes < 1) {
+        return 'just now';
+    } else if (minutes < 60) {
+        return `${minutes}m ago`;
+    } else if (hours < 24) {
+        return `${hours}h ago`;
+    } else {
+        const days = Math.floor(hours / 24);
+        return `${days}d ago`;
+    }
+}
+
+function formatUptimeDuration(seconds) {
+    const days = Math.floor(seconds / 86400);
+    const hours = Math.floor((seconds % 86400) / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    
+    if (days > 0) {
+        return `${days}d ${hours}h`;
+    } else if (hours > 0) {
+        return `${hours}h ${minutes}m`;
+    } else {
+        return `${minutes}m`;
+    }
+}
+
+function showActivitySpinner() {
+    const spinner = document.getElementById('activity-spinner');
+    if (spinner) {
+        spinner.style.display = 'inline-block';
+    }
+}
+
+function hideActivitySpinner() {
+    const spinner = document.getElementById('activity-spinner');
+    if (spinner) {
+        spinner.style.display = 'none';
+    }
+    updateSystemStatus();
+}
+
+function startSystemStatusUpdates() {
+    console.log('Starting system status updates');
+    
+    // Update system status every 5 seconds
+    systemStatus.intervalIds.push(setInterval(() => {
+        updateSystemStatus();
+        loadCurrentNetworkRange();
+    }, 5000));
+    
+    // Update current date and time every second
+    systemStatus.intervalIds.push(setInterval(updateCurrentDateTime, 1000));
+    
+    // Initial updates
+    updateSystemStatus();
+    updateCurrentDateTime();
+    loadCurrentNetworkRange();
+}
+
+// NetworkGraph class removed - now on dedicated topology page
+
+
+// Network graph initialization removed - now on dedicated topology page
+
+// Update current date and time
+function updateCurrentDateTime() {
+    const now = new Date();
+    
+    // Format date (e.g., "Dec 25, 2024")
+    const dateOptions = {
+        year: 'numeric',
+        month: 'short', 
+        day: 'numeric'
+    };
+    const formattedDate = now.toLocaleDateString('en-US', dateOptions);
+    
+    // Format time (e.g., "14:30:25")
+    const timeOptions = {
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+        hour12: false
+    };
+    const formattedTime = now.toLocaleTimeString('en-US', timeOptions);
+    
+    // Update the new status bar elements
+    const dateElement = document.getElementById('current-date');
+    const timeElement = document.getElementById('current-time');
+    
+    if (dateElement) dateElement.textContent = formattedDate;
+    if (timeElement) timeElement.textContent = formattedTime;
+}
+
+// Update simplified status summary
+function updateQuickStatusSummary(activityData, healthData) {
+    const indicator = document.getElementById('system-status-indicator');
+    const deviceCount = document.getElementById('quick-device-count');
+    const lastUpdate = document.getElementById('last-update-time');
+    
+    if (indicator) {
+        // Update status indicator based on system health
+        indicator.className = 'status-indicator ' + (healthData.status === 'healthy' ? 'up' : 'down');
+        indicator.title = healthData.status === 'healthy' ? 'System operational' : 'System issues detected';
+    }
+    
+    if (deviceCount && devices) {
+        const onlineDevices = devices.filter(d => d.status === 'up').length;
+        deviceCount.textContent = `${onlineDevices}/${devices.length}`;
+    }
+    
+    if (lastUpdate) {
+        const now = new Date();
+        lastUpdate.textContent = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    }
+}
+
+// Progressive disclosure functions
+function showSystemDetails() {
+    document.getElementById('status-summary').style.display = 'none';
+    document.getElementById('detailed-status').style.display = 'block';
+}
+
+function hideSystemDetails() {
+    document.getElementById('status-summary').style.display = 'block';
+    document.getElementById('detailed-status').style.display = 'none';
+}
+
+function showAdvancedFilters() {
+    document.getElementById('advanced-filters').style.display = 'block';
+}
+
+function hideAdvancedFilters() {
+    document.getElementById('advanced-filters').style.display = 'none';
+}
+
+function showSmartSelection() {
+    document.getElementById('advanced-selection-panel').style.display = 'block';
+}
+
+function hideSmartSelection() {
+    document.getElementById('advanced-selection-panel').style.display = 'none';
+}
+
+// Enhanced loading states with better feedback
+function setLoadingState(isLoading, message = 'Loading devices...') {
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const loadingText = document.getElementById('loading-text');
+    const devicesContainer = document.getElementById('devices-container');
+    
+    if (isLoading) {
+        loadingIndicator.style.display = 'block';
+        devicesContainer.style.display = 'none';
+        if (loadingText) loadingText.textContent = message;
+        
+        // Announce to screen readers
+        loadingIndicator.setAttribute('aria-label', message);
+    } else {
+        loadingIndicator.style.display = 'none';
+        devicesContainer.style.display = 'block';
+    }
+}
+
+// Event listeners
+document.addEventListener('DOMContentLoaded', function() {
+    // Load initial data
+    setLoadingState(true, 'Initializing dashboard...');
+    loadDevices();
+    
+    // Start system status updates
+    startSystemStatusUpdates();
+    
+    // Progressive disclosure event listeners
+    document.getElementById('show-system-details')?.addEventListener('click', showSystemDetails);
+    document.getElementById('hide-system-details')?.addEventListener('click', hideSystemDetails);
+    document.getElementById('show-advanced-filters')?.addEventListener('click', showAdvancedFilters);
+    document.getElementById('hide-advanced-filters')?.addEventListener('click', hideAdvancedFilters);
+    document.getElementById('hide-smart-selection')?.addEventListener('click', hideSmartSelection);
+    
+    // Update advanced actions dropdown
+    document.getElementById('bulk-actions-toggle')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!selectionMode) {
+            toggleSelectionMode();
+            showSmartSelection();
+        }
+    });
+    
+    // Network graph moved to dedicated topology page
+    
+    // Removed graph layout functions - now on topology page
+    
+    // Enhanced Search and Filter Functionality
+    initializeEnhancedFilters();
+    
+    // Search and filter event listeners
+    document.getElementById('search-input').addEventListener('input', handleEnhancedSearch);
+    document.getElementById('filter-status').addEventListener('change', filterDevices);
+    document.getElementById('filter-type').addEventListener('change', filterDevices);
+    document.getElementById('filter-group').addEventListener('change', filterDevices);
+    
+    // Sortable header event listeners
+    document.querySelectorAll('.sortable-header').forEach(header => {
+        header.addEventListener('click', (e) => {
+            const field = header.getAttribute('data-sort-field');
+            handleSortClick(field);
+        });
+    });
+    
+    // Button event listeners
+    document.getElementById('clear-filters').addEventListener('click', clearFilters);
+    document.getElementById('refresh-btn').addEventListener('click', loadDevices);
+    // Network scan button with progress tracking
+    document.getElementById('scan-btn').addEventListener('click', async () => {
+        // Quick connectivity test before starting scan
+        console.log('Testing connectivity to scan API...');
+        try {
+            const testResponse = await fetch('/api/monitoring/quick-stats');
+            console.log('Quick stats test response:', testResponse.status, testResponse.ok);
+            if (!testResponse.ok) {
+                showToast(`Connection test failed (${testResponse.status}). Check if you're accessing the correct port.`, 'warning');
+                return;
+            }
+        } catch (testError) {
+            console.error('Connectivity test failed:', testError);
+            showToast('Cannot connect to HomeNetMon API. Are you accessing the correct URL/port?', 'danger');
+            return;
+        }
+        
+        startNetworkScan();
+    });
+    document.getElementById('scan-network-btn').addEventListener('click', async () => {
+        startNetworkScan();
+    });
+    
+    // Network scan function
+    async function startNetworkScan() {
+        const button = document.getElementById('scan-btn');
+        const originalText = button.innerHTML;
+        const progressContainer = document.getElementById('scan-progress-container');
+        const progressBar = document.getElementById('scan-progress-bar');
+        const progressText = document.getElementById('scan-progress-text');
+        const newDevicesCount = document.getElementById('scan-new-devices');
+        const scanNetworkText = document.getElementById('scan-network-text');
+        
+        try {
+            // Get current network range
+            const networkResponse = await fetch('/api/config/network');
+            const networkData = await networkResponse.json();
+            const networkRange = networkData.network_range || 'unknown network';
+            
+            // Update scan text with actual network range
+            scanNetworkText.textContent = `Discovering devices on ${networkRange}`;
+            
+            // Get current device count
+            const beforeResponse = await fetch('/api/devices');
+            const beforeData = await beforeResponse.json();
+            
+            // Check if API returned an error
+            if (beforeData.error) {
+                throw new Error(beforeData.error);
+            }
+            
+            const devicesBefore = beforeData.devices ? beforeData.devices.length : 0;
+            
+            // Show progress bar and disable button
+            button.disabled = true;
+            button.innerHTML = '<i class="bi bi-radar"></i> Scanning...';
+            progressContainer.style.display = 'block';
+            
+            // Initialize progress
+            progressText.textContent = 'Initializing scan...';
+            progressBar.style.width = '0%';
+            progressBar.setAttribute('aria-valuenow', '0');
+            newDevicesCount.textContent = '0';
+            
+            showToast('Network scan initiated - discovering devices...', 'info');
+            
+            // Trigger real network scan
+            progressText.textContent = `Starting scan of ${networkRange}...`;
+            progressBar.style.width = '10%';
+            progressBar.setAttribute('aria-valuenow', '10');
+            
+            // Call the real scan API
+            console.log('Initiating network scan...');
+            const scanResponse = await fetch('/api/monitoring/scan', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            console.log('Scan response status:', scanResponse.status);
+            console.log('Scan response ok:', scanResponse.ok);
+            
+            if (!scanResponse.ok) {
+                throw new Error(`Network scan API returned status ${scanResponse.status}`);
+            }
+            
+            const scanResult = await scanResponse.json();
+            console.log('Scan result:', scanResult);
+            
+            if (!scanResult.success) {
+                throw new Error(scanResult.error || 'Scan request failed');
+            }
+            
+            progressText.textContent = 'Scan in progress...';
+            progressBar.style.width = '50%';
+            progressBar.setAttribute('aria-valuenow', '50');
+            
+            // Wait for scan to complete (polling for completion)
+            let scanComplete = false;
+            let attempts = 0;
+            const maxAttempts = 30; // 30 seconds max wait
+            
+            while (!scanComplete && attempts < maxAttempts) {
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                attempts++;
+                
+                const progress = 50 + (attempts / maxAttempts) * 40; // 50% to 90%
+                progressBar.style.width = `${progress}%`;
+                progressBar.setAttribute('aria-valuenow', progress.toString());
+                progressText.textContent = `Scanning ${networkRange}... (${attempts}s)`;
+                
+                // Check if new devices appeared (simple completion check)
+                if (attempts >= 5) { // Give scan at least 5 seconds
+                    scanComplete = true;
+                }
+            }
+            
+            progressText.textContent = 'Finalizing scan results...';
+            progressBar.style.width = '100%';
+            progressBar.setAttribute('aria-valuenow', '100');
+            
+            // Get updated device count
+            const afterResponse = await fetch('/api/devices');
+            const afterData = await afterResponse.json();
+            
+            // Check if API returned an error
+            if (afterData.error) {
+                throw new Error(afterData.error);
+            }
+            
+            const devicesAfter = afterData.devices ? afterData.devices.length : 0;
+            const newDevices = devicesAfter - devicesBefore;
+            
+            newDevicesCount.textContent = newDevices.toString();
+            progressText.textContent = `Scan complete - ${devicesAfter} total devices`;
+            
+            // Show completion message
+            if (newDevices > 0) {
+                showToast(`Network scan completed! Found ${newDevices} new devices (${devicesAfter} total)`, 'success');
+            } else {
+                showToast(`Network scan completed! ${devicesAfter} devices confirmed`, 'info');
+            }
+            
+            // Hide progress bar after a delay
+            setTimeout(() => {
+                progressContainer.style.display = 'none';
+            }, 4000);
+            
+            // Refresh device list to show any new devices
+            setTimeout(loadDevices, 1000);
+            
+        } catch (error) {
+            console.error('Error during network scan:', error);
+            console.error('Error stack:', error.stack);
+            
+            let errorMessage = 'Network scan failed: ';
+            if (error.message.includes('fetch')) {
+                errorMessage += 'Unable to connect to server. Please check if HomeNetMon is running.';
+            } else if (error.message.includes('status')) {
+                errorMessage += error.message + '. Check server logs for details.';
+            } else {
+                errorMessage += error.message;
+            }
+            
+            showToast(errorMessage, 'danger');
+            progressContainer.style.display = 'none';
+        } finally {
+            // Restore button state
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+    }
+    
+    // Ping All button with progress tracking
+    document.getElementById('ping-all-btn').addEventListener('click', async () => {
+        const button = document.getElementById('ping-all-btn');
+        const originalText = button.innerHTML;
+        const progressContainer = document.getElementById('ping-progress-container');
+        const progressBar = document.getElementById('ping-progress-bar');
+        const progressText = document.getElementById('ping-progress-text');
+        const successCount = document.getElementById('ping-success-count');
+        const failCount = document.getElementById('ping-fail-count');
+        
+        try {
+            // Get all monitored devices first
+            const devicesResponse = await fetch('/api/devices?monitored=true');
+            if (!devicesResponse.ok) {
+                throw new Error('Failed to fetch devices');
+            }
+            const devicesData = await devicesResponse.json();
+            const devices = devicesData.devices;
+            
+            if (devices.length === 0) {
+                showToast('No monitored devices found', 'warning');
+                return;
+            }
+            
+            // Show progress bar and disable button
+            button.disabled = true;
+            button.innerHTML = '<i class="bi bi-hourglass-split"></i> Pinging...';
+            progressContainer.style.display = 'block';
+            
+            // Initialize progress
+            let completed = 0;
+            let successful = 0;
+            let failed = 0;
+            
+            progressText.textContent = `0 / ${devices.length} devices`;
+            progressBar.style.width = '0%';
+            progressBar.setAttribute('aria-valuenow', '0');
+            successCount.textContent = '0';
+            failCount.textContent = '0';
+            
+            showToast(`Pinging ${devices.length} devices...`, 'info');
+            
+            // Ping devices one by one to show progress
+            for (const device of devices) {
+                try {
+                    const response = await fetch(`/api/devices/${device.id}/ping`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
+                    
+                    completed++;
+                    const progress = (completed / devices.length) * 100;
+                    
+                    if (response.ok) {
+                        const result = await response.json();
+                        if (result.success !== false) {
+                            successful++;
+                        } else {
+                            failed++;
+                        }
+                    } else {
+                        failed++;
+                    }
+                    
+                    // Update progress bar
+                    progressBar.style.width = `${progress}%`;
+                    progressBar.setAttribute('aria-valuenow', progress.toString());
+                    progressText.textContent = `${completed} / ${devices.length} devices`;
+                    successCount.textContent = successful.toString();
+                    failCount.textContent = failed.toString();
+                    
+                    // Add small delay to make progress visible
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                    
+                } catch (error) {
+                    console.error(`Error pinging device ${device.id}:`, error);
+                    completed++;
+                    failed++;
+                    
+                    const progress = (completed / devices.length) * 100;
+                    progressBar.style.width = `${progress}%`;
+                    progressBar.setAttribute('aria-valuenow', progress.toString());
+                    progressText.textContent = `${completed} / ${devices.length} devices`;
+                    failCount.textContent = failed.toString();
+                }
+            }
+            
+            // Show final results
+            const successRate = devices.length > 0 ? Math.round((successful / devices.length) * 100) : 0;
+            const message = `Ping completed: ${successful}/${devices.length} devices online (${successRate}%)`;
+            
+            if (successRate >= 80) {
+                showToast(message, 'success');
+            } else if (successRate >= 50) {
+                showToast(message, 'warning');
+            } else {
+                showToast(message, 'danger');
+            }
+            
+            // Hide progress bar after a delay
+            setTimeout(() => {
+                progressContainer.style.display = 'none';
+            }, 3000);
+            
+            // Refresh device list to show updated status
+            setTimeout(loadDevices, 1000);
+            
+        } catch (error) {
+            console.error('Error pinging devices:', error);
+            showToast('Failed to ping devices: ' + error.message, 'danger');
+            progressContainer.style.display = 'none';
+        } finally {
+            // Restore button state
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+    });
+    
+    // View switchers
+    document.getElementById('view-grid').addEventListener('click', (e) => {
+        e.preventDefault();
+        switchView('grid');
+    });
+    document.getElementById('view-list').addEventListener('click', (e) => {
+        e.preventDefault();
+        switchView('list');
+    });
+    document.getElementById('enable-selection-mode').addEventListener('click', (e) => {
+        e.preventDefault();
+        if (!selectionMode) toggleSelectionMode();
+    });
+    
+    // New prominent toggle selection button
+    document.getElementById('toggle-selection-btn').addEventListener('click', toggleSelectionMode);
+    
+    // Add device modal
+    document.getElementById('save-device-btn').addEventListener('click', addDevice);
+    
+    // Bulk operations event listeners
+    document.getElementById('toggle-selection-mode').addEventListener('click', toggleSelectionMode);
+    document.getElementById('select-all-devices').addEventListener('change', selectAllDevices);
+    document.getElementById('select-all-table').addEventListener('change', selectAllDevices);
+    document.getElementById('clear-selection').addEventListener('click', clearSelection);
+    document.getElementById('bulk-wake-on-lan').addEventListener('click', bulkWakeOnLan);
+    document.getElementById('bulk-ping-devices').addEventListener('click', bulkPingDevices);
+    document.getElementById('bulk-enable-monitoring').addEventListener('click', () => bulkUpdateMonitoring(true));
+    document.getElementById('bulk-disable-monitoring').addEventListener('click', () => bulkUpdateMonitoring(false));
+    document.getElementById('bulk-set-group').addEventListener('click', bulkSetGroup);
+    document.getElementById('bulk-delete-devices').addEventListener('click', bulkDeleteDevices);
+    
+    // Advanced selection event listeners
+    document.getElementById('invert-selection').addEventListener('click', invertSelection);
+    document.getElementById('pattern-select-btn').addEventListener('click', () => {
+        const pattern = document.getElementById('pattern-select-input').value.trim();
+        if (pattern) {
+            selectByPattern(pattern);
+        } else {
+            showToast('Please enter a search pattern', 'warning');
+        }
+    });
+    document.getElementById('pattern-select-input').addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
+            const pattern = e.target.value.trim();
+            if (pattern) {
+                selectByPattern(pattern);
+            }
+        }
+    });
+    document.getElementById('bulk-monitor-selected').addEventListener('click', () => bulkUpdateMonitoring(true));
+    document.getElementById('bulk-stop-monitor-selected').addEventListener('click', () => bulkUpdateMonitoring(false));
+    
+    // Event delegation for device checkboxes (since they're dynamically created)
+    document.addEventListener('change', function(event) {
+        if (event.target.classList.contains('device-select')) {
+            const deviceId = parseInt(event.target.value);
+            const isChecked = event.target.checked;
+            
+            if (isChecked) {
+                selectedDevices.add(deviceId);
+                // Add visual feedback for selection
+                const deviceCard = event.target.closest('.device-card');
+                if (deviceCard) {
+                    deviceCard.style.boxShadow = '0 4px 12px rgba(13, 110, 253, 0.3)';
+                    deviceCard.style.borderColor = 'rgba(13, 110, 253, 0.5)';
+                }
+            } else {
+                selectedDevices.delete(deviceId);
+                // Remove visual feedback
+                const deviceCard = event.target.closest('.device-card');
+                if (deviceCard) {
+                    deviceCard.style.boxShadow = '';
+                    deviceCard.style.borderColor = '';
+                }
+            }
+            
+            updateSelectionCount();
+            updateSelectAllCheckbox();
+            
+            // Provide contextual feedback for large selections
+            if (selectedDevices.size > 0 && selectedDevices.size % 5 === 0) {
+                const action = isChecked ? 'selected' : 'deselected';
+                console.log(`${selectedDevices.size} devices currently selected`);
+            }
+        }
+    });
+    
+    // Initialize smart auto-refresh system
+    startAutoRefresh();
+});
+
+// Global variables for bulk operations
+let selectionMode = false;
+let selectedDevices = new Set();
+
+// Auto-refresh control variables
+let autoRefreshInterval = null;
+let autoRefreshPaused = false;
+let lastRefreshTime = null;
+
+// Smart auto-refresh management functions
+function startAutoRefresh() {
+    if (autoRefreshInterval) {
+        clearInterval(autoRefreshInterval);
+    }
+    
+    autoRefreshInterval = setInterval(() => {
+        if (!autoRefreshPaused) {
+            loadDevices();
+            lastRefreshTime = new Date();
+            updateRefreshStatus();
+        }
+    }, 30000);
+    
+    lastRefreshTime = new Date();
+    updateRefreshStatus();
+}
+
+function pauseAutoRefresh() {
+    autoRefreshPaused = true;
+    updateRefreshStatus();
+}
+
+function resumeAutoRefresh() {
+    autoRefreshPaused = false;
+    updateRefreshStatus();
+}
+
+function manualRefresh() {
+    loadDevices();
+    lastRefreshTime = new Date();
+    updateRefreshStatus();
+}
+
+function updateRefreshStatus() {
+    const statusElement = document.getElementById('refresh-status');
+    if (!statusElement) return;
+    
+    if (autoRefreshPaused) {
+        // Safe method to set content and avoid XSS
+        statusElement.className = 'small text-warning';
+        statusElement.innerHTML = '<i class="bi bi-pause-circle text-warning"></i> Auto-refresh paused';
+    } else {
+        const timeStr = lastRefreshTime ? lastRefreshTime.toLocaleTimeString() : 'Never';
+        statusElement.className = 'small text-muted';
+        // Use safe method with sanitizer if available
+        if (window.htmlSanitizer) {
+            statusElement.innerHTML = '';
+            const icon = document.createElement('i');
+            icon.className = 'bi bi-arrow-clockwise text-success';
+            const textNode = document.createTextNode(' Last refresh: ' + timeStr);
+            statusElement.appendChild(icon);
+            statusElement.appendChild(textNode);
+        } else {
+            statusElement.innerHTML = `<i class="bi bi-arrow-clockwise text-success"></i> Last refresh: ${timeStr}`;
+        }
+    }
+}
+
+// Handle device card clicks (navigation or selection)
+function handleDeviceCardClick(event, deviceId) {
+    if (selectionMode) {
+        event.preventDefault();
+        toggleDeviceSelection(deviceId);
+    } else {
+        viewDevice(deviceId);
+    }
+}
+
+// Toggle selection mode with improved state management
+function toggleSelectionMode() {
+    const wasSelectionMode = selectionMode;
+    selectionMode = !selectionMode;
+    
+    const button = document.getElementById('toggle-selection-mode');
+    const newButton = document.getElementById('toggle-selection-btn');
+    const bulkControls = document.getElementById('bulk-selection-controls');
+    const advancedPanel = document.getElementById('advanced-selection-panel');
+    const checkboxes = document.querySelectorAll('.device-checkbox');
+    const tableColumns = document.querySelectorAll('.table-select-column');
+    
+    if (selectionMode) {
+        // Enable selection mode
+        if (button) {
+            button.innerHTML = '<i class="bi bi-x-circle"></i> Exit Selection';
+            button.className = 'btn btn-sm btn-warning';
+            button.title = 'Exit selection mode';
+        }
+        if (newButton) {
+            newButton.innerHTML = '<i class="bi bi-x-circle"></i> Exit Selection';
+            newButton.className = 'btn btn-warning';
+            newButton.title = 'Exit selection mode';
+        }
+        
+        // Show bulk controls and panels
+        if (bulkControls) bulkControls.style.display = 'block';
+        if (advancedPanel) advancedPanel.style.display = 'block';
+        
+        // Make checkboxes visible
+        checkboxes.forEach(cb => {
+            cb.style.display = 'block';
+        });
+        tableColumns.forEach(col => {
+            col.style.display = '';
+        });
+        
+        // Add visual selection cues
+        document.querySelectorAll('.device-card').forEach(card => {
+            card.style.cursor = 'pointer';
+            card.classList.add('selection-mode');
+        });
+        
+        // Generate quick select buttons
+        generateQuickSelectButtons();
+        
+        // Pause auto-refresh to prevent interference
+        pauseAutoRefresh();
+        
+        // Update selection count display (in case devices were pre-selected)
+        updateSelectionCount();
+        updateSelectAllCheckbox();
+        
+        showToast('Selection mode enabled - auto-refresh paused', 'info', 3000);
+        
+        // Add visual feedback for entering selection mode
+        const dashboardContainer = document.querySelector('.main-content');
+        if (dashboardContainer) {
+            dashboardContainer.style.background = 'linear-gradient(135deg, rgba(13, 110, 253, 0.02) 0%, rgba(13, 110, 253, 0.05) 100%)';
+        }
+        
+        // Add selection mode indicator to page title
+        const pageTitle = document.querySelector('h1');
+        if (pageTitle && !pageTitle.querySelector('.selection-mode-badge')) {
+            const badge = document.createElement('span');
+            badge.className = 'badge bg-info ms-2 selection-mode-badge';
+            badge.innerHTML = '<i class="bi bi-check-square"></i> Selection Mode';
+            pageTitle.appendChild(badge);
+        }
+    } else {
+        // Disable selection mode
+        if (button) {
+            button.innerHTML = '<i class="bi bi-check-square"></i> Enable Selection';
+            button.className = 'btn btn-sm btn-outline-primary';
+            button.title = 'Enable selection mode';
+        }
+        if (newButton) {
+            newButton.innerHTML = '<i class="bi bi-check-square"></i> Select Devices';
+            newButton.className = 'btn btn-outline-info';
+            newButton.title = 'Enable device selection mode';
+        }
+        
+        // Hide bulk controls and panels
+        if (bulkControls) bulkControls.style.display = 'none';
+        if (advancedPanel) advancedPanel.style.display = 'none';
+        
+        // Hide checkboxes
+        checkboxes.forEach(cb => {
+            cb.style.display = 'none';
+        });
+        tableColumns.forEach(col => {
+            col.style.display = 'none';
+        });
+        
+        // Clear any existing selections
+        clearSelection();
+        
+        // Remove visual selection cues
+        document.querySelectorAll('.device-card').forEach(card => {
+            card.style.cursor = '';
+            card.classList.remove('selection-mode');
+        });
+        
+        // Resume auto-refresh
+        resumeAutoRefresh();
+        
+        showToast('Selection mode disabled - auto-refresh resumed', 'info', 2000);
+        
+        // Remove visual feedback when exiting selection mode
+        const dashboardContainer = document.querySelector('.main-content');
+        if (dashboardContainer) {
+            dashboardContainer.style.background = '';
+        }
+        
+        // Remove selection mode indicator from page title
+        const selectionBadge = document.querySelector('.selection-mode-badge');
+        if (selectionBadge) {
+            selectionBadge.remove();
+        }
+    }
+    
+    // Defensive check: verify state consistency
+    const visibleCheckboxes = document.querySelectorAll('.device-checkbox:not([style*="display: none"])');
+    console.log(`Selection mode: ${selectionMode}, Visible checkboxes: ${visibleCheckboxes.length}`);
+}
+
+// Toggle device selection
+function toggleDeviceSelection(deviceId) {
+    const id = parseInt(deviceId); // Ensure consistent integer type
+    const checkbox = document.querySelector(`input[value="${id}"]`);
+    if (checkbox) {
+        checkbox.checked = !checkbox.checked;
+        if (checkbox.checked) {
+            selectedDevices.add(id);
+        } else {
+            selectedDevices.delete(id);
+        }
+        updateSelectionCount();
+        updateSelectAllCheckbox();
+    }
+}
+
+// Select all devices
+function selectAllDevices(event) {
+    const isTableCheckbox = event.target.id === 'select-all-table';
+    const isGridCheckbox = event.target.id === 'select-all-devices';
+    const isChecked = event.target.checked;
+    
+    // Ensure selection mode is active first
+    if (!selectionMode && isChecked) {
+        // Enable selection mode automatically
+        toggleSelectionMode();
+        showToast('Selection mode enabled automatically to select devices', 'info', 2000);
+        
+        // Small delay to ensure DOM updates are complete
+        setTimeout(() => {
+            selectAllDevicesInternal(isChecked, isTableCheckbox, isGridCheckbox);
+        }, 100);
+        return;
+    }
+    
+    selectAllDevicesInternal(isChecked, isTableCheckbox, isGridCheckbox);
+}
+
+// Internal function to handle the actual device selection
+function selectAllDevicesInternal(isChecked, isTableCheckbox, isGridCheckbox) {
+    const selectAllGrid = document.getElementById('select-all-devices');
+    const selectAllTable = document.getElementById('select-all-table');
+    
+    // Sync both checkboxes
+    if (isTableCheckbox) {
+        selectAllGrid.checked = isChecked;
+    } else if (isGridCheckbox) {
+        selectAllTable.checked = isChecked;
+    }
+    
+    // Get visible device checkboxes only
+    const deviceCheckboxes = document.querySelectorAll('.device-select:not([style*="display: none"])');
+    
+    // Defensive check: ensure we have checkboxes to work with
+    if (deviceCheckboxes.length === 0) {
+        console.warn('No visible device checkboxes found for selection');
+        updateSelectionCount();
+        return;
+    }
+    
+    if (isChecked) {
+        deviceCheckboxes.forEach(cb => {
+            cb.checked = true;
+            const deviceId = parseInt(cb.value);
+            if (!isNaN(deviceId)) {
+                selectedDevices.add(deviceId);
+            }
+        });
+        showToast(`Selected all ${deviceCheckboxes.length} devices`, 'success', 2000);
+    } else {
+        deviceCheckboxes.forEach(cb => {
+            cb.checked = false;
+            const deviceId = parseInt(cb.value);
+            if (!isNaN(deviceId)) {
+                selectedDevices.delete(deviceId);
+            }
+        });
+        showToast('Cleared device selection', 'info', 2000);
+    }
+    
+    updateSelectionCount();
+}
+
+// Clear selection with defensive checks
+function clearSelection() {
+    // Clear the selected devices set
+    if (selectedDevices) {
+        selectedDevices.clear();
+    }
+    
+    // Uncheck all device checkboxes
+    document.querySelectorAll('.device-select').forEach(cb => {
+        if (cb) cb.checked = false;
+    });
+    
+    // Uncheck select all checkboxes
+    const selectAllGrid = document.getElementById('select-all-devices');
+    const selectAllTable = document.getElementById('select-all-table');
+    
+    if (selectAllGrid) {
+        selectAllGrid.checked = false;
+        selectAllGrid.indeterminate = false;
+    }
+    if (selectAllTable) {
+        selectAllTable.checked = false;
+        selectAllTable.indeterminate = false;
+    }
+    
+    // Update UI elements
+    updateSelectionCount();
+    
+    console.log('Selection cleared');
+}
+
+// Update selection count display with defensive checks
+function updateSelectionCount() {
+    const count = selectedDevices ? selectedDevices.size : 0;
+    const countElement = document.getElementById('selected-count');
+    
+    // Defensive check: ensure element exists
+    if (!countElement) {
+        console.warn('Selection count element not found');
+        return;
+    }
+    
+    // Update text and styling
+    countElement.textContent = `${count} device${count !== 1 ? 's' : ''} selected`;
+    countElement.className = count > 0 ? 'badge bg-primary' : 'badge bg-secondary';
+    
+    // Update selection summary
+    updateSelectionSummary();
+    
+    // Log for debugging
+    console.log(`Selection count updated: ${count} devices selected`);
+}
+
+// Generate quick select buttons based on available device types
+function generateQuickSelectButtons() {
+    const container = document.getElementById('quick-select-buttons');
+    if (!container) return;
+    
+    // Get device type counts
+    const typeCounts = {};
+    filteredDevices.forEach(device => {
+        const type = device.device_type || 'unknown';
+        typeCounts[type] = (typeCounts[type] || 0) + 1;
+    });
+    
+    // Sort by count (most common first)
+    const sortedTypes = Object.entries(typeCounts)
+        .sort(([,a], [,b]) => b - a)
+        .slice(0, 8); // Limit to top 8 types
+    
+    container.innerHTML = '';
+    
+    sortedTypes.forEach(([deviceType, count]) => {
+        const displayName = getDeviceTypeDisplayName(deviceType);
+        const icon = getDeviceIcon(deviceType);
+        
+        const col = document.createElement('div');
+        col.className = 'col-auto';
+        
+        const button = document.createElement('button');
+        button.className = 'btn btn-sm btn-outline-primary quick-select-type';
+        button.setAttribute('data-device-type', deviceType);
+        // Safe method to build button content
+        if (window.htmlSanitizer) {
+            button.innerHTML = '';
+            const iconElement = document.createElement('i');
+            iconElement.className = `bi bi-${icon}`;
+            const textNode = document.createTextNode(` ${displayName} (${count})`);
+            button.appendChild(iconElement);
+            button.appendChild(textNode);
+        } else {
+            button.innerHTML = `<i class="bi bi-${icon}"></i> ${displayName} (${count})`;
+        }
+        button.title = `Select all ${count} ${displayName} devices`;
+        
+        button.addEventListener('click', () => selectByType(deviceType));
+        
+        col.appendChild(button);
+        container.appendChild(col);
+    });
+    
+    // Add special buttons for Ring cameras and other common patterns
+    const ringDevices = filteredDevices.filter(d => 
+        (d.display_name || '').toLowerCase().includes('ring') ||
+        (d.hostname || '').toLowerCase().includes('ring')
+    );
+    
+    if (ringDevices.length > 0) {
+        const col = document.createElement('div');
+        col.className = 'col-auto';
+        
+        const button = document.createElement('button');
+        button.className = 'btn btn-sm btn-outline-success';
+        // Safe method to build Ring camera button content
+        if (window.htmlSanitizer) {
+            button.innerHTML = '';
+            const iconElement = document.createElement('i');
+            iconElement.className = 'bi bi-camera-video';
+            const textNode = document.createTextNode(` Ring Cameras (${ringDevices.length})`);
+            button.appendChild(iconElement);
+            button.appendChild(textNode);
+        } else {
+            button.innerHTML = `<i class="bi bi-camera-video"></i> Ring Cameras (${ringDevices.length})`;
+        }
+        button.title = `Select all ${ringDevices.length} Ring camera devices`;
+        
+        button.addEventListener('click', () => selectByPattern('ring'));
+        
+        col.appendChild(button);
+        container.appendChild(col);
+    }
+}
+
+// Select devices by type
+function selectByType(deviceType) {
+    clearSelection();
+    
+    filteredDevices.forEach(device => {
+        if (device.device_type === deviceType) {
+            selectedDevices.add(device.id);
+        }
+    });
+    
+    updateDeviceCheckboxes();
+    updateSelectionCount();
+    updateSelectAllCheckbox();
+    
+    const displayName = getDeviceTypeDisplayName(deviceType);
+    showToast(`Selected all ${selectedDevices.size} ${displayName} devices`, 'success');
+}
+
+// Select devices by name pattern
+function selectByPattern(pattern) {
+    clearSelection();
+    
+    const regex = createPatternRegex(pattern);
+    let matchCount = 0;
+    const matchedDevices = [];
+    
+    
+    filteredDevices.forEach(device => {
+        const name = (device.display_name || device.hostname || '').toLowerCase();
+        if (regex.test(name)) {
+            selectedDevices.add(device.id);
+            matchedDevices.push({
+                id: device.id,
+                name: device.display_name,
+                hostname: device.hostname
+            });
+            matchCount++;
+        }
+    });
+    
+    
+    updateDeviceCheckboxes();
+    updateSelectionCount();
+    updateSelectAllCheckbox();
+    
+    if (matchCount > 0) {
+        showToast(`Selected ${matchCount} devices matching "${pattern}"`, 'success');
+    } else {
+        showToast(`No devices found matching pattern "${pattern}"`, 'warning');
+    }
+}
+
+// Create regex from simple pattern (supports * wildcards)
+function createPatternRegex(pattern) {
+    // Escape special regex characters except *
+    const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&');
+    // Convert * to .*
+    const regexPattern = escaped.replace(/\*/g, '.*');
+    return new RegExp(regexPattern, 'i'); // Case insensitive
+}
+
+// Invert current selection
+function invertSelection() {
+    const newSelection = new Set();
+    
+    filteredDevices.forEach(device => {
+        if (!selectedDevices.has(device.id)) {
+            newSelection.add(device.id);
+        }
+    });
+    
+    selectedDevices = newSelection;
+    updateDeviceCheckboxes();
+    updateSelectionCount();
+    updateSelectAllCheckbox();
+    
+    showToast(`Selection inverted - now ${selectedDevices.size} devices selected`, 'success');
+}
+
+// Update all device checkboxes to match selectedDevices
+function updateDeviceCheckboxes() {
+    document.querySelectorAll('.device-select').forEach(checkbox => {
+        const deviceId = parseInt(checkbox.value);
+        checkbox.checked = selectedDevices.has(deviceId);
+    });
+}
+
+// Update selection summary with device type breakdown
+function updateSelectionSummary() {
+    const summaryElement = document.getElementById('selection-summary');
+    if (!summaryElement) return;
+    
+    if (selectedDevices.size === 0) {
+        summaryElement.textContent = 'No devices selected';
+        return;
+    }
+    
+    // Get selected devices and group by type
+    const selectedDeviceObjects = filteredDevices.filter(d => selectedDevices.has(d.id));
+    const typeCounts = {};
+    
+    selectedDeviceObjects.forEach(device => {
+        const type = device.device_type || 'unknown';
+        typeCounts[type] = (typeCounts[type] || 0) + 1;
+    });
+    
+    // Create summary text
+    const typeStrings = Object.entries(typeCounts)
+        .map(([type, count]) => `${count} ${getDeviceTypeDisplayName(type)}`)
+        .join(', ');
+    
+    summaryElement.textContent = `${selectedDevices.size} devices: ${typeStrings}`;
+}
+
+// Update select all checkbox state with defensive checks
+function updateSelectAllCheckbox() {
+    const selectAllGrid = document.getElementById('select-all-devices');
+    const selectAllTable = document.getElementById('select-all-table');
+    
+    // Defensive checks: ensure elements exist
+    if (!selectAllGrid || !selectAllTable) {
+        console.warn('Select all checkbox elements not found');
+        return;
+    }
+    
+    // Only consider visible device checkboxes
+    const deviceCheckboxes = document.querySelectorAll('.device-select:not([style*="display: none"])');
+    const checkedBoxes = document.querySelectorAll('.device-select:not([style*="display: none"]):checked');
+    
+    const isIndeterminate = checkedBoxes.length > 0 && checkedBoxes.length < deviceCheckboxes.length;
+    const isAllChecked = checkedBoxes.length === deviceCheckboxes.length && deviceCheckboxes.length > 0;
+    
+    // Update both grid and table checkboxes
+    selectAllGrid.indeterminate = isIndeterminate;
+    selectAllGrid.checked = isAllChecked;
+    selectAllTable.indeterminate = isIndeterminate;
+    selectAllTable.checked = isAllChecked;
+    
+    // Log for debugging
+    console.log(`Select all checkboxes updated: ${checkedBoxes.length}/${deviceCheckboxes.length} selected, indeterminate: ${isIndeterminate}, allChecked: ${isAllChecked}`);
+}
+
+// Bulk Wake-on-LAN
+async function bulkWakeOnLan() {
+    if (selectedDevices.size === 0) {
+        showToast('Please select devices to wake', 'warning');
+        return;
+    }
+    
+    if (!confirm(`Send Wake-on-LAN packets to ${selectedDevices.size} selected device(s)?`)) {
+        return;
+    }
+    
+    try {
+        const deviceIds = Array.from(selectedDevices);
+        showToast(`Sending Wake-on-LAN to ${deviceIds.length} devices...`, 'info');
+        
+        const response = await fetch('/api/device-control/bulk-wake', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ device_ids: deviceIds })
+        });
+        
+        const result = await response.json();
+        if (result.summary) {
+            const { successful, failed, total } = result.summary;
+            const message = `Wake-on-LAN completed: ${successful}/${total} successful`;
+            showToast(message, successful === total ? 'success' : 'warning');
+        }
+        
+        if (result.results?.length > 0) {
+        }
+        
+    } catch (error) {
+        console.error('Bulk Wake-on-LAN error:', error);
+        showToast('Bulk Wake-on-LAN operation failed', 'error');
+    }
+}
+
+// Bulk ping devices
+async function bulkPingDevices() {
+    if (selectedDevices.size === 0) {
+        showToast('Please select devices to ping', 'warning');
+        return;
+    }
+    
+    try {
+        const deviceIds = Array.from(selectedDevices);
+        showToast(`Pinging ${deviceIds.length} selected devices...`, 'info');
+        
+        const response = await fetch('/api/device-control/bulk-ping', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ device_ids: deviceIds, count: 3 })
+        });
+        
+        const result = await response.json();
+        if (result.summary) {
+            const { successful, failed, total } = result.summary;
+            const successRate = Math.round((successful / total) * 100);
+            const message = `Bulk ping completed: ${successful}/${total} devices responded (${successRate}%)`;
+            showToast(message, successful === total ? 'success' : 'warning');
+        }
+        
+    } catch (error) {
+        console.error('Bulk ping error:', error);
+        showToast('Bulk ping operation failed', 'error');
+    }
+}
+
+// Bulk update monitoring status
+async function bulkUpdateMonitoring(enabled) {
+    if (selectedDevices.size === 0) {
+        showToast('Please select devices to update', 'warning');
+        return;
+    }
+    
+    
+    // Get device names for better confirmation dialog
+    const selectedDeviceNames = filteredDevices
+        .filter(device => selectedDevices.has(device.id))
+        .map(device => device.display_name)
+        .slice(0, 5); // Show first 5 names
+    
+    const deviceList = selectedDeviceNames.length > 5 
+        ? selectedDeviceNames.join(', ') + ` and ${selectedDevices.size - 5} others`
+        : selectedDeviceNames.join(', ');
+    
+    const action = enabled ? 'enable' : 'disable';
+    if (!confirm(`${enabled ? 'Enable' : 'Disable'} monitoring for ${selectedDevices.size} selected device(s)?\n\nDevices: ${deviceList}`)) {
+        return;
+    }
+    
+    try {
+        const deviceIds = Array.from(selectedDevices);
+        let successful = 0;
+        let failed = 0;
+        
+        showToast(`${enabled ? 'Enabling' : 'Disabling'} monitoring for ${deviceIds.length} devices...`, 'info');
+        
+        for (const deviceId of deviceIds) {
+            try {
+                
+                const response = await fetch(`/api/devices/${deviceId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ is_monitored: enabled })
+                });
+                
+                const responseData = await response.json();
+                
+                if (response.ok) {
+                    successful++;
+                } else {
+                    failed++;
+                }
+            } catch (error) {
+                failed++;
+                console.error(`❌ Device ${deviceId} update error:`, error);
+            }
+        }
+        
+        const message = `Monitoring ${action} completed: ${successful}/${deviceIds.length} successful`;
+        showToast(message, successful === deviceIds.length ? 'success' : 'warning');
+        
+        // Refresh device list
+        setTimeout(loadDevices, 1000);
+        
+    } catch (error) {
+        console.error('Bulk monitoring update error:', error);
+        showToast(`Bulk monitoring ${action} failed`, 'error');
+    }
+}
+
+// Bulk set group
+async function bulkSetGroup() {
+    if (selectedDevices.size === 0) {
+        showToast('Please select devices to group', 'warning');
+        return;
+    }
+    
+    const groupName = prompt(`Enter group name for ${selectedDevices.size} selected device(s):`);
+    if (groupName === null) return; // User cancelled
+    
+    try {
+        const deviceIds = Array.from(selectedDevices);
+        let successful = 0;
+        let failed = 0;
+        
+        showToast(`Setting group "${groupName}" for ${deviceIds.length} devices...`, 'info');
+        
+        for (const deviceId of deviceIds) {
+            try {
+                const response = await fetch(`/api/devices/${deviceId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ device_group: groupName || null })
+                });
+                
+                if (response.ok) {
+                    successful++;
+                } else {
+                    failed++;
+                }
+            } catch (error) {
+                failed++;
+            }
+        }
+        
+        const message = `Group assignment completed: ${successful}/${deviceIds.length} successful`;
+        showToast(message, successful === deviceIds.length ? 'success' : 'warning');
+        
+        // Refresh device list and filter options
+        setTimeout(() => {
+            loadDevices();
+            loadFilterOptions();
+        }, 1000);
+        
+    } catch (error) {
+        console.error('Bulk group assignment error:', error);
+        showToast('Bulk group assignment failed', 'error');
+    }
+}
+
+// Bulk delete devices
+async function bulkDeleteDevices() {
+    if (selectedDevices.size === 0) {
+        showToast('Please select devices to delete', 'warning');
+        return;
+    }
+    
+    if (!confirm(`DELETE ${selectedDevices.size} selected device(s)? This action cannot be undone!`)) {
+        return;
+    }
+    
+    try {
+        const deviceIds = Array.from(selectedDevices);
+        let successful = 0;
+        let failed = 0;
+        
+        showToast(`Deleting ${deviceIds.length} devices...`, 'info');
+        
+        for (const deviceId of deviceIds) {
+            try {
+                const response = await fetch(`/api/devices/${deviceId}`, {
+                    method: 'DELETE'
+                });
+                
+                if (response.ok) {
+                    successful++;
+                } else {
+                    failed++;
+                }
+            } catch (error) {
+                failed++;
+            }
+        }
+        
+        const message = `Device deletion completed: ${successful}/${deviceIds.length} successful`;
+        showToast(message, successful === deviceIds.length ? 'success' : 'warning');
+        
+        // Clear selection and refresh
+        clearSelection();
+        setTimeout(loadDevices, 1000);
+        
+    } catch (error) {
+        console.error('Bulk delete error:', error);
+        showToast('Bulk delete operation failed', 'error');
+    }
+}
+
+// Enhanced helper functions for device cards
+
+// Get enhanced status information with context
+function getStatusInfo(status, responseTime) {
+    const statusMap = {
+        'up': {
+            text: 'Online',
+            title: 'Device is online and responding',
+            context: responseTime ? `${formatResponseTime(responseTime)}` : null
+        },
+        'down': {
+            text: 'Offline',
+            title: 'Device is not responding',
+            context: null
+        },
+        'warning': {
+            text: 'Warning',
+            title: 'Device has issues',
+            context: 'Needs attention'
+        },
+        'unknown': {
+            text: 'Unknown',
+            title: 'Device status unknown',
+            context: null
+        }
+    };
+    
+    return statusMap[status] || statusMap['unknown'];
+}
+
+// Format response time with context
+function formatResponseTime(responseTime) {
+    if (!responseTime || responseTime === null) {
+        return '--';
+    }
+    
+    const time = parseFloat(responseTime);
+    if (time < 1) {
+        return '<1ms';
+    } else if (time < 10) {
+        return `${time.toFixed(1)}ms`;
+    } else if (time < 100) {
+        return `${Math.round(time)}ms`;
+    } else if (time < 1000) {
+        return `${Math.round(time)}ms`;
+    } else {
+        return `${(time / 1000).toFixed(1)}s`;
+    }
+}
+
+// Format uptime percentage with context
+function formatUptime(uptime) {
+    if (uptime === null || uptime === undefined) {
+        return '--';
+    }
+    
+    const percentage = parseFloat(uptime);
+    if (percentage >= 99.9) {
+        return '99.9%+';
+    } else if (percentage >= 95) {
+        return `${percentage.toFixed(1)}%`;
+    } else {
+        return `${Math.round(percentage)}%`;
+    }
+}
+
+// Format bandwidth with appropriate units
+function formatBandwidth(bandwidth) {
+    if (!bandwidth || bandwidth === null) {
+        return '--';
+    }
+    
+    const bw = parseFloat(bandwidth);
+    if (bw < 1024) {
+        return `${Math.round(bw)}B/s`;
+    } else if (bw < 1024 * 1024) {
+        return `${(bw / 1024).toFixed(1)}KB/s`;
+    } else if (bw < 1024 * 1024 * 1024) {
+        return `${(bw / (1024 * 1024)).toFixed(1)}MB/s`;
+    } else {
+        return `${(bw / (1024 * 1024 * 1024)).toFixed(1)}GB/s`;
+    }
+}
+
+// Get relative time string (e.g., "2 minutes ago")
+function getRelativeTime(dateString) {
+    const now = new Date();
+    const date = new Date(dateString);
+    const diffMs = now - date;
+    const diffMinutes = Math.floor(diffMs / 60000);
+    
+    if (diffMinutes < 1) {
+        return 'Just now';
+    } else if (diffMinutes < 60) {
+        return `${diffMinutes}m ago`;
+    } else if (diffMinutes < 1440) { // 24 hours
+        const hours = Math.floor(diffMinutes / 60);
+        return `${hours}h ago`;
+    } else {
+        const days = Math.floor(diffMinutes / 1440);
+        return `${days}d ago`;
+    }
+}
+
+// Enhanced filter functionality
+
+// Initialize enhanced filter system
+function initializeEnhancedFilters() {
+    // Add event listeners to filter chips
+    document.querySelectorAll('.filter-chip[data-filter]').forEach(chip => {
+        chip.addEventListener('click', handleFilterChipClick);
+    });
+    
+    // Add clear button functionality
+    document.getElementById('clear-all-filters')?.addEventListener('click', clearAllFilters);
+    
+    // Add search clear functionality
+    document.getElementById('search-clear')?.addEventListener('click', clearSearch);
+    
+    // Initialize search suggestions
+    initializeSearchSuggestions();
+    
+    // Update device counts initially
+    updateFilterCounts();
+}
+
+// Handle filter chip clicks
+function handleFilterChipClick(event) {
+    const chip = event.currentTarget;
+    const filterType = chip.dataset.filter;
+    const filterValue = chip.dataset.value;
+    
+    // Remove active from other chips of same type
+    document.querySelectorAll(`[data-filter="${filterType}"]`).forEach(c => {
+        c.classList.remove('active');
+    });
+    
+    // Activate clicked chip
+    chip.classList.add('active');
+    
+    // Update the hidden select element for compatibility
+    const selectElement = document.getElementById(`filter-${filterType}`);
+    if (selectElement) {
+        selectElement.value = filterValue;
+    }
+    
+    // Apply filters
+    filterDevices();
+    updateActiveFiltersDisplay();
+}
+
+// Enhanced search with suggestions and smart clear
+function handleEnhancedSearch(event) {
+    const searchTerm = event.target.value;
+    const clearBtn = document.getElementById('search-clear');
+    
+    // Show/hide clear button
+    if (searchTerm.length > 0) {
+        clearBtn.classList.remove('d-none');
+        showSearchSuggestions(searchTerm);
+    } else {
+        clearBtn.classList.add('d-none');
+        hideSearchSuggestions();
+    }
+    
+    // Apply filters
+    filterDevices();
+    updateActiveFiltersDisplay();
+}
+
+// Clear search input
+function clearSearch() {
+    const searchInput = document.getElementById('search-input');
+    searchInput.value = '';
+    document.getElementById('search-clear').classList.add('d-none');
+    hideSearchSuggestions();
+    filterDevices();
+    updateActiveFiltersDisplay();
+}
+
+// Clear all active filters
+function clearAllFilters() {
+    // Clear search
+    clearSearch();
+    
+    // Reset all filter chips to default (All Devices)
+    document.querySelectorAll('.filter-chip').forEach(chip => {
+        chip.classList.remove('active');
+    });
+    document.getElementById('filter-all').classList.add('active');
+    
+    // Clear hidden selects
+    document.getElementById('filter-status').value = '';
+    document.getElementById('filter-type').value = '';
+    document.getElementById('filter-group').value = '';
+    
+    // Apply filters
+    filterDevices();
+    updateActiveFiltersDisplay();
+}
+
+// Update filter counts on chips
+function updateFilterCounts() {
+    if (!devices || devices.length === 0) return;
+    
+    // Count devices by status
+    const statusCounts = {
+        '': devices.length,
+        'up': devices.filter(d => d.status === 'up').length,
+        'down': devices.filter(d => d.status === 'down').length,
+        'warning': devices.filter(d => d.status === 'warning').length
+    };
+    
+    // Update chip counts
+    Object.entries(statusCounts).forEach(([status, count]) => {
+        const chipId = status === '' ? 'filter-all' : `filter-${status === 'up' ? 'online' : status === 'down' ? 'offline' : status}`;
+        const chip = document.getElementById(chipId);
+        if (chip) {
+            const countSpan = chip.querySelector('.chip-count');
+            if (countSpan) {
+                countSpan.textContent = count;
+            }
+        }
+    });
+}
+
+// Update active filters display
+function updateActiveFiltersDisplay() {
+    const activeFiltersContainer = document.getElementById('active-filters');
+    const activeFilterTags = document.getElementById('active-filter-tags');
+    const clearAllBtn = document.getElementById('clear-all-filters');
+    
+    const activeFilters = [];
+    
+    // Check for search term
+    const searchTerm = document.getElementById('search-input').value;
+    if (searchTerm) {
+        activeFilters.push({
+            type: 'search',
+            label: `Search: "${searchTerm}"`,
+            value: searchTerm
+        });
+    }
+    
+    // Check for active status filter
+    const activeStatusChip = document.querySelector('.filter-chip[data-filter="status"].active:not([data-value=""])');
+    if (activeStatusChip) {
+        activeFilters.push({
+            type: 'status',
+            label: activeStatusChip.textContent.replace(/\d+/g, '').trim(),
+            value: activeStatusChip.dataset.value
+        });
+    }
+    
+    if (activeFilters.length > 0) {
+        activeFiltersContainer.classList.remove('d-none');
+        clearAllBtn.classList.remove('d-none');
+        
+        activeFilterTags.innerHTML = activeFilters.map(filter => 
+            `<span class="badge bg-primary me-1">${filter.label}</span>`
+        ).join('');
+    } else {
+        activeFiltersContainer.classList.add('d-none');
+        clearAllBtn.classList.add('d-none');
+    }
+}
+
+// Initialize search suggestions system
+function initializeSearchSuggestions() {
+    // Create suggestions based on device data when available
+    // This will be populated when devices are loaded
+}
+
+// Show search suggestions
+function showSearchSuggestions(searchTerm) {
+    if (!devices || searchTerm.length < 2) {
+        hideSearchSuggestions();
+        return;
+    }
+    
+    const suggestionsContainer = document.getElementById('search-suggestions');
+    const suggestionsList = document.getElementById('suggestions-list');
+    
+    // Generate suggestions based on device names, IPs, and types
+    const suggestions = new Set();
+    
+    devices.forEach(device => {
+        // Add device names that match
+        if (device.display_name.toLowerCase().includes(searchTerm.toLowerCase())) {
+            suggestions.add(device.display_name);
+        }
+        
+        // Add device types that match
+        if (device.device_type && device.device_type.toLowerCase().includes(searchTerm.toLowerCase())) {
+            suggestions.add(device.device_type);
+        }
+        
+        // Add IP addresses that match
+        if (device.ip_address.includes(searchTerm)) {
+            suggestions.add(device.ip_address);
+        }
+    });
+    
+    if (suggestions.size > 0) {
+        const suggestionItems = Array.from(suggestions).slice(0, 5).map(suggestion => 
+            `<button class="list-group-item list-group-item-action py-2" onclick="applySuggestion('${suggestion}')">${suggestion}</button>`
+        ).join('');
+        
+        suggestionsList.innerHTML = suggestionItems;
+        suggestionsContainer.classList.remove('d-none');
+    } else {
+        hideSearchSuggestions();
+    }
+}
+
+// Hide search suggestions
+function hideSearchSuggestions() {
+    document.getElementById('search-suggestions').classList.add('d-none');
+}
+
+// Apply a search suggestion
+function applySuggestion(suggestion) {
+    document.getElementById('search-input').value = suggestion;
+    hideSearchSuggestions();
+    document.getElementById('search-clear').classList.remove('d-none');
+    filterDevices();
+    updateActiveFiltersDisplay();
+}
+
+// Enhanced device count update in header
+function updateQuickDeviceSummary() {
+    const deviceCountElement = document.querySelector('#quick-device-summary .device-count');
+    if (deviceCountElement && devices) {
+        const onlineDevices = devices.filter(d => d.status === 'up').length;
+        deviceCountElement.textContent = `${onlineDevices}/${devices.length}`;
+    }
+}
+</script>
+{% endblock %}

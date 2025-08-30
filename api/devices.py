@@ -470,7 +470,7 @@ def ping_all_devices():
         
         cmd = ['ping', '-c', '1', '-W', '3', device.ip_address]
         try:
-            result = subprocess.run(cmd, capture_output=True, text=True, timeout=5)
+            result = subprocess.run(cmd, capture_output=True, text=True, timeout=5, shell=False)
             success = result.returncode == 0
             response_time = None
             
@@ -624,7 +624,8 @@ def ping_device_test(device_id):
             ['ping', '-c', '1', '-W', '3', ip], 
             capture_output=True, 
             text=True, 
-            timeout=5
+            timeout=5,
+            shell=False
         )
         
         if result.returncode == 0:

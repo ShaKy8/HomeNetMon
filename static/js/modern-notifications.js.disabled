@@ -1,0 +1,623 @@
+/**
+ * Modern Notification System for HomeNetMon
+ * Beautiful, accessible toast notifications with advanced features
+ */
+
+class ModernNotifications {
+    constructor() {
+        this.container = null;
+        this.notifications = new Map();
+        this.queue = [];
+        this.maxNotifications = 5;
+        this.init();
+    }
+
+    init() {
+        this.createContainer();
+        this.setupStyles();
+        this.registerServiceWorkerNotifications();
+    }
+
+    createContainer() {
+        // Remove old container if exists
+        const existing = document.getElementById('modern-notifications');
+        if (existing) existing.remove();
+
+        // Create new container
+        this.container = document.createElement('div');
+        this.container.id = 'modern-notifications';
+        this.container.className = 'modern-notifications-container';
+        this.container.setAttribute('role', 'region');
+        this.container.setAttribute('aria-label', 'Notifications');
+        this.container.setAttribute('aria-live', 'polite');
+        
+        document.body.appendChild(this.container);
+    }
+
+    setupStyles() {
+        if (document.getElementById('modern-notifications-styles')) return;
+
+        const style = document.createElement('style');
+        style.id = 'modern-notifications-styles';
+        style.textContent = `
+            .modern-notifications-container {
+                position: fixed;
+                top: 80px;
+                right: 20px;
+                z-index: 1060;
+                max-width: 400px;
+                width: 100%;
+                pointer-events: none;
+            }
+
+            .modern-notification {
+                background: linear-gradient(145deg, rgba(255, 255, 255, 0.95), rgba(255, 255, 255, 0.9));
+                backdrop-filter: blur(20px);
+                -webkit-backdrop-filter: blur(20px);
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                border-radius: 16px;
+                box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15), 0 8px 16px rgba(0, 0, 0, 0.1);
+                margin-bottom: 12px;
+                padding: 16px 20px;
+                position: relative;
+                overflow: hidden;
+                pointer-events: all;
+                transform: translateX(100%) scale(0.8);
+                opacity: 0;
+                transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+                max-width: 400px;
+            }
+
+            .modern-notification.show {
+                transform: translateX(0) scale(1);
+                opacity: 1;
+            }
+
+            .modern-notification.hide {
+                transform: translateX(100%) scale(0.8);
+                opacity: 0;
+            }
+
+            .modern-notification::before {
+                content: '';
+                position: absolute;
+                top: 0;
+                left: 0;
+                right: 0;
+                height: 3px;
+                background: var(--notification-color, #6366f1);
+                border-top-left-radius: 16px;
+                border-top-right-radius: 16px;
+            }
+
+            .modern-notification.success {
+                --notification-color: #10b981;
+            }
+
+            .modern-notification.error {
+                --notification-color: #ef4444;
+            }
+
+            .modern-notification.warning {
+                --notification-color: #f59e0b;
+            }
+
+            .modern-notification.info {
+                --notification-color: #3b82f6;
+            }
+
+            [data-bs-theme="dark"] .modern-notification {
+                background: linear-gradient(145deg, rgba(31, 41, 55, 0.95), rgba(17, 24, 39, 0.9));
+                border-color: rgba(255, 255, 255, 0.1);
+                color: #f9fafb;
+            }
+
+            .notification-header {
+                display: flex;
+                align-items: flex-start;
+                justify-content: space-between;
+                margin-bottom: 8px;
+            }
+
+            .notification-title {
+                font-weight: 600;
+                font-size: 14px;
+                color: var(--notification-color, #374151);
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                line-height: 1.2;
+            }
+
+            .notification-icon {
+                width: 18px;
+                height: 18px;
+                flex-shrink: 0;
+            }
+
+            .notification-close {
+                background: none;
+                border: none;
+                color: #9ca3af;
+                cursor: pointer;
+                font-size: 16px;
+                padding: 0;
+                width: 20px;
+                height: 20px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                border-radius: 50%;
+                transition: all 0.2s ease;
+            }
+
+            .notification-close:hover {
+                background: rgba(0, 0, 0, 0.1);
+                color: #374151;
+            }
+
+            [data-bs-theme="dark"] .notification-close:hover {
+                background: rgba(255, 255, 255, 0.1);
+                color: #f9fafb;
+            }
+
+            .notification-content {
+                font-size: 13px;
+                line-height: 1.4;
+                color: #4b5563;
+                margin-bottom: 12px;
+            }
+
+            [data-bs-theme="dark"] .notification-content {
+                color: #d1d5db;
+            }
+
+            .notification-actions {
+                display: flex;
+                gap: 8px;
+                justify-content: flex-end;
+            }
+
+            .notification-action {
+                background: none;
+                border: 1px solid rgba(99, 102, 241, 0.3);
+                color: #6366f1;
+                border-radius: 8px;
+                padding: 4px 12px;
+                font-size: 12px;
+                font-weight: 500;
+                cursor: pointer;
+                transition: all 0.2s ease;
+            }
+
+            .notification-action:hover {
+                background: rgba(99, 102, 241, 0.1);
+                border-color: #6366f1;
+            }
+
+            .notification-action.primary {
+                background: #6366f1;
+                color: white;
+                border-color: #6366f1;
+            }
+
+            .notification-action.primary:hover {
+                background: #4f46e5;
+            }
+
+            .notification-progress {
+                position: absolute;
+                bottom: 0;
+                left: 0;
+                height: 3px;
+                background: var(--notification-color, #6366f1);
+                opacity: 0.6;
+                transition: width linear;
+                border-bottom-left-radius: 16px;
+            }
+
+            /* Mobile responsive */
+            @media (max-width: 768px) {
+                .modern-notifications-container {
+                    right: 12px;
+                    left: 12px;
+                    top: 70px;
+                    max-width: none;
+                }
+
+                .modern-notification {
+                    margin-bottom: 8px;
+                }
+            }
+
+            /* Animations */
+            @keyframes notification-shake {
+                0%, 100% { transform: translateX(0); }
+                25% { transform: translateX(-5px); }
+                75% { transform: translateX(5px); }
+            }
+
+            .modern-notification.shake {
+                animation: notification-shake 0.5s ease-in-out;
+            }
+        `;
+        
+        document.head.appendChild(style);
+    }
+
+    /**
+     * Show a notification
+     * @param {Object} options - Notification options
+     */
+    show(options = {}) {
+        const config = {
+            type: 'info',
+            title: '',
+            message: '',
+            duration: 5000,
+            actions: [],
+            persistent: false,
+            id: this.generateId(),
+            showProgress: true,
+            ...options
+        };
+
+        // If max notifications reached, queue this one
+        if (this.notifications.size >= this.maxNotifications) {
+            this.queue.push(config);
+            return config.id;
+        }
+
+        return this.createNotification(config);
+    }
+
+    createNotification(config) {
+        const notification = document.createElement('div');
+        notification.className = `modern-notification ${config.type}`;
+        notification.id = `notification-${config.id}`;
+        notification.setAttribute('role', 'alert');
+        notification.setAttribute('aria-live', 'assertive');
+
+        // Build notification HTML safely to prevent XSS
+        this.buildNotificationContent(notification, config);
+
+        // Add to container
+        this.container.appendChild(notification);
+
+        // Setup event listeners
+        this.setupNotificationEvents(notification, config);
+
+        // Show notification
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 50);
+
+        // Store notification
+        this.notifications.set(config.id, {
+            element: notification,
+            config: config,
+            startTime: Date.now()
+        });
+
+        // Auto-hide if not persistent
+        if (!config.persistent && config.duration > 0) {
+            this.scheduleHide(config.id, config.duration);
+        }
+
+        // Start progress bar
+        if (config.showProgress && !config.persistent) {
+            this.startProgressBar(config.id, config.duration);
+        }
+
+        return config.id;
+    }
+
+    setupNotificationEvents(notification, config) {
+        // Close button
+        const closeBtn = notification.querySelector('.notification-close');
+        closeBtn.addEventListener('click', () => {
+            this.hide(config.id);
+        });
+
+        // Action buttons
+        const actionBtns = notification.querySelectorAll('.notification-action');
+        actionBtns.forEach((btn, index) => {
+            btn.addEventListener('click', (e) => {
+                const action = config.actions[index];
+                if (action.callback) {
+                    action.callback(e, config.id);
+                }
+                if (action.closeOnClick !== false) {
+                    this.hide(config.id);
+                }
+            });
+        });
+
+        // Hover to pause auto-hide
+        notification.addEventListener('mouseenter', () => {
+            this.pauseAutoHide(config.id);
+        });
+
+        notification.addEventListener('mouseleave', () => {
+            this.resumeAutoHide(config.id);
+        });
+
+        // Click to dismiss (if no actions)
+        if (!config.actions || config.actions.length === 0) {
+            notification.addEventListener('click', () => {
+                this.hide(config.id);
+            });
+        }
+    }
+
+    buildNotificationContent(notification, config) {
+        // Create header
+        const header = document.createElement('div');
+        header.className = 'notification-header';
+        
+        const title = document.createElement('div');
+        title.className = 'notification-title';
+        
+        // Add icon
+        const iconContainer = document.createElement('span');
+        iconContainer.innerHTML = this.getIcon(config.type);
+        title.appendChild(iconContainer);
+        
+        // Add title text safely
+        const titleText = document.createElement('span');
+        if (window.htmlSanitizer) {
+            window.htmlSanitizer.setText(titleText, config.title || this.getDefaultTitle(config.type));
+        } else {
+            titleText.textContent = config.title || this.getDefaultTitle(config.type);
+        }
+        title.appendChild(titleText);
+        
+        const closeBtn = document.createElement('button');
+        closeBtn.className = 'notification-close';
+        closeBtn.setAttribute('aria-label', 'Close notification');
+        closeBtn.innerHTML = '<i class="bi bi-x"></i>';
+        
+        header.appendChild(title);
+        header.appendChild(closeBtn);
+        notification.appendChild(header);
+        
+        // Add message content if provided
+        if (config.message) {
+            const content = document.createElement('div');
+            content.className = 'notification-content';
+            if (window.htmlSanitizer) {
+                window.htmlSanitizer.setText(content, config.message);
+            } else {
+                content.textContent = config.message;
+            }
+            notification.appendChild(content);
+        }
+        
+        // Add actions if provided
+        if (config.actions && config.actions.length > 0) {
+            const actionsContainer = this.buildActions(config.actions);
+            notification.appendChild(actionsContainer);
+        }
+        
+        // Add progress bar if needed
+        if (config.showProgress && !config.persistent) {
+            const progressBar = document.createElement('div');
+            progressBar.className = 'notification-progress';
+            notification.appendChild(progressBar);
+        }
+    }
+
+    buildActions(actions) {
+        const actionsContainer = document.createElement('div');
+        actionsContainer.className = 'notification-actions';
+        
+        actions.forEach(action => {
+            const btn = document.createElement('button');
+            btn.className = `notification-action ${action.primary ? 'primary' : ''}`;
+            btn.type = 'button';
+            
+            // Safely set button label
+            if (window.htmlSanitizer) {
+                window.htmlSanitizer.setText(btn, action.label);
+            } else {
+                btn.textContent = action.label;
+            }
+            
+            actionsContainer.appendChild(btn);
+        });
+        
+        return actionsContainer;
+    }
+
+    startProgressBar(id, duration) {
+        const notificationData = this.notifications.get(id);
+        if (!notificationData) return;
+
+        const progressBar = notificationData.element.querySelector('.notification-progress');
+        if (!progressBar) return;
+
+        progressBar.style.width = '100%';
+        progressBar.style.transitionDuration = `${duration}ms`;
+        
+        // Start the animation
+        setTimeout(() => {
+            progressBar.style.width = '0%';
+        }, 50);
+    }
+
+    scheduleHide(id, duration) {
+        setTimeout(() => {
+            this.hide(id);
+        }, duration);
+    }
+
+    pauseAutoHide(id) {
+        // Implementation for pausing auto-hide
+        // This would involve stopping the timeout and progress bar
+    }
+
+    resumeAutoHide(id) {
+        // Implementation for resuming auto-hide
+        // This would restart the timeout and progress bar
+    }
+
+    hide(id) {
+        const notificationData = this.notifications.get(id);
+        if (!notificationData) return;
+
+        const notification = notificationData.element;
+        notification.classList.remove('show');
+        notification.classList.add('hide');
+
+        setTimeout(() => {
+            if (notification.parentNode) {
+                notification.parentNode.removeChild(notification);
+            }
+            this.notifications.delete(id);
+            this.processQueue();
+        }, 400);
+    }
+
+    processQueue() {
+        if (this.queue.length > 0 && this.notifications.size < this.maxNotifications) {
+            const config = this.queue.shift();
+            this.createNotification(config);
+        }
+    }
+
+    getIcon(type) {
+        // Safe icon creation - these are trusted static icons
+        const icons = {
+            success: '<i class="bi bi-check-circle-fill notification-icon"></i>',
+            error: '<i class="bi bi-exclamation-triangle-fill notification-icon"></i>',
+            warning: '<i class="bi bi-exclamation-circle-fill notification-icon"></i>',
+            info: '<i class="bi bi-info-circle-fill notification-icon"></i>'
+        };
+        return icons[type] || icons.info;
+    }
+
+    getDefaultTitle(type) {
+        const titles = {
+            success: 'Success',
+            error: 'Error',
+            warning: 'Warning',
+            info: 'Information'
+        };
+        return titles[type] || 'Notification';
+    }
+
+    generateId() {
+        return Math.random().toString(36).substr(2, 9);
+    }
+
+    // Convenience methods
+    success(message, options = {}) {
+        return this.show({ ...options, type: 'success', message });
+    }
+
+    error(message, options = {}) {
+        return this.show({ ...options, type: 'error', message });
+    }
+
+    warning(message, options = {}) {
+        return this.show({ ...options, type: 'warning', message });
+    }
+
+    info(message, options = {}) {
+        return this.show({ ...options, type: 'info', message });
+    }
+
+    // Clear all notifications
+    clear() {
+        this.notifications.forEach((_, id) => {
+            this.hide(id);
+        });
+        this.queue = [];
+    }
+
+    // Service Worker Integration
+    registerServiceWorkerNotifications() {
+        if ('serviceWorker' in navigator && 'Notification' in window) {
+            // Listen for messages from service worker
+            navigator.serviceWorker.addEventListener('message', (event) => {
+                if (event.data && event.data.type === 'notification') {
+                    this.show({
+                        title: event.data.title,
+                        message: event.data.body,
+                        type: event.data.notificationType || 'info'
+                    });
+                }
+            });
+        }
+    }
+
+    // Request notification permission
+    async requestPermission() {
+        if ('Notification' in window) {
+            const permission = await Notification.requestPermission();
+            return permission === 'granted';
+        }
+        return false;
+    }
+
+    // Show system notification (when tab is not focused)
+    showSystemNotification(title, options = {}) {
+        if ('Notification' in window && Notification.permission === 'granted') {
+            const notification = new Notification(title, {
+                ...options,
+                icon: '/static/icons/icon-192x192.png',
+                badge: '/static/icons/icon-96x96.png'
+            });
+
+            // Also show in-app notification if tab is focused
+            if (document.hasFocus()) {
+                this.show({
+                    title: title,
+                    message: options.body,
+                    type: 'info'
+                });
+            }
+
+            return notification;
+        }
+        return null;
+    }
+}
+
+// Create global instance
+window.modernNotifications = new ModernNotifications();
+
+// Override the global showToast function to use our modern notifications
+window.showToast = function(message, type = 'info', duration = 5000) {
+    return window.modernNotifications.show({
+        message: message,
+        type: type,
+        duration: duration
+    });
+};
+
+// Initialize when DOM is ready
+document.addEventListener('DOMContentLoaded', () => {
+    console.log('🔔 Modern Notifications initialized!');
+    
+    // Example usage (remove in production)
+    if (window.location.hash === '#demo-notifications') {
+        setTimeout(() => {
+            window.modernNotifications.success('HomeNetMon dashboard loaded successfully!');
+        }, 1000);
+        
+        setTimeout(() => {
+            window.modernNotifications.info('Network scan completed. Found 3 new devices.', {
+                actions: [
+                    { label: 'View', primary: true, callback: () => console.log('View clicked') },
+                    { label: 'Dismiss', callback: () => console.log('Dismiss clicked') }
+                ]
+            });
+        }, 3000);
+    }
+});
+
+// Export for external use
+if (typeof module !== 'undefined' && module.exports) {
+    module.exports = ModernNotifications;
+}

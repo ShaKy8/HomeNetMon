@@ -402,6 +402,71 @@
                                 </div>
                             </div>
                             
+                            <!-- Alert Sensitivity -->
+                            <div class="mb-4">
+                                <h6>Alert Sensitivity & Control</h6>
+                                <div class="alert alert-info">
+                                    <i class="bi bi-info-circle"></i>
+                                    Configure how sensitive the alert system is to various events. Lower sensitivity = fewer alerts.
+                                </div>
+                                
+                                <div class="row">
+                                    <div class="col-md-4">
+                                        <label for="alert-sensitivity" class="form-label">Overall Alert Sensitivity</label>
+                                        <select class="form-select" id="alert-sensitivity">
+                                            <option value="low" selected>Low (Fewer alerts)</option>
+                                            <option value="medium">Medium (Balanced)</option>
+                                            <option value="high">High (More alerts)</option>
+                                        </select>
+                                        <div class="form-text">Overall sensitivity level for all alert types</div>
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <label for="performance-alert-enabled" class="form-label">Performance Alerts</label>
+                                        <select class="form-select" id="performance-alert-enabled">
+                                            <option value="disabled">Disabled</option>
+                                            <option value="critical-only" selected>Critical Only</option>
+                                            <option value="enabled">Enabled</option>
+                                        </select>
+                                        <div class="form-text">Enable or disable performance monitoring alerts</div>
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <label for="security-alert-enabled" class="form-label">Security Alerts</label>
+                                        <select class="form-select" id="security-alert-enabled">
+                                            <option value="disabled">Disabled</option>
+                                            <option value="critical-only" selected>Critical Only</option>
+                                            <option value="enabled">Enabled</option>
+                                        </select>
+                                        <div class="form-text">Enable or disable security scanning alerts</div>
+                                    </div>
+                                </div>
+                                
+                                <div class="row mt-3">
+                                    <div class="col-md-4">
+                                        <label for="anomaly-alert-enabled" class="form-label">Anomaly Detection Alerts</label>
+                                        <select class="form-select" id="anomaly-alert-enabled">
+                                            <option value="disabled" selected>Disabled (Recommended)</option>
+                                            <option value="critical-only">Critical Only</option>
+                                            <option value="enabled">Enabled</option>
+                                        </select>
+                                        <div class="form-text">Anomaly alerts can be noisy - consider disabling</div>
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <label for="consecutive-failures" class="form-label">Consecutive Failures Required</label>
+                                        <input type="number" class="form-control" id="consecutive-failures" min="1" max="10" value="5">
+                                        <div class="form-text">Number of consecutive failures before alerting</div>
+                                    </div>
+                                    
+                                    <div class="col-md-4">
+                                        <label for="alert-frequency" class="form-label">Alert Check Frequency (minutes)</label>
+                                        <input type="number" class="form-control" id="alert-frequency" min="1" max="60" value="10">
+                                        <div class="form-text">How often to check for new alerts</div>
+                                    </div>
+                                </div>
+                            </div>
+                            
                             <div class="mt-4">
                                 <button type="submit" class="btn btn-primary">Save Alert Settings</button>
                             </div>

@@ -264,11 +264,17 @@ class AnomalyDetectionEngine:
     
     def run_detection_cycle(self):
         """Run a complete anomaly detection cycle"""
-        logger.info("Running anomaly detection cycle")
-        
+        # CHECK IF ANOMALY DETECTION IS GLOBALLY DISABLED
         if not self.app:
             logger.error("No Flask app context available")
             return
+            
+        with self.app.app_context():
+            if not Configuration.get_value('anomaly_detection_enabled', 'false').lower() == 'true':
+                logger.info("Anomaly detection is disabled - skipping cycle")
+                return
+        
+        logger.info("Running anomaly detection cycle")
             
         with self.app.app_context():
             devices = Device.query.filter_by(is_monitored=True).all()

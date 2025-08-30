@@ -924,7 +924,7 @@ class IntelligentWorkflowEngine:
             import subprocess
             
             script = self._resolve_template(action.config.get("script", ""), execution.context)
-            shell = action.config.get("shell", True)
+            shell = action.config.get("shell", False)
             
             # Execute script in thread pool to avoid blocking
             result = await asyncio.get_event_loop().run_in_executor(

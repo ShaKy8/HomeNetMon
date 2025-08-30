@@ -93,7 +93,7 @@
 <nav aria-label="breadcrumb" class="mb-3">
     <ol class="breadcrumb">
         <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="bi bi-house"></i> Dashboard</a></li>
-        <li class="breadcrumb-item"><a href="{{ url_for('alerts') }}"><i class="bi bi-exclamation-triangle"></i> Alerts & Issues</a></li>
+        <li class="breadcrumb-item"><a href="{{ url_for('alerts') }}"><i class="bi bi-exclamation-triangle"></i> Issues & Alerts</a></li>
         <li class="breadcrumb-item active" aria-current="page"><i class="bi bi-bell"></i> Notification History</li>
     </ol>
 </nav>
@@ -102,7 +102,7 @@
     <h1><i class="bi bi-bell"></i> Notification History</h1>
     <div class="btn-group" role="group">
         <a href="{{ url_for('alerts') }}" class="btn btn-outline-primary">
-            <i class="bi bi-exclamation-triangle"></i> View Alerts
+            <i class="bi bi-exclamation-triangle"></i> View Issues & Alerts
         </a>
         <button type="button" class="btn btn-outline-secondary" onclick="refreshHistory()">
             <i class="bi bi-arrow-clockwise"></i> Refresh
@@ -255,6 +255,7 @@
                             <th>Device</th>
                             <th>Title</th>
                             <th>Message</th>
+                            <th>Alert</th>
                             <th>Priority</th>
                             <th>Status</th>
                         </tr>
@@ -290,11 +291,21 @@ let currentFilters = {
     type: '',
     status: '',
     hours: 24,
-    device_id: ''
+    device_id: '',
+    alert_id: ''
 };
 
 // Load notification data on page load
 document.addEventListener('DOMContentLoaded', function() {
+    // Check for alert_id filter in URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const alertIdFilter = urlParams.get('alert_id');
+    if (alertIdFilter) {
+        currentFilters.alert_id = alertIdFilter;
+        // Show alert filter badge immediately
+        updateFilterBadges();
+    }
+    
     loadNotificationTypes();
     loadDeviceList();
     loadNotificationStats();
@@ -441,6 +452,13 @@ async function loadNotificationHistory() {
                 'test': 'bi-gear'
             }[notification.notification_type] || 'bi-bell';
             
+            // Alert link
+            const alertLink = notification.alert_id ? 
+                `<a href="/alerts#alert-${notification.alert_id}" class="btn btn-sm btn-outline-primary" title="View related alert">
+                    <i class="bi bi-arrow-right-circle"></i> Alert ${notification.alert_id}
+                </a>` : 
+                '<span class="text-muted">-</span>';
+                
             row.innerHTML = `
                 <td><small>${timestamp}</small></td>
                 <td>
@@ -451,6 +469,7 @@ async function loadNotificationHistory() {
                 <td>${notification.device_name || 'System'}</td>
                 <td>${notification.title}</td>
                 <td><small>${notification.message}</small></td>
+                <td>${alertLink}</td>
                 <td><span class="badge bg-${priorityClass}">${notification.priority}</span></td>
                 <td>
                     <span class="badge bg-${statusClass}">
@@ -492,8 +511,8 @@ async function loadNotificationHistory() {
                         <span class="badge bg-${priorityClass}">Priority: ${notification.priority}</span>
                     </div>
                     ${notification.alert_id ? 
-                        `<a href="/alerts" class="btn btn-sm btn-outline-primary">
-                            <i class="bi bi-exclamation-triangle"></i> View Alert
+                        `<a href="/alerts#alert-${notification.alert_id}" class="btn btn-sm btn-outline-primary">
+                            <i class="bi bi-arrow-right-circle"></i> Alert ${notification.alert_id}
                         </a>` : ''
                     }
                 </div>
@@ -553,7 +572,8 @@ function applyFilters() {
         type: document.getElementById('filter-type').value,
         status: document.getElementById('filter-status').value,
         hours: parseInt(document.getElementById('filter-hours').value),
-        device_id: document.getElementById('filter-device').value
+        device_id: document.getElementById('filter-device').value,
+        alert_id: currentFilters.alert_id // Preserve alert_id if set from URL
     };
     currentPage = 1;
     updateActiveFiltersSummary();
@@ -609,12 +629,30 @@ function updateActiveFiltersSummary() {
         hasActiveFilters = true;
     }
     
+    // Alert filter
+    if (currentFilters.alert_id) {
+        badges.innerHTML += `<span class="badge bg-danger">Alert ID: ${currentFilters.alert_id} <button type="button" class="btn-close btn-close-white ms-2" onclick="clearAlertFilter()" aria-label="Clear alert filter"></button></span>`;
+        hasActiveFilters = true;
+    }
+    
     summary.style.display = hasActiveFilters ? 'block' : 'none';
 }
 
 function refreshHistory() {
     loadNotificationStats();
     loadNotificationHistory();
+}
+
+function clearAlertFilter() {
+    currentFilters.alert_id = '';
+    updateFilterBadges();
+    loadNotificationStats();
+    loadNotificationHistory();
+    
+    // Update URL to remove alert_id parameter
+    const url = new URL(window.location);
+    url.searchParams.delete('alert_id');
+    window.history.pushState({}, '', url);
 }
 
 async function clearOldNotifications() {

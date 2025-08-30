@@ -39,50 +39,50 @@ def get_git_info() -> Dict[str, Any]:
     try:
         # Check if we're in a git repository
         subprocess.run(['git', 'rev-parse', '--git-dir'], 
-                      capture_output=True, check=True, timeout=5)
+                      capture_output=True, check=True, timeout=5, shell=False)
         git_info['available'] = True
         
         # Get commit hash
         result = subprocess.run(['git', 'rev-parse', 'HEAD'], 
-                              capture_output=True, text=True, check=True, timeout=5)
+                              capture_output=True, text=True, check=True, timeout=5, shell=False)
         git_info['commit_hash'] = result.stdout.strip()
         git_info['commit_short'] = git_info['commit_hash'][:8] if git_info['commit_hash'] else None
         
         # Get current branch
         result = subprocess.run(['git', 'branch', '--show-current'], 
-                              capture_output=True, text=True, check=True, timeout=5)
+                              capture_output=True, text=True, check=True, timeout=5, shell=False)
         git_info['branch'] = result.stdout.strip() or None
         
         # Get latest tag (if any)
         try:
             result = subprocess.run(['git', 'describe', '--tags', '--exact-match', 'HEAD'], 
-                                  capture_output=True, text=True, check=True, timeout=5)
+                                  capture_output=True, text=True, check=True, timeout=5, shell=False)
             git_info['tag'] = result.stdout.strip()
         except subprocess.CalledProcessError:
             # Try to get the latest tag
             try:
                 result = subprocess.run(['git', 'describe', '--tags', '--abbrev=0'], 
-                                      capture_output=True, text=True, check=True, timeout=5)
+                                      capture_output=True, text=True, check=True, timeout=5, shell=False)
                 git_info['tag'] = result.stdout.strip()
             except subprocess.CalledProcessError:
                 pass
         
         # Check if repository is dirty
         result = subprocess.run(['git', 'status', '--porcelain'], 
-                              capture_output=True, text=True, check=True, timeout=5)
+                              capture_output=True, text=True, check=True, timeout=5, shell=False)
         git_info['is_dirty'] = bool(result.stdout.strip())
         
         # Get commit date and author
         try:
             result = subprocess.run(['git', 'log', '-1', '--format=%ci'], 
-                                  capture_output=True, text=True, check=True, timeout=5)
+                                  capture_output=True, text=True, check=True, timeout=5, shell=False)
             git_info['commit_date'] = result.stdout.strip()
         except subprocess.CalledProcessError:
             pass
             
         try:
             result = subprocess.run(['git', 'log', '-1', '--format=%an'], 
-                                  capture_output=True, text=True, check=True, timeout=5)
+                                  capture_output=True, text=True, check=True, timeout=5, shell=False)
             git_info['commit_author'] = result.stdout.strip()
         except subprocess.CalledProcessError:
             pass

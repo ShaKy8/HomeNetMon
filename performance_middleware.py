@@ -46,15 +46,17 @@ class PerformanceMiddleware:
             
             # Generate ETag for cacheable responses
             if response.status_code == 200 and request.method == 'GET':
-                if response.data:
+                # Only generate ETag if response is not in direct passthrough mode
+                if not response.direct_passthrough and response.get_data(as_text=False):
                     import hashlib
-                    etag = hashlib.md5(response.data).hexdigest()
+                    data = response.get_data(as_text=False)
+                    etag = hashlib.md5(data).hexdigest()
                     response.headers['ETag'] = f'"{etag}"'
                     
                     # Check If-None-Match header
                     if request.headers.get('If-None-Match') == f'"{etag}"':
                         response.status_code = 304
-                        response.data = b''
+                        response.set_data(b'')
             
             # Cache control for different content types
             if request.endpoint:
@@ -76,13 +78,15 @@ class PerformanceMiddleware:
                     # HTML pages - cache with revalidation
                     response.headers['Cache-Control'] = 'private, max-age=60, must-revalidate'
             
-            # Enable HTTP/2 server push hints for critical resources
-            if request.path == '/' and response.status_code == 200:
+            # Enable HTTP/2 server push hints for critical resources (disabled due to preload warnings)
+            # The browser is complaining about preload resources not being used quickly enough
+            # and crossorigin mismatch issues. Disabling for now to improve user experience.
+            if False and request.path == '/' and response.status_code == 200:
                 # Preload critical CSS and JS
                 critical_resources = [
                     '</static/bundles/core.css>; rel=preload; as=style',
                     '</static/bundles/core.js>; rel=preload; as=script',
-                    '<https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css>; rel=preload; as=style; crossorigin',
+                    '<https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css>; rel=preload; as=style; crossorigin=anonymous',
                 ]
                 response.headers['Link'] = ', '.join(critical_resources)
             

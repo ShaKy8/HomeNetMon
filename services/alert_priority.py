@@ -172,13 +172,15 @@ class AlertPriorityScorer:
         
         # Check uptime reliability (devices with good uptime are more critical when they fail)
         try:
-            if hasattr(device, 'uptime_percentage'):
-                uptime = device.uptime_percentage
+            if hasattr(device, 'uptime_percentage') and callable(getattr(device, 'uptime_percentage', None)):
+                uptime = device.uptime_percentage() or 0
                 if uptime > 99:
                     score += 5  # Very reliable devices get higher priority when they fail
                 elif uptime < 95:
                     score -= 5  # Unreliable devices get lower priority
-        except:
+        except Exception as e:
+            # Log error but continue
+            print(f"Error calculating uptime for alert priority device {getattr(device, 'id', 'unknown')}: {e}")
             pass
         
         return min(100, score)

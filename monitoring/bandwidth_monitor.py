@@ -33,7 +33,7 @@ class BandwidthMonitor:
         try:
             # Get network interfaces using ip command
             result = subprocess.run(['ip', 'link', 'show'], 
-                                  capture_output=True, text=True, timeout=10)
+                                  capture_output=True, text=True, timeout=10, shell=False)
             interfaces = []
             
             for line in result.stdout.split('\n'):
@@ -119,7 +119,7 @@ class BandwidthMonitor:
         device_map = {}
         try:
             # Get ARP table
-            result = subprocess.run(['arp', '-a'], capture_output=True, text=True, timeout=10)
+            result = subprocess.run(['arp', '-a'], capture_output=True, text=True, timeout=10, shell=False)
             arp_output = result.stdout
             
             # Parse ARP table output

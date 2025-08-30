@@ -113,15 +113,20 @@ def get_general_device_insights():
         # Most reliable devices
         devices_with_uptime = []
         for device in Device.query.filter_by(is_monitored=True).all():
-            uptime = device.uptime_percentage
-            if uptime is not None:
-                devices_with_uptime.append({
-                    'id': device.id,
-                    'name': device.display_name,
-                    'ip': device.ip_address,
-                    'uptime': uptime,
-                    'type': device.device_type
-                })
+            try:
+                uptime = device.uptime_percentage() or 0
+                if uptime >= 0:  # Include devices with 0% uptime for completeness
+                    devices_with_uptime.append({
+                        'id': device.id,
+                        'name': device.display_name,
+                        'ip': device.ip_address,
+                        'uptime': uptime,
+                        'type': device.device_type
+                    })
+            except Exception as e:
+                # Log error but continue processing other devices
+                print(f"Error calculating uptime for device {device.id}: {e}")
+                continue
         
         # Sort by uptime
         most_reliable = sorted(devices_with_uptime, key=lambda x: x['uptime'], reverse=True)[:5]
