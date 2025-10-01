@@ -1,0 +1,81 @@
+version: '3.8'
+
+services:
+  homenetmon:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: homenetmon-prod
+    restart: unless-stopped
+    environment:
+      - FLASK_ENV=production
+      - SECRET_KEY=${SECRET_KEY}
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD}
+      - NETWORK_RANGE=${NETWORK_RANGE:-192.168.1.0/24}
+      - PING_INTERVAL=${PING_INTERVAL:-30}
+      - DATABASE_URL=sqlite:////app/data/homeNetMon.db
+      - REDIS_URL=${REDIS_URL:-redis://redis:6379/0}
+    volumes:
+      - homenetmon_data:/app/data
+      - homenetmon_logs:/app/logs
+      - homenetmon_backups:/app/backups
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "80:80"
+      - "443:443"
+    networks:
+      - homenetmon_network
+    depends_on:
+      - redis
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  redis:
+    image: redis:7-alpine
+    container_name: homenetmon-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - homenetmon_network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+  backup:
+    build:
+      context: .
+      dockerfile: Dockerfile.prod
+    container_name: homenetmon-backup
+    restart: "no"
+    environment:
+      - DATABASE_URL=sqlite:////app/data/homeNetMon.db
+    volumes:
+      - homenetmon_data:/app/data:ro
+      - homenetmon_backups:/app/backups
+    networks:
+      - homenetmon_network
+    entrypoint: ["python", "/app/backup_database.py"]
+    profiles:
+      - backup
+
+volumes:
+  homenetmon_data:
+    driver: local
+  homenetmon_logs:
+    driver: local
+  homenetmon_backups:
+    driver: local
+  redis_data:
+    driver: local
+
+networks:
+  homenetmon_network:
+    driver: bridge

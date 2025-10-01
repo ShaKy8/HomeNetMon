@@ -1,0 +1,95 @@
+{
+  "timestamp": "2025-09-21T08:45:54.701354",
+  "duration": 0.00031447410583496094,
+  "total_documents": 8,
+  "successful_documents": 8,
+  "success_rate": 100.0,
+  "categories": {
+    "deployment": {
+      "successful": 2,
+      "total": 2
+    },
+    "operations": {
+      "successful": 1,
+      "total": 1
+    },
+    "troubleshooting": {
+      "successful": 1,
+      "total": 1
+    },
+    "api_reference": {
+      "successful": 1,
+      "total": 1
+    },
+    "user_guides": {
+      "successful": 1,
+      "total": 1
+    },
+    "administration": {
+      "successful": 1,
+      "total": 1
+    },
+    "documentation": {
+      "successful": 1,
+      "total": 1
+    }
+  },
+  "documentation_results": [
+    {
+      "category": "deployment",
+      "doc_name": "Deployment Guide",
+      "success": true,
+      "details": "Created comprehensive deployment documentation",
+      "timestamp": "2025-09-21T08:45:54.701092"
+    },
+    {
+      "category": "deployment",
+      "doc_name": "Quick Start Guide",
+      "success": true,
+      "details": "Created quick deployment guide",
+      "timestamp": "2025-09-21T08:45:54.701132"
+    },
+    {
+      "category": "operations",
+      "doc_name": "Operations Guide",
+      "success": true,
+      "details": "Created comprehensive operations documentation",
+      "timestamp": "2025-09-21T08:45:54.701164"
+    },
+    {
+      "category": "troubleshooting",
+      "doc_name": "Troubleshooting Guide",
+      "success": true,
+      "details": "Created comprehensive troubleshooting documentation",
+      "timestamp": "2025-09-21T08:45:54.701190"
+    },
+    {
+      "category": "api_reference",
+      "doc_name": "API Reference",
+      "success": true,
+      "details": "Created comprehensive API documentation",
+      "timestamp": "2025-09-21T08:45:54.701215"
+    },
+    {
+      "category": "user_guides",
+      "doc_name": "User Guide",
+      "success": true,
+      "details": "Created comprehensive user documentation",
+      "timestamp": "2025-09-21T08:45:54.701245"
+    },
+    {
+      "category": "administration",
+      "doc_name": "Administration Guide",
+      "success": true,
+      "details": "Created comprehensive administration documentation",
+      "timestamp": "2025-09-21T08:45:54.701278"
+    },
+    {
+      "category": "documentation",
+      "doc_name": "Master Documentation Index",
+      "success": true,
+      "details": "Created comprehensive documentation index",
+      "timestamp": "2025-09-21T08:45:54.701304"
+    }
+  ]
+}

@@ -7,12 +7,14 @@ Provides endpoints to monitor rate limiting status and manage rate limits.
 from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime
 import logging
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 logger = logging.getLogger(__name__)
 
 rate_limit_admin_bp = Blueprint('rate_limit_admin', __name__)
 
 @rate_limit_admin_bp.route('/status', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_rate_limit_status():
     """Get current rate limiting status and statistics."""
     try:
@@ -53,6 +55,7 @@ def get_rate_limit_status():
         return jsonify({'error': str(e)}), 500
 
 @rate_limit_admin_bp.route('/limits', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_configured_limits():
     """Get information about configured rate limits."""
     try:
@@ -89,6 +92,7 @@ def get_configured_limits():
         return jsonify({'error': str(e)}), 500
 
 @rate_limit_admin_bp.route('/stats', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_rate_limit_stats():
     """Get rate limiting abuse statistics."""
     try:
@@ -110,6 +114,7 @@ def get_rate_limit_stats():
         return jsonify({'error': str(e)}), 500
 
 @rate_limit_admin_bp.route('/reset/<string:identifier>', methods=['POST'])
+@create_endpoint_limiter('critical')
 def reset_rate_limits(identifier):
     """Reset rate limits for a specific identifier (admin operation)."""
     try:
@@ -133,6 +138,7 @@ def reset_rate_limits(identifier):
         return jsonify({'error': str(e)}), 500
 
 @rate_limit_admin_bp.route('/test', methods=['GET'])
+@create_endpoint_limiter('critical')
 def test_rate_limiting():
     """Test endpoint to verify rate limiting is working."""
     try:

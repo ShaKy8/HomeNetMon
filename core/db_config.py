@@ -222,8 +222,10 @@ class DatabaseOptimizer:
     def vacuum_database(self) -> bool:
         """Run VACUUM to reclaim space (SQLite only)."""
         try:
+            from sqlalchemy import text
+            
             if 'sqlite' in str(self.db.engine.url):
-                self.db.session.execute('VACUUM')
+                self.db.session.execute(text('VACUUM'))
                 self.db.session.commit()
                 logger.info("Database VACUUM completed")
                 return True
@@ -236,10 +238,12 @@ class DatabaseOptimizer:
     def analyze_database(self) -> bool:
         """Update database statistics for query planner."""
         try:
+            from sqlalchemy import text
+            
             if 'sqlite' in str(self.db.engine.url):
-                self.db.session.execute('ANALYZE')
+                self.db.session.execute(text('ANALYZE'))
             elif 'postgresql' in str(self.db.engine.url):
-                self.db.session.execute('ANALYZE')
+                self.db.session.execute(text('ANALYZE'))
             elif 'mysql' in str(self.db.engine.url):
                 # MySQL updates statistics automatically
                 pass

@@ -12,14 +12,19 @@ class CSRFHandler {
     }
 
     init() {
-        // Get initial token from cookies
-        this.token = this.getCookie(this.tokenName);
-        
+        // Get initial token from meta tag first, then fall back to cookies
+        this.token = this.getTokenFromMeta() || this.getCookie(this.tokenName);
+
         // Set up automatic token inclusion in requests
         this.setupFetchInterceptor();
         this.setupXHRInterceptor();
-        
-        console.log('🔒 CSRF Handler initialized');
+
+        console.log('🔒 CSRF Handler initialized with token:', this.token ? 'PRESENT' : 'MISSING');
+    }
+
+    getTokenFromMeta() {
+        const metaToken = document.querySelector('meta[name="csrf-token"]');
+        return metaToken ? metaToken.getAttribute('content') : null;
     }
 
     getCookie(name) {
@@ -32,11 +37,40 @@ class CSRFHandler {
     }
 
     getToken() {
-        // Refresh token from cookies if not available
+        // Refresh token from meta tag or cookies if not available
         if (!this.token) {
-            this.token = this.getCookie(this.tokenName);
+            this.token = this.getTokenFromMeta() || this.getCookie(this.tokenName);
         }
         return this.token;
+    }
+
+    async refreshTokenFromAPI() {
+        try {
+            console.log('🔒 Refreshing CSRF token from API...');
+            const response = await fetch('/api/csrf-token', {
+                method: 'GET',
+                credentials: 'same-origin'
+            });
+
+            if (!response.ok) {
+                throw new Error(`Token refresh failed: ${response.status}`);
+            }
+
+            const data = await response.json();
+            this.token = data.csrf_token;
+
+            // Update meta tag for other scripts
+            let metaTag = document.querySelector('meta[name="csrf-token"]');
+            if (metaTag) {
+                metaTag.setAttribute('content', this.token);
+            }
+
+            console.log('🔒 CSRF token refreshed successfully');
+            return this.token;
+        } catch (error) {
+            console.error('🔒 CSRF token refresh failed:', error);
+            throw error;
+        }
     }
 
     setToken(token) {
@@ -48,18 +82,46 @@ class CSRFHandler {
         const originalFetch = window.fetch;
         
         window.fetch = (url, options = {}) => {
+            // Debug logging for alerts endpoint
+            if (url.includes('/api/monitoring/alerts')) {
+                console.log('🔍 CSRF Handler - Alerts request:', {
+                    url,
+                    method: options.method || 'GET',
+                    headers: options.headers,
+                    requiresToken: this.requiresCSRFToken(options.method || 'GET', url)
+                });
+            }
+
             // Only add CSRF token for same-origin requests
             if (this.isSameOrigin(url)) {
                 const token = this.getToken();
-                if (token && this.requiresCSRFToken(options.method || 'GET')) {
+                if (token && this.requiresCSRFToken(options.method || 'GET', url)) {
                     options.headers = {
                         ...options.headers,
                         [this.headerName]: token
                     };
+
+                    if (url.includes('/api/monitoring/alerts')) {
+                        console.log('🔒 CSRF Handler - Added token to alerts request');
+                    }
                 }
             }
-            
-            return originalFetch(url, options);
+
+            // Debug the exact request being made for alerts
+            if (url.includes('/api/monitoring/alerts')) {
+                console.log('🚀 Making alerts request with options:', {
+                    url: url,
+                    options: JSON.stringify(options, null, 2)
+                });
+            }
+
+            return originalFetch(url, options).catch(error => {
+                if (url.includes('/api/monitoring/alerts')) {
+                    console.error('🚨 Alerts request failed:', error);
+                    console.log('🚨 Failed request details:', { url, options });
+                }
+                throw error;
+            });
         };
     }
 
@@ -77,7 +139,7 @@ class CSRFHandler {
         XMLHttpRequest.prototype.send = function(data) {
             if (window.csrfHandler && window.csrfHandler.isSameOrigin(this._url)) {
                 const token = window.csrfHandler.getToken();
-                if (token && window.csrfHandler.requiresCSRFToken(this._method)) {
+                if (token && window.csrfHandler.requiresCSRFToken(this._method, this._url)) {
                     this.setRequestHeader(window.csrfHandler.headerName, token);
                 }
             }
@@ -103,8 +165,21 @@ class CSRFHandler {
         }
     }
 
-    requiresCSRFToken(method) {
+    requiresCSRFToken(method, url = '') {
         const upperMethod = (method || 'GET').toUpperCase();
+
+        // URL-based exemptions for specific endpoints
+        const exemptPaths = [
+            '/api/monitoring/alerts',
+            '/api/health',
+            '/api/csrf-token'
+        ];
+
+        // Check if URL matches any exempt path
+        if (exemptPaths.some(path => url.includes(path))) {
+            return false;
+        }
+
         return ['POST', 'PUT', 'PATCH', 'DELETE'].includes(upperMethod);
     }
 
@@ -163,33 +238,38 @@ class CSRFHandler {
 
     // Refresh token (typically called after receiving new token in response)
     refreshToken() {
-        this.token = this.getCookie(this.tokenName);
+        this.token = this.getTokenFromMeta() || this.getCookie(this.tokenName);
         return this.token;
     }
 
-    // Handle CSRF errors
-    handleCSRFError(response) {
-        if (response && response.status === 403) {
-            // Try to refresh token
-            this.refreshToken();
-            
-            // Show user-friendly error
-            if (window.modernNotifications) {
-                window.modernNotifications.warning('Security token expired. Please refresh the page.', {
-                    duration: 5000,
-                    actions: [{
-                        label: 'Refresh',
-                        primary: true,
-                        callback: () => window.location.reload()
-                    }]
-                });
-            } else {
-                console.warn('CSRF token validation failed. Page refresh may be required.');
+    // Handle CSRF errors with automatic retry
+    async handleCSRFError(response) {
+        if (response && (response.status === 403 || response.status === 422)) {
+            try {
+                console.log('🔒 CSRF error detected, attempting automatic token refresh...');
+                await this.refreshTokenFromAPI();
+                return true; // Indicates error was handled and retry should be attempted
+            } catch (error) {
+                console.error('🔒 Automatic token refresh failed:', error);
+
+                // Show user-friendly error
+                if (window.modernNotifications) {
+                    window.modernNotifications.warning('Security token expired. Please refresh the page.', {
+                        duration: 5000,
+                        actions: [{
+                            label: 'Refresh',
+                            primary: true,
+                            callback: () => window.location.reload()
+                        }]
+                    });
+                } else {
+                    console.warn('CSRF token validation failed. Page refresh may be required.');
+                }
+
+                return false; // Could not handle error
             }
-            
-            return true; // Indicates error was handled
         }
-        
+
         return false; // Not a CSRF error
     }
 }

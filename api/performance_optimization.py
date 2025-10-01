@@ -5,12 +5,14 @@ Provides endpoints for monitoring and managing performance optimizations.
 from flask import Blueprint, jsonify, request
 from datetime import datetime, timedelta
 import logging
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 logger = logging.getLogger(__name__)
 
 performance_optimization_bp = Blueprint('performance_optimization', __name__, url_prefix='/api/performance')
 
 @performance_optimization_bp.route('/cache/stats', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_cache_stats():
     """Get performance cache statistics"""
     try:
@@ -22,6 +24,7 @@ def get_cache_stats():
         return jsonify({'error': str(e)}), 500
 
 @performance_optimization_bp.route('/memory/stats', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_memory_stats():
     """Get memory usage statistics"""
     try:
@@ -50,6 +53,7 @@ def get_memory_stats():
         return jsonify({'error': str(e)}), 500
 
 @performance_optimization_bp.route('/threads/stats', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_thread_stats():
     """Get thread pool statistics"""
     try:
@@ -68,6 +72,7 @@ def get_thread_stats():
         return jsonify({'error': str(e)}), 500
 
 @performance_optimization_bp.route('/websocket/stats', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_websocket_stats():
     """Get WebSocket optimizer statistics"""
     try:
@@ -90,6 +95,7 @@ def get_websocket_stats():
         return jsonify({'error': str(e)}), 500
 
 @performance_optimization_bp.route('/resources/stats', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_resource_stats():
     """Get frontend resource optimization statistics"""
     try:
@@ -105,6 +111,7 @@ def get_resource_stats():
         return jsonify({'error': str(e)}), 500
 
 @performance_optimization_bp.route('/overview', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_performance_overview():
     """Get comprehensive performance overview"""
     try:
@@ -184,6 +191,7 @@ def get_performance_overview():
         return jsonify({'error': str(e)}), 500
 
 @performance_optimization_bp.route('/cache/clear', methods=['POST'])
+@create_endpoint_limiter('critical')
 def clear_cache():
     """Clear performance cache"""
     try:
@@ -210,6 +218,7 @@ def clear_cache():
         return jsonify({'error': str(e)}), 500
 
 @performance_optimization_bp.route('/memory/cleanup', methods=['POST'])
+@create_endpoint_limiter('critical')
 def trigger_memory_cleanup():
     """Trigger manual memory cleanup"""
     try:
@@ -231,6 +240,7 @@ def trigger_memory_cleanup():
         return jsonify({'error': str(e)}), 500
 
 @performance_optimization_bp.route('/threads/optimize', methods=['POST'])
+@create_endpoint_limiter('critical')
 def optimize_thread_pools():
     """Optimize thread pool configurations"""
     try:
@@ -250,6 +260,7 @@ def optimize_thread_pools():
         return jsonify({'error': str(e)}), 500
 
 @performance_optimization_bp.route('/resources/rebuild', methods=['POST'])
+@create_endpoint_limiter('strict')
 def rebuild_resource_bundles():
     """Rebuild frontend resource bundles"""
     try:

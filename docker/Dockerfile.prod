@@ -1,0 +1,51 @@
+FROM python:3.11-slim
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    pkg-config \
+    libssl-dev \
+    libffi-dev \
+    nmap \
+    sqlite3 \
+    nginx \
+    supervisor \
+    && rm -rf /var/lib/apt/lists/*
+
+# Create app directory and user
+RUN useradd -m -u 1000 homenetmon
+WORKDIR /app
+
+# Copy requirements first for better caching
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application code
+COPY . .
+RUN chown -R homenetmon:homenetmon /app
+
+# Create necessary directories
+RUN mkdir -p /app/logs /app/backups /app/data \
+    && chown -R homenetmon:homenetmon /app/logs /app/backups /app/data
+
+# Copy production configurations
+COPY docker/nginx.conf /etc/nginx/nginx.conf
+COPY docker/supervisord.conf /etc/supervisor/conf.d/supervisord.conf
+
+# Expose ports
+EXPOSE 80 443
+
+# Set environment variables
+ENV FLASK_ENV=production
+ENV PYTHONPATH=/app
+ENV DATABASE_URL=sqlite:////app/data/homeNetMon.db
+
+# Health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD curl -f http://localhost/health || exit 1
+
+# Switch to non-root user
+USER homenetmon
+
+# Start with supervisor
+CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]

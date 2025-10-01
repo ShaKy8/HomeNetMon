@@ -1,0 +1,540 @@
+{
+  "timestamp": "2025-09-21T08:10:42.680675",
+  "summary": {
+    "total_tests": 49,
+    "excellent_count": 5,
+    "good_count": 13,
+    "warning_count": 6,
+    "poor_count": 4,
+    "performance_score": 0
+  },
+  "results": {
+    "good": [
+      {
+        "level": "good",
+        "category": "API Performance",
+        "test": "Home Page",
+        "metric": "Response Time",
+        "value": "167ms",
+        "target": "< 300ms for good UX",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:23.843553"
+      },
+      {
+        "level": "good",
+        "category": "API Performance",
+        "test": "Home Page",
+        "metric": "Success Rate",
+        "value": "100%",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:23.843618"
+      },
+      {
+        "level": "good",
+        "category": "API Performance",
+        "test": "CSRF Token API",
+        "metric": "Success Rate",
+        "value": "100%",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:23.857389"
+      },
+      {
+        "level": "good",
+        "category": "API Performance",
+        "test": "Analytics Page",
+        "metric": "Response Time",
+        "value": "179ms",
+        "target": "< 300ms for good UX",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:24.751534"
+      },
+      {
+        "level": "good",
+        "category": "API Performance",
+        "test": "Analytics Page",
+        "metric": "Success Rate",
+        "value": "100%",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:24.751562"
+      },
+      {
+        "level": "good",
+        "category": "API Performance",
+        "test": "Settings Page",
+        "metric": "Response Time",
+        "value": "155ms",
+        "target": "< 300ms for good UX",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:25.526728"
+      },
+      {
+        "level": "good",
+        "category": "API Performance",
+        "test": "Settings Page",
+        "metric": "Success Rate",
+        "value": "100%",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:25.526778"
+      },
+      {
+        "level": "good",
+        "category": "API Performance",
+        "test": "Security Page",
+        "metric": "Response Time",
+        "value": "165ms",
+        "target": "< 300ms for good UX",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:26.349627"
+      },
+      {
+        "level": "good",
+        "category": "API Performance",
+        "test": "Security Page",
+        "metric": "Success Rate",
+        "value": "100%",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:26.349650"
+      },
+      {
+        "level": "good",
+        "category": "API Performance",
+        "test": "Topology Page",
+        "metric": "Response Time",
+        "value": "230ms",
+        "target": "< 300ms for good UX",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:27.499924"
+      },
+      {
+        "level": "good",
+        "category": "API Performance",
+        "test": "Topology Page",
+        "metric": "Success Rate",
+        "value": "100%",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:27.499983"
+      },
+      {
+        "level": "good",
+        "category": "API Performance",
+        "test": "Static Asset",
+        "metric": "Success Rate",
+        "value": "100%",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:27.524368"
+      },
+      {
+        "level": "good",
+        "category": "Database",
+        "test": "Optimization",
+        "metric": "Indexes",
+        "value": 117,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:27.525253"
+      }
+    ],
+    "api_details": [
+      {
+        "endpoint": "Home Page",
+        "path": "/",
+        "avg_response_time": 167.12684631347656,
+        "p95_response_time": 206.78949356079102,
+        "success_rate": 100.0,
+        "avg_content_size_kb": 66.875
+      },
+      {
+        "endpoint": "CSRF Token API",
+        "path": "/api/csrf-token",
+        "avg_response_time": 2.7036666870117188,
+        "p95_response_time": 4.337549209594727,
+        "success_rate": 100.0,
+        "avg_content_size_kb": 0.0595703125
+      },
+      {
+        "endpoint": "Analytics Page",
+        "path": "/analytics",
+        "avg_response_time": 178.7977695465088,
+        "p95_response_time": 190.30475616455078,
+        "success_rate": 100.0,
+        "avg_content_size_kb": 101.3583984375
+      },
+      {
+        "endpoint": "Settings Page",
+        "path": "/settings",
+        "avg_response_time": 154.9576759338379,
+        "p95_response_time": 178.30967903137207,
+        "success_rate": 100.0,
+        "avg_content_size_kb": 49.4326171875
+      },
+      {
+        "endpoint": "Security Page",
+        "path": "/security",
+        "avg_response_time": 164.50252532958984,
+        "p95_response_time": 169.86656188964844,
+        "success_rate": 100.0,
+        "avg_content_size_kb": 49.3095703125
+      },
+      {
+        "endpoint": "Topology Page",
+        "path": "/topology",
+        "avg_response_time": 229.98929023742676,
+        "p95_response_time": 264.3718719482422,
+        "success_rate": 100.0,
+        "avg_content_size_kb": 107.2001953125
+      },
+      {
+        "endpoint": "Static Asset",
+        "path": "/static/bundles/core.js",
+        "avg_response_time": 4.784440994262695,
+        "p95_response_time": 8.215904235839844,
+        "success_rate": 100.0,
+        "avg_content_size_kb": 22.1767578125
+      }
+    ],
+    "excellent": [
+      {
+        "level": "excellent",
+        "category": "API Performance",
+        "test": "CSRF Token API",
+        "metric": "Response Time",
+        "value": "3ms",
+        "target": "< 300ms for good UX",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:23.857368"
+      },
+      {
+        "level": "excellent",
+        "category": "API Performance",
+        "test": "Static Asset",
+        "metric": "Response Time",
+        "value": "5ms",
+        "target": "< 300ms for good UX",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:27.524352"
+      },
+      {
+        "level": "excellent",
+        "category": "Database",
+        "test": "Connection",
+        "metric": "Time",
+        "value": "0.1ms",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:27.524535"
+      },
+      {
+        "level": "excellent",
+        "category": "System Performance",
+        "test": "CPU Usage",
+        "metric": "Average",
+        "value": "6.0%",
+        "target": "< 50% for good performance",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:57.625155"
+      },
+      {
+        "level": "excellent",
+        "category": "Load Test",
+        "test": "1 Users",
+        "metric": "Avg Response Time",
+        "value": "161ms",
+        "target": "< 300ms acceptable",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:10:07.645172"
+      }
+    ],
+    "warning": [
+      {
+        "level": "warning",
+        "category": "Database Query",
+        "test": "Device Count",
+        "metric": "Error",
+        "value": "no such table: Device",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:27.525108"
+      },
+      {
+        "level": "warning",
+        "category": "Database Query",
+        "test": "Monitoring Data Count",
+        "metric": "Error",
+        "value": "no such table: MonitoringData",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:27.525123"
+      },
+      {
+        "level": "warning",
+        "category": "Database Query",
+        "test": "Alert Count",
+        "metric": "Error",
+        "value": "no such table: Alert",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:27.525130"
+      },
+      {
+        "level": "warning",
+        "category": "Database Query",
+        "test": "Recent Devices",
+        "metric": "Error",
+        "value": "no such table: Device",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:27.525136"
+      },
+      {
+        "level": "warning",
+        "category": "Database Query",
+        "test": "Recent Monitoring Data",
+        "metric": "Error",
+        "value": "no such table: MonitoringData",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:27.525143"
+      },
+      {
+        "level": "warning",
+        "category": "Database Query",
+        "test": "Device Averages",
+        "metric": "Error",
+        "value": "no such table: MonitoringData",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:27.525152"
+      }
+    ],
+    "info": [
+      {
+        "level": "info",
+        "category": "Database",
+        "test": "Size",
+        "metric": "Total",
+        "value": "974.4MB",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:27.525166"
+      },
+      {
+        "level": "info",
+        "category": "Database",
+        "test": "Structure",
+        "metric": "Tables",
+        "value": 32,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:09:27.525199"
+      },
+      {
+        "level": "info",
+        "category": "Load Test",
+        "test": "1 Users",
+        "metric": "P95 Response Time",
+        "value": "198ms",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:10:07.645230"
+      },
+      {
+        "level": "info",
+        "category": "Load Test",
+        "test": "1 Users",
+        "metric": "Success Rate",
+        "value": "100.0%",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:10:07.645249"
+      },
+      {
+        "level": "info",
+        "category": "Load Test",
+        "test": "1 Users",
+        "metric": "Throughput",
+        "value": "3.3 req/s",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:10:07.645262"
+      },
+      {
+        "level": "info",
+        "category": "Load Test",
+        "test": "5 Users",
+        "metric": "P95 Response Time",
+        "value": "729ms",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:10:17.962167"
+      },
+      {
+        "level": "info",
+        "category": "Load Test",
+        "test": "5 Users",
+        "metric": "Success Rate",
+        "value": "100.0%",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:10:17.962180"
+      },
+      {
+        "level": "info",
+        "category": "Load Test",
+        "test": "5 Users",
+        "metric": "Throughput",
+        "value": "7.2 req/s",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:10:17.962187"
+      },
+      {
+        "level": "info",
+        "category": "Load Test",
+        "test": "10 Users",
+        "metric": "P95 Response Time",
+        "value": "1678ms",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:10:29.431384"
+      },
+      {
+        "level": "info",
+        "category": "Load Test",
+        "test": "10 Users",
+        "metric": "Success Rate",
+        "value": "100.0%",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:10:29.431393"
+      },
+      {
+        "level": "info",
+        "category": "Load Test",
+        "test": "10 Users",
+        "metric": "Throughput",
+        "value": "6.7 req/s",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:10:29.431400"
+      },
+      {
+        "level": "info",
+        "category": "Load Test",
+        "test": "20 Users",
+        "metric": "P95 Response Time",
+        "value": "3430ms",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:10:42.680265"
+      },
+      {
+        "level": "info",
+        "category": "Load Test",
+        "test": "20 Users",
+        "metric": "Success Rate",
+        "value": "100.0%",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:10:42.680290"
+      },
+      {
+        "level": "info",
+        "category": "Load Test",
+        "test": "20 Users",
+        "metric": "Throughput",
+        "value": "7.1 req/s",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:10:42.680310"
+      }
+    ],
+    "poor": [
+      {
+        "level": "poor",
+        "category": "System Performance",
+        "test": "Memory Usage",
+        "metric": "Average",
+        "value": "5628MB",
+        "target": "< 250MB for good performance",
+        "recommendation": "Check for memory leaks or optimize data structures",
+        "timestamp": "2025-09-21T08:09:57.625329"
+      },
+      {
+        "level": "poor",
+        "category": "Load Test",
+        "test": "5 Users",
+        "metric": "Avg Response Time",
+        "value": "539ms",
+        "target": "< 300ms acceptable",
+        "recommendation": "Optimize for concurrent access",
+        "timestamp": "2025-09-21T08:10:17.962145"
+      },
+      {
+        "level": "poor",
+        "category": "Load Test",
+        "test": "10 Users",
+        "metric": "Avg Response Time",
+        "value": "1340ms",
+        "target": "< 300ms acceptable",
+        "recommendation": "Optimize for concurrent access",
+        "timestamp": "2025-09-21T08:10:29.431350"
+      },
+      {
+        "level": "poor",
+        "category": "Load Test",
+        "test": "20 Users",
+        "metric": "Avg Response Time",
+        "value": "2648ms",
+        "target": "< 300ms acceptable",
+        "recommendation": "Optimize for concurrent access",
+        "timestamp": "2025-09-21T08:10:42.680203"
+      }
+    ]
+  },
+  "load_test_results": {
+    "1": {
+      "avg_response_time": 160.62587680238667,
+      "p95_response_time": 198.42863082885742,
+      "success_rate": 100.0,
+      "throughput": 3.3,
+      "total_requests": 33
+    },
+    "5": {
+      "avg_response_time": 539.2546653747559,
+      "p95_response_time": 729.2048931121826,
+      "success_rate": 100.0,
+      "throughput": 7.2,
+      "total_requests": 72
+    },
+    "10": {
+      "avg_response_time": 1340.2065234397774,
+      "p95_response_time": 1678.3020496368408,
+      "success_rate": 100.0,
+      "throughput": 6.7,
+      "total_requests": 67
+    },
+    "20": {
+      "avg_response_time": 2648.16729451569,
+      "p95_response_time": 3429.8465251922607,
+      "success_rate": 100.0,
+      "throughput": 7.1,
+      "total_requests": 71
+    }
+  },
+  "recommendations": [
+    "Add database indexes and optimize slow queries",
+    "Review memory usage and implement garbage collection optimization",
+    "Implement connection pooling for database connections",
+    "Add response caching for frequently accessed data",
+    "Consider implementing rate limiting to prevent abuse",
+    "Monitor application performance in production",
+    "Set up automated performance alerts"
+  ]
+}

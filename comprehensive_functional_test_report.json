@@ -1,0 +1,893 @@
+{
+  "timestamp": "2025-09-21T08:24:13.741626",
+  "duration": 4.895747423171997,
+  "total_tests": 54,
+  "passed_tests": 41,
+  "success_rate": 75.92592592592592,
+  "categories": {
+    "authentication": [
+      {
+        "category": "authentication",
+        "test_name": "Public page access",
+        "passed": true,
+        "details": "Status: 200",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:09.005717"
+      },
+      {
+        "category": "authentication",
+        "test_name": "Protected endpoint: /settings",
+        "passed": false,
+        "details": "Status: 200, URL: http://geekom1:5000/settings",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:09.167142"
+      },
+      {
+        "category": "authentication",
+        "test_name": "Protected endpoint: /analytics",
+        "passed": false,
+        "details": "Status: 200, URL: http://geekom1:5000/analytics",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:09.372035"
+      },
+      {
+        "category": "authentication",
+        "test_name": "Protected endpoint: /security",
+        "passed": false,
+        "details": "Status: 200, URL: http://geekom1:5000/security",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:09.543728"
+      },
+      {
+        "category": "authentication",
+        "test_name": "Protected endpoint: /escalation-rules",
+        "passed": false,
+        "details": "Status: 200, URL: http://geekom1:5000/escalation-rules",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:09.696266"
+      },
+      {
+        "category": "authentication",
+        "test_name": "Protected endpoint: /dashboard/full",
+        "passed": false,
+        "details": "Status: 200, URL: http://geekom1:5000/dashboard/full",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:09.887073"
+      },
+      {
+        "category": "authentication",
+        "test_name": "CSRF token endpoint",
+        "passed": true,
+        "details": "Status: 200",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:09.892839"
+      }
+    ],
+    "csrf_protection": [
+      {
+        "category": "csrf_protection",
+        "test_name": "CSRF token retrieval",
+        "passed": true,
+        "details": "Token: Found",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:10.097658"
+      },
+      {
+        "category": "csrf_protection",
+        "test_name": "Request without CSRF token",
+        "passed": false,
+        "details": "Status: 200 (should be rejected)",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:10.100406"
+      },
+      {
+        "category": "csrf_protection",
+        "test_name": "Request with CSRF token",
+        "passed": true,
+        "details": "Status: 200",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:10.102918"
+      },
+      {
+        "category": "csrf_protection",
+        "test_name": "CSRF token in /dashboard",
+        "passed": false,
+        "details": "Meta: False, Input: False",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:10.105094"
+      },
+      {
+        "category": "csrf_protection",
+        "test_name": "CSRF token in /alerts",
+        "passed": true,
+        "details": "Meta: True, Input: False",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:10.227345"
+      },
+      {
+        "category": "csrf_protection",
+        "test_name": "CSRF token in /analytics",
+        "passed": true,
+        "details": "Meta: True, Input: False",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:10.444289"
+      },
+      {
+        "category": "csrf_protection",
+        "test_name": "CSRF token in /settings",
+        "passed": true,
+        "details": "Meta: True, Input: True",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:10.595455"
+      }
+    ],
+    "javascript_functionality": [
+      {
+        "category": "javascript_functionality",
+        "test_name": "Script structure in /",
+        "passed": true,
+        "details": "Scripts: 6, Errors: False, Structure: True",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:10.790820"
+      },
+      {
+        "category": "javascript_functionality",
+        "test_name": "Script structure in /dashboard",
+        "passed": false,
+        "details": "Scripts: 0, Errors: False, Structure: True",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:10.793550"
+      },
+      {
+        "category": "javascript_functionality",
+        "test_name": "Script structure in /alerts",
+        "passed": true,
+        "details": "Scripts: 6, Errors: False, Structure: True",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:10.961444"
+      },
+      {
+        "category": "javascript_functionality",
+        "test_name": "Script structure in /analytics",
+        "passed": true,
+        "details": "Scripts: 6, Errors: False, Structure: True",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:11.177875"
+      },
+      {
+        "category": "javascript_functionality",
+        "test_name": "Script structure in /devices",
+        "passed": true,
+        "details": "Scripts: 6, Errors: False, Structure: True",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:11.383644"
+      },
+      {
+        "category": "javascript_functionality",
+        "test_name": "Script structure in /topology",
+        "passed": true,
+        "details": "Scripts: 8, Errors: False, Structure: True",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:11.607562"
+      },
+      {
+        "category": "javascript_functionality",
+        "test_name": "Analytics page JS features",
+        "passed": true,
+        "details": "Charts: True, SocketIO: True, Events: True",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:11.807856"
+      }
+    ],
+    "api_endpoints": [
+      {
+        "category": "api_endpoints",
+        "test_name": "GET /api/devices",
+        "passed": true,
+        "details": "Status: 200, JSON: True",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:11.810419"
+      },
+      {
+        "category": "api_endpoints",
+        "test_name": "GET /api/monitoring/alerts",
+        "passed": true,
+        "details": "Status: 200, JSON: True",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:11.818766"
+      },
+      {
+        "category": "api_endpoints",
+        "test_name": "GET /api/monitoring/summary",
+        "passed": true,
+        "details": "Status: 200, JSON: True",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:11.824292"
+      },
+      {
+        "category": "api_endpoints",
+        "test_name": "GET /api/performance/metrics",
+        "passed": false,
+        "details": "Status: 404, JSON: False",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:11.825970"
+      },
+      {
+        "category": "api_endpoints",
+        "test_name": "GET /api/health",
+        "passed": false,
+        "details": "Status: 404, JSON: False",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:11.827819"
+      },
+      {
+        "category": "api_endpoints",
+        "test_name": "GET /api/system/info",
+        "passed": true,
+        "details": "Status: 200, JSON: True",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:11.935300"
+      },
+      {
+        "category": "api_endpoints",
+        "test_name": "GET /api/csrf-token",
+        "passed": true,
+        "details": "Status: 200, JSON: True",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:11.937502"
+      },
+      {
+        "category": "api_endpoints",
+        "test_name": "POST /api/devices/scan-now with CSRF",
+        "passed": true,
+        "details": "Status: 400",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:12.136479"
+      },
+      {
+        "category": "api_endpoints",
+        "test_name": "POST /api/monitoring/alerts/resolve-all with CSRF",
+        "passed": true,
+        "details": "Status: 404",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:12.137942"
+      }
+    ],
+    "database_operations": [
+      {
+        "category": "database_operations",
+        "test_name": "Database file exists",
+        "passed": true,
+        "details": "Size: 747.7MB",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:12.137986"
+      },
+      {
+        "category": "database_operations",
+        "test_name": "Database connectivity",
+        "passed": true,
+        "details": "Tables: 32",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:12.138689"
+      },
+      {
+        "category": "database_operations",
+        "test_name": "Table devices exists",
+        "passed": true,
+        "details": "",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:12.138714"
+      },
+      {
+        "category": "database_operations",
+        "test_name": "Table monitoring_data exists",
+        "passed": true,
+        "details": "",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:12.138732"
+      },
+      {
+        "category": "database_operations",
+        "test_name": "Table alerts exists",
+        "passed": true,
+        "details": "",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:12.138748"
+      },
+      {
+        "category": "database_operations",
+        "test_name": "Table performance_metrics exists",
+        "passed": true,
+        "details": "",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:12.138763"
+      },
+      {
+        "category": "database_operations",
+        "test_name": "WAL mode enabled",
+        "passed": true,
+        "details": "Mode: wal",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:12.139292"
+      },
+      {
+        "category": "database_operations",
+        "test_name": "Performance indexes",
+        "passed": true,
+        "details": "Indexes: 124",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:12.139316"
+      },
+      {
+        "category": "database_operations",
+        "test_name": "Query performance",
+        "passed": true,
+        "details": "Time: 0.01ms",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:12.139328"
+      }
+    ],
+    "websocket_features": [
+      {
+        "category": "websocket_features",
+        "test_name": "WebSocket connectivity",
+        "passed": false,
+        "details": "Connection failed",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:12.139348"
+      },
+      {
+        "category": "websocket_features",
+        "test_name": "Socket.IO client loaded",
+        "passed": true,
+        "details": "Found in page",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:12.331541"
+      }
+    ],
+    "form_submissions": [
+      {
+        "category": "form_submissions",
+        "test_name": "Forms in /settings have CSRF",
+        "passed": true,
+        "details": "Forms: 2, With CSRF: 1",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:12.512858"
+      },
+      {
+        "category": "form_submissions",
+        "test_name": "Forms in /alerts have CSRF",
+        "passed": false,
+        "details": "Forms: 1, With CSRF: 0",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:12.665962"
+      },
+      {
+        "category": "form_submissions",
+        "test_name": "Forms in /escalation-rules have CSRF",
+        "passed": false,
+        "details": "Forms: 1, With CSRF: 0",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:12.821238"
+      }
+    ],
+    "security_features": [
+      {
+        "category": "security_features",
+        "test_name": "Security headers present",
+        "passed": true,
+        "details": "3/3 headers found",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:13.013497"
+      },
+      {
+        "category": "security_features",
+        "test_name": "XSS protection",
+        "passed": true,
+        "details": "Script tags filtered",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:13.016381"
+      }
+    ],
+    "performance_verification": [
+      {
+        "category": "performance_verification",
+        "test_name": "Page load time /",
+        "passed": true,
+        "details": "Time: 167ms",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:13.183753"
+      },
+      {
+        "category": "performance_verification",
+        "test_name": "Page load time /dashboard",
+        "passed": true,
+        "details": "Time: 4ms",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:13.187706"
+      },
+      {
+        "category": "performance_verification",
+        "test_name": "Page load time /analytics",
+        "passed": true,
+        "details": "Time: 220ms",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:13.407631"
+      },
+      {
+        "category": "performance_verification",
+        "test_name": "Page load time /devices",
+        "passed": true,
+        "details": "Time: 201ms",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:13.608825"
+      },
+      {
+        "category": "performance_verification",
+        "test_name": "API response time /api/devices",
+        "passed": true,
+        "details": "Time: 4ms",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:13.612757"
+      },
+      {
+        "category": "performance_verification",
+        "test_name": "API response time /api/monitoring/summary",
+        "passed": true,
+        "details": "Time: 6ms",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:13.618813"
+      },
+      {
+        "category": "performance_verification",
+        "test_name": "API response time /api/health",
+        "passed": true,
+        "details": "Time: 2ms",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:13.620423"
+      },
+      {
+        "category": "performance_verification",
+        "test_name": "Response compression",
+        "passed": true,
+        "details": "Encoding: gzip",
+        "critical": false,
+        "timestamp": "2025-09-21T08:24:13.741527"
+      }
+    ]
+  },
+  "all_results": [
+    {
+      "category": "authentication",
+      "test_name": "Public page access",
+      "passed": true,
+      "details": "Status: 200",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:09.005717"
+    },
+    {
+      "category": "authentication",
+      "test_name": "Protected endpoint: /settings",
+      "passed": false,
+      "details": "Status: 200, URL: http://geekom1:5000/settings",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:09.167142"
+    },
+    {
+      "category": "authentication",
+      "test_name": "Protected endpoint: /analytics",
+      "passed": false,
+      "details": "Status: 200, URL: http://geekom1:5000/analytics",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:09.372035"
+    },
+    {
+      "category": "authentication",
+      "test_name": "Protected endpoint: /security",
+      "passed": false,
+      "details": "Status: 200, URL: http://geekom1:5000/security",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:09.543728"
+    },
+    {
+      "category": "authentication",
+      "test_name": "Protected endpoint: /escalation-rules",
+      "passed": false,
+      "details": "Status: 200, URL: http://geekom1:5000/escalation-rules",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:09.696266"
+    },
+    {
+      "category": "authentication",
+      "test_name": "Protected endpoint: /dashboard/full",
+      "passed": false,
+      "details": "Status: 200, URL: http://geekom1:5000/dashboard/full",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:09.887073"
+    },
+    {
+      "category": "authentication",
+      "test_name": "CSRF token endpoint",
+      "passed": true,
+      "details": "Status: 200",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:09.892839"
+    },
+    {
+      "category": "csrf_protection",
+      "test_name": "CSRF token retrieval",
+      "passed": true,
+      "details": "Token: Found",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:10.097658"
+    },
+    {
+      "category": "csrf_protection",
+      "test_name": "Request without CSRF token",
+      "passed": false,
+      "details": "Status: 200 (should be rejected)",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:10.100406"
+    },
+    {
+      "category": "csrf_protection",
+      "test_name": "Request with CSRF token",
+      "passed": true,
+      "details": "Status: 200",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:10.102918"
+    },
+    {
+      "category": "csrf_protection",
+      "test_name": "CSRF token in /dashboard",
+      "passed": false,
+      "details": "Meta: False, Input: False",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:10.105094"
+    },
+    {
+      "category": "csrf_protection",
+      "test_name": "CSRF token in /alerts",
+      "passed": true,
+      "details": "Meta: True, Input: False",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:10.227345"
+    },
+    {
+      "category": "csrf_protection",
+      "test_name": "CSRF token in /analytics",
+      "passed": true,
+      "details": "Meta: True, Input: False",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:10.444289"
+    },
+    {
+      "category": "csrf_protection",
+      "test_name": "CSRF token in /settings",
+      "passed": true,
+      "details": "Meta: True, Input: True",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:10.595455"
+    },
+    {
+      "category": "javascript_functionality",
+      "test_name": "Script structure in /",
+      "passed": true,
+      "details": "Scripts: 6, Errors: False, Structure: True",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:10.790820"
+    },
+    {
+      "category": "javascript_functionality",
+      "test_name": "Script structure in /dashboard",
+      "passed": false,
+      "details": "Scripts: 0, Errors: False, Structure: True",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:10.793550"
+    },
+    {
+      "category": "javascript_functionality",
+      "test_name": "Script structure in /alerts",
+      "passed": true,
+      "details": "Scripts: 6, Errors: False, Structure: True",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:10.961444"
+    },
+    {
+      "category": "javascript_functionality",
+      "test_name": "Script structure in /analytics",
+      "passed": true,
+      "details": "Scripts: 6, Errors: False, Structure: True",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:11.177875"
+    },
+    {
+      "category": "javascript_functionality",
+      "test_name": "Script structure in /devices",
+      "passed": true,
+      "details": "Scripts: 6, Errors: False, Structure: True",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:11.383644"
+    },
+    {
+      "category": "javascript_functionality",
+      "test_name": "Script structure in /topology",
+      "passed": true,
+      "details": "Scripts: 8, Errors: False, Structure: True",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:11.607562"
+    },
+    {
+      "category": "javascript_functionality",
+      "test_name": "Analytics page JS features",
+      "passed": true,
+      "details": "Charts: True, SocketIO: True, Events: True",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:11.807856"
+    },
+    {
+      "category": "api_endpoints",
+      "test_name": "GET /api/devices",
+      "passed": true,
+      "details": "Status: 200, JSON: True",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:11.810419"
+    },
+    {
+      "category": "api_endpoints",
+      "test_name": "GET /api/monitoring/alerts",
+      "passed": true,
+      "details": "Status: 200, JSON: True",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:11.818766"
+    },
+    {
+      "category": "api_endpoints",
+      "test_name": "GET /api/monitoring/summary",
+      "passed": true,
+      "details": "Status: 200, JSON: True",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:11.824292"
+    },
+    {
+      "category": "api_endpoints",
+      "test_name": "GET /api/performance/metrics",
+      "passed": false,
+      "details": "Status: 404, JSON: False",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:11.825970"
+    },
+    {
+      "category": "api_endpoints",
+      "test_name": "GET /api/health",
+      "passed": false,
+      "details": "Status: 404, JSON: False",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:11.827819"
+    },
+    {
+      "category": "api_endpoints",
+      "test_name": "GET /api/system/info",
+      "passed": true,
+      "details": "Status: 200, JSON: True",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:11.935300"
+    },
+    {
+      "category": "api_endpoints",
+      "test_name": "GET /api/csrf-token",
+      "passed": true,
+      "details": "Status: 200, JSON: True",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:11.937502"
+    },
+    {
+      "category": "api_endpoints",
+      "test_name": "POST /api/devices/scan-now with CSRF",
+      "passed": true,
+      "details": "Status: 400",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:12.136479"
+    },
+    {
+      "category": "api_endpoints",
+      "test_name": "POST /api/monitoring/alerts/resolve-all with CSRF",
+      "passed": true,
+      "details": "Status: 404",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:12.137942"
+    },
+    {
+      "category": "database_operations",
+      "test_name": "Database file exists",
+      "passed": true,
+      "details": "Size: 747.7MB",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:12.137986"
+    },
+    {
+      "category": "database_operations",
+      "test_name": "Database connectivity",
+      "passed": true,
+      "details": "Tables: 32",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:12.138689"
+    },
+    {
+      "category": "database_operations",
+      "test_name": "Table devices exists",
+      "passed": true,
+      "details": "",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:12.138714"
+    },
+    {
+      "category": "database_operations",
+      "test_name": "Table monitoring_data exists",
+      "passed": true,
+      "details": "",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:12.138732"
+    },
+    {
+      "category": "database_operations",
+      "test_name": "Table alerts exists",
+      "passed": true,
+      "details": "",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:12.138748"
+    },
+    {
+      "category": "database_operations",
+      "test_name": "Table performance_metrics exists",
+      "passed": true,
+      "details": "",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:12.138763"
+    },
+    {
+      "category": "database_operations",
+      "test_name": "WAL mode enabled",
+      "passed": true,
+      "details": "Mode: wal",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:12.139292"
+    },
+    {
+      "category": "database_operations",
+      "test_name": "Performance indexes",
+      "passed": true,
+      "details": "Indexes: 124",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:12.139316"
+    },
+    {
+      "category": "database_operations",
+      "test_name": "Query performance",
+      "passed": true,
+      "details": "Time: 0.01ms",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:12.139328"
+    },
+    {
+      "category": "websocket_features",
+      "test_name": "WebSocket connectivity",
+      "passed": false,
+      "details": "Connection failed",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:12.139348"
+    },
+    {
+      "category": "websocket_features",
+      "test_name": "Socket.IO client loaded",
+      "passed": true,
+      "details": "Found in page",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:12.331541"
+    },
+    {
+      "category": "form_submissions",
+      "test_name": "Forms in /settings have CSRF",
+      "passed": true,
+      "details": "Forms: 2, With CSRF: 1",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:12.512858"
+    },
+    {
+      "category": "form_submissions",
+      "test_name": "Forms in /alerts have CSRF",
+      "passed": false,
+      "details": "Forms: 1, With CSRF: 0",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:12.665962"
+    },
+    {
+      "category": "form_submissions",
+      "test_name": "Forms in /escalation-rules have CSRF",
+      "passed": false,
+      "details": "Forms: 1, With CSRF: 0",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:12.821238"
+    },
+    {
+      "category": "security_features",
+      "test_name": "Security headers present",
+      "passed": true,
+      "details": "3/3 headers found",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:13.013497"
+    },
+    {
+      "category": "security_features",
+      "test_name": "XSS protection",
+      "passed": true,
+      "details": "Script tags filtered",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:13.016381"
+    },
+    {
+      "category": "performance_verification",
+      "test_name": "Page load time /",
+      "passed": true,
+      "details": "Time: 167ms",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:13.183753"
+    },
+    {
+      "category": "performance_verification",
+      "test_name": "Page load time /dashboard",
+      "passed": true,
+      "details": "Time: 4ms",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:13.187706"
+    },
+    {
+      "category": "performance_verification",
+      "test_name": "Page load time /analytics",
+      "passed": true,
+      "details": "Time: 220ms",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:13.407631"
+    },
+    {
+      "category": "performance_verification",
+      "test_name": "Page load time /devices",
+      "passed": true,
+      "details": "Time: 201ms",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:13.608825"
+    },
+    {
+      "category": "performance_verification",
+      "test_name": "API response time /api/devices",
+      "passed": true,
+      "details": "Time: 4ms",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:13.612757"
+    },
+    {
+      "category": "performance_verification",
+      "test_name": "API response time /api/monitoring/summary",
+      "passed": true,
+      "details": "Time: 6ms",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:13.618813"
+    },
+    {
+      "category": "performance_verification",
+      "test_name": "API response time /api/health",
+      "passed": true,
+      "details": "Time: 2ms",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:13.620423"
+    },
+    {
+      "category": "performance_verification",
+      "test_name": "Response compression",
+      "passed": true,
+      "details": "Encoding: gzip",
+      "critical": false,
+      "timestamp": "2025-09-21T08:24:13.741527"
+    }
+  ]
+}

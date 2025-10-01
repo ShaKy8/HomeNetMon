@@ -1,0 +1,735 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Network Overview - HomeNetMon</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#0f0f23">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="HomeNetMon">
+    
+    <!-- PWA Icons -->
+    <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
+    <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
+    
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    
+<style>
+/* Reset and Modern Foundation */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif;
+    background: #0f0f23;
+    color: #ffffff;
+    line-height: 1.6;
+    overflow-x: hidden;
+    min-height: 100vh;
+    padding-top: 80px; /* Space for navigation */
+}
+
+/* Navigation Bar */
+.top-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 70px;
+    background: rgba(15, 15, 35, 0.95);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    z-index: 1000;
+    transition: all 0.3s ease;
+}
+
+.nav-brand h2 {
+    font-size: 1.5rem;
+    font-weight: 300;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #ffffff 0%, #a0a0ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+}
+
+.nav-links {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+}
+
+.nav-link {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-weight: 400;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    position: relative;
+}
+
+.nav-link:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-link.active {
+    color: #ffffff;
+    background: rgba(120, 119, 198, 0.2);
+}
+
+.nav-link.active::before {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 6px;
+    height: 2px;
+    background: #7877c6;
+    border-radius: 1px;
+}
+
+/* Animated background */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+    z-index: -1;
+    animation: backgroundShift 20s ease-in-out infinite;
+}
+
+@keyframes backgroundShift {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.1) rotate(0.5deg); }
+}
+
+.dashboard {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    position: relative;
+}
+
+/* Header Section */
+.header {
+    text-align: center;
+    margin-bottom: 4rem;
+    position: relative;
+}
+
+.header h1 {
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 200;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, #ffffff 0%, #a0a0ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+}
+
+.header p {
+    font-size: 1.125rem;
+    opacity: 0.7;
+    font-weight: 300;
+}
+
+/* Main Grid Layout */
+.main-grid {
+    display: grid;
+    grid-template-areas: 
+        "health metrics metrics"
+        "activity activity charts";
+    grid-template-columns: 400px 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+/* Health Score - Hero Element */
+.health-section {
+    grid-area: health;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 3rem 2rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.health-section::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(from 0deg, transparent, rgba(120, 119, 198, 0.1), transparent);
+    animation: rotate 8s linear infinite;
+    z-index: -1;
+}
+
+@keyframes rotate {
+    to { transform: rotate(360deg); }
+}
+
+.health-ring {
+    position: relative;
+    margin-bottom: 2rem;
+}
+
+.health-score {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3rem;
+    font-weight: 200;
+    letter-spacing: -2px;
+}
+
+.health-label {
+    font-size: 1.125rem;
+    opacity: 0.8;
+    margin-bottom: 0.5rem;
+}
+
+.health-status {
+    font-size: 0.875rem;
+    padding: 0.5rem 1rem;
+    border-radius: 20px;
+    display: inline-block;
+    font-weight: 500;
+}
+
+.status-excellent { background: rgba(34, 197, 94, 0.2); color: #22c55e; }
+.status-good { background: rgba(59, 130, 246, 0.2); color: #3b82f6; }
+.status-fair { background: rgba(245, 158, 11, 0.2); color: #f59e0b; }
+.status-poor { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+
+/* Metrics Section */
+.metrics-section {
+    grid-area: metrics;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.metric-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 2rem 1.5rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.metric-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.metric-icon {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+    opacity: 0.8;
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 300;
+    letter-spacing: -1px;
+    margin-bottom: 0.5rem;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-trend {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 1.25rem;
+}
+
+.trend-up { color: #22c55e; }
+.trend-down { color: #ef4444; }
+.trend-neutral { color: #64748b; }
+
+/* Activity Section */
+.activity-section {
+    grid-area: activity;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 2rem;
+    overflow: hidden;
+}
+
+.activity-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    font-size: 1.125rem;
+    font-weight: 500;
+}
+
+.activity-list {
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.activity-item:last-child {
+    border-bottom: none;
+}
+
+.activity-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 1rem;
+    flex-shrink: 0;
+}
+
+.activity-dot.success { background: #22c55e; }
+.activity-dot.warning { background: #f59e0b; }
+.activity-dot.error { background: #ef4444; }
+.activity-dot.info { background: #3b82f6; }
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-text {
+    font-size: 0.875rem;
+    margin-bottom: 0.25rem;
+}
+
+.activity-time {
+    font-size: 0.75rem;
+    opacity: 0.6;
+}
+
+/* Charts Section */
+.charts-section {
+    grid-area: charts;
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1.5rem;
+}
+
+.chart-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
+    text-align: center;
+    min-height: 200px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.875rem;
+    opacity: 0.6;
+}
+
+/* Animations */
+.fade-in {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeInUp 0.6s ease forwards;
+}
+
+.fade-in:nth-child(1) { animation-delay: 0.1s; }
+.fade-in:nth-child(2) { animation-delay: 0.2s; }
+.fade-in:nth-child(3) { animation-delay: 0.3s; }
+.fade-in:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes fadeInUp {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .main-grid {
+        grid-template-areas: 
+            "health health"
+            "metrics metrics"
+            "activity charts";
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard {
+        padding: 1rem;
+    }
+    
+    .main-grid {
+        grid-template-areas: 
+            "health"
+            "metrics"
+            "activity"
+            "charts";
+        grid-template-columns: 1fr;
+    }
+    
+    .charts-section {
+        grid-template-columns: 1fr;
+    }
+    
+    .metrics-section {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
+
+/* Skeleton Loading */
+.skeleton {
+    background: linear-gradient(90deg, rgba(255,255,255,0.1) 25%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.1) 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+</style>
+</head>
+<body>
+
+<!-- Minimal Navigation -->
+<nav class="top-nav">
+    <div class="nav-brand">
+        <h2>HomeNetMon</h2>
+    </div>
+    <div class="nav-links">
+        <a href="/" class="nav-link active">Dashboard</a>
+        <a href="/devices" class="nav-link">Devices</a>
+        <a href="/alerts" class="nav-link">Alerts</a>
+        <a href="/analytics" class="nav-link">Reports</a>
+        <a href="/topology" class="nav-link">Network Map</a>
+        <a href="/settings" class="nav-link">Settings</a>
+    </div>
+</nav>
+
+<div class="dashboard">
+    <!-- Header -->
+    <div class="header fade-in">
+        <h1>Network Overview</h1>
+        <p>Real-time monitoring dashboard</p>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="main-grid">
+        <!-- Health Score -->
+        <div class="health-section fade-in">
+            <div class="health-content">
+                <div class="health-ring">
+                    <svg width="180" height="180">
+                        <circle cx="90" cy="90" r="80" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8"/>
+                        <circle cx="90" cy="90" r="80" fill="none" stroke="url(#healthGradient)" 
+                                stroke-width="8" stroke-linecap="round"
+                                stroke-dasharray="502" stroke-dashoffset="502" id="health-ring">
+                        </circle>
+                        <defs>
+                            <linearGradient id="healthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#7877c6"/>
+                                <stop offset="100%" style="stop-color:#ff77c6"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <div class="health-score" id="health-score">--</div>
+                </div>
+                <div class="health-label">Network Health</div>
+                <div class="health-status" id="health-status">Analyzing...</div>
+            </div>
+        </div>
+
+        <!-- Metrics Grid -->
+        <div class="metrics-section">
+            <div class="metric-card devices fade-in">
+                <div class="metric-icon">🖥️</div>
+                <div class="metric-trend trend-neutral" id="devices-trend">→</div>
+                <div class="metric-value" id="devices-online">--</div>
+                <div class="metric-label">Devices Online</div>
+            </div>
+            
+            <div class="metric-card uptime fade-in">
+                <div class="metric-icon">⏱️</div>
+                <div class="metric-trend trend-neutral" id="uptime-trend">→</div>
+                <div class="metric-value" id="network-uptime">--</div>
+                <div class="metric-label">Network Uptime</div>
+            </div>
+            
+            <div class="metric-card response fade-in">
+                <div class="metric-icon">⚡</div>
+                <div class="metric-trend trend-neutral" id="response-trend">→</div>
+                <div class="metric-value" id="avg-response">--</div>
+                <div class="metric-label">Response Time</div>
+            </div>
+            
+            <div class="metric-card alerts fade-in">
+                <div class="metric-icon">🚨</div>
+                <div class="metric-trend trend-neutral" id="alerts-trend">→</div>
+                <div class="metric-value" id="active-alerts">--</div>
+                <div class="metric-label">Active Alerts</div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="activity-section fade-in">
+            <div class="activity-header">
+                📊 Recent Activity
+            </div>
+            <div class="activity-list" id="activity-feed">
+                <div class="skeleton" style="height: 50px;"></div>
+                <div class="skeleton" style="height: 50px;"></div>
+                <div class="skeleton" style="height: 50px;"></div>
+            </div>
+        </div>
+
+        <!-- Charts Placeholder -->
+        <div class="charts-section fade-in">
+            <div class="chart-card">
+                📈 Network Traffic Chart
+            </div>
+            <div class="chart-card">
+                📊 Device Status Chart
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Dashboard functionality
+let socket;
+let lastHealthScore = 0;
+
+// Initialize dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    initializeSocket();
+    loadDashboardData();
+    startDataRefresh();
+});
+
+// Socket.IO connection
+function initializeSocket() {
+    socket = io();
+    
+    socket.on('connect', function() {
+        console.log('Connected to server');
+    });
+    
+    socket.on('dashboard_update', function(data) {
+        updateDashboard(data);
+    });
+}
+
+// Load dashboard data
+async function loadDashboardData() {
+    try {
+        const response = await fetch('/api/monitoring/summary');
+        if (response.ok) {
+            const data = await response.json();
+            updateDashboard(data);
+        }
+    } catch (error) {
+        console.error('Error loading dashboard data:', error);
+    }
+}
+
+// Update dashboard with new data
+function updateDashboard(data) {
+    // Update metrics
+    document.getElementById('devices-online').textContent = `${data.devices_up}/${data.total_devices}`;
+    document.getElementById('network-uptime').textContent = `${data.network_uptime}%`;
+    document.getElementById('avg-response').textContent = `${data.avg_response_time}ms`;
+    document.getElementById('active-alerts').textContent = data.active_alerts;
+
+    // Calculate and update health score
+    updateHealthScore(data);
+    
+    // Load recent activity
+    loadRecentActivity();
+}
+
+// Update health score with animation
+function updateHealthScore(data) {
+    let score = 100;
+    const responseTime = data.avg_response_time || 0;
+    
+    // Parse uptime - handle both string percentage and number formats
+    let uptime = 100;
+    if (data.network_uptime) {
+        if (typeof data.network_uptime === 'string') {
+            uptime = parseFloat(data.network_uptime.replace('%', '')) || 100;
+        } else {
+            uptime = data.network_uptime;
+        }
+    }
+    
+    const alerts = data.active_alerts || 0;
+    
+    // Calculate health score with proper validation
+    score = Math.min(100, Math.max(0, uptime));
+    if (responseTime > 100) score -= 5;
+    if (responseTime > 200) score -= 10;
+    if (responseTime > 500) score -= 20;
+    score -= Math.min(alerts * 0.1, 20); // Reduced alert penalty since there are 459 alerts
+    score = Math.max(0, Math.round(score));
+    
+    // Animate score
+    animateValue('health-score', lastHealthScore, score, 1000);
+    lastHealthScore = score;
+    
+    // Update ring
+    const ring = document.getElementById('health-ring');
+    const circumference = 2 * Math.PI * 80;
+    const offset = circumference - (score / 100) * circumference;
+    ring.style.strokeDashoffset = offset;
+    
+    // Update status
+    const healthStatus = document.getElementById('health-status');
+    if (score >= 90) {
+        healthStatus.textContent = 'Excellent';
+        healthStatus.className = 'health-status status-excellent';
+    } else if (score >= 70) {
+        healthStatus.textContent = 'Good';
+        healthStatus.className = 'health-status status-good';
+    } else if (score >= 50) {
+        healthStatus.textContent = 'Fair';
+        healthStatus.className = 'health-status status-fair';
+    } else {
+        healthStatus.textContent = 'Poor';
+        healthStatus.className = 'health-status status-poor';
+    }
+}
+
+// Animate number values
+function animateValue(elementId, start, end, duration) {
+    const element = document.getElementById(elementId);
+    const range = end - start;
+    const minTimer = 50;
+    let stepTime = Math.abs(Math.floor(duration / range));
+    stepTime = Math.max(stepTime, minTimer);
+    
+    const startTime = new Date().getTime();
+    const endTime = startTime + duration;
+    
+    function run() {
+        const now = new Date().getTime();
+        const remaining = Math.max((endTime - now) / duration, 0);
+        const value = Math.round(end - (remaining * range));
+        element.textContent = value;
+        
+        if (value !== end) {
+            requestAnimationFrame(run);
+        }
+    }
+    
+    run();
+}
+
+// Load recent activity
+async function loadRecentActivity() {
+    try {
+        const response = await fetch('/api/monitoring/recent-activity');
+        if (response.ok) {
+            const data = await response.json();
+            displayActivity(data.activities || []);
+        }
+    } catch (error) {
+        console.error('Error loading activity:', error);
+        displayActivity([]);
+    }
+}
+
+// Display activity feed
+function displayActivity(activities) {
+    const feed = document.getElementById('activity-feed');
+    
+    if (activities.length === 0) {
+        feed.innerHTML = `
+            <div class="activity-item">
+                <div class="activity-dot success"></div>
+                <div class="activity-content">
+                    <div class="activity-text">No recent events</div>
+                    <div class="activity-time">System running normally</div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+
+    feed.innerHTML = activities.map(activity => {
+        const time = new Date(activity.timestamp).toLocaleTimeString();
+        const dotClass = activity.type === 'device_down' ? 'error' : 
+                        activity.type === 'device_up' ? 'success' : 'info';
+        
+        return `
+            <div class="activity-item">
+                <div class="activity-dot ${dotClass}"></div>
+                <div class="activity-content">
+                    <div class="activity-text">${activity.message}</div>
+                    <div class="activity-time">${time}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Start automatic data refresh
+function startDataRefresh() {
+    setInterval(loadDashboardData, 30000); // Refresh every 30 seconds
+}
+</script>
+
+</body>
+</html>

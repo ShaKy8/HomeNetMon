@@ -1,164 +1,22 @@
 {
-  "name": "HomeNetMon - Network Monitor",
-  "short_name": "HomeNetMon",
-  "description": "Comprehensive home network monitoring solution with real-time device tracking and alerts",
-  "start_url": "/",
-  "scope": "/",
-  "display": "standalone",
-  "display_override": ["window-controls-overlay", "standalone", "minimal-ui"],
-  "orientation": "any",
-  "theme_color": "#0d6efd",
-  "background_color": "#ffffff",
-  "categories": ["utilities", "productivity", "business"],
-  "id": "homenetmon-app",
-  "lang": "en-US",
-  "dir": "ltr",
-  "prefer_related_applications": false,
-  "icons": [
-    {
-      "src": "/static/icons/icon-72x72.png",
-      "sizes": "72x72",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/static/icons/icon-96x96.png",
-      "sizes": "96x96",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/static/icons/icon-128x128.png",
-      "sizes": "128x128",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/static/icons/icon-144x144.png",
-      "sizes": "144x144",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/static/icons/icon-152x152.png",
-      "sizes": "152x152",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/static/icons/icon-192x192.png",
-      "sizes": "192x192",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/static/icons/icon-384x384.png",
-      "sizes": "384x384",
-      "type": "image/png",
-      "purpose": "any maskable"
-    },
-    {
-      "src": "/static/icons/icon-512x512.png",
-      "sizes": "512x512",
-      "type": "image/png",
-      "purpose": "any maskable"
-    }
-  ],
-  "shortcuts": [
-    {
-      "name": "Dashboard",
-      "short_name": "Dashboard",
-      "description": "View network dashboard",
-      "url": "/",
-      "icons": [
-        {
-          "src": "/static/icons/dashboard-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "Network Topology",
-      "short_name": "Topology",
-      "description": "View network topology map",
-      "url": "/topology",
-      "icons": [
-        {
-          "src": "/static/icons/topology-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "Alerts",
-      "short_name": "Alerts",
-      "description": "View network alerts",
-      "url": "/alerts",
-      "icons": [
-        {
-          "src": "/static/icons/alerts-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
-    },
-    {
-      "name": "Device Status",
-      "short_name": "Devices",
-      "description": "Quick device status check",
-      "url": "/devices",
-      "icons": [
-        {
-          "src": "/static/icons/device-96x96.png",
-          "sizes": "96x96"
-        }
-      ]
-    }
-  ],
-  "screenshots": [
-    {
-      "src": "/static/screenshots/dashboard-mobile.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "platform": "mobile",
-      "label": "HomeNetMon Dashboard on mobile"
-    },
-    {
-      "src": "/static/screenshots/topology-mobile.png",
-      "sizes": "390x844",
-      "type": "image/png",
-      "platform": "mobile",
-      "label": "Network topology view on mobile"
-    },
-    {
-      "src": "/static/screenshots/dashboard-desktop.png",
-      "sizes": "1920x1080",
-      "type": "image/png",
-      "platform": "wide",
-      "label": "HomeNetMon Dashboard on desktop"
-    }
-  ],
-  "launch_handler": {
-    "client_mode": "focus-existing"
+  "core.js": {
+    "file": "bundles/core.js",
+    "hash": "7bdd7c5a"
   },
-  "handle_links": "preferred",
-  "edge_side_panel": {
-    "preferred_width": 400
+  "dashboard.js": {
+    "file": "bundles/dashboard.js",
+    "hash": "f32f2efa"
   },
-  "protocol_handlers": [
-    {
-      "protocol": "web+homenetmon",
-      "url": "/protocol-handler?action=%s"
-    }
-  ],
-  "related_applications": [],
-  "file_handlers": [
-    {
-      "action": "/file-handler",
-      "accept": {
-        "application/json": [".json"],
-        "text/csv": [".csv"]
-      },
-      "launch_type": "single-client"
-    }
-  ]
+  "topology.js": {
+    "file": "bundles/topology.js",
+    "hash": "8d45beae"
+  },
+  "core.css": {
+    "file": "bundles/core.css",
+    "hash": "08f8f9a3"
+  },
+  "dashboard.css": {
+    "file": "bundles/dashboard.css",
+    "hash": "08f8f9a3"
+  }
 }

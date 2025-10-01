@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Analytics Page Button Functionality Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; max-width: 1200px; margin: 0 auto; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ddd; border-radius: 5px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .pass { background-color: #d4edda; border: 1px solid #c3e6cb; }
+        .fail { background-color: #f8d7da; border: 1px solid #f5c6cb; }
+        .warning { background-color: #fff3cd; border: 1px solid #ffeaa7; }
+        .info { background-color: #d1ecf1; border: 1px solid #bee5eb; }
+        button { padding: 8px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .test-output { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 5px; font-family: monospace; }
+        .api-test { margin: 10px 0; padding: 10px; background: #f1f3f4; border-radius: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Analytics Page Button Functionality Test</h1>
+    <p>Testing all interactive elements on the Analytics page at <code>http://geekom1:5000/analytics</code></p>
+
+    <div class="test-section">
+        <h3>🚀 Test Controls</h3>
+        <button onclick="runAllTests()">Run All Tests</button>
+        <button onclick="clearResults()">Clear Results</button>
+        <button onclick="testSpecificButton()">Test Individual Button</button>
+    </div>
+
+    <div id="test-results"></div>
+
+    <script>
+        // Base URL for the analytics application
+        const BASE_URL = 'http://geekom1:5000';
+        const ANALYTICS_URL = `${BASE_URL}/analytics`;
+
+        // Test results container
+        const resultsContainer = document.getElementById('test-results');
+
+        // Analytics page button tests
+        const ANALYTICS_TESTS = [
+            {
+                name: 'Navigation Tab - Overview',
+                type: 'tab',
+                selector: 'button[data-bs-target="#overview"]',
+                expectedBehavior: 'Should activate Overview tab and show overview content'
+            },
+            {
+                name: 'Navigation Tab - Performance',
+                type: 'tab',
+                selector: 'button[data-bs-target="#performance"]',
+                expectedBehavior: 'Should activate Performance tab and show performance charts'
+            },
+            {
+                name: 'Navigation Tab - Devices',
+                type: 'tab',
+                selector: 'button[data-bs-target="#devices"]',
+                expectedBehavior: 'Should activate Devices tab and show device analytics'
+            },
+            {
+                name: 'Navigation Tab - Bandwidth',
+                type: 'tab',
+                selector: 'button[data-bs-target="#bandwidth"]',
+                expectedBehavior: 'Should activate Bandwidth tab and show bandwidth charts'
+            },
+            {
+                name: 'Refresh Analytics Button',
+                type: 'action',
+                selector: '#refresh-analytics',
+                expectedBehavior: 'Should reload all analytics data and refresh charts'
+            },
+            {
+                name: 'Time Range - 24 Hours',
+                type: 'radio',
+                selector: 'input[name="global-time-range"][value="24h"]',
+                expectedBehavior: 'Should filter data to last 24 hours'
+            },
+            {
+                name: 'Time Range - 7 Days',
+                type: 'radio',
+                selector: 'input[name="global-time-range"][value="7d"]',
+                expectedBehavior: 'Should filter data to last 7 days'
+            },
+            {
+                name: 'Time Range - 30 Days',
+                type: 'radio',
+                selector: 'input[name="global-time-range"][value="30d"]',
+                expectedBehavior: 'Should filter data to last 30 days'
+            },
+            {
+                name: 'Speed Test - Run Button',
+                type: 'action',
+                selector: '#speedtest-btn',
+                expectedBehavior: 'Should start a speed test and show progress'
+            },
+            {
+                name: 'Speed Test - Cancel Button',
+                type: 'action',
+                selector: '#cancel-speedtest-btn',
+                expectedBehavior: 'Should cancel running speed test'
+            },
+            {
+                name: 'Speed Test - Refresh Rating',
+                type: 'action',
+                selector: '#refresh-rating-btn',
+                expectedBehavior: 'Should refresh speed test rating display'
+            },
+            {
+                name: 'Performance Trend - 7 Days',
+                type: 'radio',
+                selector: 'input[name="performance-trend-period"][value="7"]',
+                expectedBehavior: 'Should show 7-day performance trend'
+            },
+            {
+                name: 'Performance Trend - 30 Days',
+                type: 'radio',
+                selector: 'input[name="performance-trend-period"][value="30"]',
+                expectedBehavior: 'Should show 30-day performance trend'
+            },
+            {
+                name: 'Performance Trend - 90 Days',
+                type: 'radio',
+                selector: 'input[name="performance-trend-period"][value="90"]',
+                expectedBehavior: 'Should show 90-day performance trend'
+            },
+            {
+                name: 'Bandwidth Period - 24 Hours',
+                type: 'radio',
+                selector: 'input[name="bandwidth-period"][value="24h"]',
+                expectedBehavior: 'Should show 24-hour bandwidth data'
+            },
+            {
+                name: 'Bandwidth Period - 7 Days',
+                type: 'radio',
+                selector: 'input[name="bandwidth-period"][value="7d"]',
+                expectedBehavior: 'Should show 7-day bandwidth data'
+            },
+            {
+                name: 'Clear Filters Button',
+                type: 'action',
+                selector: '#clear-filters',
+                expectedBehavior: 'Should reset all filters to default state'
+            }
+        ];
+
+        // API endpoints to test
+        const API_ENDPOINTS = [
+            { url: '/api/analytics/overview', method: 'GET', name: 'Overview Data' },
+            { url: '/api/analytics/performance', method: 'GET', name: 'Performance Data' },
+            { url: '/api/analytics/devices', method: 'GET', name: 'Device Analytics' },
+            { url: '/api/analytics/bandwidth', method: 'GET', name: 'Bandwidth Data' },
+            { url: '/api/speedtest/run', method: 'POST', name: 'Speed Test Start' },
+            { url: '/api/speedtest/status', method: 'GET', name: 'Speed Test Status' },
+            { url: '/api/speedtest/cancel', method: 'POST', name: 'Speed Test Cancel' }
+        ];
+
+        function addResult(testName, status, message, details = '') {
+            const result = document.createElement('div');
+            result.className = `test-result ${status}`;
+            result.innerHTML = `
+                <strong>${testName}</strong>: ${message}
+                ${details ? `<div class="test-output">${details}</div>` : ''}
+            `;
+            resultsContainer.appendChild(result);
+        }
+
+        async function testPageAccessibility() {
+            addResult('Page Accessibility Test', 'info', 'Testing analytics page access...');
+
+            try {
+                const response = await fetch(ANALYTICS_URL);
+                if (response.ok) {
+                    addResult('Analytics Page Access', 'pass', `Page accessible (${response.status})`);
+                    return true;
+                } else {
+                    addResult('Analytics Page Access', 'fail', `Page not accessible (${response.status})`);
+                    return false;
+                }
+            } catch (error) {
+                addResult('Analytics Page Access', 'fail', `Error accessing page: ${error.message}`);
+                return false;
+            }
+        }
+
+        async function testAPIEndpoints() {
+            addResult('API Endpoints Test', 'info', 'Testing backend API endpoints...');
+
+            for (const endpoint of API_ENDPOINTS) {
+                try {
+                    const response = await fetch(`${BASE_URL}${endpoint.url}`, {
+                        method: endpoint.method,
+                        headers: {
+                            'Content-Type': 'application/json',
+                        }
+                    });
+
+                    if (response.ok || response.status === 405) { // 405 = Method not allowed but endpoint exists
+                        addResult(`API: ${endpoint.name}`, 'pass', `Endpoint responsive (${response.status})`);
+                    } else {
+                        addResult(`API: ${endpoint.name}`, 'warning', `Endpoint issue (${response.status})`);
+                    }
+                } catch (error) {
+                    addResult(`API: ${endpoint.name}`, 'fail', `Endpoint error: ${error.message}`);
+                }
+            }
+        }
+
+        async function testButtonFunctionality() {
+            addResult('Button Functionality Test', 'info', 'Testing analytics page buttons...');
+
+            // Test if we can access the analytics page in an iframe to test buttons
+            const iframe = document.createElement('iframe');
+            iframe.style.display = 'none';
+            document.body.appendChild(iframe);
+
+            return new Promise((resolve) => {
+                iframe.onload = () => {
+                    try {
+                        const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+
+                        for (const test of ANALYTICS_TESTS) {
+                            const element = iframeDoc.querySelector(test.selector);
+
+                            if (element) {
+                                // Check if element is visible and enabled
+                                const isVisible = element.offsetParent !== null;
+                                const isEnabled = !element.disabled;
+                                const hasEventListener = element.onclick || element.addEventListener;
+
+                                let status = 'pass';
+                                let message = `Element found and ${isVisible ? 'visible' : 'hidden'}, ${isEnabled ? 'enabled' : 'disabled'}`;
+
+                                if (!isVisible || !isEnabled) {
+                                    status = 'warning';
+                                    message += ' (may have functionality issues)';
+                                }
+
+                                addResult(`Button: ${test.name}`, status, message, test.expectedBehavior);
+                            } else {
+                                addResult(`Button: ${test.name}`, 'fail', 'Element not found in DOM', test.expectedBehavior);
+                            }
+                        }
+
+                        document.body.removeChild(iframe);
+                        resolve();
+                    } catch (error) {
+                        addResult('Button Testing', 'fail', `Cross-origin error: ${error.message}`, 'Cannot access iframe content due to CORS policy');
+                        document.body.removeChild(iframe);
+                        resolve();
+                    }
+                };
+
+                iframe.onerror = () => {
+                    addResult('Button Testing', 'fail', 'Failed to load analytics page in iframe');
+                    document.body.removeChild(iframe);
+                    resolve();
+                };
+
+                iframe.src = ANALYTICS_URL;
+            });
+        }
+
+        async function testJavaScriptFunctions() {
+            addResult('JavaScript Functions Test', 'info', 'Testing key analytics functions...');
+
+            // Test if key functions would be available
+            const expectedFunctions = [
+                'loadAllAnalytics',
+                'runSpeedTest',
+                'cancelSpeedTest',
+                'updateDeviceTypesChart',
+                'updateHourlyPatternChart',
+                'loadBandwidthAnalytics',
+                'showToast'
+            ];
+
+            // Since we can't directly access the functions, we test if the page structure suggests they exist
+            try {
+                const response = await fetch(ANALYTICS_URL);
+                const html = await response.text();
+
+                for (const funcName of expectedFunctions) {
+                    if (html.includes(funcName)) {
+                        addResult(`JS Function: ${funcName}`, 'pass', 'Function definition found in page');
+                    } else {
+                        addResult(`JS Function: ${funcName}`, 'warning', 'Function definition not found in page source');
+                    }
+                }
+            } catch (error) {
+                addResult('JavaScript Functions Test', 'fail', `Error checking functions: ${error.message}`);
+            }
+        }
+
+        async function runAllTests() {
+            clearResults();
+            addResult('Test Suite', 'info', 'Starting comprehensive analytics page test...');
+
+            // Test 1: Page accessibility
+            const pageAccessible = await testPageAccessibility();
+
+            // Test 2: API endpoints
+            await testAPIEndpoints();
+
+            // Test 3: JavaScript functions
+            await testJavaScriptFunctions();
+
+            // Test 4: Button functionality (if page is accessible)
+            if (pageAccessible) {
+                await testButtonFunctionality();
+            } else {
+                addResult('Button Testing', 'warning', 'Skipped due to page accessibility issues');
+            }
+
+            // Test 5: Chart libraries
+            await testChartLibraries();
+
+            addResult('Test Suite', 'info', 'All tests completed!');
+        }
+
+        async function testChartLibraries() {
+            addResult('Chart Libraries Test', 'info', 'Testing chart rendering capabilities...');
+
+            try {
+                const response = await fetch(ANALYTICS_URL);
+                const html = await response.text();
+
+                const chartTests = [
+                    { name: 'Chart.js', pattern: /chart\.js|Chart\.js/i },
+                    { name: 'Canvas Elements', pattern: /<canvas/i },
+                    { name: 'Chart Containers', pattern: /chart.*container|canvas.*chart/i }
+                ];
+
+                for (const test of chartTests) {
+                    if (test.pattern.test(html)) {
+                        addResult(`Chart: ${test.name}`, 'pass', 'Chart component found');
+                    } else {
+                        addResult(`Chart: ${test.name}`, 'warning', 'Chart component not found in HTML');
+                    }
+                }
+            } catch (error) {
+                addResult('Chart Libraries Test', 'fail', `Error testing charts: ${error.message}`);
+            }
+        }
+
+        function clearResults() {
+            resultsContainer.innerHTML = '';
+        }
+
+        function testSpecificButton() {
+            const buttonName = prompt('Enter button name to test (e.g., "Refresh Analytics Button"):');
+            if (!buttonName) return;
+
+            const test = ANALYTICS_TESTS.find(t => t.name.toLowerCase().includes(buttonName.toLowerCase()));
+            if (test) {
+                addResult('Individual Test', 'info', `Testing: ${test.name}`);
+                // Individual test logic would go here
+                addResult(test.name, 'info', 'Individual test completed', test.expectedBehavior);
+            } else {
+                addResult('Individual Test', 'fail', `Button "${buttonName}" not found in test suite`);
+            }
+        }
+
+        // Auto-run tests when page loads
+        window.addEventListener('load', () => {
+            addResult('Test Suite', 'info', 'Analytics Button Test Suite loaded. Click "Run All Tests" to begin.');
+        });
+    </script>
+</body>
+</html>

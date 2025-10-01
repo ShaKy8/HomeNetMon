@@ -164,7 +164,10 @@ class NetworkSecurityScanner:
             'version_detection': True,
             'aggressive_timing': True,  # T4 timing
             'skip_host_discovery': True,  # Assume hosts are up
-            'max_concurrent_scans': 5
+            'max_concurrent_scans': 5,
+            'host_timeout': '60s',  # Maximum time to scan one host
+            'max_retries': 1,       # Reduce retries for problematic hosts
+            'scan_delay': '10ms',   # Delay between probes
         }
         
         # Risk scoring weights
@@ -200,6 +203,24 @@ class NetworkSecurityScanner:
             6379: 'redis',      # Redis
             27017: 'mongodb'    # MongoDB
         }
+
+        # Printer-specific ports that should NEVER be scanned
+        # Scanning these causes printers to print garbage
+        self.printer_ports_blacklist = {
+            9100,   # JetDirect/RAW printing - CRITICAL: causes gibberish printing
+            515,    # LPR/LPD printer protocol
+            631,    # IPP (Internet Printing Protocol)
+            9101,   # JetDirect alternative
+            9102,   # JetDirect alternative
+            9103,   # JetDirect alternative
+            6310,   # HP JetDirect
+        }
+
+        # Problematic devices that cause hangs or excessive delays
+        # These devices have been observed to cause nmap scans to hang for hours
+        self.problematic_devices_blacklist = {
+            '192.168.192.5',  # Heavily filtered device, causes infinite hangs
+        }
     
     def start_monitoring(self):
         """Start the security scanner monitoring loop"""
@@ -234,6 +255,37 @@ class NetworkSecurityScanner:
     def get_scan_progress(self):
         """Get current scan progress"""
         return dict(self.current_scan)
+
+    def stop_current_scan(self):
+        """Stop the currently running security scan"""
+        if not self.current_scan['active']:
+            return {'success': False, 'error': 'No scan is currently running'}
+
+        try:
+            logger.info("Stopping current security scan...")
+
+            # Mark scan as stopped
+            self._update_scan_progress(
+                status='stopped',
+                end_time=datetime.utcnow(),
+                error_message='Scan stopped by user'
+            )
+
+            # Reset scan state after a brief delay to allow status to be read
+            import threading
+            def reset_after_delay():
+                import time
+                time.sleep(2)  # Give time for UI to read the 'stopped' status
+                self._reset_scan_progress()
+
+            threading.Thread(target=reset_after_delay, daemon=True).start()
+
+            logger.info("Security scan stopped successfully")
+            return {'success': True, 'message': 'Security scan stopped'}
+
+        except Exception as e:
+            logger.error(f"Error stopping security scan: {e}")
+            return {'success': False, 'error': str(e)}
     
     def _reset_scan_progress(self):
         """Reset scan progress tracking"""
@@ -269,23 +321,40 @@ class NetworkSecurityScanner:
     def run_security_scan(self):
         """Run a complete security scan of the network"""
         logger.info("Starting network security scan")
-        
+
         if not self.app:
             logger.error("No Flask app context available")
             self._update_scan_progress(status='failed', error_message='No Flask app context available')
             return
-        
+
         # Reset and start progress tracking
         self._reset_scan_progress()
         self._update_scan_progress(
             active=True,
-            status='running', 
+            status='running',
             start_time=datetime.utcnow()
         )
-        
+
         try:
             with self.app.app_context():
-                devices = Device.query.filter_by(is_monitored=True).all()
+                # Check if printer exclusion is enabled (default: true)
+                exclude_printers = Configuration.get_value('exclude_printers_from_security_scan', 'true').lower() == 'true'
+
+                # Build query to exclude printers and other sensitive devices
+                query = Device.query.filter(Device.is_monitored == True)
+
+                if exclude_printers:
+                    # Properly exclude all printers - fix the SQL logic
+                    from sqlalchemy import or_, and_, not_
+                    query = query.filter(
+                        or_(
+                            Device.device_type != 'printer',
+                            Device.device_type == None
+                        )
+                    )
+                    logger.info("Excluding printers from security scan")
+
+                devices = query.all()
                 total_devices = len(devices)
                 
                 self._update_scan_progress(total_devices=total_devices)
@@ -389,28 +458,81 @@ class NetworkSecurityScanner:
     def scan_device_ports(self, device: Device) -> List[PortScanResult]:
         """Enhanced port scanning with comprehensive service detection"""
         results = []
-        
+
+        # Skip scanning printers entirely to prevent them from printing junk
+        if device.device_type == 'printer':
+            logger.info(f"Skipping security scan for printer: {device.display_name} ({device.ip_address})")
+            return results
+
+        # Double-check: Skip if hostname suggests it's a printer
+        hostname_lower = (device.hostname or '').lower()
+        printer_indicators = ['printer', 'print', 'hp', 'epson', 'canon', 'brother',
+                             'laserjet', 'deskjet', 'officejet', 'pixma']
+        if any(indicator in hostname_lower for indicator in printer_indicators):
+            logger.info(f"Skipping security scan for likely printer: {device.display_name} ({device.ip_address})")
+            # Auto-update device type if not already set
+            if device.device_type != 'printer':
+                device.device_type = 'printer'
+                db.session.commit()
+                logger.info(f"Auto-classified {device.display_name} as printer based on hostname")
+            return results
+
+        # Skip problematic devices that cause hangs
+        if device.ip_address in self.problematic_devices_blacklist:
+            logger.warning(f"Skipping security scan for problematic device: {device.display_name} ({device.ip_address}) - known to cause hangs")
+            return results
+
         try:
-            # Build enhanced nmap command arguments
+            # Build enhanced nmap command arguments with timeouts
             nmap_args = f"-T4 --top-ports {self.scan_config['top_ports']}"
-            
+            nmap_args += f" --host-timeout {self.scan_config['host_timeout']}"
+            nmap_args += f" --max-retries {self.scan_config['max_retries']}"
+            nmap_args += f" --scan-delay {self.scan_config['scan_delay']}"
+
+            # CRITICAL: Exclude printer ports to prevent gibberish printing
+            # Build port exclusion list
+            excluded_ports = list(self.printer_ports_blacklist)
+            if excluded_ports:
+                # Convert ports to ranges for nmap exclusion
+                exclude_str = ','.join(str(p) for p in excluded_ports)
+                nmap_args += f" --exclude-ports {exclude_str}"
+                logger.debug(f"Excluding printer ports from scan: {exclude_str}")
+
             if self.scan_config['service_detection']:
                 nmap_args += " -sV"
-            
+
             if self.scan_config['version_detection']:
                 nmap_args += " --version-intensity 7"
-            
+
             if self.scan_config['skip_host_discovery']:
                 nmap_args += " -Pn"
-            
+
             # OS detection requires root privileges - disabled for CAP_NET_RAW mode
             # nmap_args += " -O --osscan-limit"
-            
+
             # Add script scanning for vulnerability detection
             nmap_args += " --script=vuln,safe,version"
-            
-            logger.debug(f"Running enhanced nmap scan: nmap {nmap_args} {device.ip_address}")
-            scan_result = self.nm.scan(device.ip_address, arguments=nmap_args)
+
+            logger.debug(f"Running enhanced nmap scan with timeouts: nmap {nmap_args} {device.ip_address}")
+
+            # Set overall scan timeout to prevent infinite hangs
+            scan_start_time = time.time()
+            max_scan_time = 300  # 5 minutes maximum per device
+
+            try:
+                scan_result = self.nm.scan(device.ip_address, arguments=nmap_args)
+                scan_duration = time.time() - scan_start_time
+
+                if scan_duration > max_scan_time:
+                    logger.warning(f"Security scan for {device.display_name} took {scan_duration:.1f}s (exceeded {max_scan_time}s limit)")
+
+            except Exception as e:
+                scan_duration = time.time() - scan_start_time
+                logger.error(f"Security scan failed for {device.display_name} after {scan_duration:.1f}s: {e}")
+                # Return empty results to continue with other devices
+                results['scan_duration'] = scan_duration
+                results['error'] = str(e)
+                return results
             
             # Parse results
             if device.ip_address in scan_result['scan']:
@@ -419,6 +541,19 @@ class NetworkSecurityScanner:
                 # Parse TCP ports
                 if 'tcp' in host_info:
                     for port, port_info in host_info['tcp'].items():
+                        # Skip printer ports even if they somehow got scanned
+                        if port in self.printer_ports_blacklist:
+                            logger.warning(f"Skipping printer port {port} in results for {device.ip_address}")
+                            continue
+
+                        # Auto-detect printer if port 9100 is found (shouldn't happen with blacklist)
+                        if port == 9100 and device.device_type != 'printer':
+                            logger.warning(f"Port 9100 detected on {device.display_name} - auto-classifying as printer")
+                            device.device_type = 'printer'
+                            db.session.commit()
+                            # Stop scanning this device
+                            return results
+
                         result = PortScanResult(
                             device_id=device.id,
                             ip_address=device.ip_address,
@@ -432,7 +567,7 @@ class NetworkSecurityScanner:
                             scanned_at=datetime.utcnow()
                         )
                         results.append(result)
-                        
+
                         logger.debug(f"Found service: {device.ip_address}:{port} - {result.service} {result.version}")
                 
                 # Parse UDP ports if enabled

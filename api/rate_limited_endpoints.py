@@ -148,13 +148,17 @@ def create_endpoint_limiter(limit_type='moderate'):
             limiter = get_limiter()
             if limiter:
                 try:
-                    # Apply the rate limit
-                    return limiter.limit(limit_string)(f)(*args, **kwargs)
+                    # Apply the rate limit - this creates a new decorated function
+                    limited_function = limiter.limit(limit_string)(f)
+                    return limited_function(*args, **kwargs)
                 except Exception as e:
-                    logger.error(f"Error applying rate limit to {f.__name__}: {e}")
-            
-            # Fallback to original function if rate limiting fails
-            return f(*args, **kwargs)
-        
+                    logger.warning(f"Rate limit error for {f.__name__}: {e}")
+                    # Fallback to original function if rate limiting fails
+                    return f(*args, **kwargs)
+            else:
+                # Rate limiter not available - just call the original function
+                logger.debug(f"Rate limiter not available for {f.__name__} - bypassing rate limiting")
+                return f(*args, **kwargs)
+
         return decorated_function
     return decorator

@@ -1,12 +1,14 @@
 from flask import Blueprint, request, jsonify, current_app
 import logging
 from models import db, Configuration, ConfigurationHistory
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 logger = logging.getLogger(__name__)
 
 config_management_bp = Blueprint('config_management', __name__)
 
 @config_management_bp.route('/history', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_configuration_history():
     """Get configuration change history"""
     try:
@@ -40,6 +42,7 @@ def get_configuration_history():
         return jsonify({'error': str(e)}), 500
 
 @config_management_bp.route('/rollback', methods=['POST'])
+@create_endpoint_limiter('strict')
 def rollback_configuration():
     """Rollback configuration to previous value"""
     try:
@@ -73,6 +76,7 @@ def rollback_configuration():
         return jsonify({'error': str(e)}), 500
 
 @config_management_bp.route('/validate', methods=['POST'])
+@create_endpoint_limiter('strict')
 def validate_configuration():
     """Validate configuration value without applying"""
     try:
@@ -101,6 +105,7 @@ def validate_configuration():
         return jsonify({'error': str(e)}), 500
 
 @config_management_bp.route('/backup', methods=['GET'])
+@create_endpoint_limiter('critical')
 def get_configuration_backup():
     """Get current configuration backup"""
     try:
@@ -117,6 +122,7 @@ def get_configuration_backup():
         return jsonify({'error': str(e)}), 500
 
 @config_management_bp.route('/dependencies', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_configuration_dependencies():
     """Get configuration dependencies"""
     try:
@@ -133,6 +139,7 @@ def get_configuration_dependencies():
         return jsonify({'error': str(e)}), 500
 
 @config_management_bp.route('/health', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def configuration_health():
     """Get configuration service health status"""
     try:

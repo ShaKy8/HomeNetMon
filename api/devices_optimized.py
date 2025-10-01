@@ -8,12 +8,14 @@ from models import db, Device, MonitoringData, Alert
 from sqlalchemy import func, and_, desc, text
 from sqlalchemy.orm import joinedload, selectinload
 import logging
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 logger = logging.getLogger(__name__)
 
 devices_optimized_bp = Blueprint('devices_optimized', __name__)
 
 @devices_optimized_bp.route('', methods=['GET'])
+@create_endpoint_limiter('critical')
 def get_devices_optimized():
     """PERFORMANCE OPTIMIZED: Get all devices with minimal database queries"""
     try:
@@ -141,6 +143,7 @@ def compute_device_status(last_seen, response_time):
     return 'up'
 
 @devices_optimized_bp.route('/summary', methods=['GET'])
+@create_endpoint_limiter('critical')
 def get_devices_summary():
     """ULTRA-FAST: Get device summary with minimal data"""
     try:

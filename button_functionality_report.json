@@ -1,0 +1,1384 @@
+{
+  "test_info": {
+    "timestamp": "2025-09-21T07:56:21.497720",
+    "base_url": "http://geekom1:5000",
+    "pages_tested": 8,
+    "api_endpoints_tested": 11,
+    "total_checks": 129
+  },
+  "summary": {
+    "pass": 67,
+    "fail": 38,
+    "warning": 18,
+    "info": 6
+  },
+  "detailed_results": [
+    {
+      "timestamp": "2025-09-21T07:56:21.675955",
+      "test_type": "security",
+      "page": "System",
+      "element": "CSRF Token",
+      "status": "PASS",
+      "message": "CSRF token retrieved successfully",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:21.683606",
+      "test_type": "api",
+      "page": "API",
+      "element": "Get Devices List",
+      "status": "PASS",
+      "message": "Endpoint working (HTTP 200)",
+      "details": "Response contains data: 4 items"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:21.886656",
+      "test_type": "api",
+      "page": "API",
+      "element": "Get Single Device",
+      "status": "FAIL",
+      "message": "Endpoint not found (HTTP 404)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:22.088595",
+      "test_type": "api",
+      "page": "API",
+      "element": "Update Device",
+      "status": "FAIL",
+      "message": "Endpoint not found (HTTP 404)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:22.300854",
+      "test_type": "api",
+      "page": "API",
+      "element": "Network Health",
+      "status": "PASS",
+      "message": "Endpoint working (HTTP 200)",
+      "details": "Response contains data: 5 items"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:23.585356",
+      "test_type": "api",
+      "page": "API",
+      "element": "Device Insights",
+      "status": "PASS",
+      "message": "Endpoint working (HTTP 200)",
+      "details": "Response contains data: 6 items"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:23.868898",
+      "test_type": "api",
+      "page": "API",
+      "element": "Speed Test Status",
+      "status": "PASS",
+      "message": "Endpoint working (HTTP 200)",
+      "details": "Response contains data: 5 items"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:24.074172",
+      "test_type": "api",
+      "page": "API",
+      "element": "Start Speed Test",
+      "status": "PASS",
+      "message": "Endpoint working (HTTP 200)",
+      "details": "Response contains data: 4 items"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:24.293102",
+      "test_type": "api",
+      "page": "API",
+      "element": "Monitoring Summary",
+      "status": "PASS",
+      "message": "Endpoint working (HTTP 200)",
+      "details": "Response contains data: 9 items"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:24.506293",
+      "test_type": "api",
+      "page": "API",
+      "element": "Get Alerts",
+      "status": "PASS",
+      "message": "Endpoint working (HTTP 200)",
+      "details": "Response contains data: 2 items"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:24.808676",
+      "test_type": "api",
+      "page": "API",
+      "element": "System Information",
+      "status": "PASS",
+      "message": "Endpoint working (HTTP 200)",
+      "details": "Response contains data: 5 items"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:25.014677",
+      "test_type": "api",
+      "page": "API",
+      "element": "CSRF Token",
+      "status": "PASS",
+      "message": "Endpoint working (HTTP 200)",
+      "details": "Response contains data: 1 items"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:25.380937",
+      "test_type": "button_presence",
+      "page": "Main Dashboard",
+      "element": "search-btn",
+      "status": "PASS",
+      "message": "Expected button found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:25.380952",
+      "test_type": "button_presence",
+      "page": "Main Dashboard",
+      "element": "refresh-btn",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:25.380956",
+      "test_type": "button_presence",
+      "page": "Main Dashboard",
+      "element": "settings-btn",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:25.380958",
+      "test_type": "button_presence",
+      "page": "Main Dashboard",
+      "element": "notification-btn",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:25.380960",
+      "test_type": "button_presence",
+      "page": "Main Dashboard",
+      "element": "device-card-buttons",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:25.380962",
+      "test_type": "button_presence",
+      "page": "Main Dashboard",
+      "element": "status-toggle-buttons",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:25.382688",
+      "test_type": "javascript",
+      "page": "Main Dashboard",
+      "element": "Event Listeners",
+      "status": "PASS",
+      "message": "Found 17 unique event types",
+      "details": "Events: scan_completed, device_update, scan_error, DOMContentLoaded, connect"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:25.382866",
+      "test_type": "form",
+      "page": "Main Dashboard",
+      "element": "Form 1",
+      "status": "WARNING",
+      "message": "No CSRF protection detected",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:25.382964",
+      "test_type": "form",
+      "page": "Main Dashboard",
+      "element": "Form 1",
+      "status": "WARNING",
+      "message": "No submit button found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:25.385473",
+      "test_type": "element_count",
+      "page": "Main Dashboard",
+      "element": "Interactive Elements",
+      "status": "INFO",
+      "message": "Found 4 interactive elements",
+      "details": "Buttons: 4, Forms: 0, Inputs: 0"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:25.385489",
+      "test_type": "element_detected",
+      "page": "Main Dashboard",
+      "element": "bulk-enable",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:25.385495",
+      "test_type": "element_detected",
+      "page": "Main Dashboard",
+      "element": "bulk-disable",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:25.385499",
+      "test_type": "element_detected",
+      "page": "Main Dashboard",
+      "element": "btn btn-sm btn-success",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:25.385502",
+      "test_type": "element_detected",
+      "page": "Main Dashboard",
+      "element": "btn btn-sm btn-warning",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.053288",
+      "test_type": "button_presence",
+      "page": "Analytics Dashboard",
+      "element": "refresh-analytics",
+      "status": "PASS",
+      "message": "Expected button found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.053306",
+      "test_type": "button_presence",
+      "page": "Analytics Dashboard",
+      "element": "speedtest-btn",
+      "status": "PASS",
+      "message": "Expected button found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.053313",
+      "test_type": "button_presence",
+      "page": "Analytics Dashboard",
+      "element": "cancel-speedtest-btn",
+      "status": "PASS",
+      "message": "Expected button found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.053315",
+      "test_type": "button_presence",
+      "page": "Analytics Dashboard",
+      "element": "refresh-rating-btn",
+      "status": "PASS",
+      "message": "Expected button found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.053318",
+      "test_type": "button_presence",
+      "page": "Analytics Dashboard",
+      "element": "time-range-controls",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.053320",
+      "test_type": "button_presence",
+      "page": "Analytics Dashboard",
+      "element": "tab-buttons",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.056062",
+      "test_type": "javascript",
+      "page": "Analytics Dashboard",
+      "element": "Event Listeners",
+      "status": "PASS",
+      "message": "Found 7 unique event types",
+      "details": "Events: DOMContentLoaded, click, change, keydown, keypress"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.056139",
+      "test_type": "form",
+      "page": "Analytics Dashboard",
+      "element": "Form 1",
+      "status": "WARNING",
+      "message": "No CSRF protection detected",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.056150",
+      "test_type": "form",
+      "page": "Analytics Dashboard",
+      "element": "Form 1",
+      "status": "WARNING",
+      "message": "No submit button found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.057599",
+      "test_type": "element_count",
+      "page": "Analytics Dashboard",
+      "element": "Interactive Elements",
+      "status": "WARNING",
+      "message": "No interactive elements detected",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.702938",
+      "test_type": "button_presence",
+      "page": "Performance Dashboard",
+      "element": "refresh-performance",
+      "status": "PASS",
+      "message": "Expected button found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.702956",
+      "test_type": "button_presence",
+      "page": "Performance Dashboard",
+      "element": "export-data",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.702958",
+      "test_type": "button_presence",
+      "page": "Performance Dashboard",
+      "element": "filter-buttons",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.702960",
+      "test_type": "button_presence",
+      "page": "Performance Dashboard",
+      "element": "chart-controls",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.702962",
+      "test_type": "button_presence",
+      "page": "Performance Dashboard",
+      "element": "time-period-selectors",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.705653",
+      "test_type": "javascript",
+      "page": "Performance Dashboard",
+      "element": "Event Listeners",
+      "status": "PASS",
+      "message": "Found 14 unique event types",
+      "details": "Events: DOMContentLoaded, performance_metrics_update, click, openDeviceDetailPage(${device.device_id}), change"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.705723",
+      "test_type": "form",
+      "page": "Performance Dashboard",
+      "element": "Form 1",
+      "status": "WARNING",
+      "message": "No CSRF protection detected",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.705734",
+      "test_type": "form",
+      "page": "Performance Dashboard",
+      "element": "Form 1",
+      "status": "WARNING",
+      "message": "No submit button found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.706941",
+      "test_type": "element_count",
+      "page": "Performance Dashboard",
+      "element": "Interactive Elements",
+      "status": "INFO",
+      "message": "Found 3 interactive elements",
+      "details": "Buttons: 3, Forms: 0, Inputs: 0"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.706949",
+      "test_type": "element_detected",
+      "page": "Performance Dashboard",
+      "element": "btn btn-outline-secondary dropdown-toggle btn-sm",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.706952",
+      "test_type": "element_detected",
+      "page": "Performance Dashboard",
+      "element": "btn-close",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:26.706954",
+      "test_type": "element_detected",
+      "page": "Performance Dashboard",
+      "element": "btn btn-secondary",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:27.420328",
+      "test_type": "button_presence",
+      "page": "Security Dashboard",
+      "element": "refresh-security",
+      "status": "PASS",
+      "message": "Expected button found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:27.420350",
+      "test_type": "button_presence",
+      "page": "Security Dashboard",
+      "element": "scan-network",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:27.420354",
+      "test_type": "button_presence",
+      "page": "Security Dashboard",
+      "element": "block-device",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:27.420357",
+      "test_type": "button_presence",
+      "page": "Security Dashboard",
+      "element": "security-actions",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:27.420359",
+      "test_type": "button_presence",
+      "page": "Security Dashboard",
+      "element": "alert-controls",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:27.422120",
+      "test_type": "javascript",
+      "page": "Security Dashboard",
+      "element": "Event Listeners",
+      "status": "PASS",
+      "message": "Found 5 unique event types",
+      "details": "Events: DOMContentLoaded, click, change, keydown, keypress"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:27.422226",
+      "test_type": "form",
+      "page": "Security Dashboard",
+      "element": "Form 1",
+      "status": "WARNING",
+      "message": "No CSRF protection detected",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:27.422242",
+      "test_type": "form",
+      "page": "Security Dashboard",
+      "element": "Form 1",
+      "status": "WARNING",
+      "message": "No submit button found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:27.422249",
+      "test_type": "form",
+      "page": "Security Dashboard",
+      "element": "Form 2",
+      "status": "PASS",
+      "message": "CSRF protection present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:27.422317",
+      "test_type": "form",
+      "page": "Security Dashboard",
+      "element": "Form 2",
+      "status": "PASS",
+      "message": "Submit button present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:27.423626",
+      "test_type": "element_count",
+      "page": "Security Dashboard",
+      "element": "Interactive Elements",
+      "status": "INFO",
+      "message": "Found 4 interactive elements",
+      "details": "Buttons: 3, Forms: 1, Inputs: 0"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:27.423635",
+      "test_type": "element_detected",
+      "page": "Security Dashboard",
+      "element": "btn btn-outline-secondary time-filter",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:27.423640",
+      "test_type": "element_detected",
+      "page": "Security Dashboard",
+      "element": "btn btn-outline-secondary time-filter",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:27.423643",
+      "test_type": "element_detected",
+      "page": "Security Dashboard",
+      "element": "btn btn-outline-secondary time-filter",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:27.423647",
+      "test_type": "element_detected",
+      "page": "Security Dashboard",
+      "element": "security-settings-form",
+      "status": "PASS",
+      "message": "Form: Form: security-settings-form",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.108345",
+      "test_type": "button_presence",
+      "page": "Devices List",
+      "element": "add-device",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.108362",
+      "test_type": "button_presence",
+      "page": "Devices List",
+      "element": "edit-device",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.108366",
+      "test_type": "button_presence",
+      "page": "Devices List",
+      "element": "delete-device",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.108368",
+      "test_type": "button_presence",
+      "page": "Devices List",
+      "element": "bulk-actions",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.108370",
+      "test_type": "button_presence",
+      "page": "Devices List",
+      "element": "filter-devices",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.108375",
+      "test_type": "button_presence",
+      "page": "Devices List",
+      "element": "export-devices",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.109928",
+      "test_type": "javascript",
+      "page": "Devices List",
+      "element": "Event Listeners",
+      "status": "PASS",
+      "message": "Found 17 unique event types",
+      "details": "Events: scan_completed, device_update, scan_error, DOMContentLoaded, connect"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.109973",
+      "test_type": "form",
+      "page": "Devices List",
+      "element": "Form 1",
+      "status": "WARNING",
+      "message": "No CSRF protection detected",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.109983",
+      "test_type": "form",
+      "page": "Devices List",
+      "element": "Form 1",
+      "status": "WARNING",
+      "message": "No submit button found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.110709",
+      "test_type": "element_count",
+      "page": "Devices List",
+      "element": "Interactive Elements",
+      "status": "INFO",
+      "message": "Found 4 interactive elements",
+      "details": "Buttons: 4, Forms: 0, Inputs: 0"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.110713",
+      "test_type": "element_detected",
+      "page": "Devices List",
+      "element": "bulk-enable",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.110715",
+      "test_type": "element_detected",
+      "page": "Devices List",
+      "element": "bulk-disable",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.110717",
+      "test_type": "element_detected",
+      "page": "Devices List",
+      "element": "btn btn-sm btn-success",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.110719",
+      "test_type": "element_detected",
+      "page": "Devices List",
+      "element": "btn btn-sm btn-warning",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.750350",
+      "test_type": "button_presence",
+      "page": "Alerts Management",
+      "element": "alert-actions",
+      "status": "PASS",
+      "message": "Expected button found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.750376",
+      "test_type": "button_presence",
+      "page": "Alerts Management",
+      "element": "acknowledge-alert",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.750380",
+      "test_type": "button_presence",
+      "page": "Alerts Management",
+      "element": "resolve-alert",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.750382",
+      "test_type": "button_presence",
+      "page": "Alerts Management",
+      "element": "delete-alert",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.750385",
+      "test_type": "button_presence",
+      "page": "Alerts Management",
+      "element": "bulk-operations",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.750387",
+      "test_type": "button_presence",
+      "page": "Alerts Management",
+      "element": "filter-alerts",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.752663",
+      "test_type": "javascript",
+      "page": "Alerts Management",
+      "element": "Event Listeners",
+      "status": "PASS",
+      "message": "Found 28 unique event types",
+      "details": "Events: reconnect_error, alert_created, change, keydown, alert_updated"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.752753",
+      "test_type": "form",
+      "page": "Alerts Management",
+      "element": "Form 1",
+      "status": "WARNING",
+      "message": "No CSRF protection detected",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.752769",
+      "test_type": "form",
+      "page": "Alerts Management",
+      "element": "Form 1",
+      "status": "WARNING",
+      "message": "No submit button found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:28.753622",
+      "test_type": "element_count",
+      "page": "Alerts Management",
+      "element": "Interactive Elements",
+      "status": "WARNING",
+      "message": "No interactive elements detected",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.426351",
+      "test_type": "button_presence",
+      "page": "Settings",
+      "element": "save-settings",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.426377",
+      "test_type": "button_presence",
+      "page": "Settings",
+      "element": "reset-settings",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.426384",
+      "test_type": "button_presence",
+      "page": "Settings",
+      "element": "test-connection",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.426388",
+      "test_type": "button_presence",
+      "page": "Settings",
+      "element": "apply-changes",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.426392",
+      "test_type": "button_presence",
+      "page": "Settings",
+      "element": "export-config",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.426395",
+      "test_type": "button_presence",
+      "page": "Settings",
+      "element": "import-config",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.428968",
+      "test_type": "javascript",
+      "page": "Settings",
+      "element": "Event Listeners",
+      "status": "PASS",
+      "message": "Found 24 unique event types",
+      "details": "Events: setPingInterval(300), setScanInterval(900), setAlertThreshold(15), clearAllData(), saveInterfaceSettings()"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.429107",
+      "test_type": "form",
+      "page": "Settings",
+      "element": "Form 1",
+      "status": "WARNING",
+      "message": "No CSRF protection detected",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.429127",
+      "test_type": "form",
+      "page": "Settings",
+      "element": "Form 1",
+      "status": "WARNING",
+      "message": "No submit button found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.429147",
+      "test_type": "form",
+      "page": "Settings",
+      "element": "Form 2",
+      "status": "PASS",
+      "message": "CSRF protection present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.429251",
+      "test_type": "form",
+      "page": "Settings",
+      "element": "Form 2",
+      "status": "PASS",
+      "message": "Submit button present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.430392",
+      "test_type": "element_count",
+      "page": "Settings",
+      "element": "Interactive Elements",
+      "status": "INFO",
+      "message": "Found 13 interactive elements",
+      "details": "Buttons: 12, Forms: 1, Inputs: 0"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.430401",
+      "test_type": "element_detected",
+      "page": "Settings",
+      "element": "btn btn-sm",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.430405",
+      "test_type": "element_detected",
+      "page": "Settings",
+      "element": "btn btn-sm",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.430409",
+      "test_type": "element_detected",
+      "page": "Settings",
+      "element": "btn btn-sm",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.430412",
+      "test_type": "element_detected",
+      "page": "Settings",
+      "element": "btn btn-sm",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.430415",
+      "test_type": "element_detected",
+      "page": "Settings",
+      "element": "btn btn-sm",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.430418",
+      "test_type": "element_detected",
+      "page": "Settings",
+      "element": "btn btn-sm",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.430421",
+      "test_type": "element_detected",
+      "page": "Settings",
+      "element": "btn btn-sm",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.430424",
+      "test_type": "element_detected",
+      "page": "Settings",
+      "element": "btn btn-sm",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.430427",
+      "test_type": "element_detected",
+      "page": "Settings",
+      "element": "btn btn-sm",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:29.430432",
+      "test_type": "element_detected",
+      "page": "Settings",
+      "element": "btn btn-sm",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.197131",
+      "test_type": "button_presence",
+      "page": "Network Topology",
+      "element": "refresh-topology",
+      "status": "PASS",
+      "message": "Expected button found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.197144",
+      "test_type": "button_presence",
+      "page": "Network Topology",
+      "element": "fullscreen",
+      "status": "PASS",
+      "message": "Expected button found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.197149",
+      "test_type": "button_presence",
+      "page": "Network Topology",
+      "element": "auto-layout",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.197151",
+      "test_type": "button_presence",
+      "page": "Network Topology",
+      "element": "manual-layout",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.197152",
+      "test_type": "button_presence",
+      "page": "Network Topology",
+      "element": "zoom-controls",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.197154",
+      "test_type": "button_presence",
+      "page": "Network Topology",
+      "element": "export-topology",
+      "status": "FAIL",
+      "message": "Expected button not found in HTML",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.199652",
+      "test_type": "javascript",
+      "page": "Network Topology",
+      "element": "Event Listeners",
+      "status": "PASS",
+      "message": "Found 19 unique event types",
+      "details": "Events: drag, fullscreenchange, hidden.bs.toast, change, keydown"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.199719",
+      "test_type": "form",
+      "page": "Network Topology",
+      "element": "Form 1",
+      "status": "WARNING",
+      "message": "No CSRF protection detected",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.199730",
+      "test_type": "form",
+      "page": "Network Topology",
+      "element": "Form 1",
+      "status": "WARNING",
+      "message": "No submit button found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.200877",
+      "test_type": "element_count",
+      "page": "Network Topology",
+      "element": "Interactive Elements",
+      "status": "INFO",
+      "message": "Found 13 interactive elements",
+      "details": "Buttons: 13, Forms: 0, Inputs: 0"
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.200883",
+      "test_type": "element_detected",
+      "page": "Network Topology",
+      "element": "ping-cancel-btn",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.200885",
+      "test_type": "element_detected",
+      "page": "Network Topology",
+      "element": "btn-modern dropdown-toggle",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.200888",
+      "test_type": "element_detected",
+      "page": "Network Topology",
+      "element": "btn-modern dropdown-toggle",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.200890",
+      "test_type": "element_detected",
+      "page": "Network Topology",
+      "element": "btn-modern dropdown-toggle",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.200891",
+      "test_type": "element_detected",
+      "page": "Network Topology",
+      "element": "btn-close",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.200893",
+      "test_type": "element_detected",
+      "page": "Network Topology",
+      "element": "btn btn-secondary",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.200894",
+      "test_type": "element_detected",
+      "page": "Network Topology",
+      "element": "btn-close",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.200896",
+      "test_type": "element_detected",
+      "page": "Network Topology",
+      "element": "btn btn-secondary",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.200900",
+      "test_type": "element_detected",
+      "page": "Network Topology",
+      "element": "btn-close",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:56:30.200902",
+      "test_type": "element_detected",
+      "page": "Network Topology",
+      "element": "btn btn-secondary",
+      "status": "PASS",
+      "message": "Button: Button",
+      "details": ""
+    }
+  ],
+  "pages_tested": [
+    {
+      "path": "/",
+      "name": "Main Dashboard",
+      "expected_buttons": [
+        "refresh-btn",
+        "settings-btn",
+        "search-btn",
+        "notification-btn",
+        "device-card-buttons",
+        "status-toggle-buttons"
+      ],
+      "expected_forms": [
+        "search-form"
+      ],
+      "expected_modals": [
+        "device-detail-modal"
+      ],
+      "critical": true
+    },
+    {
+      "path": "/analytics",
+      "name": "Analytics Dashboard",
+      "expected_buttons": [
+        "refresh-analytics",
+        "speedtest-btn",
+        "cancel-speedtest-btn",
+        "refresh-rating-btn",
+        "time-range-controls",
+        "tab-buttons"
+      ],
+      "expected_forms": [
+        "time-range-form"
+      ],
+      "expected_modals": [],
+      "critical": true
+    },
+    {
+      "path": "/performance-dashboard",
+      "name": "Performance Dashboard",
+      "expected_buttons": [
+        "refresh-performance",
+        "export-data",
+        "filter-buttons",
+        "chart-controls",
+        "time-period-selectors"
+      ],
+      "expected_forms": [
+        "filter-form"
+      ],
+      "expected_modals": [
+        "export-modal"
+      ],
+      "critical": true
+    },
+    {
+      "path": "/security-dashboard",
+      "name": "Security Dashboard",
+      "expected_buttons": [
+        "refresh-security",
+        "scan-network",
+        "block-device",
+        "security-actions",
+        "alert-controls"
+      ],
+      "expected_forms": [
+        "security-form"
+      ],
+      "expected_modals": [
+        "security-modal"
+      ],
+      "critical": true
+    },
+    {
+      "path": "/devices",
+      "name": "Devices List",
+      "expected_buttons": [
+        "add-device",
+        "edit-device",
+        "delete-device",
+        "bulk-actions",
+        "filter-devices",
+        "export-devices"
+      ],
+      "expected_forms": [
+        "device-form",
+        "filter-form"
+      ],
+      "expected_modals": [
+        "device-modal"
+      ],
+      "critical": true
+    },
+    {
+      "path": "/alerts",
+      "name": "Alerts Management",
+      "expected_buttons": [
+        "acknowledge-alert",
+        "resolve-alert",
+        "delete-alert",
+        "bulk-operations",
+        "filter-alerts",
+        "alert-actions"
+      ],
+      "expected_forms": [
+        "alert-form"
+      ],
+      "expected_modals": [
+        "alert-modal"
+      ],
+      "critical": true
+    },
+    {
+      "path": "/settings",
+      "name": "Settings",
+      "expected_buttons": [
+        "save-settings",
+        "reset-settings",
+        "test-connection",
+        "apply-changes",
+        "export-config",
+        "import-config"
+      ],
+      "expected_forms": [
+        "settings-form"
+      ],
+      "expected_modals": [
+        "confirm-modal"
+      ],
+      "critical": true
+    },
+    {
+      "path": "/topology",
+      "name": "Network Topology",
+      "expected_buttons": [
+        "refresh-topology",
+        "auto-layout",
+        "manual-layout",
+        "zoom-controls",
+        "export-topology",
+        "fullscreen"
+      ],
+      "expected_forms": [],
+      "expected_modals": [
+        "node-details-modal"
+      ],
+      "critical": true
+    }
+  ],
+  "api_endpoints_tested": [
+    {
+      "method": "GET",
+      "path": "/api/devices",
+      "name": "Get Devices List"
+    },
+    {
+      "method": "GET",
+      "path": "/api/device/1",
+      "name": "Get Single Device"
+    },
+    {
+      "method": "POST",
+      "path": "/api/device/1/update",
+      "name": "Update Device"
+    },
+    {
+      "method": "GET",
+      "path": "/api/analytics/network-health-score",
+      "name": "Network Health"
+    },
+    {
+      "method": "GET",
+      "path": "/api/analytics/device-insights",
+      "name": "Device Insights"
+    },
+    {
+      "method": "GET",
+      "path": "/api/speedtest/status",
+      "name": "Speed Test Status"
+    },
+    {
+      "method": "POST",
+      "path": "/api/speedtest/run",
+      "name": "Start Speed Test"
+    },
+    {
+      "method": "GET",
+      "path": "/api/monitoring/summary",
+      "name": "Monitoring Summary"
+    },
+    {
+      "method": "GET",
+      "path": "/api/monitoring/alerts",
+      "name": "Get Alerts"
+    },
+    {
+      "method": "GET",
+      "path": "/api/system/info",
+      "name": "System Information"
+    },
+    {
+      "method": "GET",
+      "path": "/api/csrf-token",
+      "name": "CSRF Token"
+    }
+  ]
+}

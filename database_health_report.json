@@ -1,0 +1,1994 @@
+{
+  "timestamp": "2025-09-21T08:15:37.432271",
+  "database_path": "/home/kyle/ClaudeCode/HomeNetMon/homeNetMon.db",
+  "summary": {
+    "health_score": 48,
+    "total_findings": 212,
+    "excellent_count": 34,
+    "good_count": 34,
+    "warning_count": 13,
+    "critical_count": 0
+  },
+  "findings": {
+    "info": [
+      {
+        "level": "info",
+        "category": "Structure",
+        "metric": "Tables",
+        "value": 32,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.796925"
+      },
+      {
+        "level": "info",
+        "category": "Structure",
+        "metric": "Indexes",
+        "value": 122,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.796938"
+      },
+      {
+        "level": "info",
+        "category": "Structure",
+        "metric": "Views",
+        "value": 1,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.796947"
+      },
+      {
+        "level": "info",
+        "category": "Structure",
+        "metric": "Triggers",
+        "value": 0,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.796950"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.ix_devices_ip_address",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.277971"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.ix_devices_mac_address",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278004"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "configuration_history.ix_configuration_history_config_key",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278017"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "configuration_history.ix_configuration_history_changed_at",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278030"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "escalation_rules.ix_escalation_rules_priority",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278042"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "escalation_rules.ix_escalation_rules_enabled",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278062"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "escalation_rules.ix_escalation_rules_trigger_type",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278074"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "compliance_results.ix_compliance_results_checked_at",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278088"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "compliance_results.ix_compliance_results_framework",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278106"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "compliance_results.ix_compliance_results_severity",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278121"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "compliance_results.ix_compliance_results_check_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278140"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "compliance_results.ix_compliance_results_status",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278153"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "compliance_results.ix_compliance_results_rule_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278166"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_incidents.ix_security_incidents_detected_at",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278179"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_incidents.ix_security_incidents_status",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278194"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_incidents.ix_security_incidents_severity",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278206"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_incidents.ix_security_incidents_category",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278218"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_incidents.ix_security_incidents_incident_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278230"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "bandwidth_tests.ix_bandwidth_tests_timestamp",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278242"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "optimization_recommendations.ix_optimization_recommendations_status",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278256"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "optimization_recommendations.ix_optimization_recommendations_category",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278271"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "optimization_recommendations.ix_optimization_recommendations_created_at",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278285"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "optimization_recommendations.ix_optimization_recommendations_priority",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278297"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "optimization_recommendations.ix_optimization_recommendations_recommendation_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278310"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "monitoring_data.ix_monitoring_data_timestamp",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278331"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "monitoring_data.ix_monitoring_data_device_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278352"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "alerts.ix_alerts_created_at",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278370"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "alerts.ix_alerts_device_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278389"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "bandwidth_data.ix_bandwidth_data_timestamp",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278400"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "bandwidth_data.ix_bandwidth_data_device_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278411"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "rule_executions.ix_rule_executions_executed_at",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278422"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "rule_executions.ix_rule_executions_rule_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278433"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "performance_metrics.ix_performance_metrics_device_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278449"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "performance_metrics.ix_performance_metrics_timestamp",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278463"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "escalation_executions.ix_escalation_executions_escalation_rule_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278476"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "escalation_executions.ix_escalation_executions_triggered_by_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278489"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "escalation_executions.ix_escalation_executions_scheduled_for",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278502"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "escalation_executions.ix_escalation_executions_status",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278515"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_scans.ix_security_scans_scanned_at",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278528"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_scans.ix_security_scans_device_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278541"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_scans.ix_security_scans_port",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278552"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_scans.ix_security_scans_ip_address",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278566"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_vulnerabilities.ix_security_vulnerabilities_finding_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278581"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_vulnerabilities.ix_security_vulnerabilities_discovered_at",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278595"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_vulnerabilities.ix_security_vulnerabilities_severity",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278609"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_vulnerabilities.ix_security_vulnerabilities_device_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278622"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_vulnerabilities.ix_security_vulnerabilities_status",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278652"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_vulnerabilities.ix_security_vulnerabilities_category",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278665"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_events.ix_security_events_event_type",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278679"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_events.ix_security_events_created_at",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278693"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_events.ix_security_events_device_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278704"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "security_events.ix_security_events_severity",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278716"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "device_os_info.ix_device_os_info_detected_at",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278728"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "device_os_info.ix_device_os_info_device_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278739"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "performance_snapshots.ix_performance_snapshots_device_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278750"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "performance_snapshots.ix_performance_snapshots_metric_type",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278763"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "performance_snapshots.ix_performance_snapshots_timestamp",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278775"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "latency_analysis.ix_latency_analysis_device_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278787"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "latency_analysis.ix_latency_analysis_timestamp",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278799"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "performance_alerts.ix_performance_alerts_detected_at",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278813"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "performance_alerts.ix_performance_alerts_device_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278827"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "performance_alerts.ix_performance_alerts_metric_type",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278841"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "performance_alerts.ix_performance_alerts_alert_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278858"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "performance_alerts.ix_performance_alerts_severity",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278872"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "performance_alerts.ix_performance_alerts_status",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278884"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "notification_history.ix_notification_history_device_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278899"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "notification_history.ix_notification_history_alert_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278911"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "notification_history.ix_notification_history_sent_at",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278923"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "notification_history.ix_notification_history_notification_type",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278935"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "escalation_action_logs.ix_escalation_action_logs_escalation_execution_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278945"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "notification_receipts.ix_notification_receipts_read_at",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278957"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "notification_receipts.ix_notification_receipts_notification_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278969"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "notification_receipts.ix_notification_receipts_tracking_token",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.278980"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.idx_devices_group_monitored",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279004"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.idx_devices_ip_address",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279027"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.idx_devices_last_seen_monitored",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279050"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.idx_devices_type_monitored",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279075"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.idx_devices_ip_range",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279097"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "monitoring_data.idx_monitoring_device_timestamp_desc",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279116"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "monitoring_data.idx_monitoring_device_response",
+        "value": "3 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279135"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "monitoring_data.idx_monitoring_timestamp_device",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279154"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "monitoring_data.idx_monitoring_timestamp_only",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279172"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "alerts.idx_alerts_device_resolved",
+        "value": "3 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279189"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "alerts.idx_alerts_resolved_severity",
+        "value": "3 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279207"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "alerts.idx_alerts_created_resolved",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279225"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "performance_metrics.idx_performance_device_timestamp",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279238"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "performance_metrics.idx_performance_timestamp_health",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279252"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.idx_devices_monitoring_composite",
+        "value": "4 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279276"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "alerts.idx_alerts_summary_composite",
+        "value": "4 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279295"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "device_summary_cache.idx_device_summary_status",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279307"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "device_summary_cache.idx_device_summary_updated",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279317"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "query_performance_log.idx_query_perf_type_time",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279327"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "device_ip_history.ix_device_ip_history_device_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279336"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "monitoring_data.idx_monitoring_device_timestamp",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279355"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "monitoring_data.idx_monitoring_timestamp",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279375"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "alerts.idx_alerts_device_resolved_created",
+        "value": "3 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279395"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.idx_devices_monitored_last_seen",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279418"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "monitoring_data.idx_monitoring_response_time",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279436"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "alerts.idx_alerts_severity_created",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279454"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.idx_devices_last_seen",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279476"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.idx_devices_type",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279498"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.idx_devices_monitored",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279521"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.idx_devices_group",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279543"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.idx_devices_monitored_type",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279566"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "monitoring_data.idx_monitoring_device_time_response",
+        "value": "3 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279585"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "alerts.idx_alerts_created_at",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279603"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "configuration.idx_config_key",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279614"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "configuration.idx_config_updated_at",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279625"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.idx_devices_list_covering",
+        "value": "7 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279650"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.idx_devices_active",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279672"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "alerts.idx_alerts_active",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279690"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "users.ix_users_username",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279701"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.idx_device_ip_monitored",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279723"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.idx_device_type_priority",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279747"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "devices.idx_device_last_seen",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279770"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "alerts.idx_alert_timestamp",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279789"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "performance_metrics.idx_perf_device_time",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279802"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "monitoring_data.idx_monitoring_data_device_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279823"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "monitoring_data.idx_monitoring_data_timestamp",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279841"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "monitoring_data.idx_monitoring_data_device_timestamp",
+        "value": "2 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279866"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "alerts.idx_alerts_device_id",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279884"
+      },
+      {
+        "level": "info",
+        "category": "Indexes",
+        "metric": "performance_metrics.idx_performance_metrics_timestamp",
+        "value": "1 columns",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.279897"
+      },
+      {
+        "level": "info",
+        "category": "Query Monitoring",
+        "metric": "Performance Log",
+        "value": "Empty",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.285080"
+      },
+      {
+        "level": "info",
+        "category": "Data Integrity",
+        "metric": "Escalation executions without devices",
+        "value": "Check failed: no such column: c.device_id",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:37.411514"
+      },
+      {
+        "level": "info",
+        "category": "Data Consistency",
+        "metric": "Alert updated before created",
+        "value": "Check failed: no such column: updated_at",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:37.414669"
+      },
+      {
+        "level": "info",
+        "category": "Storage",
+        "metric": "Total Rows",
+        "value": "5,968,890",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:37.432142"
+      },
+      {
+        "level": "info",
+        "category": "Storage",
+        "metric": "Largest Tables",
+        "value": "bandwidth_data(5,518,150), performance_metrics(330,718), monitoring_data(114,285), notification_history(4,148), security_scans(1,105)",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:37.432166"
+      }
+    ],
+    "excellent": [
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "devices Rows",
+        "value": "71",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.797016"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "configuration Rows",
+        "value": "33",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.797042"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "configuration_history Rows",
+        "value": "0",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.797068"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "automation_rules Rows",
+        "value": "0",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.797099"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "escalation_rules Rows",
+        "value": "0",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.797130"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "compliance_results Rows",
+        "value": "0",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.797157"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "security_incidents Rows",
+        "value": "0",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.797189"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "bandwidth_tests Rows",
+        "value": "0",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.797217"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "optimization_recommendations Rows",
+        "value": "0",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.797249"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "alerts Rows",
+        "value": "87",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.798677"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "alert_suppressions Rows",
+        "value": "3",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.811092"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "rule_executions Rows",
+        "value": "0",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.811116"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "escalation_executions Rows",
+        "value": "0",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813431"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "security_scans Rows",
+        "value": "1,105",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813463"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "security_vulnerabilities Rows",
+        "value": "0",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813495"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "security_events Rows",
+        "value": "286",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813517"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "device_os_info Rows",
+        "value": "0",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813543"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "performance_snapshots Rows",
+        "value": "0",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813569"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "latency_analysis Rows",
+        "value": "0",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813603"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "performance_alerts Rows",
+        "value": "0",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813637"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "notification_history Rows",
+        "value": "4,148",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813707"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "escalation_action_logs Rows",
+        "value": "0",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813732"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "notification_receipts Rows",
+        "value": "0",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813761"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "device_summary_cache Rows",
+        "value": "0",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813785"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "query_performance_log Rows",
+        "value": "0",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813803"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "device_ip_history Rows",
+        "value": "3",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813827"
+      },
+      {
+        "level": "excellent",
+        "category": "Data Volume",
+        "metric": "users Rows",
+        "value": "1",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813859"
+      },
+      {
+        "level": "excellent",
+        "category": "Query Performance",
+        "metric": "Device Count Query",
+        "value": "0.51ms",
+        "target": "< 50ms optimal",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.280502"
+      },
+      {
+        "level": "excellent",
+        "category": "Query Performance",
+        "metric": "Monitoring Data Count",
+        "value": "1.46ms",
+        "target": "< 50ms optimal",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.281978"
+      },
+      {
+        "level": "excellent",
+        "category": "Query Performance",
+        "metric": "Recent Devices",
+        "value": "0.06ms",
+        "target": "< 50ms optimal",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.282043"
+      },
+      {
+        "level": "excellent",
+        "category": "Query Performance",
+        "metric": "Recent Monitoring",
+        "value": "0.10ms",
+        "target": "< 50ms optimal",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.282151"
+      },
+      {
+        "level": "excellent",
+        "category": "Query Performance",
+        "metric": "Device Averages",
+        "value": "2.80ms",
+        "target": "< 50ms optimal",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.284958"
+      },
+      {
+        "level": "excellent",
+        "category": "Overall Performance",
+        "metric": "Average Query Time",
+        "value": "0.99ms",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.284990"
+      },
+      {
+        "level": "excellent",
+        "category": "Integrity",
+        "metric": "Database Check",
+        "value": "OK",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:37.406970"
+      }
+    ],
+    "warning": [
+      {
+        "level": "warning",
+        "category": "Data Volume",
+        "metric": "monitoring_data Rows",
+        "value": "114,285",
+        "target": "< 100K for optimal performance",
+        "recommendation": "Consider data archival or partitioning strategies",
+        "timestamp": "2025-09-21T08:15:30.798635"
+      },
+      {
+        "level": "warning",
+        "category": "Data Volume",
+        "metric": "bandwidth_data Rows",
+        "value": "5,518,150",
+        "target": "< 100K for optimal performance",
+        "recommendation": "Consider data archival or partitioning strategies",
+        "timestamp": "2025-09-21T08:15:30.811036"
+      },
+      {
+        "level": "warning",
+        "category": "Data Volume",
+        "metric": "performance_metrics Rows",
+        "value": "330,718",
+        "target": "< 100K for optimal performance",
+        "recommendation": "Consider data archival or partitioning strategies",
+        "timestamp": "2025-09-21T08:15:30.813387"
+      },
+      {
+        "level": "warning",
+        "category": "Constraints",
+        "metric": "Foreign Keys",
+        "value": "Disabled",
+        "target": "",
+        "recommendation": "Enable foreign key constraints for data integrity",
+        "timestamp": "2025-09-21T08:15:30.813871"
+      },
+      {
+        "level": "warning",
+        "category": "Query Performance",
+        "metric": "Active Alerts Count",
+        "value": "Error: no such column: status",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.284984"
+      },
+      {
+        "level": "warning",
+        "category": "Configuration",
+        "metric": "Write-Ahead Logging",
+        "value": "wal",
+        "target": "Optimal: WAL",
+        "recommendation": "Set PRAGMA journal_mode=WAL",
+        "timestamp": "2025-09-21T08:15:31.285005"
+      },
+      {
+        "level": "warning",
+        "category": "Configuration",
+        "metric": "Synchronous Mode",
+        "value": "2",
+        "target": "Optimal: 1",
+        "recommendation": "Set PRAGMA synchronous=1",
+        "timestamp": "2025-09-21T08:15:31.285019"
+      },
+      {
+        "level": "warning",
+        "category": "Configuration",
+        "metric": "Cache Size",
+        "value": "-2000",
+        "target": "Optimal: -10000",
+        "recommendation": "Set PRAGMA cache_size=-10000",
+        "timestamp": "2025-09-21T08:15:31.285025"
+      },
+      {
+        "level": "warning",
+        "category": "Configuration",
+        "metric": "Temp Store",
+        "value": "0",
+        "target": "Optimal: 2",
+        "recommendation": "Set PRAGMA temp_store=2",
+        "timestamp": "2025-09-21T08:15:31.285030"
+      },
+      {
+        "level": "warning",
+        "category": "Configuration",
+        "metric": "Memory Map Size",
+        "value": "0",
+        "target": "Optimal: 134217728",
+        "recommendation": "Set PRAGMA mmap_size=134217728",
+        "timestamp": "2025-09-21T08:15:31.285037"
+      },
+      {
+        "level": "warning",
+        "category": "Data Consistency",
+        "metric": "Device last_seen before created_at",
+        "value": "1 violations",
+        "target": "0 violations",
+        "recommendation": "Review and fix data consistency issues",
+        "timestamp": "2025-09-21T08:15:37.411555"
+      },
+      {
+        "level": "warning",
+        "category": "Storage",
+        "metric": "Database Size",
+        "value": "974.4MB",
+        "target": "< 500MB recommended",
+        "recommendation": "Consider data archival strategies",
+        "timestamp": "2025-09-21T08:15:37.414768"
+      },
+      {
+        "level": "warning",
+        "category": "Table Growth",
+        "metric": "bandwidth_data Size",
+        "value": "5,518,150 rows (~1157.8MB)",
+        "target": "< 1M rows recommended",
+        "recommendation": "Consider partitioning or archival",
+        "timestamp": "2025-09-21T08:15:37.429281"
+      }
+    ],
+    "good": [
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "devices FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813911"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "configuration FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813923"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "configuration_history FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813929"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "automation_rules FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813933"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "escalation_rules FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813939"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "compliance_results FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813945"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "security_incidents FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813950"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "bandwidth_tests FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813955"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "optimization_recommendations FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.813961"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "monitoring_data FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.825060"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "alerts FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:30.825102"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "bandwidth_data FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.241015"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "alert_suppressions FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.241060"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "rule_executions FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.241070"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "performance_metrics FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.275131"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "escalation_executions FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.275161"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "security_scans FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.277106"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "security_vulnerabilities FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.277141"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "security_events FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.277335"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "device_os_info FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.277370"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "performance_snapshots FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.277380"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "latency_analysis FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.277389"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "performance_alerts FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.277397"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "notification_history FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.277703"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "escalation_action_logs FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.277714"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "notification_receipts FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.277722"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "device_summary_cache FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.277729"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "query_performance_log FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.277734"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "device_ip_history FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.277744"
+      },
+      {
+        "level": "good",
+        "category": "Integrity",
+        "metric": "users FK Check",
+        "value": "Clean",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:31.277749"
+      },
+      {
+        "level": "good",
+        "category": "Data Integrity",
+        "metric": "Monitoring data without devices",
+        "value": "No orphaned records",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:37.411387"
+      },
+      {
+        "level": "good",
+        "category": "Data Integrity",
+        "metric": "Alerts without devices",
+        "value": "No orphaned records",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:37.411467"
+      },
+      {
+        "level": "good",
+        "category": "Data Consistency",
+        "metric": "Negative response times",
+        "value": "Consistent",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:37.414626"
+      },
+      {
+        "level": "good",
+        "category": "Data Quality",
+        "metric": "Device IP Uniqueness",
+        "value": "No duplicates",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:15:37.414738"
+      }
+    ],
+    "critical": []
+  },
+  "metrics": {
+    "devices_row_count": 71,
+    "configuration_row_count": 33,
+    "configuration_history_row_count": 0,
+    "automation_rules_row_count": 0,
+    "escalation_rules_row_count": 0,
+    "compliance_results_row_count": 0,
+    "security_incidents_row_count": 0,
+    "bandwidth_tests_row_count": 0,
+    "optimization_recommendations_row_count": 0,
+    "monitoring_data_row_count": 114285,
+    "alerts_row_count": 87,
+    "bandwidth_data_row_count": 5518150,
+    "alert_suppressions_row_count": 3,
+    "rule_executions_row_count": 0,
+    "performance_metrics_row_count": 330718,
+    "escalation_executions_row_count": 0,
+    "security_scans_row_count": 1105,
+    "security_vulnerabilities_row_count": 0,
+    "security_events_row_count": 286,
+    "device_os_info_row_count": 0,
+    "performance_snapshots_row_count": 0,
+    "latency_analysis_row_count": 0,
+    "performance_alerts_row_count": 0,
+    "notification_history_row_count": 4148,
+    "escalation_action_logs_row_count": 0,
+    "notification_receipts_row_count": 0,
+    "device_summary_cache_row_count": 0,
+    "query_performance_log_row_count": 0,
+    "device_ip_history_row_count": 3,
+    "users_row_count": 1,
+    "query_device_count_query_ms": 0.5106925964355469,
+    "query_monitoring_data_count_ms": 1.4619827270507812,
+    "query_recent_devices_ms": 0.05555152893066406,
+    "query_recent_monitoring_ms": 0.10371208190917969,
+    "query_device_averages_ms": 2.801179885864258
+  },
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "category": "Performance",
+      "recommendation": "Resolve 13 performance warnings",
+      "action": "Optimize queries, add indexes, review data patterns"
+    },
+    {
+      "priority": "MEDIUM",
+      "category": "Data Management",
+      "recommendation": "Implement data archival for monitoring_data table",
+      "action": "Archive data older than 30-90 days to separate tables"
+    },
+    {
+      "priority": "HIGH",
+      "category": "Query Performance",
+      "recommendation": "Optimize 1 slow queries",
+      "action": "Add indexes, rewrite queries, analyze execution plans"
+    },
+    {
+      "priority": "MEDIUM",
+      "category": "Configuration",
+      "recommendation": "Update 5 database configuration settings",
+      "action": "Apply recommended PRAGMA settings for performance"
+    }
+  ]
+}

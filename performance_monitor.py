@@ -11,6 +11,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 import json
 import threading
+from core.auth import login_required
 
 logger = logging.getLogger(__name__)
 
@@ -327,14 +328,17 @@ def setup_performance_monitoring(app):
     
     # Add performance monitoring endpoint
     @app.route('/api/performance/metrics')
+    @login_required
     def performance_metrics():
         return monitor.get_all_metrics_summary()
     
     @app.route('/api/performance/report')
+    @login_required
     def performance_report():
         return monitor.generate_performance_report(), 200, {'Content-Type': 'text/plain'}
     
     @app.route('/api/performance/benchmark')
+    @login_required
     def run_benchmark():
         results = monitor.benchmark_api_endpoints()
         return {'benchmark_results': results, 'timestamp': datetime.utcnow().isoformat()}

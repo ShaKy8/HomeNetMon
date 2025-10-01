@@ -1,6 +1,5 @@
 # HomeNetMon Performance Dashboard
 from flask import Blueprint, render_template, request, jsonify
-from flask_login import login_required
 from datetime import datetime, timedelta
 import logging
 
@@ -15,7 +14,6 @@ logger = logging.getLogger(__name__)
 performance_bp = Blueprint('performance', __name__, url_prefix='/performance')
 
 @performance_bp.route('/', methods=['GET'])
-@login_required
 def performance_dashboard():
     """Main performance dashboard"""
     try:
@@ -32,7 +30,6 @@ def performance_dashboard():
                              error="Failed to load performance dashboard"), 500
 
 @performance_bp.route('/metrics', methods=['GET'])
-@login_required
 def metrics_overview():
     """Detailed metrics overview"""
     try:
@@ -56,7 +53,6 @@ def metrics_overview():
                              error="Failed to load metrics"), 500
 
 @performance_bp.route('/cache', methods=['GET'])
-@login_required
 def cache_dashboard():
     """Cache performance dashboard"""
     try:
@@ -72,7 +68,6 @@ def cache_dashboard():
                              error="Failed to load cache dashboard"), 500
 
 @performance_bp.route('/circuit-breakers', methods=['GET'])
-@login_required
 def circuit_breakers_dashboard():
     """Circuit breakers dashboard"""
     try:
@@ -88,7 +83,6 @@ def circuit_breakers_dashboard():
                              error="Failed to load circuit breakers dashboard"), 500
 
 @performance_bp.route('/load-balancers', methods=['GET'])
-@login_required
 def load_balancers_dashboard():
     """Load balancers dashboard"""
     try:
@@ -106,13 +100,11 @@ def load_balancers_dashboard():
 # API endpoints for real-time data
 
 @performance_bp.route('/api/health', methods=['GET'])
-@login_required
 def api_health():
     """Get current health status"""
     return jsonify(metrics_collector.get_health_status())
 
 @performance_bp.route('/api/metrics/system', methods=['GET'])
-@login_required
 def api_system_metrics():
     """Get system metrics"""
     minutes = request.args.get('minutes', 60, type=int)
@@ -122,7 +114,6 @@ def api_system_metrics():
     })
 
 @performance_bp.route('/api/metrics/application', methods=['GET'])
-@login_required
 def api_application_metrics():
     """Get application metrics"""
     minutes = request.args.get('minutes', 60, type=int)
@@ -132,7 +123,6 @@ def api_application_metrics():
     })
 
 @performance_bp.route('/api/metrics/endpoints', methods=['GET'])
-@login_required
 def api_endpoint_metrics():
     """Get endpoint metrics"""
     return jsonify({
@@ -141,7 +131,6 @@ def api_endpoint_metrics():
     })
 
 @performance_bp.route('/api/cache/metrics', methods=['GET'])
-@login_required
 def api_cache_metrics():
     """Get cache metrics"""
     return jsonify({
@@ -150,7 +139,6 @@ def api_cache_metrics():
     })
 
 @performance_bp.route('/api/cache/clear', methods=['POST'])
-@login_required
 def api_cache_clear():
     """Clear cache"""
     try:
@@ -161,7 +149,6 @@ def api_cache_clear():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @performance_bp.route('/api/circuit-breakers/metrics', methods=['GET'])
-@login_required
 def api_circuit_breaker_metrics():
     """Get circuit breaker metrics"""
     return jsonify({
@@ -170,7 +157,6 @@ def api_circuit_breaker_metrics():
     })
 
 @performance_bp.route('/api/circuit-breakers/reset', methods=['POST'])
-@login_required
 def api_circuit_breaker_reset():
     """Reset circuit breakers"""
     try:
@@ -188,7 +174,6 @@ def api_circuit_breaker_reset():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @performance_bp.route('/api/load-balancers/stats', methods=['GET'])
-@login_required
 def api_load_balancer_stats():
     """Get load balancer statistics"""
     return jsonify({
@@ -198,7 +183,6 @@ def api_load_balancer_stats():
 
 # Real-time updates endpoint
 @performance_bp.route('/api/realtime/summary', methods=['GET'])
-@login_required
 def api_realtime_summary():
     """Get real-time performance summary"""
     try:

@@ -1,406 +1,563 @@
-{% extends "base_with_quickstats.html" %}
+{% extends "base_beautiful.html" %}
 
 {% block title %}System Information - HomeNetMon{% endblock %}
 
+{% block extra_css %}
+<style>
+/* System Info specific styling */
+.info-header {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.info-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    transition: all 0.3s ease;
+    height: 100%;
+}
+
+.info-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.info-card-header {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px 16px 0 0;
+    padding: 1rem 1.5rem;
+}
+
+.info-card-header.primary {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(37, 99, 235, 0.3) 100%);
+}
+
+.info-card-header.success {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.3) 0%, rgba(22, 163, 74, 0.3) 100%);
+}
+
+.info-card-header.warning {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(245, 158, 11, 0.3) 100%);
+}
+
+.info-card-header.info {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.3) 0%, rgba(8, 145, 178, 0.3) 100%);
+}
+
+.info-card-header.dark {
+    background: linear-gradient(135deg, rgba(75, 85, 99, 0.4) 0%, rgba(55, 65, 81, 0.4) 100%);
+}
+
+.info-card-header.secondary {
+    background: linear-gradient(135deg, rgba(156, 163, 175, 0.3) 0%, rgba(107, 114, 128, 0.3) 100%);
+}
+
+.info-table {
+    background: transparent;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.info-table th {
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+    border: none;
+    padding: 0.75rem 1rem;
+}
+
+.info-table td {
+    color: rgba(255, 255, 255, 0.9);
+    border: none;
+    padding: 0.75rem 1rem;
+}
+
+.info-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.loading-spinner {
+    color: rgba(59, 130, 246, 0.8);
+}
+
+.credit-section {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    padding: 2rem;
+}
+
+.credit-item {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.credit-item:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.version-badge {
+    background: rgba(34, 197, 94, 0.2);
+    color: rgba(34, 197, 94, 1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    padding: 0.25rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.status-badge.clean {
+    background: rgba(34, 197, 94, 0.2);
+    color: rgba(34, 197, 94, 1);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.status-badge.modified {
+    background: rgba(251, 191, 36, 0.2);
+    color: rgba(251, 191, 36, 1);
+    border: 1px solid rgba(251, 191, 36, 0.3);
+}
+
+.feature-list {
+    list-style: none;
+    padding: 0;
+}
+
+.feature-list li {
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.feature-list li:last-child {
+    border-bottom: none;
+}
+
+.feature-list li i {
+    color: rgba(34, 197, 94, 0.8);
+}
+
+.tech-list {
+    list-style: none;
+    padding: 0;
+}
+
+.tech-list li {
+    padding: 0.25rem 0;
+    font-size: 0.875rem;
+}
+
+.tech-list li i {
+    color: rgba(59, 130, 246, 0.8);
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="container-fluid">
-    <div class="row">
+<!-- Header Section -->
+<div class="info-header text-center">
+    <h1 class="page-title mb-3">
+        <i class="bi bi-gear text-primary me-2"></i>System Information
+    </h1>
+    <p class="page-subtitle mb-3">Detailed system and application information</p>
+    <div class="d-flex justify-content-center gap-2">
+        <button class="btn btn-outline-light btn-sm" onclick="refreshSystemInfo()">
+            <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+        </button>
+        <button class="btn btn-primary btn-sm" onclick="copySystemInfo()">
+            <i class="bi bi-clipboard me-1"></i>Copy JSON
+        </button>
+    </div>
+</div>
+
+<!-- Loading indicator -->
+<div id="loading-indicator" class="text-center py-5">
+    <div class="spinner-border loading-spinner" role="status">
+        <span class="visually-hidden">Loading...</span>
+    </div>
+    <p class="mt-2 text-muted">Loading system information...</p>
+</div>
+
+<!-- System Info Content -->
+<div id="system-info-content" style="display: none;">
+    <!-- Application Information -->
+    <div class="row mb-4">
         <div class="col-12">
-            <!-- Header -->
-            <div class="d-flex justify-content-between align-items-center mb-4">
-                <div>
-                    <h1 class="h3 mb-0">
-                        <i class="bi bi-gear text-primary me-2"></i>System Information
-                    </h1>
-                    <p class="text-muted mb-0">Detailed system and application information</p>
+            <div class="info-card">
+                <div class="info-card-header primary">
+                    <h5 class="mb-0">
+                        <i class="bi bi-info-circle me-2"></i>Application Information
+                    </h5>
                 </div>
-                <div>
-                    <button class="btn btn-outline-secondary btn-sm me-2" onclick="refreshSystemInfo()">
-                        <i class="bi bi-arrow-clockwise me-1"></i>Refresh
-                    </button>
-                    <button class="btn btn-outline-primary btn-sm" onclick="copySystemInfo()">
-                        <i class="bi bi-clipboard me-1"></i>Copy JSON
-                    </button>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table info-table table-borderless">
+                                <tbody>
+                                    <tr>
+                                        <th width="40%">Application:</th>
+                                        <td id="app-name">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Version:</th>
+                                        <td id="app-version">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Release:</th>
+                                        <td id="app-release">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Build Date:</th>
+                                        <td id="app-build-date">-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table info-table table-borderless">
+                                <tbody>
+                                    <tr>
+                                        <th width="40%">Author:</th>
+                                        <td id="app-author">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>License:</th>
+                                        <td id="app-license">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Repository:</th>
+                                        <td id="app-repository">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Documentation:</th>
+                                        <td id="app-docs">-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="row mt-3">
+                        <div class="col-12">
+                            <h6>Description:</h6>
+                            <p id="app-description" class="text-muted">-</p>
+                        </div>
+                    </div>
                 </div>
             </div>
+        </div>
+    </div>
 
-            <!-- Loading indicator -->
-            <div id="loading-indicator" class="text-center py-5">
-                <div class="spinner-border text-primary" role="status">
-                    <span class="visually-hidden">Loading...</span>
+    <!-- Version & Features -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="info-card">
+                <div class="info-card-header info">
+                    <h5 class="mb-0">
+                        <i class="bi bi-tag me-2"></i>Version Details
+                    </h5>
                 </div>
-                <p class="mt-2 text-muted">Loading system information...</p>
+                <div class="card-body">
+                    <table class="table info-table table-borderless">
+                        <tbody>
+                            <tr>
+                                <th width="50%">Full Version:</th>
+                                <td id="version-full">-</td>
+                            </tr>
+                            <tr>
+                                <th>Major.Minor.Patch:</th>
+                                <td id="version-components">-</td>
+                            </tr>
+                            <tr>
+                                <th>Build Type:</th>
+                                <td id="version-build">-</td>
+                            </tr>
+                            <tr>
+                                <th>Version Source:</th>
+                                <td id="version-source">-</td>
+                            </tr>
+                            <tr>
+                                <th>Build Author:</th>
+                                <td id="version-author">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
             </div>
+        </div>
+        <div class="col-md-6">
+            <div class="info-card">
+                <div class="info-card-header success">
+                    <h5 class="mb-0">
+                        <i class="bi bi-star me-2"></i>Key Features
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <ul id="app-features" class="feature-list mb-0">
+                        <!-- Features will be populated here -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
 
-            <!-- System Info Content -->
-            <div id="system-info-content" style="display: none;">
-                <!-- Application Information -->
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header bg-primary text-white">
-                                <h5 class="card-title mb-0">
-                                    <i class="bi bi-info-circle me-2"></i>Application Information
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <table class="table table-borderless">
-                                            <tbody>
-                                                <tr>
-                                                    <th width="40%">Application:</th>
-                                                    <td id="app-name">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Version:</th>
-                                                    <td id="app-version">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Release:</th>
-                                                    <td id="app-release">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Build Date:</th>
-                                                    <td id="app-build-date">-</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <table class="table table-borderless">
-                                            <tbody>
-                                                <tr>
-                                                    <th width="40%">Author:</th>
-                                                    <td id="app-author">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>License:</th>
-                                                    <td id="app-license">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Repository:</th>
-                                                    <td id="app-repository">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Documentation:</th>
-                                                    <td id="app-docs">-</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                                <div class="row mt-3">
-                                    <div class="col-12">
-                                        <h6>Description:</h6>
-                                        <p id="app-description" class="text-muted">-</p>
-                                    </div>
-                                </div>
-                            </div>
+    <!-- Git Information (if available) -->
+    <div id="git-info-section" class="row mb-4" style="display: none;">
+        <div class="col-12">
+            <div class="info-card">
+                <div class="info-card-header dark">
+                    <h5 class="mb-0">
+                        <i class="bi bi-git me-2"></i>Git Repository Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <table class="table info-table table-borderless table-sm">
+                                <tbody>
+                                    <tr>
+                                        <th width="40%">Commit Hash:</th>
+                                        <td id="git-commit-hash" class="font-monospace">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Short Hash:</th>
+                                        <td id="git-commit-short" class="font-monospace">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Branch:</th>
+                                        <td id="git-branch">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Tag:</th>
+                                        <td id="git-tag">-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <table class="table info-table table-borderless table-sm">
+                                <tbody>
+                                    <tr>
+                                        <th width="40%">Status:</th>
+                                        <td id="git-status">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Commit Date:</th>
+                                        <td id="git-commit-date">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Commit Author:</th>
+                                        <td id="git-commit-author">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Repository:</th>
+                                        <td id="git-repository">Available</td>
+                                    </tr>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
 
-                <!-- Version & Features -->
-                <div class="row mb-4">
+    <!-- System Statistics -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="info-card">
+                <div class="info-card-header warning">
+                    <h5 class="mb-0">
+                        <i class="bi bi-cpu me-2"></i>System Statistics
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <h6>System Information</h6>
+                            <table class="table info-table table-borderless table-sm">
+                                <tbody>
+                                    <tr>
+                                        <th width="40%">Platform:</th>
+                                        <td id="sys-platform">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>System:</th>
+                                        <td id="sys-system">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Release:</th>
+                                        <td id="sys-release">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Machine:</th>
+                                        <td id="sys-machine">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Processor:</th>
+                                        <td id="sys-processor">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Uptime:</th>
+                                        <td id="sys-uptime">-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="col-md-6">
+                            <h6>Resources</h6>
+                            <table class="table info-table table-borderless table-sm">
+                                <tbody>
+                                    <tr>
+                                        <th width="40%">CPU Cores:</th>
+                                        <td id="sys-cpu-count">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Total Memory:</th>
+                                        <td id="sys-memory-total">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Available Memory:</th>
+                                        <td id="sys-memory-available">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Memory Usage:</th>
+                                        <td id="sys-memory-percent">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Disk Total:</th>
+                                        <td id="sys-disk-total">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Disk Free:</th>
+                                        <td id="sys-disk-free">-</td>
+                                    </tr>
+                                    <tr>
+                                        <th>Disk Usage:</th>
+                                        <td id="sys-disk-percent">-</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Process Information -->
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <div class="info-card">
+                <div class="info-card-header secondary">
+                    <h5 class="mb-0">
+                        <i class="bi bi-app me-2"></i>Process Information
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table info-table table-borderless table-sm">
+                        <tbody>
+                            <tr>
+                                <th width="50%">Process ID:</th>
+                                <td id="proc-pid">-</td>
+                            </tr>
+                            <tr>
+                                <th>Started:</th>
+                                <td id="proc-started">-</td>
+                            </tr>
+                            <tr>
+                                <th>Threads:</th>
+                                <td id="proc-threads">-</td>
+                            </tr>
+                            <tr>
+                                <th>Memory Usage:</th>
+                                <td id="proc-memory">-</td>
+                            </tr>
+                            <tr>
+                                <th>CPU Usage:</th>
+                                <td id="proc-cpu">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="info-card">
+                <div class="info-card-header dark">
+                    <h5 class="mb-0">
+                        <i class="bi bi-code-slash me-2"></i>Python Environment
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <table class="table info-table table-borderless table-sm">
+                        <tbody>
+                            <tr>
+                                <th width="50%">Python Version:</th>
+                                <td id="python-version">-</td>
+                            </tr>
+                            <tr>
+                                <th>Python Build:</th>
+                                <td id="python-build">-</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                    <h6 class="mt-3">Technologies</h6>
+                    <ul id="app-technologies" class="tech-list mb-0">
+                        <!-- Technologies will be populated here -->
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Attribution & Credits -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="credit-section">
+                <h5 class="text-center mb-4">
+                    <i class="bi bi-people me-2"></i>Credits & Attribution
+                </h5>
+                <div class="row">
                     <div class="col-md-6">
-                        <div class="card h-100">
-                            <div class="card-header bg-info text-white">
-                                <h5 class="card-title mb-0">
-                                    <i class="bi bi-tag me-2"></i>Version Details
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <table class="table table-borderless">
-                                    <tbody>
-                                        <tr>
-                                            <th width="50%">Full Version:</th>
-                                            <td id="version-full">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Major.Minor.Patch:</th>
-                                            <td id="version-components">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Build Type:</th>
-                                            <td id="version-build">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Version Source:</th>
-                                            <td id="version-source">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Build Author:</th>
-                                            <td id="version-author">-</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <div class="card h-100">
-                            <div class="card-header bg-success text-white">
-                                <h5 class="card-title mb-0">
-                                    <i class="bi bi-star me-2"></i>Key Features
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <ul id="app-features" class="list-unstyled mb-0">
-                                    <!-- Features will be populated here -->
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Git Information (if available) -->
-                <div id="git-info-section" class="row mb-4" style="display: none;">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header bg-dark text-white">
-                                <h5 class="card-title mb-0">
-                                    <i class="bi bi-git me-2"></i>Git Repository Information
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <table class="table table-borderless table-sm">
-                                            <tbody>
-                                                <tr>
-                                                    <th width="40%">Commit Hash:</th>
-                                                    <td id="git-commit-hash" class="font-monospace">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Short Hash:</th>
-                                                    <td id="git-commit-short" class="font-monospace">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Branch:</th>
-                                                    <td id="git-branch">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Tag:</th>
-                                                    <td id="git-tag">-</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <table class="table table-borderless table-sm">
-                                            <tbody>
-                                                <tr>
-                                                    <th width="40%">Status:</th>
-                                                    <td id="git-status">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Commit Date:</th>
-                                                    <td id="git-commit-date">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Commit Author:</th>
-                                                    <td id="git-commit-author">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Repository:</th>
-                                                    <td id="git-repository">Available</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- System Statistics -->
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header bg-warning text-dark">
-                                <h5 class="card-title mb-0">
-                                    <i class="bi bi-cpu me-2"></i>System Statistics
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <h6>System Information</h6>
-                                        <table class="table table-borderless table-sm">
-                                            <tbody>
-                                                <tr>
-                                                    <th width="40%">Platform:</th>
-                                                    <td id="sys-platform">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>System:</th>
-                                                    <td id="sys-system">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Release:</th>
-                                                    <td id="sys-release">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Machine:</th>
-                                                    <td id="sys-machine">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Processor:</th>
-                                                    <td id="sys-processor">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Uptime:</th>
-                                                    <td id="sys-uptime">-</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <h6>Resources</h6>
-                                        <table class="table table-borderless table-sm">
-                                            <tbody>
-                                                <tr>
-                                                    <th width="40%">CPU Cores:</th>
-                                                    <td id="sys-cpu-count">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Total Memory:</th>
-                                                    <td id="sys-memory-total">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Available Memory:</th>
-                                                    <td id="sys-memory-available">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Memory Usage:</th>
-                                                    <td id="sys-memory-percent">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Disk Total:</th>
-                                                    <td id="sys-disk-total">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Disk Free:</th>
-                                                    <td id="sys-disk-free">-</td>
-                                                </tr>
-                                                <tr>
-                                                    <th>Disk Usage:</th>
-                                                    <td id="sys-disk-percent">-</td>
-                                                </tr>
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Process Information -->
-                <div class="row mb-4">
-                    <div class="col-md-6">
-                        <div class="card h-100">
-                            <div class="card-header bg-secondary text-white">
-                                <h5 class="card-title mb-0">
-                                    <i class="bi bi-app me-2"></i>Process Information
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <table class="table table-borderless table-sm">
-                                    <tbody>
-                                        <tr>
-                                            <th width="50%">Process ID:</th>
-                                            <td id="proc-pid">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Started:</th>
-                                            <td id="proc-started">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Threads:</th>
-                                            <td id="proc-threads">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Memory Usage:</th>
-                                            <td id="proc-memory">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th>CPU Usage:</th>
-                                            <td id="proc-cpu">-</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                            </div>
+                        <div class="credit-item text-center">
+                            <i class="bi bi-lightbulb text-warning fs-3 mb-2"></i>
+                            <h6 class="fw-bold">Envisioned & Designed</h6>
+                            <p class="text-primary fw-bold mb-0">ShaKy8</p>
+                            <small class="text-muted">System Architecture & User Experience</small>
                         </div>
                     </div>
                     <div class="col-md-6">
-                        <div class="card h-100">
-                            <div class="card-header bg-dark text-white">
-                                <h5 class="card-title mb-0">
-                                    <i class="bi bi-code-slash me-2"></i>Python Environment
-                                </h5>
-                            </div>
-                            <div class="card-body">
-                                <table class="table table-borderless table-sm">
-                                    <tbody>
-                                        <tr>
-                                            <th width="50%">Python Version:</th>
-                                            <td id="python-version">-</td>
-                                        </tr>
-                                        <tr>
-                                            <th>Python Build:</th>
-                                            <td id="python-build">-</td>
-                                        </tr>
-                                    </tbody>
-                                </table>
-                                <h6 class="mt-3">Technologies</h6>
-                                <ul id="app-technologies" class="list-unstyled mb-0">
-                                    <!-- Technologies will be populated here -->
-                                </ul>
-                            </div>
+                        <div class="credit-item text-center">
+                            <i class="bi bi-code-slash text-info fs-3 mb-2"></i>
+                            <h6 class="fw-bold">Coded & Developed</h6>
+                            <p class="text-success fw-bold mb-0">Claude Code</p>
+                            <small class="text-muted">Implementation & Technical Development</small>
                         </div>
                     </div>
                 </div>
-
-                <!-- Attribution & Credits -->
-                <div class="row mb-4">
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header bg-light">
-                                <h5 class="card-title mb-0">
-                                    <i class="bi bi-people me-2"></i>Credits & Attribution
-                                </h5>
-                            </div>
-                            <div class="card-body text-center">
-                                <div class="row">
-                                    <div class="col-md-6">
-                                        <div class="p-3">
-                                            <i class="bi bi-lightbulb text-warning fs-3 mb-2"></i>
-                                            <h6 class="fw-bold">Envisioned & Designed</h6>
-                                            <p class="text-primary fw-bold mb-0">ShaKy8</p>
-                                            <small class="text-muted">System Architecture & User Experience</small>
-                                        </div>
-                                    </div>
-                                    <div class="col-md-6">
-                                        <div class="p-3">
-                                            <i class="bi bi-code-slash text-info fs-3 mb-2"></i>
-                                            <h6 class="fw-bold">Coded & Developed</h6>
-                                            <p class="text-success fw-bold mb-0">Claude Code</p>
-                                            <small class="text-muted">Implementation & Technical Development</small>
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="mt-3 pt-3 border-top">
-                                    <small class="text-muted">
-                                        <i class="bi bi-heart text-danger me-1"></i>
-                                        Built with passion for home network monitoring and security
-                                    </small>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                <div class="mt-3 pt-3 border-top text-center">
+                    <small class="text-muted">
+                        <i class="bi bi-heart text-danger me-1"></i>
+                        Built with passion for home network monitoring and security
+                    </small>
                 </div>
             </div>
         </div>
@@ -409,10 +566,9 @@
 
 <!-- Hidden textarea for copying JSON data -->
 <textarea id="json-data" style="position: absolute; left: -9999px; opacity: 0;"></textarea>
-
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
 <script>
 let systemData = null;
 
@@ -434,7 +590,7 @@ function loadSystemInfo() {
         })
         .catch(error => {
             console.error('Error loading system info:', error);
-            document.getElementById('loading-indicator').innerHTML = 
+            document.getElementById('loading-indicator').innerHTML =
                 '<div class="alert alert-danger">Error loading system information: ' + error.message + '</div>';
         });
 }
@@ -447,7 +603,7 @@ function populateSystemInfo(data) {
     document.getElementById('app-build-date').textContent = data.version?.build_date || '-';
     document.getElementById('app-author').textContent = data.application?.author || '-';
     document.getElementById('app-license').textContent = data.application?.license || '-';
-    
+
     const repoElement = document.getElementById('app-repository');
     if (data.application?.repository) {
         // Safe method to create repository link avoiding XSS
@@ -470,45 +626,43 @@ function populateSystemInfo(data) {
     } else {
         repoElement.textContent = '-';
     }
-    
+
     document.getElementById('app-docs').textContent = data.application?.documentation || '-';
     document.getElementById('app-description').textContent = data.application?.description || '-';
 
     // Version Details
     document.getElementById('version-full').textContent = data.version?.full_version || '-';
-    document.getElementById('version-components').textContent = 
+    document.getElementById('version-components').textContent =
         `${data.version?.version_major || 0}.${data.version?.version_minor || 0}.${data.version?.version_patch || 0}`;
     document.getElementById('version-build').textContent = data.version?.version_build || '-';
-    
+
     // Version source with badge styling
     const versionSource = data.version?.version_source || 'unknown';
     const sourceElement = document.getElementById('version-source');
-    let sourceBadgeClass = 'badge bg-secondary';
+    let sourceBadgeClass = 'version-badge';
     let sourceText = versionSource;
-    
+
     if (versionSource === 'git-tag') {
-        sourceBadgeClass = 'badge bg-success';
         sourceText = 'Git Tag';
     } else if (versionSource === 'hardcoded') {
-        sourceBadgeClass = 'badge bg-warning text-dark';
         sourceText = 'Hardcoded';
     }
-    
+
     sourceElement.innerHTML = `<span class="${sourceBadgeClass}">${sourceText}</span>`;
     document.getElementById('version-author').textContent = data.version?.build_author || '-';
-    
+
     // Git Information (if available)
     if (data.version?.git) {
         const git = data.version.git;
         document.getElementById('git-info-section').style.display = 'block';
-        
+
         document.getElementById('git-commit-hash').textContent = git.commit_hash || '-';
         document.getElementById('git-commit-short').textContent = git.commit_short || '-';
-        
+
         // Branch with styling
         const branchElement = document.getElementById('git-branch');
         if (git.branch) {
-            const branchClass = git.branch === 'main' ? 'badge bg-primary' : 'badge bg-info';
+            const branchClass = git.branch === 'main' ? 'version-badge' : 'version-badge';
             // Safe method to create branch badge
             if (window.htmlSanitizer) {
                 branchElement.innerHTML = '';
@@ -522,7 +676,7 @@ function populateSystemInfo(data) {
         } else {
             branchElement.textContent = '-';
         }
-        
+
         // Tag with styling
         const tagElement = document.getElementById('git-tag');
         if (git.tag) {
@@ -530,23 +684,23 @@ function populateSystemInfo(data) {
             if (window.htmlSanitizer) {
                 tagElement.innerHTML = '';
                 const badge = document.createElement('span');
-                badge.className = 'badge bg-success';
+                badge.className = 'version-badge';
                 badge.textContent = git.tag;
                 tagElement.appendChild(badge);
             } else {
-                tagElement.innerHTML = `<span class="badge bg-success">${git.tag}</span>`;
+                tagElement.innerHTML = `<span class="version-badge">${git.tag}</span>`;
             }
         } else {
             tagElement.innerHTML = '<span class="text-muted">No tag</span>';
         }
-        
+
         // Status with styling
         const statusElement = document.getElementById('git-status');
-        const statusClass = git.is_dirty ? 'text-warning' : 'text-success';
+        const statusClass = git.is_dirty ? 'status-badge modified' : 'status-badge clean';
         const statusText = git.is_dirty ? 'Modified' : 'Clean';
         const statusIcon = git.is_dirty ? 'bi-exclamation-triangle' : 'bi-check-circle';
-        statusElement.innerHTML = `<i class="bi ${statusIcon} ${statusClass} me-1"></i><span class="${statusClass}">${statusText}</span>`;
-        
+        statusElement.innerHTML = `<i class="bi ${statusIcon} me-1"></i><span class="${statusClass}">${statusText}</span>`;
+
         // Commit date
         if (git.commit_date) {
             try {
@@ -558,7 +712,7 @@ function populateSystemInfo(data) {
         } else {
             document.getElementById('git-commit-date').textContent = '-';
         }
-        
+
         document.getElementById('git-commit-author').textContent = git.commit_author || '-';
     } else {
         document.getElementById('git-info-section').style.display = 'none';
@@ -570,16 +724,15 @@ function populateSystemInfo(data) {
     if (data.application?.features) {
         data.application.features.forEach(feature => {
             const li = document.createElement('li');
-            li.className = 'mb-1';
             // Safe method to create feature list item
             if (window.htmlSanitizer) {
                 const icon = document.createElement('i');
-                icon.className = 'bi bi-check-circle text-success me-2';
+                icon.className = 'bi bi-check-circle me-2';
                 const textNode = document.createTextNode(feature);
                 li.appendChild(icon);
                 li.appendChild(textNode);
             } else {
-                li.innerHTML = `<i class="bi bi-check-circle text-success me-2"></i>${feature}`;
+                li.innerHTML = `<i class="bi bi-check-circle me-2"></i>${feature}`;
             }
             featuresElement.appendChild(li);
         });
@@ -594,34 +747,34 @@ function populateSystemInfo(data) {
     document.getElementById('sys-uptime').textContent = data.system?.system?.system_uptime || '-';
 
     // Resources
-    document.getElementById('sys-cpu-count').textContent = 
+    document.getElementById('sys-cpu-count').textContent =
         `${data.system?.system?.cpu_count || 0} (${data.system?.system?.cpu_count_logical || 0} logical)`;
-    document.getElementById('sys-memory-total').textContent = 
+    document.getElementById('sys-memory-total').textContent =
         `${data.system?.system?.total_memory_gb?.toFixed(2) || 0} GB`;
-    document.getElementById('sys-memory-available').textContent = 
+    document.getElementById('sys-memory-available').textContent =
         `${data.system?.system?.available_memory_gb?.toFixed(2) || 0} GB`;
-    document.getElementById('sys-memory-percent').textContent = 
+    document.getElementById('sys-memory-percent').textContent =
         `${data.system?.system?.memory_percent?.toFixed(1) || 0}%`;
-    document.getElementById('sys-disk-total').textContent = 
+    document.getElementById('sys-disk-total').textContent =
         `${data.system?.system?.disk_total_gb?.toFixed(2) || 0} GB`;
-    document.getElementById('sys-disk-free').textContent = 
+    document.getElementById('sys-disk-free').textContent =
         `${data.system?.system?.disk_free_gb?.toFixed(2) || 0} GB`;
-    document.getElementById('sys-disk-percent').textContent = 
+    document.getElementById('sys-disk-percent').textContent =
         `${data.system?.system?.disk_percent?.toFixed(1) || 0}%`;
 
     // Process Information
     document.getElementById('proc-pid').textContent = data.system?.process?.pid || '-';
-    document.getElementById('proc-started').textContent = 
+    document.getElementById('proc-started').textContent =
         data.system?.process?.started ? new Date(data.system.process.started).toLocaleString() : '-';
     document.getElementById('proc-threads').textContent = data.system?.process?.threads || '-';
-    document.getElementById('proc-memory').textContent = 
+    document.getElementById('proc-memory').textContent =
         `${data.system?.process?.memory_usage_mb?.toFixed(2) || 0} MB`;
-    document.getElementById('proc-cpu').textContent = 
+    document.getElementById('proc-cpu').textContent =
         `${data.system?.process?.cpu_percent?.toFixed(1) || 0}%`;
 
     // Python Environment
     document.getElementById('python-version').textContent = data.system?.system?.python_version || '-';
-    document.getElementById('python-build').textContent = 
+    document.getElementById('python-build').textContent =
         data.system?.system?.python_build ? data.system.system.python_build.join('.') : '-';
 
     // Technologies
@@ -630,8 +783,7 @@ function populateSystemInfo(data) {
     if (data.application?.technologies) {
         data.application.technologies.forEach(tech => {
             const li = document.createElement('li');
-            li.innerHTML = `<i class="bi bi-gear-fill text-primary me-2"></i>${tech}`;
-            li.className = 'mb-1 small';
+            li.innerHTML = `<i class="bi bi-gear-fill me-2"></i>${tech}`;
             techElement.appendChild(li);
         });
     }

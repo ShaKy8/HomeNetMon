@@ -1,0 +1,1701 @@
+{
+  "timestamp": "2025-09-21T08:01:44.757352",
+  "summary": {
+    "total_findings": 182,
+    "critical_count": 28,
+    "high_count": 5,
+    "medium_count": 28,
+    "protected_routes": 0,
+    "unprotected_routes": 27,
+    "auth_score": 0
+  },
+  "findings": {
+    "info": [
+      {
+        "level": "info",
+        "category": "Session Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/auth.py",
+        "line": 35,
+        "issue": "Insecure session cookies",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.211633"
+      },
+      {
+        "level": "info",
+        "category": "Session Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/auth.py",
+        "line": 38,
+        "issue": "Session lifetime configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.211726"
+      },
+      {
+        "level": "info",
+        "category": "Session Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/auth.py",
+        "line": 99,
+        "issue": "Session variable assignment",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.211948"
+      },
+      {
+        "level": "info",
+        "category": "Session Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/auth.py",
+        "line": 100,
+        "issue": "Session variable assignment",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.211984"
+      },
+      {
+        "level": "info",
+        "category": "Session Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/auth.py",
+        "line": 101,
+        "issue": "Session variable assignment",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.212015"
+      },
+      {
+        "level": "info",
+        "category": "Session Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/auth.py",
+        "line": 102,
+        "issue": "Session variable assignment",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.212044"
+      },
+      {
+        "level": "info",
+        "category": "Session Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/auth.py",
+        "line": 103,
+        "issue": "Session variable assignment",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.212075"
+      },
+      {
+        "level": "info",
+        "category": "Session Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/auth.py",
+        "line": 104,
+        "issue": "Permanent session configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.212107"
+      },
+      {
+        "level": "info",
+        "category": "Session Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/auth.py",
+        "line": 117,
+        "issue": "Session variable assignment",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.212167"
+      },
+      {
+        "level": "info",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 449,
+        "issue": "Public route '/' (expected)",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.271939"
+      },
+      {
+        "level": "info",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 477,
+        "issue": "Public route '/favicon.ico' (expected)",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.272050"
+      },
+      {
+        "level": "info",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 644,
+        "issue": "Public route '/static/service-worker.js' (expected)",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.273147"
+      },
+      {
+        "level": "info",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 648,
+        "issue": "Public route '/static/images/<path:filename>' (expected)",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.273194"
+      },
+      {
+        "level": "info",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 1233,
+        "issue": "Public route '/health' (expected)",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.273391"
+      },
+      {
+        "level": "info",
+        "category": "Database",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/homeNetMon.db",
+        "line": 0,
+        "issue": "Found authentication tables: users",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.301926"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 390,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.375987"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 391,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.376070"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 396,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.376120"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 400,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.376164"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 402,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.376196"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 403,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.376222"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 404,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.376250"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 408,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.376291"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 409,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.376319"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 412,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.376357"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/test_analytics_api.py",
+        "line": 19,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.384579"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 24,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.398968"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 27,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.399039"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 140,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.399559"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 169,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.399700"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 170,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.399728"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 172,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.399759"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 175,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.399796"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 176,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.399832"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 177,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.399863"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 180,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.399898"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 181,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.399925"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 184,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.399961"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 185,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.399986"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 332,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.400621"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 333,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.400651"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 394,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.400967"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 395,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.400998"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 478,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.401421"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_button_functionality_test.py",
+        "line": 479,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.401449"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_ui_ux_audit.py",
+        "line": 19,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.407893"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_auth_audit.py",
+        "line": 356,
+        "issue": "Remember me functionality",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.423592"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_auth_audit.py",
+        "line": 357,
+        "issue": "Session ID management",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.423653"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_auth_audit.py",
+        "line": 358,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.423690"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_auth_audit.py",
+        "line": 359,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.423719"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/debug_analytics_frontend.py",
+        "line": 169,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.426270"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/test_analytics_final.py",
+        "line": 50,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.437261"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/test_analytics_final.py",
+        "line": 110,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.437566"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/test_analytics_final.py",
+        "line": 134,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.437691"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/deploy_production.py",
+        "line": 180,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.438841"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/api/remote.py",
+        "line": 354,
+        "issue": "Session clearing found",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.504489"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 18,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.541549"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 19,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.541638"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 23,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.541695"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 115,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.542196"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 116,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.542233"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 117,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.542266"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 119,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.542303"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 121,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.542340"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 122,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.542372"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 124,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.542408"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 171,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.542662"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 173,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.542701"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 174,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.542735"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 193,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.542830"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 194,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.542880"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 196,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.542914"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 197,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.542944"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 203,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.542992"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 205,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.543028"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 206,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.543058"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 211,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.543099"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 213,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.543134"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 216,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.543171"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 218,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.543203"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 219,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.543232"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 229,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.543306"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 233,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.543346"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 235,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.543378"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 238,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.543416"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/security_middleware.py",
+        "line": 244,
+        "issue": "CSRF token handling",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.543461"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/websocket_manager.py",
+        "line": 45,
+        "issue": "Session ID management",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.551442"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/websocket_manager.py",
+        "line": 55,
+        "issue": "Session ID management",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.551533"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/websocket_manager.py",
+        "line": 72,
+        "issue": "Session ID management",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.551637"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/websocket_manager.py",
+        "line": 98,
+        "issue": "Session ID management",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.551777"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/websocket_manager.py",
+        "line": 116,
+        "issue": "Session ID management",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.551884"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/websocket_manager.py",
+        "line": 135,
+        "issue": "Session ID management",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.551996"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/websocket_manager.py",
+        "line": 140,
+        "issue": "Session ID management",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.552047"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/websocket_manager.py",
+        "line": 141,
+        "issue": "Session ID management",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.552078"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/websocket_manager.py",
+        "line": 142,
+        "issue": "Session ID management",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.552108"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/websocket_manager.py",
+        "line": 145,
+        "issue": "Session ID management",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.552144"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/websocket_manager.py",
+        "line": 150,
+        "issue": "Session ID management",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.552193"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/websocket_optimizer.py",
+        "line": 381,
+        "issue": "Session ID management",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.556964"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/websocket_optimizer.py",
+        "line": 391,
+        "issue": "Session ID management",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.557053"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/websocket_optimizer.py",
+        "line": 400,
+        "issue": "Session ID management",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.557137"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/auth.py",
+        "line": 24,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.567767"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/auth.py",
+        "line": 38,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.567880"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/auth.py",
+        "line": 96,
+        "issue": "Session clearing found",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.568161"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/auth.py",
+        "line": 104,
+        "issue": "Permanent sessions enabled",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.568226"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/auth.py",
+        "line": 135,
+        "issue": "Session clearing found",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.568390"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/auth.py",
+        "line": 140,
+        "issue": "Session clearing found",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.568436"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/auth.py",
+        "line": 156,
+        "issue": "Session clearing found",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.568526"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/auth.py",
+        "line": 163,
+        "issue": "Session clearing found",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.568580"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/auth.py",
+        "line": 181,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.568681"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/performance/load_balancing.py",
+        "line": 107,
+        "issue": "Session ID management",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.583382"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/performance/load_balancing.py",
+        "line": 136,
+        "issue": "Session ID management",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.583587"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/performance/load_balancing.py",
+        "line": 137,
+        "issue": "Session ID management",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.583623"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/services/multi_site_manager.py",
+        "line": 518,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.645448"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/services/multi_site_manager.py",
+        "line": 559,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.645739"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/services/multi_site_manager.py",
+        "line": 654,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.646255"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/services/integration_manager.py",
+        "line": 540,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.664856"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/services/integration_manager.py",
+        "line": 577,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.665099"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/services/integration_manager.py",
+        "line": 645,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.665462"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/services/integration_manager.py",
+        "line": 685,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.665683"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/services/integration_manager.py",
+        "line": 878,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.666571"
+      },
+      {
+        "level": "info",
+        "category": "Session Management",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/tests/unit/models/test_monitoring_data.py",
+        "line": 87,
+        "issue": "Session timeout configuration",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.741343"
+      }
+    ],
+    "high": [
+      {
+        "level": "high",
+        "category": "Authentication",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/api/auth.py",
+        "line": 0,
+        "issue": "Missing authentication file: api/auth.py",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.212665"
+      },
+      {
+        "level": "high",
+        "category": "Configuration",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/config.py",
+        "line": 57,
+        "issue": "Debug mode enabled",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.302833"
+      },
+      {
+        "level": "high",
+        "category": "Configuration",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/config.py",
+        "line": 202,
+        "issue": "Debug mode enabled",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.303441"
+      },
+      {
+        "level": "high",
+        "category": "Configuration",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/config.py",
+        "line": 242,
+        "issue": "Debug mode enabled",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.303622"
+      },
+      {
+        "level": "high",
+        "category": "Configuration",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/.env",
+        "line": 16,
+        "issue": "Debug mode enabled",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.304897"
+      }
+    ],
+    "critical": [
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/performance_monitor.py",
+        "line": 329,
+        "issue": "Sensitive route '/api/performance/metrics' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.270627"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/performance_monitor.py",
+        "line": 333,
+        "issue": "Sensitive route '/api/performance/report' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.270719"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/performance_monitor.py",
+        "line": 337,
+        "issue": "Sensitive route '/api/performance/benchmark' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.270766"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 402,
+        "issue": "Sensitive route '/api/csrf-token' lacks authentication",
+        "detail": "Methods: 'GET'",
+        "timestamp": "2025-09-21T08:01:44.271747"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 463,
+        "issue": "Sensitive route '/dashboard/full' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272007"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 486,
+        "issue": "Sensitive route '/settings' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272125"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 499,
+        "issue": "Sensitive route '/notifications/analytics' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272242"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 504,
+        "issue": "Sensitive route '/analytics' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272280"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 517,
+        "issue": "Sensitive route '/security-dashboard' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272387"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 553,
+        "issue": "Sensitive route '/security_dashboard' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272632"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 573,
+        "issue": "Sensitive route '/security' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272735"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 593,
+        "issue": "Sensitive route '/escalation-rules' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272838"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 598,
+        "issue": "Sensitive route '/escalation-rules/new' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272878"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 603,
+        "issue": "Sensitive route '/escalation-rules/<int:rule_id>/edit' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272915"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 608,
+        "issue": "Sensitive route '/escalation-executions' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272951"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 1313,
+        "issue": "Sensitive route '/api/monitoring/topology-test' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.273511"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/core/websocket_memory_manager.py",
+        "line": 331,
+        "issue": "Sensitive route '/api/websocket/stats' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.285777"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/performance/circuit_breaker.py",
+        "line": 370,
+        "issue": "Sensitive route '/api/circuit-breakers/metrics' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.287269"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/performance/circuit_breaker.py",
+        "line": 378,
+        "issue": "Sensitive route '/api/circuit-breakers/reset' lacks authentication",
+        "detail": "Methods: 'POST'",
+        "timestamp": "2025-09-21T08:01:44.287332"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/performance/cache_manager.py",
+        "line": 544,
+        "issue": "Sensitive route '/api/cache/metrics' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.287533"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/performance/cache_manager.py",
+        "line": 563,
+        "issue": "Sensitive route '/api/cache/clear' lacks authentication",
+        "detail": "Methods: 'POST'",
+        "timestamp": "2025-09-21T08:01:44.287590"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/performance/metrics_collector.py",
+        "line": 530,
+        "issue": "Sensitive route '/api/metrics/system' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.287872"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/performance/metrics_collector.py",
+        "line": 538,
+        "issue": "Sensitive route '/api/metrics/application' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.287927"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/performance/metrics_collector.py",
+        "line": 546,
+        "issue": "Sensitive route '/api/metrics/endpoints' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.287968"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/performance/metrics_collector.py",
+        "line": 553,
+        "issue": "Sensitive route '/api/metrics/custom' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.288007"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/performance/metrics_collector.py",
+        "line": 560,
+        "issue": "Sensitive route '/api/health' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.288045"
+      },
+      {
+        "level": "critical",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/performance/load_balancing.py",
+        "line": 471,
+        "issue": "Sensitive route '/api/load-balancers/stats' lacks authentication",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.288266"
+      },
+      {
+        "level": "critical",
+        "category": "Configuration",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/config.py",
+        "line": 197,
+        "issue": "Weak secret key (too short)",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.303391"
+      }
+    ],
+    "medium": [
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 482,
+        "issue": "Route '/device/<int:device_id>' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272090"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 490,
+        "issue": "Route '/alerts' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272163"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 494,
+        "issue": "Route '/notifications' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272202"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 508,
+        "issue": "Route '/performance-dashboard' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272317"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 513,
+        "issue": "Route '/ai-dashboard' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272352"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 524,
+        "issue": "Route '/system-info' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272422"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 528,
+        "issue": "Route '/about' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272457"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 533,
+        "issue": "Route '/monitored-hosts' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272492"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 538,
+        "issue": "Route '/devices' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272526"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 543,
+        "issue": "Route '/noc' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272559"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 549,
+        "issue": "Route '/ai_dashboard' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272595"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 559,
+        "issue": "Route '/topology' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272667"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 565,
+        "issue": "Route '/network-map' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272702"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 581,
+        "issue": "Route '/test-debug' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272770"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 586,
+        "issue": "Route '/full-view' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272804"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 613,
+        "issue": "Route '/test' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.272985"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 617,
+        "issue": "Route '/debug/routes' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.273022"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 628,
+        "issue": "Route '/simple-test' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.273064"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 632,
+        "issue": "Route '/traceroute-test' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.273101"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 1257,
+        "issue": "Route '/ready' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.273433"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/app.py",
+        "line": 1303,
+        "issue": "Route '/live' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.273475"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/comprehensive_auth_audit.py",
+        "line": 171,
+        "issue": "Route '@app.route(' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.276677"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/performance/metrics_collector.py",
+        "line": 565,
+        "issue": "Route '/metrics' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.288085"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/services/cdn_manager.py",
+        "line": 320,
+        "issue": "Route '/cdn/invalidate' may need review",
+        "detail": "Methods: 'POST'",
+        "timestamp": "2025-09-21T08:01:44.294388"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/services/cdn_manager.py",
+        "line": 335,
+        "issue": "Route '/cdn/status' may need review",
+        "detail": "Methods: 'GET'",
+        "timestamp": "2025-09-21T08:01:44.294473"
+      },
+      {
+        "level": "medium",
+        "category": "Route Security",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/services/resource_optimizer.py",
+        "line": 621,
+        "issue": "Route 'static' may need review",
+        "detail": "Methods: GET",
+        "timestamp": "2025-09-21T08:01:44.296214"
+      },
+      {
+        "level": "medium",
+        "category": "Database",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/homeNetMon.db",
+        "line": 0,
+        "issue": "Passwords in users use unknown hashing",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.302040"
+      },
+      {
+        "level": "medium",
+        "category": "Configuration",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/config.py",
+        "line": 14,
+        "issue": "SQLite database (consider PostgreSQL for production)",
+        "detail": "",
+        "timestamp": "2025-09-21T08:01:44.302610"
+      }
+    ]
+  },
+  "routes": {
+    "protected": [],
+    "unprotected_sensitive": [
+      "/api/performance/metrics",
+      "/api/performance/report",
+      "/api/performance/benchmark",
+      "/api/csrf-token",
+      "/dashboard/full",
+      "/settings",
+      "/notifications/analytics",
+      "/analytics",
+      "/security-dashboard",
+      "/security_dashboard",
+      "/security",
+      "/escalation-rules",
+      "/escalation-rules/new",
+      "/escalation-rules/<int:rule_id>/edit",
+      "/escalation-executions",
+      "/api/monitoring/topology-test",
+      "/api/websocket/stats",
+      "/api/circuit-breakers/metrics",
+      "/api/circuit-breakers/reset",
+      "/api/cache/metrics",
+      "/api/cache/clear",
+      "/api/metrics/system",
+      "/api/metrics/application",
+      "/api/metrics/endpoints",
+      "/api/metrics/custom",
+      "/api/health",
+      "/api/load-balancers/stats"
+    ]
+  },
+  "recommendations": [
+    "Add authentication decorators to unprotected sensitive routes",
+    "Generate a strong, random SECRET_KEY for production",
+    "Implement rate limiting on authentication endpoints",
+    "Add account lockout after failed login attempts",
+    "Implement strong password policy requirements",
+    "Add multi-factor authentication for admin accounts",
+    "Regular security audits and penetration testing"
+  ]
+}

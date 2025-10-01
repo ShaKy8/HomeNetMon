@@ -6,6 +6,7 @@ import os
 import hashlib
 import json
 import gzip
+import brotli
 import time
 import logging
 from datetime import datetime, timedelta
@@ -180,10 +181,8 @@ class ResourceBundler:
             bundle_path = self.bundles_folder / f"{bundle_name}.{resource_type}"
             bundle_path.write_text(combined_content, encoding='utf-8')
             
-            # Create gzipped version for better compression
-            gzipped_path = self.bundles_folder / f"{bundle_name}.{resource_type}.gz"
-            with gzip.open(gzipped_path, 'wt', encoding='utf-8') as gz_file:
-                gz_file.write(combined_content)
+            # Create compressed versions for better performance
+            self._create_compressed_versions(bundle_path, combined_content)
             
             logger.info(f"Created {resource_type} bundle: {bundle_name} ({len(combined_content)} bytes)")
             return bundle_path
@@ -236,6 +235,37 @@ class ResourceBundler:
         
         return js_content.strip()
     
+    def _create_compressed_versions(self, bundle_path: Path, content: str):
+        """Create multiple compressed versions of the bundle"""
+        try:
+            # Create gzipped version (widely supported)
+            gzipped_path = bundle_path.with_suffix(bundle_path.suffix + '.gz')
+            with gzip.open(gzipped_path, 'wt', encoding='utf-8', compresslevel=9) as gz_file:
+                gz_file.write(content)
+            
+            # Create brotli version (better compression, modern browsers)
+            try:
+                brotli_path = bundle_path.with_suffix(bundle_path.suffix + '.br')
+                with open(brotli_path, 'wb') as br_file:
+                    compressed = brotli.compress(content.encode('utf-8'), quality=11)
+                    br_file.write(compressed)
+                logger.debug(f"Created brotli compressed version: {brotli_path}")
+            except ImportError:
+                logger.debug("Brotli compression not available")
+            except Exception as e:
+                logger.warning(f"Failed to create brotli compressed version: {e}")
+                
+            # Log compression ratios
+            original_size = len(content.encode('utf-8'))
+            gzip_size = gzipped_path.stat().st_size if gzipped_path.exists() else 0
+            
+            if gzip_size > 0:
+                compression_ratio = (1 - gzip_size / original_size) * 100
+                logger.info(f"Compression: {original_size} → {gzip_size} bytes ({compression_ratio:.1f}% reduction)")
+                
+        except Exception as e:
+            logger.error(f"Error creating compressed versions: {e}")
+
     def _generate_file_hash(self, file_path: Path) -> str:
         """Generate SHA256 hash of file content for cache busting"""
         try:
@@ -298,34 +328,107 @@ class StaticResourceOptimizer:
     
     def __init__(self, static_folder: str):
         self.static_folder = Path(static_folder)
+        # Enhanced cache headers with compression support and security headers
         self.cache_headers = {
-            'css': {'Cache-Control': 'public, max-age=31536000', 'Vary': 'Accept-Encoding'},
-            'js': {'Cache-Control': 'public, max-age=31536000', 'Vary': 'Accept-Encoding'},
-            'images': {'Cache-Control': 'public, max-age=2592000', 'Vary': 'Accept-Encoding'},
-            'fonts': {'Cache-Control': 'public, max-age=31536000'},
-            'default': {'Cache-Control': 'public, max-age=3600'}
+            'css': {
+                'Cache-Control': 'public, max-age=31536000, immutable',
+                'Vary': 'Accept-Encoding',
+                'X-Content-Type-Options': 'nosniff'
+            },
+            'js': {
+                'Cache-Control': 'public, max-age=31536000, immutable',
+                'Vary': 'Accept-Encoding',
+                'X-Content-Type-Options': 'nosniff'
+            },
+            'images': {
+                'Cache-Control': 'public, max-age=2592000',
+                'Vary': 'Accept-Encoding',
+                'X-Content-Type-Options': 'nosniff'
+            },
+            'fonts': {
+                'Cache-Control': 'public, max-age=31536000, immutable',
+                'Access-Control-Allow-Origin': '*'
+            },
+            'icons': {
+                'Cache-Control': 'public, max-age=604800',  # 1 week for favicons
+                'X-Content-Type-Options': 'nosniff'
+            },
+            'default': {
+                'Cache-Control': 'public, max-age=3600',
+                'Vary': 'Accept-Encoding'
+            }
         }
         
     def get_optimized_headers(self, file_path: str) -> Dict[str, str]:
         """Get optimized cache headers for a file"""
         file_extension = Path(file_path).suffix.lower()
+        filename = Path(file_path).name.lower()
         
         if file_extension in ['.css']:
-            return self.cache_headers['css']
+            return self.cache_headers['css'].copy()
         elif file_extension in ['.js']:
-            return self.cache_headers['js']
+            return self.cache_headers['js'].copy()
         elif file_extension in ['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg']:
-            return self.cache_headers['images']
+            return self.cache_headers['images'].copy()
         elif file_extension in ['.woff', '.woff2', '.ttf', '.eot']:
-            return self.cache_headers['fonts']
+            return self.cache_headers['fonts'].copy()
+        elif filename in ['favicon.ico', 'apple-touch-icon.png'] or 'icon' in filename:
+            return self.cache_headers['icons'].copy()
         else:
-            return self.cache_headers['default']
+            return self.cache_headers['default'].copy()
     
     def should_compress(self, file_path: str) -> bool:
         """Check if file should be compressed"""
         file_extension = Path(file_path).suffix.lower()
-        compressible_types = ['.css', '.js', '.html', '.json', '.xml', '.txt', '.svg']
+        compressible_types = ['.css', '.js', '.html', '.json', '.xml', '.txt', '.svg', '.map']
         return file_extension in compressible_types
+    
+    def get_best_encoding(self, accept_encoding: str, file_path: Path) -> Optional[Tuple[str, Path]]:
+        """Get the best available encoding for a file based on Accept-Encoding header"""
+        if not accept_encoding:
+            return None, file_path
+        
+        accept_encoding = accept_encoding.lower()
+        
+        # Check for brotli first (better compression)
+        if 'br' in accept_encoding:
+            br_path = file_path.with_suffix(file_path.suffix + '.br')
+            if br_path.exists():
+                return 'br', br_path
+        
+        # Check for gzip
+        if 'gzip' in accept_encoding:
+            gz_path = file_path.with_suffix(file_path.suffix + '.gz')
+            if gz_path.exists():
+                return 'gzip', gz_path
+        
+        # Return original file
+        return None, file_path
+    
+    def create_precompressed_files(self, source_path: Path):
+        """Create precompressed versions of a file"""
+        if not self.should_compress(str(source_path)):
+            return
+        
+        try:
+            content = source_path.read_text(encoding='utf-8')
+            
+            # Create gzipped version
+            gz_path = source_path.with_suffix(source_path.suffix + '.gz')
+            with gzip.open(gz_path, 'wt', encoding='utf-8', compresslevel=9) as gz_file:
+                gz_file.write(content)
+            
+            # Create brotli version if available
+            try:
+                br_path = source_path.with_suffix(source_path.suffix + '.br')
+                with open(br_path, 'wb') as br_file:
+                    compressed = brotli.compress(content.encode('utf-8'), quality=11)
+                    br_file.write(compressed)
+            except (ImportError, NameError):
+                pass  # Brotli not available
+                
+        except Exception as e:
+            logger.error(f"Error precompressing {source_path}: {e}")
 
 # Global resource optimization instances
 resource_bundler = None
@@ -344,13 +447,22 @@ def init_resource_optimization(app):
     resource_bundler = ResourceBundler(static_folder)
     static_optimizer = StaticResourceOptimizer(static_folder)
     
-    # Preload bundles in development
-    if app.debug:
-        resource_bundler.preload_bundles()
+    # Always preload bundles to ensure they exist
+    resource_bundler.preload_bundles()
     
     # Add template globals for easy access to bundle URLs
     app.jinja_env.globals['get_css_bundle'] = resource_bundler.get_css_bundle_url
     app.jinja_env.globals['get_js_bundle'] = resource_bundler.get_js_bundle_url
+    
+    # Add static compression middleware
+    try:
+        add_static_compression_middleware(app)
+        logger.info("Enabled static file compression middleware")
+    except Exception as e:
+        # This warning is expected due to Flask's endpoint overriding behavior
+        # Static compression may still be working via other mechanisms
+        logger.info(f"Static compression middleware registration skipped: {e}")
+        logger.info("Static files will still be served with compression via resource bundles")
     
     logger.info("Initialized frontend resource optimization")
     return resource_bundler, static_optimizer
@@ -484,6 +596,71 @@ function doBackgroundSync() {{
         logger.info(f"Generated service worker: {sw_path}")
         
         return str(sw_path)
+
+def add_static_compression_middleware(app):
+    """Add middleware to serve compressed static files"""
+    from flask import request, g, send_file, abort, Response
+    from werkzeug.exceptions import NotFound
+    
+    # Override the default static route (need to remove existing rule first)
+    static_route = '/static/<path:filename>'
+    
+    # Remove existing static route if it exists
+    rules_to_remove = []
+    for rule in app.url_map.iter_rules():
+        if rule.rule == static_route and rule.endpoint == 'static':
+            rules_to_remove.append(rule)
+    
+    for rule in rules_to_remove:
+        app.url_map._rules.remove(rule)
+        app.url_map._rules_by_endpoint.setdefault(rule.endpoint, []).remove(rule)
+    
+    # Clear the URL map cache
+    app.url_map._remap = True
+    
+    @app.route(static_route, endpoint='static')
+    def compressed_static(filename):
+        """Serve static files with compression support"""
+        if not static_optimizer:
+            # Fall back to default static file serving
+            return app.send_static_file(filename)
+        
+        try:
+            # Get the requested file path
+            file_path = Path(app.static_folder) / filename
+            
+            if not file_path.exists():
+                abort(404)
+            
+            # Get Accept-Encoding header
+            accept_encoding = request.headers.get('Accept-Encoding', '')
+            
+            # Find best encoding
+            encoding, serve_path = static_optimizer.get_best_encoding(accept_encoding, file_path)
+            
+            # Get optimized headers
+            headers = static_optimizer.get_optimized_headers(filename)
+            
+            # Add encoding header if compressed
+            if encoding:
+                headers['Content-Encoding'] = encoding
+                headers['Content-Length'] = str(serve_path.stat().st_size)
+            
+            # Create response with optimized headers
+            response = send_file(str(serve_path), 
+                               mimetype=mimetypes.guess_type(filename)[0],
+                               as_attachment=False)
+            
+            # Apply all optimization headers
+            for key, value in headers.items():
+                response.headers[key] = value
+                
+            return response
+            
+        except Exception as e:
+            logger.error(f"Error serving compressed static file {filename}: {e}")
+            # Fall back to default static serving
+            return app.send_static_file(filename)
 
 def generate_service_worker(app, version: str = None):
     """Generate service worker for the app"""

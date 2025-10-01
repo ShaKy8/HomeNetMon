@@ -1,0 +1,1145 @@
+{
+  "timestamp": "2025-09-21T08:07:15.781308",
+  "summary": {
+    "total_findings": 106,
+    "excellent_count": 21,
+    "good_count": 69,
+    "warning_count": 1,
+    "poor_count": 1,
+    "performance_score": 100
+  },
+  "findings": {
+    "good": [
+      {
+        "level": "good",
+        "category": "Asset Bundling",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/build_assets.py",
+        "metric": "Build Script",
+        "value": "Present",
+        "target": "",
+        "recommendation": "Asset bundling is implemented",
+        "timestamp": "2025-09-21T08:07:15.293390"
+      },
+      {
+        "level": "good",
+        "category": "Asset Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/build_assets.py",
+        "metric": "Minification",
+        "value": "Implemented",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.293498"
+      },
+      {
+        "level": "good",
+        "category": "Asset Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/build_assets.py",
+        "metric": "Compression",
+        "value": "Implemented",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.293542"
+      },
+      {
+        "level": "good",
+        "category": "Asset Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/build_assets.py",
+        "metric": "Cache Busting",
+        "value": "Implemented",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.293575"
+      },
+      {
+        "level": "good",
+        "category": "Asset Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/build_assets.py",
+        "metric": "Bundle Splitting",
+        "value": "Implemented",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.293602"
+      },
+      {
+        "level": "good",
+        "category": "Page Loading",
+        "file": "/",
+        "metric": "Compression",
+        "value": "gzip",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.412555"
+      },
+      {
+        "level": "good",
+        "category": "Page Loading",
+        "file": "/analytics",
+        "metric": "Content Size",
+        "value": "101.4KB",
+        "target": "< 300KB for good performance",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.542507"
+      },
+      {
+        "level": "good",
+        "category": "Page Loading",
+        "file": "/analytics",
+        "metric": "Compression",
+        "value": "gzip",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.542513"
+      },
+      {
+        "level": "good",
+        "category": "Page Loading",
+        "file": "/settings",
+        "metric": "Compression",
+        "value": "gzip",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.648184"
+      },
+      {
+        "level": "good",
+        "category": "Page Loading",
+        "file": "/security",
+        "metric": "Compression",
+        "value": "gzip",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.754033"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/alerts.html",
+        "metric": "Async Scripts",
+        "value": "Present",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.754754"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/alerts.html",
+        "metric": "Script Tags",
+        "value": 0,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.755137"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/escalation_rules.html",
+        "metric": "Async Scripts",
+        "value": "Present",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.755335"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/escalation_rules.html",
+        "metric": "Script Tags",
+        "value": 1,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.755567"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/noc_view.html",
+        "metric": "Async Scripts",
+        "value": "Present",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.756057"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/noc_view.html",
+        "metric": "Script Tags",
+        "value": 4,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.756511"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/escalation_rule_form.html",
+        "metric": "Async Scripts",
+        "value": "Present",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.756726"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/escalation_rule_form.html",
+        "metric": "Script Tags",
+        "value": 1,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.757002"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/system_info.html",
+        "metric": "Script Tags",
+        "value": 1,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.757268"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/notification_analytics.html",
+        "metric": "Async Scripts",
+        "value": "Present",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.757393"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/notification_analytics.html",
+        "metric": "Script Tags",
+        "value": 1,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.757556"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/ai_dashboard.html",
+        "metric": "Script Tags",
+        "value": 1,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.757782"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/base_beautiful.html",
+        "metric": "Script Tags",
+        "value": 5,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.757963"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/settings.html",
+        "metric": "Async Scripts",
+        "value": "Present",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.758113"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/settings.html",
+        "metric": "Script Tags",
+        "value": 1,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.758301"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/about.html",
+        "metric": "Script Tags",
+        "value": 0,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.758466"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/performance.html",
+        "metric": "Async Scripts",
+        "value": "Present",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.758626"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/performance.html",
+        "metric": "Script Tags",
+        "value": 4,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.758858"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/topology.html",
+        "metric": "Async Scripts",
+        "value": "Present",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.759276"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/topology.html",
+        "metric": "Script Tags",
+        "value": 3,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.759647"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/device_detail.html",
+        "metric": "Script Tags",
+        "value": 1,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.759871"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/escalation_executions.html",
+        "metric": "Async Scripts",
+        "value": "Present",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.760045"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/escalation_executions.html",
+        "metric": "Script Tags",
+        "value": 1,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.760292"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/analytics.html",
+        "metric": "Async Scripts",
+        "value": "Present",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.760576"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/analytics.html",
+        "metric": "Script Tags",
+        "value": 0,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.761348"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/performance_dashboard.html",
+        "metric": "Script Tags",
+        "value": 1,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.762808"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/security.html",
+        "metric": "Async Scripts",
+        "value": "Present",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.763568"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/security.html",
+        "metric": "Script Tags",
+        "value": 1,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.764309"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/dashboard.html",
+        "metric": "Async Scripts",
+        "value": "Present",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.764817"
+      },
+      {
+        "level": "good",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/dashboard.html",
+        "metric": "Script Tags",
+        "value": 0,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.765478"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/lazy-loader.js",
+        "metric": "DOM Queries",
+        "value": 2,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.765898"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/lazy-loader.js",
+        "metric": "ES6 Features",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.766050"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/lazy-loader.js",
+        "metric": "Async/Await",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.766173"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/lazy-loader.js",
+        "metric": "Event Delegation",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.766285"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/html-sanitizer.js",
+        "metric": "ES6 Features",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.766515"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/html-sanitizer.js",
+        "metric": "Event Delegation",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.766675"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/read-receipt-tracker.js",
+        "metric": "ES6 Features",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.766859"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/read-receipt-tracker.js",
+        "metric": "Async/Await",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.767037"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/read-receipt-tracker.js",
+        "metric": "Event Delegation",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.767146"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/csrf-handler.js",
+        "metric": "DOM Queries",
+        "value": 4,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.767355"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/csrf-handler.js",
+        "metric": "ES6 Features",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.767450"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/csrf-handler.js",
+        "metric": "Async/Await",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.767537"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/csrf-handler.js",
+        "metric": "Event Delegation",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.767627"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/dashboard.js",
+        "metric": "ES6 Features",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.768020"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/dashboard.js",
+        "metric": "Async/Await",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.768216"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/dashboard.js",
+        "metric": "Event Delegation",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.768298"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/real-time-updates.js",
+        "metric": "DOM Queries",
+        "value": 7,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.768451"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/real-time-updates.js",
+        "metric": "ES6 Features",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.768540"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/real-time-updates.js",
+        "metric": "Event Delegation",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.768656"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/network-topology.js",
+        "metric": "DOM Queries",
+        "value": 3,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.768802"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/network-topology.js",
+        "metric": "ES6 Features",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.768893"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/network-topology.js",
+        "metric": "Event Delegation",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.769003"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/app.js",
+        "metric": "DOM Queries",
+        "value": 7,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.769137"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/app.js",
+        "metric": "ES6 Features",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.769222"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/app.js",
+        "metric": "Event Delegation",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.769314"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/pwa-manager.js",
+        "metric": "DOM Queries",
+        "value": 7,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.769506"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/pwa-manager.js",
+        "metric": "ES6 Features",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.769590"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/pwa-manager.js",
+        "metric": "Async/Await",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.769664"
+      },
+      {
+        "level": "good",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/pwa-manager.js",
+        "metric": "Event Delegation",
+        "value": "Used",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.769736"
+      }
+    ],
+    "excellent": [
+      {
+        "level": "excellent",
+        "category": "Bundle Analysis",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/bundles/topology.js",
+        "metric": "File Size",
+        "value": "7.0KB",
+        "target": "< 250KB for good performance",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.293751"
+      },
+      {
+        "level": "excellent",
+        "category": "Bundle Analysis",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/bundles/topology.js.gz",
+        "metric": "File Size",
+        "value": "2.2KB (compressed)",
+        "target": "< 250KB for good performance",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.293814"
+      },
+      {
+        "level": "excellent",
+        "category": "Bundle Analysis",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/bundles/dashboard.js.gz",
+        "metric": "File Size",
+        "value": "8.0KB (compressed)",
+        "target": "< 250KB for good performance",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.293871"
+      },
+      {
+        "level": "excellent",
+        "category": "Bundle Analysis",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/bundles/core.js.gz",
+        "metric": "File Size",
+        "value": "5.9KB (compressed)",
+        "target": "< 250KB for good performance",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.293914"
+      },
+      {
+        "level": "excellent",
+        "category": "Bundle Analysis",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/bundles/dashboard.js",
+        "metric": "File Size",
+        "value": "29.9KB",
+        "target": "< 250KB for good performance",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.293953"
+      },
+      {
+        "level": "excellent",
+        "category": "Bundle Analysis",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/bundles/core.js",
+        "metric": "File Size",
+        "value": "22.2KB",
+        "target": "< 250KB for good performance",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.293991"
+      },
+      {
+        "level": "excellent",
+        "category": "Bundle Analysis",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/bundles/core.css.gz",
+        "metric": "File Size",
+        "value": "1.6KB (compressed)",
+        "target": "< 100KB for good performance",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.294032"
+      },
+      {
+        "level": "excellent",
+        "category": "Bundle Analysis",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/bundles/dashboard.css.gz",
+        "metric": "File Size",
+        "value": "1.6KB (compressed)",
+        "target": "< 100KB for good performance",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.294076"
+      },
+      {
+        "level": "excellent",
+        "category": "Bundle Analysis",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/bundles/dashboard.css",
+        "metric": "File Size",
+        "value": "4.9KB",
+        "target": "< 100KB for good performance",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.294116"
+      },
+      {
+        "level": "excellent",
+        "category": "Bundle Analysis",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/bundles/core.css",
+        "metric": "File Size",
+        "value": "4.9KB",
+        "target": "< 100KB for good performance",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.294154"
+      },
+      {
+        "level": "excellent",
+        "category": "Page Loading",
+        "file": "/",
+        "metric": "Response Time",
+        "value": "118ms",
+        "target": "< 500ms for good user experience",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.412522"
+      },
+      {
+        "level": "excellent",
+        "category": "Page Loading",
+        "file": "/",
+        "metric": "Content Size",
+        "value": "66.9KB",
+        "target": "< 300KB for good performance",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.412546"
+      },
+      {
+        "level": "excellent",
+        "category": "Page Loading",
+        "file": "/analytics",
+        "metric": "Response Time",
+        "value": "127ms",
+        "target": "< 500ms for good user experience",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.542491"
+      },
+      {
+        "level": "excellent",
+        "category": "Page Loading",
+        "file": "/settings",
+        "metric": "Response Time",
+        "value": "106ms",
+        "target": "< 500ms for good user experience",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.648158"
+      },
+      {
+        "level": "excellent",
+        "category": "Page Loading",
+        "file": "/settings",
+        "metric": "Content Size",
+        "value": "49.4KB",
+        "target": "< 300KB for good performance",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.648178"
+      },
+      {
+        "level": "excellent",
+        "category": "Page Loading",
+        "file": "/security",
+        "metric": "Response Time",
+        "value": "106ms",
+        "target": "< 500ms for good user experience",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.753983"
+      },
+      {
+        "level": "excellent",
+        "category": "Page Loading",
+        "file": "/security",
+        "metric": "Content Size",
+        "value": "49.3KB",
+        "target": "< 300KB for good performance",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.754020"
+      },
+      {
+        "level": "excellent",
+        "category": "Caching",
+        "file": "/static/bundles/core.js",
+        "metric": "Cache Duration",
+        "value": "8760h",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.773146"
+      },
+      {
+        "level": "excellent",
+        "category": "Caching",
+        "file": "/static/bundles/core.css",
+        "metric": "Cache Duration",
+        "value": "8760h",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.775634"
+      },
+      {
+        "level": "excellent",
+        "category": "Caching",
+        "file": "/static/bundles/dashboard.js",
+        "metric": "Cache Duration",
+        "value": "8760h",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.778647"
+      },
+      {
+        "level": "excellent",
+        "category": "Caching",
+        "file": "/static/bundles/dashboard.css",
+        "metric": "Cache Duration",
+        "value": "8760h",
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.781117"
+      }
+    ],
+    "info": [
+      {
+        "level": "info",
+        "category": "Static Assets",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static",
+        "metric": "JS Files",
+        "value": 12,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.294565"
+      },
+      {
+        "level": "info",
+        "category": "Static Assets",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static",
+        "metric": "CSS Files",
+        "value": 6,
+        "target": "",
+        "recommendation": "",
+        "timestamp": "2025-09-21T08:07:15.294600"
+      },
+      {
+        "level": "info",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/analytics.html",
+        "metric": "Lazy Loading",
+        "value": "Not found",
+        "target": "",
+        "recommendation": "Consider implementing lazy loading",
+        "timestamp": "2025-09-21T08:07:15.760494"
+      },
+      {
+        "level": "info",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/analytics.html",
+        "metric": "Preload Resources",
+        "value": "Not found",
+        "target": "",
+        "recommendation": "Consider implementing preload resources",
+        "timestamp": "2025-09-21T08:07:15.760688"
+      },
+      {
+        "level": "info",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/analytics.html",
+        "metric": "Resource Hints",
+        "value": "Not found",
+        "target": "",
+        "recommendation": "Consider implementing resource hints",
+        "timestamp": "2025-09-21T08:07:15.760803"
+      },
+      {
+        "level": "info",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/analytics.html",
+        "metric": "Critical CSS",
+        "value": "Not found",
+        "target": "",
+        "recommendation": "Consider implementing critical css",
+        "timestamp": "2025-09-21T08:07:15.761018"
+      },
+      {
+        "level": "info",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/dashboard.html",
+        "metric": "Lazy Loading",
+        "value": "Not found",
+        "target": "",
+        "recommendation": "Consider implementing lazy loading",
+        "timestamp": "2025-09-21T08:07:15.764676"
+      },
+      {
+        "level": "info",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/dashboard.html",
+        "metric": "Preload Resources",
+        "value": "Not found",
+        "target": "",
+        "recommendation": "Consider implementing preload resources",
+        "timestamp": "2025-09-21T08:07:15.764987"
+      },
+      {
+        "level": "info",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/dashboard.html",
+        "metric": "Resource Hints",
+        "value": "Not found",
+        "target": "",
+        "recommendation": "Consider implementing resource hints",
+        "timestamp": "2025-09-21T08:07:15.765154"
+      },
+      {
+        "level": "info",
+        "category": "Template Optimization",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/templates/dashboard.html",
+        "metric": "Critical CSS",
+        "value": "Not found",
+        "target": "",
+        "recommendation": "Consider implementing critical css",
+        "timestamp": "2025-09-21T08:07:15.765315"
+      },
+      {
+        "level": "info",
+        "category": "Caching",
+        "file": "/static/bundles/core.js",
+        "metric": "ETag",
+        "value": "Missing",
+        "target": "",
+        "recommendation": "Consider adding ETag headers",
+        "timestamp": "2025-09-21T08:07:15.773157"
+      },
+      {
+        "level": "info",
+        "category": "Caching",
+        "file": "/static/bundles/core.css",
+        "metric": "ETag",
+        "value": "Missing",
+        "target": "",
+        "recommendation": "Consider adding ETag headers",
+        "timestamp": "2025-09-21T08:07:15.775651"
+      },
+      {
+        "level": "info",
+        "category": "Caching",
+        "file": "/static/bundles/dashboard.js",
+        "metric": "ETag",
+        "value": "Missing",
+        "target": "",
+        "recommendation": "Consider adding ETag headers",
+        "timestamp": "2025-09-21T08:07:15.778663"
+      },
+      {
+        "level": "info",
+        "category": "Caching",
+        "file": "/static/bundles/dashboard.css",
+        "metric": "ETag",
+        "value": "Missing",
+        "target": "",
+        "recommendation": "Consider adding ETag headers",
+        "timestamp": "2025-09-21T08:07:15.781130"
+      }
+    ],
+    "poor": [
+      {
+        "level": "poor",
+        "category": "Page Loading",
+        "file": "/dashboard",
+        "metric": "HTTP Status",
+        "value": 404,
+        "target": "",
+        "recommendation": "Page should return 200 OK",
+        "timestamp": "2025-09-21T08:07:15.415354"
+      }
+    ],
+    "warning": [
+      {
+        "level": "warning",
+        "category": "JS Performance",
+        "file": "/home/kyle/ClaudeCode/HomeNetMon/static/js/dashboard.js",
+        "metric": "DOM Queries",
+        "value": 64,
+        "target": "< 20 per file",
+        "recommendation": "Consider caching DOM references",
+        "timestamp": "2025-09-21T08:07:15.767907"
+      }
+    ]
+  },
+  "bundle_info": {
+    "topology.js": {
+      "size_kb": 6.998046875,
+      "compressed": false,
+      "type": "js"
+    },
+    "topology.js.gz": {
+      "size_kb": 2.248046875,
+      "compressed": true,
+      "type": "js"
+    },
+    "dashboard.js.gz": {
+      "size_kb": 7.958984375,
+      "compressed": true,
+      "type": "js"
+    },
+    "core.js.gz": {
+      "size_kb": 5.9365234375,
+      "compressed": true,
+      "type": "js"
+    },
+    "dashboard.js": {
+      "size_kb": 29.9423828125,
+      "compressed": false,
+      "type": "js"
+    },
+    "core.js": {
+      "size_kb": 22.1767578125,
+      "compressed": false,
+      "type": "js"
+    },
+    "core.css.gz": {
+      "size_kb": 1.580078125,
+      "compressed": true,
+      "type": "css"
+    },
+    "dashboard.css.gz": {
+      "size_kb": 1.5849609375,
+      "compressed": true,
+      "type": "css"
+    },
+    "dashboard.css": {
+      "size_kb": 4.9013671875,
+      "compressed": false,
+      "type": "css"
+    },
+    "core.css": {
+      "size_kb": 4.9013671875,
+      "compressed": false,
+      "type": "css"
+    }
+  },
+  "recommendations": [
+    "Enable compression (gzip/brotli) for all static assets",
+    "Address poor performance metrics identified in the audit",
+    "Implement lazy loading for images and non-critical resources",
+    "Use resource hints (preload, prefetch) for critical assets",
+    "Minimize render-blocking resources",
+    "Optimize critical rendering path",
+    "Implement service worker for offline capability",
+    "Use CDN for static asset delivery"
+  ]
+}

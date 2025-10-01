@@ -4,6 +4,7 @@ from sqlalchemy import func, and_, or_
 from models import db, Device, MonitoringData, Alert
 from collections import defaultdict
 import statistics
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 # Import health score calculation function for consistency
 from api.health import calculate_health_score
@@ -25,6 +26,7 @@ network_topology = NetworkTopologyEngine()
 anomaly_detection = AnomalyDetectionEngine()
 
 @analytics_bp.route('/network-health-score', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_network_health_score():
     """Calculate overall network health score"""
     try:
@@ -104,6 +106,7 @@ def get_network_health_score():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/device-insights', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_general_device_insights():
     """Get insights about device patterns and behavior"""
     try:
@@ -187,6 +190,7 @@ def get_general_device_insights():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/usage-patterns', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_usage_patterns():
     """Analyze device usage patterns over time"""
     try:
@@ -260,6 +264,7 @@ def get_usage_patterns():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/network-trends', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_network_trends():
     """Get network performance trends over time"""
     try:
@@ -366,6 +371,7 @@ def generate_health_recommendations(health_score, avg_response, success_rate, ac
 # Machine Learning Device Classification Endpoints
 
 @analytics_bp.route('/devices/<int:device_id>/classify', methods=['POST'])
+@create_endpoint_limiter('strict')
 def classify_device(device_id):
     """Classify a device using machine learning behavior analysis"""
     try:
@@ -389,6 +395,7 @@ def classify_device(device_id):
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/devices/<int:device_id>/insights', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_device_insights(device_id):
     """Get comprehensive device insights including behavior analysis"""
     try:
@@ -412,6 +419,7 @@ def get_device_insights(device_id):
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/devices/<int:device_id>/behavior', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_device_behavior(device_id):
     """Get detailed device behavior analysis"""
     try:
@@ -442,6 +450,7 @@ def get_device_behavior(device_id):
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/devices/classify-all', methods=['POST'])
+@create_endpoint_limiter('bulk')
 def classify_all_devices():
     """Classify all monitored devices using machine learning"""
     try:
@@ -485,6 +494,7 @@ def classify_all_devices():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/analytics/summary', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_analytics_summary():
     """Get system-wide analytics summary including ML insights"""
     try:
@@ -555,6 +565,7 @@ def get_analytics_summary():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/analytics/learning-status', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_learning_status():
     """Get status of the machine learning system"""
     try:
@@ -572,6 +583,7 @@ def get_learning_status():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/analytics/performance-trends', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_performance_trends():
     """Get performance trends across all devices using analytics"""
     try:
@@ -596,6 +608,7 @@ def get_performance_trends():
 # Device Fingerprinting Endpoints
 
 @analytics_bp.route('/devices/<int:device_id>/fingerprint', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_device_fingerprint(device_id):
     """Generate unique device fingerprint based on behavioral patterns"""
     try:
@@ -613,6 +626,7 @@ def get_device_fingerprint(device_id):
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/devices/<int:device_id1>/compare/<int:device_id2>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def compare_device_fingerprints(device_id1, device_id2):
     """Compare behavioral fingerprints between two devices"""
     try:
@@ -631,6 +645,7 @@ def compare_device_fingerprints(device_id1, device_id2):
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/analytics/fingerprints/similar', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def find_similar_devices():
     """Find devices with similar behavioral fingerprints"""
     try:
@@ -700,6 +715,7 @@ def find_similar_devices():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/analytics/fingerprints/patterns', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_fingerprint_patterns():
     """Analyze patterns across all device fingerprints"""
     try:
@@ -785,6 +801,7 @@ def get_fingerprint_patterns():
 # Device Learning System Endpoints
 
 @analytics_bp.route('/devices/<int:device_id>/feedback', methods=['POST'])
+@create_endpoint_limiter('strict')
 def submit_device_feedback():
     """Submit user feedback for device classification learning"""
     try:
@@ -819,6 +836,7 @@ def submit_device_feedback():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/devices/<int:device_id>/classify-learned', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_learned_classification(device_id):
     """Get device classification enhanced with learning data"""
     try:
@@ -839,6 +857,7 @@ def get_learned_classification(device_id):
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/learning/train-historical', methods=['POST'])
+@create_endpoint_limiter('strict')
 def train_on_historical_data():
     """Train learning system on historical device behavior data"""
     try:
@@ -857,6 +876,7 @@ def train_on_historical_data():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/learning/statistics', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_learning_statistics():
     """Get comprehensive learning system statistics"""
     try:
@@ -867,6 +887,7 @@ def get_learning_statistics():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/learning/export', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def export_learning_data():
     """Export learning data for backup or analysis"""
     try:
@@ -882,6 +903,7 @@ def export_learning_data():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/learning/import', methods=['POST'])
+@create_endpoint_limiter('strict')
 def import_learning_data():
     """Import learning data from backup"""
     try:
@@ -904,6 +926,7 @@ def import_learning_data():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/learning/devices/enhanced-classification', methods=['GET'])
+@create_endpoint_limiter('bulk')
 def get_all_enhanced_classifications():
     """Get enhanced classifications for all devices using learning data"""
     try:
@@ -951,6 +974,7 @@ def get_all_enhanced_classifications():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/learning/performance-comparison', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def compare_learning_performance():
     """Compare base classification vs learned classification performance"""
     try:
@@ -1017,6 +1041,7 @@ def compare_learning_performance():
 # Predictive Failure Analysis Endpoints
 
 @analytics_bp.route('/devices/<int:device_id>/failure-risk', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def analyze_device_failure_risk(device_id):
     """Analyze failure risk for a specific device"""
     try:
@@ -1034,6 +1059,7 @@ def analyze_device_failure_risk(device_id):
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/devices/<int:device_id>/mtbf', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def predict_device_mtbf(device_id):
     """Predict Mean Time Between Failures for a device"""
     try:
@@ -1051,6 +1077,7 @@ def predict_device_mtbf(device_id):
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/failure-patterns', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def analyze_failure_patterns():
     """Analyze failure patterns across all devices"""
     try:
@@ -1065,6 +1092,7 @@ def analyze_failure_patterns():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/network-failure-risk', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def analyze_network_failure_risk():
     """Analyze overall network failure risk"""
     try:
@@ -1079,6 +1107,7 @@ def analyze_network_failure_risk():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/early-warning/status', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_early_warning_status():
     """Get current early warning system status"""
     try:
@@ -1089,6 +1118,7 @@ def get_early_warning_status():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/devices/failure-predictions', methods=['GET'])
+@create_endpoint_limiter('bulk')
 def get_all_failure_predictions():
     """Get failure predictions for all monitored devices"""
     try:
@@ -1158,6 +1188,7 @@ def get_all_failure_predictions():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/failure-cascades', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def analyze_failure_cascades():
     """Analyze potential failure cascade scenarios"""
     try:
@@ -1197,6 +1228,7 @@ def analyze_failure_cascades():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/failure-hotspots', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def identify_failure_hotspots():
     """Identify network failure hotspots and problem areas"""
     try:
@@ -1291,6 +1323,7 @@ def identify_failure_hotspots():
 # Network Topology Discovery & Visualization Endpoints
 
 @analytics_bp.route('/topology/discover', methods=['GET', 'POST'])
+@create_endpoint_limiter('strict')
 def discover_network_topology():
     """Perform comprehensive network topology discovery"""
     try:
@@ -1310,6 +1343,7 @@ def discover_network_topology():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/topology/visualization', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_topology_visualization():
     """Get network topology data optimized for visualization"""
     try:
@@ -1365,6 +1399,7 @@ def get_topology_visualization():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/topology/devices/<int:device_id>/relationships', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def analyze_device_relationships(device_id):
     """Analyze relationships for a specific device"""
     try:
@@ -1383,6 +1418,7 @@ def analyze_device_relationships(device_id):
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/topology/network-paths', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def analyze_network_paths():
     """Get detailed network path analysis"""
     try:
@@ -1412,6 +1448,7 @@ def analyze_network_paths():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/topology/infrastructure', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_infrastructure_analysis():
     """Get infrastructure device analysis"""
     try:
@@ -1443,6 +1480,7 @@ def get_infrastructure_analysis():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/topology/network-segments', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_network_segments():
     """Get network segment analysis"""
     try:
@@ -1481,6 +1519,7 @@ def get_network_segments():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/topology/connectivity-matrix', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_connectivity_matrix():
     """Get device connectivity matrix"""
     try:
@@ -1509,6 +1548,7 @@ def get_connectivity_matrix():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/topology/redundancy-analysis', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_redundancy_analysis():
     """Get network redundancy and failover analysis"""
     try:
@@ -1534,6 +1574,7 @@ def get_redundancy_analysis():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/topology/bottleneck-analysis', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_bottleneck_analysis():
     """Get network bottleneck and performance analysis"""
     try:
@@ -1562,6 +1603,7 @@ def get_bottleneck_analysis():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/topology/topology-metrics', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_topology_metrics():
     """Get comprehensive network topology metrics"""
     try:
@@ -1600,6 +1642,7 @@ def get_topology_metrics():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/topology/monitor-changes', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def monitor_topology_changes():
     """Monitor for topology changes and updates"""
     try:
@@ -1615,6 +1658,7 @@ def monitor_topology_changes():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/topology/export', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def export_topology_data():
     """Export complete topology data for analysis or backup"""
     try:
@@ -1664,6 +1708,7 @@ def export_topology_data():
 # Anomaly Detection Engine Endpoints
 
 @analytics_bp.route('/anomalies/detect', methods=['GET', 'POST'])
+@create_endpoint_limiter('strict')
 def detect_anomalies():
     """Perform comprehensive anomaly detection analysis"""
     try:
@@ -1691,6 +1736,7 @@ def detect_anomalies():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/anomalies/detect-legacy', methods=['GET', 'POST'])
+@create_endpoint_limiter('strict')
 def detect_legacy_anomalies():
     """Legacy anomaly detection for backward compatibility"""
     try:
@@ -1732,6 +1778,7 @@ def detect_legacy_anomalies():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/anomalies/devices/<int:device_id>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_device_anomalies(device_id):
     """Get anomaly analysis for a specific device"""
     try:
@@ -1763,6 +1810,7 @@ def get_device_anomalies(device_id):
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/anomalies/network-wide', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_network_wide_anomalies():
     """Get network-wide anomaly analysis"""
     try:
@@ -1792,6 +1840,7 @@ def get_network_wide_anomalies():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/anomalies/statistics', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_anomaly_statistics():
     """Get comprehensive anomaly detection statistics"""
     try:
@@ -1828,6 +1877,7 @@ def get_anomaly_statistics():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/anomalies/correlations', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def analyze_anomaly_correlations():
     """Analyze correlations between recent anomalies"""
     try:
@@ -1870,6 +1920,7 @@ def analyze_anomaly_correlations():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/anomalies/types/<anomaly_type>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_anomalies_by_type(anomaly_type):
     """Get anomalies filtered by specific type"""
     try:
@@ -1924,6 +1975,7 @@ def get_anomalies_by_type(anomaly_type):
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/anomalies/severity/<severity_level>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_anomalies_by_severity(severity_level):
     """Get anomalies filtered by severity level"""
     try:
@@ -1986,6 +2038,7 @@ def get_anomalies_by_severity(severity_level):
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/anomalies/monitoring/start', methods=['POST'])
+@create_endpoint_limiter('strict')
 def start_anomaly_monitoring():
     """Start continuous anomaly monitoring"""
     try:
@@ -2003,6 +2056,7 @@ def start_anomaly_monitoring():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/anomalies/monitoring/stop', methods=['POST'])
+@create_endpoint_limiter('strict')
 def stop_anomaly_monitoring():
     """Stop continuous anomaly monitoring"""
     try:
@@ -2019,6 +2073,7 @@ def stop_anomaly_monitoring():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/anomalies/monitoring/status', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_anomaly_monitoring_status():
     """Get current anomaly monitoring status"""
     try:
@@ -2044,6 +2099,7 @@ def get_anomaly_monitoring_status():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/anomalies/configuration', methods=['GET', 'PUT'])
+@create_endpoint_limiter('strict')
 def manage_anomaly_configuration():
     """Get or update anomaly detection configuration"""
     try:
@@ -2087,6 +2143,7 @@ def manage_anomaly_configuration():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/anomalies/recommendations', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_anomaly_recommendations():
     """Get actionable recommendations based on recent anomalies"""
     try:
@@ -2144,6 +2201,7 @@ def get_anomaly_recommendations():
         return jsonify({'error': str(e)}), 500
 
 @analytics_bp.route('/anomalies/export', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def export_anomaly_data():
     """Export comprehensive anomaly data for analysis"""
     try:

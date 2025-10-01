@@ -30,23 +30,27 @@ class WebSocketThrottle:
         self._pending_updates = {}     # device_id -> pending data
         self._lock = threading.RLock()
         
-        # Throttle periods (in seconds) for different event types
+        # PERFORMANCE OPTIMIZATION: More aggressive throttle periods for better performance
         self.throttle_periods = {
-            'device_status_update': 2.0,      # Max 1 update per device every 2 seconds
-            'monitoring_summary': 5.0,        # Max 1 summary every 5 seconds
-            'chart_data_update': 3.0,         # Max 1 chart update every 3 seconds
-            'performance_metrics_update': 10.0, # Max 1 perf update every 10 seconds
-            'alert_update': 0.5               # Max 1 alert update every 0.5 seconds
+            'device_status_update': 5.0,      # Max 1 update per device every 5 seconds (was 2)
+            'monitoring_summary': 10.0,       # Max 1 summary every 10 seconds (was 5)
+            'chart_data_update': 8.0,         # Max 1 chart update every 8 seconds (was 3)
+            'performance_metrics_update': 15.0, # Max 1 perf update every 15 seconds (was 10)
+            'alert_update': 1.0               # Max 1 alert update every 1 second (was 0.5)
         }
         
-        # Global rate limits (events per minute)
+        # More aggressive global rate limits (events per minute)
         self.global_rate_limits = {
-            'device_status_update': 60,       # Max 60 device updates per minute
-            'monitoring_summary': 12,         # Max 12 summaries per minute  
-            'chart_data_update': 20,          # Max 20 chart updates per minute
-            'performance_metrics_update': 6,  # Max 6 perf updates per minute
-            'alert_update': 120              # Max 120 alert updates per minute
+            'device_status_update': 30,       # Max 30 device updates per minute (was 60)
+            'monitoring_summary': 6,          # Max 6 summaries per minute (was 12)
+            'chart_data_update': 10,          # Max 10 chart updates per minute (was 20)
+            'performance_metrics_update': 4,  # Max 4 perf updates per minute (was 6)
+            'alert_update': 60               # Max 60 alert updates per minute (was 120)
         }
+        
+        # Add event counters for rate limiting
+        self._event_counters = {}             # event_type -> [(timestamp, count), ...]
+        self._last_significant_change = {}   # device_id -> {status, response_time, etc.}
         
         # Keep track of recent events for rate limiting
         self._recent_events = {}  # event_type -> list of timestamps
@@ -100,6 +104,47 @@ class WebSocketThrottle:
             except Exception as e:
                 logger.error(f"Error during WebSocket throttle cleanup: {e}")
     
+    def _is_significant_change(self, device_id: int, event_data: Dict[str, Any]) -> bool:
+        """Check if device data has changed significantly enough to warrant an update"""
+        with self._lock:
+            if device_id not in self._last_significant_change:
+                # First update is always significant
+                self._last_significant_change[device_id] = event_data.copy()
+                return True
+            
+            last_data = self._last_significant_change[device_id]
+            
+            # Check for significant changes
+            significant_changes = []
+            
+            # Status change is always significant
+            if event_data.get('status') != last_data.get('status'):
+                significant_changes.append('status')
+            
+            # Response time changes > 20% or crossing thresholds
+            old_rt = last_data.get('response_time')
+            new_rt = event_data.get('response_time')
+            
+            if old_rt is None and new_rt is not None:
+                significant_changes.append('response_time')  # Device came online
+            elif old_rt is not None and new_rt is None:
+                significant_changes.append('response_time')  # Device went offline
+            elif old_rt is not None and new_rt is not None:
+                # Check percentage change
+                if abs(new_rt - old_rt) / max(old_rt, 1) > 0.2:  # 20% change
+                    significant_changes.append('response_time')
+                # Check threshold crossings (1000ms warning threshold)
+                elif (old_rt <= 1000 < new_rt) or (new_rt <= 1000 < old_rt):
+                    significant_changes.append('response_time')
+            
+            # Update stored data if significant
+            if significant_changes:
+                self._last_significant_change[device_id] = event_data.copy()
+                logger.debug(f"Significant changes for device {device_id}: {significant_changes}")
+                return True
+            
+            return False
+
     def should_emit_device_update(self, device_id: int, event_data: Dict[str, Any]) -> bool:
         """
         Check if a device status update should be emitted based on throttling rules
@@ -115,6 +160,11 @@ class WebSocketThrottle:
             current_time = time.time()
             event_type = 'device_status_update'
             throttle_period = self.throttle_periods[event_type]
+            
+            # PERFORMANCE OPTIMIZATION: Check if change is significant first
+            if not self._is_significant_change(device_id, event_data):
+                logger.debug(f"No significant changes for device {device_id}, skipping update")
+                return False
             
             # Check device-specific throttling
             last_update = self._device_last_update.get(device_id, 0)

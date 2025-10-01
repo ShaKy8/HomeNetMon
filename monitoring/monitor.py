@@ -8,6 +8,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 import json
 from models import db, Device, MonitoringData, Configuration
 from config import Config
+from monitoring.iot_device_optimizer import iot_optimizer
 
 logger = logging.getLogger(__name__)
 
@@ -50,19 +51,30 @@ class DeviceMonitor:
             logger.warning(f"Invalid IP address format for device {device.id}: {device.ip_address}")
             return None
         
-        # Get ping timeout from database configuration
-        ping_timeout = float(self.get_config_value('ping_timeout', Config.PING_TIMEOUT))
-        
+        # Get optimized settings for this device
+        optimized = iot_optimizer.get_optimized_settings(device)
+        ping_timeout = float(optimized.get('timeout', self.get_config_value('ping_timeout', Config.PING_TIMEOUT)))
+        max_retries = optimized.get('retries', 1)
+
+        # Check if we should skip this device based on interval optimization
+        should_skip, remaining = iot_optimizer.should_skip_monitoring(device)
+        if should_skip:
+            logger.debug(f"Skipping {device.display_name} - next check in {remaining}s")
+            return None
+
         # For critical infrastructure (router, servers), use more lenient settings
         is_critical_device = (
             device.ip_address.endswith('.1') or  # Router
-            'router' in device.device_type.lower() or
-            'server' in device.device_type.lower() or
+            'router' in device.device_type.lower() if device.device_type else False or
+            'server' in device.device_type.lower() if device.device_type else False or
             'nuc' in device.hostname.lower() if device.hostname else False
         )
-        
-        # Adjust retry logic based on device criticality
-        max_retries = 2 if is_critical_device else 1
+
+        # Override settings for critical devices
+        if is_critical_device:
+            max_retries = max(2, max_retries)
+            ping_timeout = max(2.0, ping_timeout)
+
         retry_delay = 0.5  # 500ms between retries
         
         for attempt in range(max_retries + 1):  # +1 for initial attempt
@@ -89,11 +101,15 @@ class DeviceMonitor:
                         response_time_ms = float(time_match.group(1))
                         device.last_seen = datetime.utcnow()
                         logger.debug(f"Ping successful for {device.ip_address} on attempt {attempt + 1}: {response_time_ms}ms")
+                        # Record success for optimization
+                        iot_optimizer.record_ping_result(device, True, response_time_ms)
                         return response_time_ms
                     else:
                         # Ping succeeded but couldn't parse time, return 0
                         device.last_seen = datetime.utcnow()
                         logger.debug(f"Ping successful for {device.ip_address} on attempt {attempt + 1} (no time parsed)")
+                        # Record success for optimization
+                        iot_optimizer.record_ping_result(device, True, 0)
                         return 0.0
                 else:
                     # Ping failed, try again if we have retries left
@@ -103,6 +119,8 @@ class DeviceMonitor:
                         continue
                     else:
                         logger.debug(f"Ping failed for {device.ip_address} after {max_retries + 1} attempts")
+                        # Record failure for optimization
+                        iot_optimizer.record_ping_result(device, False, None)
                         return None
                         
             except subprocess.TimeoutExpired:
@@ -112,6 +130,8 @@ class DeviceMonitor:
                     continue
                 else:
                     logger.debug(f"Ping timeout for {device.ip_address} after {max_retries + 1} attempts")
+                    # Record failure for optimization
+                    iot_optimizer.record_ping_result(device, False, None)
                     return None
             except Exception as e:
                 if attempt < max_retries:
@@ -120,6 +140,8 @@ class DeviceMonitor:
                     continue
                 else:
                     logger.error(f"Error pinging {device.ip_address} after {max_retries + 1} attempts: {e}")
+                    # Record failure for optimization
+                    iot_optimizer.record_ping_result(device, False, None)
                     return None
         
         return None
@@ -161,6 +183,13 @@ class DeviceMonitor:
                         device_obj.last_seen = datetime.utcnow()
                     
                     db.session.commit()
+                    
+                    # PERFORMANCE OPTIMIZATION: Invalidate cache when device data changes
+                    try:
+                        from services.query_cache import invalidate_device_cache
+                        invalidate_device_cache()
+                    except Exception:
+                        pass  # Don't let cache issues break monitoring
                     
                     # Check for status changes and trigger rule engine
                     current_status = device_obj.status
@@ -208,6 +237,50 @@ class DeviceMonitor:
                     db.session.rollback()
             return None
     
+    def _is_high_priority_device(self, device):
+        """Determine if a device is high priority (routers, servers, network infrastructure)"""
+        if not device:
+            return False
+        
+        # Check device type
+        if device.device_type in ['router', 'server', 'nas', 'switch', 'access_point', 'gateway']:
+            return True
+            
+        # Check by hostname patterns
+        hostname = (device.hostname or '').lower()
+        if any(pattern in hostname for pattern in ['router', 'gateway', 'server', 'nas', 'switch', 'ap-']):
+            return True
+            
+        # Check by vendor (network equipment manufacturers)
+        vendor = (device.vendor or '').lower()
+        if any(vendor_pattern in vendor for vendor_pattern in ['cisco', 'netgear', 'linksys', 'asus', 'tp-link', 'ubiquiti']):
+            return True
+            
+        return False
+    
+    def _is_low_priority_device(self, device):
+        """Determine if a device is low priority (IoT devices, smart home devices)"""
+        if not device:
+            return False
+            
+        # Check device type
+        if device.device_type in ['iot', 'smart_home', 'camera', 'sensor', 'speaker', 'tv', 'gaming']:
+            return True
+            
+        # Check by hostname patterns
+        hostname = (device.hostname or '').lower()
+        iot_patterns = ['ring-', 'nest-', 'chromecast', 'echo-', 'alexa', 'google-home', 'wyze', 'sonos', 'roku', 'firetv', 'samsung', 'lg-']
+        if any(pattern in hostname for pattern in iot_patterns):
+            return True
+            
+        # Check by vendor (IoT device manufacturers)
+        vendor = (device.vendor or '').lower()
+        iot_vendors = ['ring', 'nest', 'wyze', 'sonos', 'roku', 'amazon', 'google', 'samsung', 'lg electronics', 'xiaomi']
+        if any(vendor_pattern in vendor for vendor_pattern in iot_vendors):
+            return True
+            
+        return False
+
     def is_critical_device(self, device):
         """Determine if a device is critical infrastructure"""
         # Critical device criteria
@@ -221,7 +294,7 @@ class DeviceMonitor:
         )
     
     def monitor_all_devices(self):
-        """Monitor devices with intelligent prioritization and batching"""
+        """Monitor ALL devices every cycle for home network use"""
         try:
             if not self.app:
                 logger.error("No Flask app context available for monitoring")
@@ -235,41 +308,14 @@ class DeviceMonitor:
                 logger.debug("No devices to monitor")
                 return
             
-            # Separate critical from regular devices
-            critical_devices = [d for d in all_devices if self.is_critical_device(d)]
-            regular_devices = [d for d in all_devices if not self.is_critical_device(d)]
+            # For home use: monitor ALL devices every cycle
+            # No rotation, no prioritization - just check everything
+            devices_to_monitor = all_devices
             
-            logger.debug(f"Monitoring: {len(critical_devices)} critical, {len(regular_devices)} regular devices")
+            logger.info(f"Monitoring ALL {len(devices_to_monitor)} devices this cycle")
             
-            # Always monitor critical devices every cycle
-            devices_to_monitor = critical_devices[:]
-            
-            # Rotate through regular devices (monitor subset each cycle)
-            if regular_devices:
-                # Thread-safe rotation counter access
-                with self._rotation_lock:
-                    # Monitor 10-15 regular devices per cycle (instead of all 50+)
-                    batch_size = min(15, len(regular_devices))
-                    start_idx = self._device_rotation_index
-                    end_idx = start_idx + batch_size
-                    
-                    # Handle wrap-around
-                    if end_idx <= len(regular_devices):
-                        regular_batch = regular_devices[start_idx:end_idx]
-                    else:
-                        regular_batch = regular_devices[start_idx:] + regular_devices[:end_idx - len(regular_devices)]
-                    
-                    # Update rotation index for next cycle
-                    self._device_rotation_index = (self._device_rotation_index + batch_size) % len(regular_devices)
-                
-                devices_to_monitor.extend(regular_batch)
-                
-                logger.debug(f"Regular device batch: {start_idx}-{end_idx % len(regular_devices)} ({len(regular_batch)} devices)")
-            
-            logger.debug(f"Total monitoring this cycle: {len(devices_to_monitor)} devices")
-            
-            # Get configuration values - use smaller worker pool to reduce load
-            max_workers = min(10, len(devices_to_monitor))  # Cap at 10 workers max
+            # Get configuration values - use appropriate worker pool for home network
+            max_workers = min(20, len(devices_to_monitor))  # Allow up to 20 concurrent pings
             ping_timeout = float(self.get_config_value('ping_timeout', Config.PING_TIMEOUT))
             
             # PERFORMANCE OPTIMIZATION: Use adaptive thread pool for monitoring
@@ -349,24 +395,74 @@ class DeviceMonitor:
         except Exception as e:
             logger.error(f"Error during device monitoring cycle: {e}")
     
-    def cleanup_old_data(self):
+    def cleanup_old_data(self, aggressive=False):
         """Clean up old monitoring data based on retention policy"""
         if not self.app:
+            logger.debug("No app context for cleanup")
             return
             
         try:
             with self.app.app_context():
-                data_retention_days = int(self.get_config_value('data_retention_days', Config.DATA_RETENTION_DAYS))
+                # Use aggressive cleanup (7 days) if requested, otherwise use config value
+                if aggressive:
+                    data_retention_days = 7
+                    logger.info("Running aggressive data cleanup (7 days retention)")
+                else:
+                    data_retention_days = int(self.get_config_value('data_retention_days', Config.DATA_RETENTION_DAYS))
+                
                 cutoff_date = datetime.utcnow() - timedelta(days=data_retention_days)
                 
-                deleted_count = db.session.query(MonitoringData)\
-                    .filter(MonitoringData.timestamp < cutoff_date)\
-                    .delete()
+                # Clean monitoring data in batches to avoid locking
+                total_deleted = 0
+                batch_size = 1000  # Reduced batch size for faster processing
+                max_iterations = 100  # Limit iterations to prevent infinite loops
+                iteration = 0
                 
-                db.session.commit()
+                while iteration < max_iterations:
+                    iteration += 1
+                    
+                    # Select IDs to delete in batches with timeout
+                    try:
+                        ids_to_delete = db.session.query(MonitoringData.id)\
+                            .filter(MonitoringData.timestamp < cutoff_date)\
+                            .limit(batch_size).all()
+                    except Exception as e:
+                        logger.error(f"Error querying old monitoring data: {e}")
+                        db.session.rollback()
+                        break
+                    
+                    if not ids_to_delete:
+                        break
+                    
+                    # Delete by IDs
+                    id_list = [row[0] for row in ids_to_delete]
+                    deleted_count = db.session.query(MonitoringData)\
+                        .filter(MonitoringData.id.in_(id_list))\
+                        .delete(synchronize_session=False)
+                    
+                    total_deleted += deleted_count
+                    db.session.commit()
+                    
+                    if len(id_list) < batch_size:
+                        break
                 
-                if deleted_count > 0:
-                    logger.info(f"Cleaned up {deleted_count} old monitoring records")
+                if total_deleted > 0:
+                    logger.info(f"Cleaned up {total_deleted:,} old monitoring records")
+                
+                # Also cleanup old performance metrics if aggressive
+                if aggressive:
+                    try:
+                        from models import PerformanceMetrics
+                        perf_deleted = db.session.query(PerformanceMetrics)\
+                            .filter(PerformanceMetrics.timestamp < cutoff_date)\
+                            .delete(synchronize_session=False)
+                        
+                        if perf_deleted > 0:
+                            db.session.commit()
+                            logger.info(f"Cleaned up {perf_deleted:,} old performance metrics")
+                    except Exception as e:
+                        logger.warning(f"Performance metrics cleanup failed: {e}")
+                        db.session.rollback()
                     
         except Exception as e:
             logger.error(f"Error during data cleanup: {e}")
@@ -475,12 +571,38 @@ class DeviceMonitor:
     
     def start_monitoring(self):
         """Start the continuous monitoring process"""
-        self.is_running = True
-        logger.info("Starting device monitoring")
-        
-        # Cleanup old data on startup
-        self.cleanup_old_data()
-        
+        try:
+            self.is_running = True
+            logger.info("Starting device monitoring thread")
+            
+            # Run aggressive cleanup on startup for performance with timeout
+            logger.info("Running startup database cleanup for optimal performance...")
+            try:
+                # Use threading-based timeout since signals don't work in background threads
+                import threading
+                from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
+
+                # Run cleanup with thread-based timeout
+                with ThreadPoolExecutor(max_workers=1) as executor:
+                    future = executor.submit(self.cleanup_old_data, aggressive=True)
+                    try:
+                        future.result(timeout=30)  # 30-second timeout
+                        logger.info("Database cleanup completed successfully")
+                    except FutureTimeoutError:
+                        logger.warning("Database cleanup timed out after 30 seconds. Continuing with monitoring...")
+                    except Exception as e:
+                        logger.error(f"Error during database cleanup: {e}. Continuing with monitoring...")
+
+            except Exception as e:
+                logger.error(f"Error during startup database cleanup: {e}. Continuing with monitoring...")
+            
+            logger.info("Entering main monitoring loop")
+            
+        except Exception as e:
+            logger.error(f"Critical error starting device monitoring: {e}", exc_info=True)
+            self.is_running = False
+            return
+            
         while not self._stop_event.is_set():
             try:
                 # Monitor all devices

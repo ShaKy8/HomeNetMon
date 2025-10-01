@@ -14,11 +14,11 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or f"sqlite:///{BASE_DIR}/homeNetMon.db"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     
-    # Network Configuration
+    # Network Configuration - Home-friendly defaults
     NETWORK_RANGE = os.environ.get('NETWORK_RANGE', '192.168.86.0/24')
-    PING_INTERVAL = int(os.environ.get('PING_INTERVAL', '30'))
-    SCAN_INTERVAL = int(os.environ.get('SCAN_INTERVAL', '300'))
-    BANDWIDTH_INTERVAL = int(os.environ.get('BANDWIDTH_INTERVAL', '60'))
+    PING_INTERVAL = int(os.environ.get('PING_INTERVAL', '600'))      # 10 minutes - gentle for home IoT devices
+    SCAN_INTERVAL = int(os.environ.get('SCAN_INTERVAL', '86400'))    # Daily - prevents IoT device instability  
+    BANDWIDTH_INTERVAL = int(os.environ.get('BANDWIDTH_INTERVAL', '300'))  # 5 minutes - reasonable for home
     
     # Monitoring Settings
     PING_TIMEOUT = float(os.environ.get('PING_TIMEOUT', '3.0'))
@@ -29,10 +29,42 @@ class Config:
     SECRET_KEY = None  # Will be set after class definition
     # Default to localhost for security - use HOST env var to bind to 0.0.0.0 if needed
     HOST = os.environ.get('HOST', '127.0.0.1')
+    
+    # Environment must be set before using it
+    ENV = os.environ.get('ENV', 'development')
+    
+    # Security settings
+    
+    # Rate limiting defaults
+    RATELIMIT_ENABLED = True
+    RATELIMIT_STORAGE_URL = 'memory://'  # Use Redis in production: redis://localhost:6379
+    RATELIMIT_DEFAULT = '100 per hour'
+    
+    # File upload security
+    MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max upload
+    
+    # Database connection settings
+    SQLALCHEMY_ENGINE_OPTIONS = {
+        'pool_pre_ping': True,
+        'pool_recycle': 3600,
+        'connect_args': {
+            'timeout': 20,  # Connection timeout
+            'check_same_thread': False  # SQLite specific
+        }
+    }
     PORT = int(os.environ.get('PORT', '5000'))
     # Disable debug in production environment
-    ENV = os.environ.get('ENV', 'development')
     DEBUG = ENV != 'production' and os.environ.get('DEBUG', 'False').lower() == 'true'
+    
+    # Ensure debug is never enabled in production
+    if ENV == 'production' and DEBUG:
+        import warnings
+        warnings.warn(
+            "DEBUG mode is enabled in production! This is a security risk. "
+            "Set ENV=production and DEBUG=false for production deployment.",
+            UserWarning
+        )
+        DEBUG = False
     
     # Security validation for host binding
     @staticmethod
@@ -41,9 +73,8 @@ class Config:
         import warnings
         if Config.HOST == '0.0.0.0' and Config.ENV == 'production':
             warnings.warn(
-                "WARNING: Binding to 0.0.0.0 in production environment without authentication! "
-                "This exposes the service to external networks. Consider using proper authentication "
-                "or binding to a specific interface.",
+                "WARNING: Binding to 0.0.0.0 in production environment! "
+                "This exposes the service to external networks. Consider binding to a specific interface.",
                 UserWarning,
                 stacklevel=2
             )
@@ -73,6 +104,10 @@ class Config:
     NTFY_USERNAME = os.environ.get('NTFY_USERNAME')
     NTFY_PASSWORD = os.environ.get('NTFY_PASSWORD')
     NTFY_ENABLED = os.environ.get('NTFY_ENABLED', 'False').lower() == 'true'
+
+    # Printer Protection Settings
+    EXCLUDE_PRINTERS_FROM_SECURITY_SCAN = os.environ.get('EXCLUDE_PRINTERS_FROM_SECURITY_SCAN', 'true').lower() == 'true'
+    PRINTER_SAFE_MODE = os.environ.get('PRINTER_SAFE_MODE', 'true').lower() == 'true'  # Extra protection for printers
     
     @classmethod
     def load_from_file(cls, config_file='config.yaml'):

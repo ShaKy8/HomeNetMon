@@ -1,0 +1,698 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - HomeNetMon{% endblock %}
+
+{% block content %}
+<!-- Skip link for accessibility -->
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<div id="health-overview-container" class="main-content">
+    
+    <!-- Critical Alerts Banner -->
+    <div id="critical-alerts-banner" class="alert alert-warning alert-dismissible mb-3" style="display: none;">
+        <div class="d-flex align-items-center">
+            <div class="me-3">
+                <i class="bi bi-exclamation-triangle-fill fs-4 text-warning animate-pulse"></i>
+            </div>
+            <div class="flex-grow-1">
+                <h6 class="alert-heading mb-1">
+                    <span id="critical-alert-count">0</span> Device(s) Need Attention
+                </h6>
+                <p class="mb-0" id="critical-alert-message">Some devices are offline or having issues.</p>
+            </div>
+            <div class="ms-3">
+                <a href="/dashboard/full" class="btn btn-outline-warning btn-sm me-2">
+                    <i class="bi bi-eye"></i> View Details
+                </a>
+                <button type="button" class="btn-close" onclick="dismissCriticalBanner()"></button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Health Dashboard -->
+    <div class="row g-4 mb-4">
+        
+        <!-- Hero Health Score -->
+        <div class="col-lg-5">
+            <div class="card h-100 border-0 shadow-sm health-hero-card">
+                <div class="card-body d-flex align-items-center justify-content-center">
+                    <div class="text-center">
+                        <div class="position-relative d-inline-block mb-3">
+                            <!-- Animated Health Circle -->
+                            <div id="health-circle" class="health-score-circle">
+                                <svg width="200" height="200" class="health-circle-svg">
+                                    <circle class="health-circle-bg" cx="100" cy="100" r="90" 
+                                            stroke="#e9ecef" stroke-width="8" fill="none"/>
+                                    <circle id="health-circle-progress" class="health-circle-progress" 
+                                            cx="100" cy="100" r="90" stroke="#28a745" stroke-width="8" 
+                                            fill="none" stroke-linecap="round" 
+                                            stroke-dasharray="565.5" stroke-dashoffset="565.5"
+                                            transform="rotate(-90 100 100)"/>
+                                </svg>
+                                <div class="health-score-content">
+                                    <div id="health-score-value" class="health-score-number" 
+                                         aria-live="polite" aria-label="Network health score">--</div>
+                                    <div class="health-score-label">Network Health</div>
+                                    <div class="network-pulse">
+                                        <div class="pulse-dot"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <h4 id="health-status-text" class="mb-2">Checking network...</h4>
+                        <p id="health-status-message" class="text-muted mb-0">Loading your home network status...</p>
+                        <div class="mt-3">
+                            <small class="text-muted">Last updated: <span id="last-updated-time">--</span></small>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Network Status Grid -->
+        <div class="col-lg-7">
+            <div class="row g-3 h-100">
+                
+                <!-- Devices Online -->
+                <div class="col-6">
+                    <div class="card h-100 border-0 shadow-sm status-metric-card" data-metric="online">
+                        <div class="card-body text-center">
+                            <div class="metric-icon text-success mb-2">
+                                <i class="bi bi-wifi fs-1"></i>
+                            </div>
+                            <div class="metric-value text-success" id="devices-online-count" aria-label="Devices online count">--</div>
+                            <div class="metric-label">Devices Online</div>
+                            <div class="metric-percentage text-muted" id="devices-online-percentage" aria-label="Online percentage">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Devices Offline -->
+                <div class="col-6">
+                    <div class="card h-100 border-0 shadow-sm status-metric-card" data-metric="offline">
+                        <div class="card-body text-center">
+                            <div class="metric-icon text-danger mb-2">
+                                <i class="bi bi-wifi-off fs-1"></i>
+                            </div>
+                            <div class="metric-value text-danger" id="devices-offline-count" aria-label="Devices offline count">--</div>
+                            <div class="metric-label">Devices Offline</div>
+                            <div class="metric-trend" id="devices-offline-trend" aria-label="Offline trend">--</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Internet Connection -->
+                <div class="col-6">
+                    <div class="card h-100 border-0 shadow-sm status-metric-card" data-metric="internet">
+                        <div class="card-body text-center">
+                            <div class="metric-icon text-primary mb-2">
+                                <i class="bi bi-globe fs-1"></i>
+                            </div>
+                            <div class="metric-value text-primary" id="internet-status-metric">
+                                <span id="internet-status-text">--</span>
+                            </div>
+                            <div class="metric-label">Internet Status</div>
+                            <div class="metric-trend-indicator" id="internet-trend">
+                                <small class="text-muted" id="internet-speed">--</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Total Devices -->
+                <div class="col-6">
+                    <div class="card h-100 border-0 shadow-sm status-metric-card" data-metric="total">
+                        <div class="card-body text-center">
+                            <div class="metric-icon text-info mb-2">
+                                <i class="bi bi-hdd-network fs-1"></i>
+                            </div>
+                            <div class="metric-value text-info">
+                                <span id="total-devices-count">--</span>
+                            </div>
+                            <div class="metric-label">Total Devices</div>
+                            <div class="metric-trend-indicator" id="total-devices-trend">
+                                <small class="text-muted">Found on network</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions Row -->
+    <div class="row g-4 mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+                        <div>
+                            <h6 class="card-title mb-1">
+                                <i class="bi bi-lightning me-2"></i>Quick Actions
+                            </h6>
+                            <small class="text-muted">Manage your home network</small>
+                        </div>
+                        <div class="d-flex gap-2 flex-wrap">
+                            <button type="button" class="btn btn-outline-primary btn-sm" id="refresh-btn">
+                                <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                            </button>
+                            <button type="button" class="btn btn-outline-secondary btn-sm" id="scan-network-btn">
+                                <i class="bi bi-search me-1"></i>Find Devices
+                            </button>
+                            <a href="/dashboard/full" class="btn btn-outline-info btn-sm">
+                                <i class="bi bi-list me-1"></i>View All Devices
+                            </a>
+                            <a href="/settings" class="btn btn-outline-secondary btn-sm">
+                                <i class="bi bi-gear me-1"></i>Settings
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<style>
+/* Health Score Circle Styles */
+.health-hero-card {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+}
+
+.health-score-circle {
+    position: relative;
+}
+
+.health-circle-svg {
+    transform: rotate(-90deg);
+}
+
+.health-circle-progress {
+    transition: stroke-dashoffset 1.5s ease-in-out, stroke 0.5s ease;
+}
+
+.health-score-content {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+}
+
+.health-score-number {
+    font-size: 3rem;
+    font-weight: 700;
+    color: #28a745;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.health-score-label {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.network-pulse {
+    position: absolute;
+    top: -8px;
+    right: -8px;
+}
+
+.pulse-dot {
+    width: 12px;
+    height: 12px;
+    background-color: #28a745;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0.7);
+    }
+    70% {
+        transform: scale(1);
+        box-shadow: 0 0 0 10px rgba(40, 167, 69, 0);
+    }
+    100% {
+        transform: scale(0.95);
+        box-shadow: 0 0 0 0 rgba(40, 167, 69, 0);
+    }
+}
+
+/* Metric Cards */
+.status-metric-card {
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+}
+
+.status-metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0,0,0,0.1) !important;
+}
+
+.metric-icon {
+    opacity: 0.8;
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 4px;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: #6c757d;
+    margin-bottom: 8px;
+}
+
+.metric-percentage, .metric-trend, .metric-trend-indicator {
+    font-size: 0.75rem;
+    color: #6c757d;
+}
+
+/* Animation */
+.animate-pulse {
+    animation: pulse 2s infinite;
+}
+
+/* Toast Styles */
+.simple-toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    padding: 12px 16px;
+    border-radius: 6px;
+    font-size: 14px;
+    z-index: 9999;
+    max-width: 300px;
+    animation: slideInRight 0.3s ease-out;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.toast-content {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+@keyframes slideInRight {
+    from {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+    to {
+        opacity: 1;
+        transform: translateX(0);
+    }
+}
+
+@keyframes slideOutRight {
+    from {
+        opacity: 1;
+        transform: translateX(0);
+    }
+    to {
+        opacity: 0;
+        transform: translateX(100%);
+    }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .health-score-number {
+        font-size: 2.5rem;
+    }
+    
+    .metric-value {
+        font-size: 1.5rem;
+    }
+    
+    .health-circle-svg {
+        width: 150px;
+        height: 150px;
+    }
+    
+    .health-score-content {
+        font-size: 0.9rem;
+    }
+}
+</style>
+
+<script>
+// Enhanced dashboard with health overview design
+class HealthDashboard {
+    constructor() {
+        this.updateInterval = null;
+        this.retryAttempts = 0;
+        this.maxRetries = 3;
+        this.updateIntervalTime = 30000; // 30 seconds
+        this.socket = null;
+    }
+
+    async init() {
+        console.log('Health Dashboard initializing...');
+        
+        // Load initial data
+        await this.loadHealthData();
+        
+        // Set up periodic updates
+        this.updateInterval = setInterval(() => {
+            this.loadHealthData();
+        }, this.updateIntervalTime);
+        
+        // Set up WebSocket for real-time updates
+        setTimeout(() => this.setupWebSocket(), 100);
+        
+        // Set up event listeners
+        this.setupEventListeners();
+    }
+
+    async loadHealthData(retryCount = 0) {
+        try {
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), 8000);
+            
+            const response = await fetch('/api/devices/summary', {
+                signal: controller.signal
+            });
+            
+            clearTimeout(timeoutId);
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                this.updateHealthData(data);
+                this.retryAttempts = 0; // Reset on success
+                
+                if (retryCount > 0) {
+                    this.showToast('Connection restored', 'success');
+                }
+            } else {
+                throw new Error(data.error || 'Unknown server error');
+            }
+        } catch (error) {
+            console.error('Error loading health data:', error);
+            
+            if (retryCount < this.maxRetries) {
+                const delay = Math.pow(2, retryCount) * 2000; // Exponential backoff
+                this.showToast(`Retrying connection... (${retryCount + 1}/${this.maxRetries})`, 'warning');
+                
+                setTimeout(() => {
+                    this.loadHealthData(retryCount + 1);
+                }, delay);
+            } else {
+                this.showError('Unable to load network data. Please check your connection.');
+            }
+        }
+    }
+
+    updateHealthData(data) {
+        const summary = data.summary;
+        
+        // Calculate health score based on uptime percentage
+        const healthScore = summary.uptime_percentage || 0;
+        this.updateHealthScore(healthScore);
+        
+        // Update network metrics
+        this.updateNetworkMetrics(summary);
+        
+        // Check for alerts
+        this.updateAlerts(summary);
+        
+        // Update last updated time
+        const lastUpdated = new Date().toLocaleTimeString();
+        document.getElementById('last-updated-time').textContent = lastUpdated;
+    }
+
+    updateHealthScore(score) {
+        const circle = document.getElementById('health-circle-progress');
+        const scoreElement = document.getElementById('health-score-value');
+        const statusText = document.getElementById('health-status-text');
+        const statusMessage = document.getElementById('health-status-message');
+        
+        // Calculate stroke-dashoffset for percentage
+        const circumference = 2 * Math.PI * 90; // radius = 90
+        const offset = circumference - (score / 100) * circumference;
+        
+        // Animate the circle
+        circle.style.transition = 'stroke-dashoffset 1.5s ease-in-out, stroke 0.5s ease';
+        circle.style.strokeDashoffset = offset;
+        
+        // Update colors based on score
+        let color = '#28a745'; // green
+        let statusColor = 'success';
+        let message = 'All systems running smoothly';
+        
+        if (score < 30) {
+            color = '#dc3545'; // red
+            statusColor = 'danger';
+            message = 'Network issues detected';
+        } else if (score < 70) {
+            color = '#ffc107'; // yellow
+            statusColor = 'warning';
+            message = 'Some devices need attention';
+        }
+        
+        circle.style.stroke = color;
+        
+        // Animate the score number
+        this.animateNumber(scoreElement, parseFloat(scoreElement.textContent) || 0, Math.round(score));
+        
+        // Update status
+        statusText.textContent = message;
+        statusText.className = `mb-2 text-${statusColor}`;
+        statusMessage.textContent = `Network health at ${Math.round(score)}%`;
+    }
+
+    updateNetworkMetrics(summary) {
+        // Devices online
+        document.getElementById('devices-online-count').textContent = summary.devices_up || 0;
+        document.getElementById('devices-online-percentage').textContent = 
+            `${Math.round((summary.devices_up / summary.total_devices) * 100) || 0}% of ${summary.total_devices || 0}`;
+        
+        // Devices offline
+        document.getElementById('devices-offline-count').textContent = summary.devices_down || 0;
+        document.getElementById('devices-offline-trend').textContent = 
+            summary.devices_down > 0 ? 'Need attention' : 'All good';
+        
+        // Internet status (simplified)
+        const internetWorking = summary.uptime_percentage > 50;
+        document.getElementById('internet-status-text').textContent = internetWorking ? 'Connected' : 'Issues';
+        document.getElementById('internet-speed').textContent = internetWorking ? 'Working well' : 'Check connection';
+        
+        // Total devices
+        document.getElementById('total-devices-count').textContent = summary.total_devices || 0;
+    }
+
+    updateAlerts(summary) {
+        const alertBanner = document.getElementById('critical-alerts-banner');
+        const offlineCount = summary.devices_down || 0;
+        
+        if (offlineCount > 0) {
+            document.getElementById('critical-alert-count').textContent = offlineCount;
+            document.getElementById('critical-alert-message').textContent = 
+                offlineCount === 1 ? 'One device is offline.' : `${offlineCount} devices are offline.`;
+            alertBanner.style.display = 'block';
+        } else {
+            alertBanner.style.display = 'none';
+        }
+    }
+
+    animateNumber(element, from, to, duration = 1500) {
+        const start = performance.now();
+        const animate = (currentTime) => {
+            const elapsed = currentTime - start;
+            const progress = Math.min(elapsed / duration, 1);
+            const value = from + (to - from) * this.easeOutCubic(progress);
+            element.textContent = Math.round(value);
+            
+            if (progress < 1) {
+                requestAnimationFrame(animate);
+            }
+        };
+        requestAnimationFrame(animate);
+    }
+
+    easeOutCubic(t) {
+        return 1 - Math.pow(1 - t, 3);
+    }
+
+    setupWebSocket() {
+        let attempts = 0;
+        const maxAttempts = 10;
+        
+        const tryConnect = () => {
+            if (typeof io !== 'undefined') {
+                console.log('Setting up WebSocket connection...');
+                this.socket = io();
+                
+                this.socket.on('connect', () => {
+                    console.log('WebSocket connected');
+                    this.showToast('Real-time updates connected', 'success');
+                });
+                
+                this.socket.on('device_summary_update', (data) => {
+                    console.log('Real-time update received:', data);
+                    this.updateHealthData(data);
+                });
+                
+                this.socket.on('connect_error', (error) => {
+                    console.warn('WebSocket connection error:', error);
+                });
+                
+            } else if (attempts < maxAttempts) {
+                attempts++;
+                setTimeout(tryConnect, 500);
+            } else {
+                console.warn('Socket.IO failed to load');
+            }
+        };
+        
+        tryConnect();
+    }
+
+    setupEventListeners() {
+        // Refresh button
+        document.getElementById('refresh-btn').addEventListener('click', () => {
+            const button = document.getElementById('refresh-btn');
+            const originalContent = button.innerHTML;
+            
+            button.disabled = true;
+            button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Refreshing...';
+            
+            this.loadHealthData().finally(() => {
+                setTimeout(() => {
+                    button.disabled = false;
+                    button.innerHTML = originalContent;
+                    this.showToast('Data refreshed', 'success');
+                }, 500);
+            });
+        });
+        
+        // Scan network button
+        document.getElementById('scan-network-btn').addEventListener('click', () => {
+            if (confirm('Start scanning for new devices? This may take a few minutes.')) {
+                const button = document.getElementById('scan-network-btn');
+                const originalContent = button.innerHTML;
+                
+                button.disabled = true;
+                button.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Scanning...';
+                
+                fetch('/api/scan', { method: 'POST' })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.status === 'success') {
+                            this.showToast('Network scan started! Check back in a few minutes.', 'info');
+                        } else {
+                            throw new Error('Scan failed');
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Scan error:', error);
+                        this.showToast('Failed to start scan. Please try again.', 'error');
+                    })
+                    .finally(() => {
+                        setTimeout(() => {
+                            button.disabled = false;
+                            button.innerHTML = originalContent;
+                        }, 2000);
+                    });
+            }
+        });
+    }
+
+    showToast(message, type = 'info', duration = 3000) {
+        // Remove existing toasts
+        const existingToast = document.querySelector('.simple-toast');
+        if (existingToast) {
+            existingToast.remove();
+        }
+        
+        const toast = document.createElement('div');
+        toast.className = `simple-toast toast-${type}`;
+        toast.innerHTML = `
+            <div class="toast-content">
+                <span class="toast-icon">${this.getToastIcon(type)}</span>
+                <span class="toast-message">${message}</span>
+            </div>
+        `;
+        
+        // Type-specific colors
+        const colors = {
+            success: 'background: #d4edda; color: #155724; border-left: 4px solid #28a745;',
+            error: 'background: #f8d7da; color: #721c24; border-left: 4px solid #dc3545;',
+            warning: 'background: #fff3cd; color: #856404; border-left: 4px solid #ffc107;',
+            info: 'background: #d1ecf1; color: #0c5460; border-left: 4px solid #17a2b8;'
+        };
+        
+        toast.style.cssText += colors[type] || colors.info;
+        
+        document.body.appendChild(toast);
+        
+        // Auto remove
+        setTimeout(() => {
+            toast.style.animation = 'slideOutRight 0.3s ease-in';
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    }
+
+    getToastIcon(type) {
+        const icons = {
+            success: '✅',
+            error: '❌',
+            warning: '⚠️',
+            info: 'ℹ️'
+        };
+        return icons[type] || icons.info;
+    }
+
+    showError(message) {
+        this.showToast(message, 'error', 5000);
+        
+        // Update UI to show error state
+        document.getElementById('health-status-text').textContent = 'Connection Error';
+        document.getElementById('health-status-message').textContent = message;
+    }
+
+    destroy() {
+        if (this.updateInterval) {
+            clearInterval(this.updateInterval);
+        }
+        if (this.socket) {
+            this.socket.disconnect();
+        }
+    }
+}
+
+// Global functions for banner
+function dismissCriticalBanner() {
+    document.getElementById('critical-alerts-banner').style.display = 'none';
+}
+
+// Initialize dashboard when DOM is ready
+let dashboard;
+document.addEventListener('DOMContentLoaded', function() {
+    dashboard = new HealthDashboard();
+    dashboard.init();
+});
+
+// Cleanup on page unload
+window.addEventListener('beforeunload', function() {
+    if (dashboard) {
+        dashboard.destroy();
+    }
+});
+</script>
+{% endblock %}

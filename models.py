@@ -1,7 +1,9 @@
 from datetime import datetime, timedelta
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event
+from werkzeug.security import generate_password_hash, check_password_hash
 import json
+import secrets
 
 # Import performance cache decorators
 try:
@@ -21,6 +23,7 @@ except ImportError:
 
 db = SQLAlchemy()
 
+
 class Device(db.Model):
     __tablename__ = 'devices'
     
@@ -32,6 +35,8 @@ class Device(db.Model):
     custom_name = db.Column(db.String(255))
     device_type = db.Column(db.String(50))  # router, computer, phone, iot, etc.
     device_group = db.Column(db.String(100))  # Custom grouping
+    room_location = db.Column(db.String(100))  # Home-friendly room assignment (Living Room, Kitchen, etc.)
+    device_priority = db.Column(db.String(20), default='normal')  # critical, important, normal, optional
     is_monitored = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -456,6 +461,8 @@ class Device(db.Model):
             'custom_name': self.custom_name,
             'device_type': self.device_type,
             'device_group': self.device_group,
+            'room_location': self.room_location,
+            'device_priority': self.device_priority,
             'display_name': self.display_name,
             'is_monitored': self.is_monitored,
             'status': self.status,
@@ -580,15 +587,15 @@ class Alert(db.Model):
     
     id = db.Column(db.Integer, primary_key=True)
     device_id = db.Column(db.Integer, db.ForeignKey('devices.id'), nullable=False, index=True)
-    alert_type = db.Column(db.String(50), nullable=False)  # device_down, high_latency, etc.
+    alert_type = db.Column(db.String(50), nullable=False, index=True)  # device_down, high_latency, etc.
     alert_subtype = db.Column(db.String(50), nullable=True)  # performance_critical, performance_warning, etc.
-    severity = db.Column(db.String(20), default='warning')  # info, warning, critical
+    severity = db.Column(db.String(20), default='warning', index=True)  # info, warning, critical
     message = db.Column(db.Text, nullable=False)
     created_at = db.Column(db.DateTime, default=datetime.utcnow, index=True)
-    acknowledged = db.Column(db.Boolean, default=False)
+    acknowledged = db.Column(db.Boolean, default=False, index=True)
     acknowledged_at = db.Column(db.DateTime)
     acknowledged_by = db.Column(db.String(100))  # username or system
-    resolved = db.Column(db.Boolean, default=False)
+    resolved = db.Column(db.Boolean, default=False, index=True)
     resolved_at = db.Column(db.DateTime)
     
     # Priority scoring fields
@@ -705,6 +712,14 @@ class Alert(db.Model):
             'last_notification_at': (self.last_notification_at.isoformat() + 'Z') if self.last_notification_at else None,
             'notification_status': self.notification_status,
         }
+
+# Composite indexes for common alert query patterns
+db.Index('idx_alert_device_resolved', Alert.device_id, Alert.resolved)  # For queries like: device alerts that are unresolved
+db.Index('idx_alert_resolved_created', Alert.resolved, Alert.created_at.desc())  # For queries like: unresolved alerts by date
+db.Index('idx_alert_severity_resolved', Alert.severity, Alert.resolved)  # For queries like: critical unresolved alerts
+db.Index('idx_alert_acknowledged_resolved', Alert.acknowledged, Alert.resolved)  # For queries like: unacknowledged alerts
+db.Index('idx_alert_type_resolved', Alert.alert_type, Alert.resolved)  # For queries like: device_down alerts that are active
+db.Index('idx_alert_device_type_resolved', Alert.device_id, Alert.alert_type, Alert.resolved)  # For complex device queries
 
 class Configuration(db.Model):
     __tablename__ = 'configuration'
@@ -2326,3 +2341,36 @@ def invalidate_performance_cache(mapper, connection, target):
         cache_invalidator.invalidate_device_cache(target.device_id)
     except:
         pass  # Silently fail if cache service not available
+# Authentication models
+class User(db.Model):
+    """User model for authentication"""
+    __tablename__ = 'users'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    username = db.Column(db.String(80), unique=True, nullable=False)
+    password_hash = db.Column(db.String(255), nullable=False)
+    email = db.Column(db.String(120))
+    is_active = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    
+    def __repr__(self):
+        return f'<User {self.username}>'
+
+class Session(db.Model):
+    """Session model for user sessions"""
+    __tablename__ = 'sessions'
+    
+    id = db.Column(db.Integer, primary_key=True)
+    session_id = db.Column(db.String(255), unique=True, nullable=False)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
+    ip_address = db.Column(db.String(45))
+    user_agent = db.Column(db.String(255))
+    created_at = db.Column(db.DateTime, default=datetime.utcnow)
+    expires_at = db.Column(db.DateTime, nullable=False)
+    is_active = db.Column(db.Boolean, default=True)
+    
+    user = db.relationship('User', backref=db.backref('sessions', lazy='dynamic'))
+    
+    def __repr__(self):
+        return f'<Session {self.session_id}>'

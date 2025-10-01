@@ -610,10 +610,10 @@ class PerformanceMonitor:
                 responsiveness_score = performance_record.responsiveness_score or 0
                 reliability_score = performance_record.reliability_score or 0
                 
-                # Get thresholds from configuration - much less sensitive to reduce alert noise
-                critical_threshold = float(self.get_config_value('performance_alert_critical_threshold', '30'))  # Only very bad performance
-                warning_threshold = float(self.get_config_value('performance_alert_warning_threshold', '50'))   # Less sensitive warnings
-                recovery_threshold = float(self.get_config_value('performance_alert_recovery_threshold', '60'))  # Earlier recovery
+                # Get thresholds from configuration - dramatically less sensitive to reduce alert noise
+                critical_threshold = float(self.get_config_value('performance_alert_critical_threshold', '15'))  # Only extremely poor performance
+                warning_threshold = float(self.get_config_value('performance_alert_warning_threshold', '25'))   # Only significant issues
+                recovery_threshold = float(self.get_config_value('performance_alert_recovery_threshold', '40'))  # Faster recovery
                 
                 # Check for critical health score alerts
                 if health_score < critical_threshold:
@@ -647,21 +647,21 @@ class PerformanceMonitor:
                 elif health_score >= recovery_threshold:
                     self._resolve_performance_alerts(device, health_score)
                 
-                # Check component-specific alerts - much less sensitive to reduce noise
-                if responsiveness_score < 20:  # Only extremely poor responsiveness
+                # Check component-specific alerts - dramatically less sensitive to reduce noise
+                if responsiveness_score < 10:  # Only catastrophically poor responsiveness
                     if self._should_create_alert(device, 'performance_responsiveness', responsiveness_score):
                         self._create_performance_alert(
                             device, 'performance_responsiveness',
-                            f"Device responsiveness is extremely poor: {responsiveness_score:.1f}% score",
-                            {'responsiveness_score': responsiveness_score, 'threshold': 20}
+                            f"Device responsiveness is catastrophically poor: {responsiveness_score:.1f}% score",
+                            {'responsiveness_score': responsiveness_score, 'threshold': 10}
                         )
-                
-                if reliability_score < 30:  # Only extremely poor reliability
+
+                if reliability_score < 15:  # Only catastrophically poor reliability
                     if self._should_create_alert(device, 'performance_reliability', reliability_score):
                         self._create_performance_alert(
                             device, 'performance_reliability',
-                            f"Device reliability is extremely poor: {reliability_score:.1f}% score",
-                            {'reliability_score': reliability_score, 'threshold': 30}
+                            f"Device reliability is catastrophically poor: {reliability_score:.1f}% score",
+                            {'reliability_score': reliability_score, 'threshold': 15}
                         )
                 
         except Exception as e:
@@ -696,12 +696,12 @@ class PerformanceMonitor:
                 logger.debug(f"Not enough recent data for {device.display_name}: {len(recent_records)} < {consecutive_periods}")
                 return False
             
-            # Check if all recent records are below threshold
+            # Check if all recent records are below threshold - updated to match new thresholds
             threshold_map = {
-                'performance_critical': float(self.get_config_value('performance_alert_critical_threshold', '50')),
-                'performance_warning': float(self.get_config_value('performance_alert_warning_threshold', '70')),
-                'performance_responsiveness': 40,
-                'performance_reliability': 60
+                'performance_critical': float(self.get_config_value('performance_alert_critical_threshold', '15')),
+                'performance_warning': float(self.get_config_value('performance_alert_warning_threshold', '25')),
+                'performance_responsiveness': 10,
+                'performance_reliability': 15
             }
             
             threshold = threshold_map.get(alert_subtype, 70)
@@ -822,7 +822,7 @@ class PerformanceMonitor:
                     resolved=False
                 ).all()
                 
-                recovery_threshold = float(self.get_config_value('performance_alert_recovery_threshold', '80'))
+                recovery_threshold = float(self.get_config_value('performance_alert_recovery_threshold', '40'))
                 
                 for alert in active_alerts:
                     should_resolve = False
@@ -831,15 +831,15 @@ class PerformanceMonitor:
                         # Resolve if health score is above recovery threshold
                         should_resolve = current_health_score >= recovery_threshold
                     elif alert.alert_subtype == 'performance_responsiveness':
-                        # Get latest responsiveness score
+                        # Get latest responsiveness score - faster recovery with new threshold
                         latest_record = PerformanceMetrics.query.filter_by(device_id=device.id)\
                             .order_by(PerformanceMetrics.timestamp.desc()).first()
-                        should_resolve = latest_record and (latest_record.responsiveness_score or 0) >= 60
+                        should_resolve = latest_record and (latest_record.responsiveness_score or 0) >= 25
                     elif alert.alert_subtype == 'performance_reliability':
-                        # Get latest reliability score  
+                        # Get latest reliability score - faster recovery with new threshold
                         latest_record = PerformanceMetrics.query.filter_by(device_id=device.id)\
                             .order_by(PerformanceMetrics.timestamp.desc()).first()
-                        should_resolve = latest_record and (latest_record.reliability_score or 0) >= 80
+                        should_resolve = latest_record and (latest_record.reliability_score or 0) >= 30
                     
                     if should_resolve:
                         alert.resolved = True

@@ -5,20 +5,20 @@ Performance monitoring dashboard API endpoints.
 import logging
 from flask import Blueprint, jsonify, request
 from datetime import datetime, timedelta
-from core.auth import auth_required, admin_required
 from core.query_profiler import global_profiler
 from core.cache_layer import get_cache_health, global_cache
 from core.db_config import ConnectionPoolMonitor, DatabaseOptimizer
 from models import db
 import psutil
 import os
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 logger = logging.getLogger(__name__)
 
 performance_dashboard_bp = Blueprint('performance_dashboard', __name__)
 
 @performance_dashboard_bp.route('/overview', methods=['GET'])
-@auth_required
+@create_endpoint_limiter('relaxed')
 def get_performance_overview():
     """Get overall performance overview."""
     try:
@@ -74,7 +74,7 @@ def get_performance_overview():
         return jsonify({'error': 'Failed to get performance overview'}), 500
 
 @performance_dashboard_bp.route('/database/queries/slow', methods=['GET'])
-@admin_required
+@create_endpoint_limiter('relaxed')
 def get_slow_queries():
     """Get slow database queries."""
     try:
@@ -105,7 +105,7 @@ def get_slow_queries():
         return jsonify({'error': 'Failed to get slow queries'}), 500
 
 @performance_dashboard_bp.route('/database/queries/top-by-time', methods=['GET'])
-@admin_required
+@create_endpoint_limiter('relaxed')
 def get_top_queries_by_time():
     """Get queries with highest total execution time."""
     try:
@@ -139,7 +139,7 @@ def get_top_queries_by_time():
         return jsonify({'error': 'Failed to get top queries by time'}), 500
 
 @performance_dashboard_bp.route('/database/queries/top-by-count', methods=['GET'])
-@admin_required
+@create_endpoint_limiter('relaxed')
 def get_top_queries_by_count():
     """Get most frequently executed queries."""
     try:
@@ -168,7 +168,7 @@ def get_top_queries_by_count():
         return jsonify({'error': 'Failed to get top queries by count'}), 500
 
 @performance_dashboard_bp.route('/database/operations', methods=['GET'])
-@auth_required
+@create_endpoint_limiter('relaxed')
 def get_operation_stats():
     """Get database operation statistics."""
     try:
@@ -184,7 +184,7 @@ def get_operation_stats():
         return jsonify({'error': 'Failed to get operation stats'}), 500
 
 @performance_dashboard_bp.route('/cache/stats', methods=['GET'])
-@auth_required
+@create_endpoint_limiter('relaxed')
 def get_cache_stats():
     """Get cache performance statistics."""
     try:
@@ -202,7 +202,7 @@ def get_cache_stats():
         return jsonify({'error': 'Failed to get cache stats'}), 500
 
 @performance_dashboard_bp.route('/system/resources', methods=['GET'])
-@auth_required
+@create_endpoint_limiter('relaxed')
 def get_system_resources():
     """Get system resource utilization."""
     try:
@@ -265,7 +265,7 @@ def get_system_resources():
         return jsonify({'error': 'Failed to get system resources'}), 500
 
 @performance_dashboard_bp.route('/database/connection-pool', methods=['GET'])
-@admin_required
+@create_endpoint_limiter('relaxed')
 def get_connection_pool_status():
     """Get database connection pool status."""
     try:
@@ -289,7 +289,7 @@ def get_connection_pool_status():
         return jsonify({'error': 'Failed to get connection pool status'}), 500
 
 @performance_dashboard_bp.route('/database/optimize', methods=['POST'])
-@admin_required
+@create_endpoint_limiter('critical')
 def optimize_database():
     """Run database optimization tasks."""
     try:
@@ -317,7 +317,7 @@ def optimize_database():
         return jsonify({'error': 'Failed to optimize database'}), 500
 
 @performance_dashboard_bp.route('/cache/clear', methods=['POST'])
-@admin_required
+@create_endpoint_limiter('critical')
 def clear_cache():
     """Clear application cache."""
     try:
@@ -342,7 +342,7 @@ def clear_cache():
         return jsonify({'error': 'Failed to clear cache'}), 500
 
 @performance_dashboard_bp.route('/profiler/reset', methods=['POST'])
-@admin_required
+@create_endpoint_limiter('critical')
 def reset_profiler():
     """Reset query profiler statistics."""
     try:
@@ -367,7 +367,7 @@ def reset_profiler():
         return jsonify({'error': 'Failed to reset profiler'}), 500
 
 @performance_dashboard_bp.route('/export/slow-queries', methods=['GET'])
-@admin_required
+@create_endpoint_limiter('relaxed')
 def export_slow_queries():
     """Export slow queries for analysis."""
     try:

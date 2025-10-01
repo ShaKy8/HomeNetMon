@@ -1,10 +1,81 @@
-{% extends "base_with_quickstats.html" %}
+{% extends "base_beautiful.html" %}
 
 {% block title %}Escalation Rules - HomeNetMon{% endblock %}
 
 {% block extra_css %}
 <style>
-/* Escalation Rules specific styles */
+/* Escalation Rules specific styling */
+.escalation-header {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.escalation-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    transition: all 0.3s ease;
+}
+
+.escalation-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.stat-card {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.stat-card.primary {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(37, 99, 235, 0.3) 100%);
+}
+
+.stat-card.success {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.3) 0%, rgba(22, 163, 74, 0.3) 100%);
+}
+
+.stat-card.warning {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(245, 158, 11, 0.3) 100%);
+}
+
+.stat-card.info {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.3) 0%, rgba(8, 145, 178, 0.3) 100%);
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.stat-card h5 {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1rem;
+    margin-bottom: 0.5rem;
+}
+
+.stat-card h3 {
+    color: rgba(255, 255, 255, 1);
+    font-size: 2rem;
+    font-weight: 300;
+    margin-bottom: 0.25rem;
+}
+
+.stat-card small {
+    color: rgba(255, 255, 255, 0.7);
+}
+
 .rule-status-indicator {
     width: 12px;
     height: 12px;
@@ -14,56 +85,94 @@
 }
 
 .rule-status-indicator.enabled {
-    background-color: #28a745;
+    background-color: rgba(34, 197, 94, 0.8);
+    box-shadow: 0 0 8px rgba(34, 197, 94, 0.4);
 }
 
 .rule-status-indicator.disabled {
-    background-color: #dc3545;
+    background-color: rgba(239, 68, 68, 0.8);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.4);
 }
 
 .priority-badge {
     font-size: 0.75rem;
     padding: 0.25rem 0.5rem;
     border-radius: 12px;
+    font-weight: 600;
 }
 
-.priority-1 { background-color: #dc3545; color: white; }
-.priority-2 { background-color: #fd7e14; color: white; }
-.priority-3 { background-color: #ffc107; color: black; }
-.priority-4 { background-color: #20c997; color: white; }
-.priority-5 { background-color: #6f42c1; color: white; }
+.priority-1 {
+    background: rgba(239, 68, 68, 0.2) !important;
+    color: rgba(239, 68, 68, 1) !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+
+.priority-2 {
+    background: rgba(251, 146, 60, 0.2) !important;
+    color: rgba(251, 146, 60, 1) !important;
+    border: 1px solid rgba(251, 146, 60, 0.3) !important;
+}
+
+.priority-3 {
+    background: rgba(251, 191, 36, 0.2) !important;
+    color: rgba(251, 191, 36, 1) !important;
+    border: 1px solid rgba(251, 191, 36, 0.3) !important;
+}
+
+.priority-4 {
+    background: rgba(34, 197, 94, 0.2) !important;
+    color: rgba(34, 197, 94, 1) !important;
+    border: 1px solid rgba(34, 197, 94, 0.3) !important;
+}
+
+.priority-5 {
+    background: rgba(139, 92, 246, 0.2) !important;
+    color: rgba(139, 92, 246, 1) !important;
+    border: 1px solid rgba(139, 92, 246, 0.3) !important;
+}
 
 .trigger-type-badge {
     font-size: 0.75rem;
     margin-right: 0.25rem;
+    background: rgba(6, 182, 212, 0.2) !important;
+    color: rgba(6, 182, 212, 1) !important;
+    border: 1px solid rgba(6, 182, 212, 0.3) !important;
 }
 
 .action-type-badge {
     font-size: 0.65rem;
     margin: 0.1rem;
     padding: 0.15rem 0.4rem;
+    background: rgba(156, 163, 175, 0.2) !important;
+    color: rgba(156, 163, 175, 1) !important;
+    border: 1px solid rgba(156, 163, 175, 0.3) !important;
 }
 
 .rule-card {
-    transition: all 0.2s ease;
-    border: 1px solid #dee2e6;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    transition: all 0.3s ease;
     margin-bottom: 1rem;
 }
 
 .rule-card:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
 .rule-card.disabled {
     opacity: 0.7;
-    background-color: #f8f9fa;
+    background: rgba(255, 255, 255, 0.02);
 }
 
 .bulk-actions {
-    background-color: #f8f9fa;
-    border: 1px solid #dee2e6;
-    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    backdrop-filter: blur(20px);
     padding: 1rem;
     margin-bottom: 1rem;
     display: none;
@@ -71,35 +180,263 @@
 
 .rule-metrics {
     font-size: 0.875rem;
-    color: #6c757d;
+    color: rgba(255, 255, 255, 0.7);
 }
 
 .execution-status {
     font-size: 0.75rem;
 }
 
-@media (max-width: 768px) {
-    .table-responsive {
-        display: none !important;
-    }
-    
-    .rule-cards {
-        display: block !important;
-    }
-    
-    .desktop-only {
-        display: none !important;
-    }
+.rules-table {
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(255, 255, 255, 0.9);
 }
 
-@media (min-width: 769px) {
-    .rule-cards {
-        display: none !important;
-    }
+.rules-table th {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.8);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    font-weight: 600;
 }
 
+.rules-table td {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.rules-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.rules-table tbody tr.table-secondary {
+    background: rgba(255, 255, 255, 0.02);
+    opacity: 0.8;
+}
+
+.breadcrumb {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+}
+
+.breadcrumb-item a {
+    color: rgba(255, 255, 255, 0.8);
+    text-decoration: none;
+    transition: color 0.2s ease;
+}
+
+.breadcrumb-item a:hover {
+    color: rgba(255, 255, 255, 1);
+}
+
+.breadcrumb-item.active {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Form controls styling */
+.form-control {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.form-control:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+    color: rgba(255, 255, 255, 1);
+}
+
+.form-select {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.form-select:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 0 0.2rem rgba(59, 130, 246, 0.25);
+    color: rgba(255, 255, 255, 1);
+}
+
+.form-label {
+    color: rgba(255, 255, 255, 0.8);
+    font-weight: 500;
+}
+
+/* Button styling */
+.btn-primary {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.8) 0%, rgba(37, 99, 235, 0.8) 100%);
+    border: 1px solid rgba(59, 130, 246, 0.5);
+    color: rgba(255, 255, 255, 1);
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 1) 0%, rgba(37, 99, 235, 1) 100%);
+    border-color: rgba(59, 130, 246, 0.8);
+    transform: translateY(-1px);
+}
+
+.btn-outline-secondary {
+    border-color: rgba(156, 163, 175, 0.5);
+    color: rgba(156, 163, 175, 1);
+    background: rgba(156, 163, 175, 0.1);
+}
+
+.btn-outline-secondary:hover {
+    background: rgba(156, 163, 175, 0.2);
+    border-color: rgba(156, 163, 175, 0.8);
+    color: rgba(255, 255, 255, 1);
+}
+
+.btn-outline-primary {
+    border-color: rgba(59, 130, 246, 0.5);
+    color: rgba(59, 130, 246, 1);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.btn-outline-primary:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.8);
+    color: rgba(255, 255, 255, 1);
+}
+
+.btn-outline-success {
+    border-color: rgba(34, 197, 94, 0.5);
+    color: rgba(34, 197, 94, 1);
+    background: rgba(34, 197, 94, 0.1);
+}
+
+.btn-outline-success:hover {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: rgba(34, 197, 94, 0.8);
+    color: rgba(255, 255, 255, 1);
+}
+
+.btn-outline-info {
+    border-color: rgba(6, 182, 212, 0.5);
+    color: rgba(6, 182, 212, 1);
+    background: rgba(6, 182, 212, 0.1);
+}
+
+.btn-outline-info:hover {
+    background: rgba(6, 182, 212, 0.2);
+    border-color: rgba(6, 182, 212, 0.8);
+    color: rgba(255, 255, 255, 1);
+}
+
+.btn-outline-danger {
+    border-color: rgba(239, 68, 68, 0.5);
+    color: rgba(239, 68, 68, 1);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.btn-outline-danger:hover {
+    background: rgba(239, 68, 68, 0.2);
+    border-color: rgba(239, 68, 68, 0.8);
+    color: rgba(255, 255, 255, 1);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.8) 0%, rgba(22, 163, 74, 0.8) 100%);
+    border: 1px solid rgba(34, 197, 94, 0.5);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.8) 0%, rgba(245, 158, 11, 0.8) 100%);
+    border: 1px solid rgba(251, 191, 36, 0.5);
+    color: rgba(0, 0, 0, 0.8);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, rgba(239, 68, 68, 0.8) 0%, rgba(220, 38, 38, 0.8) 100%);
+    border: 1px solid rgba(239, 68, 68, 0.5);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, rgba(156, 163, 175, 0.8) 0%, rgba(107, 114, 128, 0.8) 100%);
+    border: 1px solid rgba(156, 163, 175, 0.5);
+}
+
+/* Dropdown styling */
+.dropdown-menu {
+    background: rgba(30, 30, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+}
+
+.dropdown-item {
+    color: rgba(255, 255, 255, 0.8);
+    transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 1);
+}
+
+.dropdown-header {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Badge styling */
+.badge {
+    background: rgba(59, 130, 246, 0.2) !important;
+    color: rgba(59, 130, 246, 1) !important;
+    border: 1px solid rgba(59, 130, 246, 0.3) !important;
+}
+
+.badge.bg-secondary {
+    background: rgba(156, 163, 175, 0.2) !important;
+    color: rgba(156, 163, 175, 1) !important;
+    border: 1px solid rgba(156, 163, 175, 0.3) !important;
+}
+
+.badge.bg-success {
+    background: rgba(34, 197, 94, 0.2) !important;
+    color: rgba(34, 197, 94, 1) !important;
+    border: 1px solid rgba(34, 197, 94, 0.3) !important;
+}
+
+.badge.bg-info {
+    background: rgba(6, 182, 212, 0.2) !important;
+    color: rgba(6, 182, 212, 1) !important;
+    border: 1px solid rgba(6, 182, 212, 0.3) !important;
+}
+
+/* Pagination styling */
+.pagination .page-link {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+}
+
+.pagination .page-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+    color: rgba(255, 255, 255, 1);
+}
+
+.pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.8) 0%, rgba(37, 99, 235, 0.8) 100%);
+    border-color: rgba(59, 130, 246, 0.5);
+    color: rgba(255, 255, 255, 1);
+}
+
+/* Form switches */
+.form-check-input:checked {
+    background-color: rgba(34, 197, 94, 0.8);
+    border-color: rgba(34, 197, 94, 0.8);
+}
+
+.form-check-input:focus {
+    box-shadow: 0 0 0 0.25rem rgba(34, 197, 94, 0.25);
+}
+
+/* Loading skeleton */
 .loading-skeleton {
-    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.1) 25%, rgba(255, 255, 255, 0.2) 50%, rgba(255, 255, 255, 0.1) 75%);
     background-size: 200% 100%;
     animation: loading 1.5s infinite;
     border-radius: 4px;
@@ -109,6 +446,79 @@
 @keyframes loading {
     0% { background-position: 200% 0; }
     100% { background-position: -200% 0; }
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .table-responsive {
+        display: none !important;
+    }
+
+    .rule-cards {
+        display: block !important;
+    }
+
+    .desktop-only {
+        display: none !important;
+    }
+
+    .escalation-header {
+        padding: 1.5rem;
+    }
+
+    .stat-card {
+        margin-bottom: 1rem;
+    }
+}
+
+@media (min-width: 769px) {
+    .rule-cards {
+        display: none !important;
+    }
+}
+
+/* Text color overrides */
+.text-success {
+    color: rgba(34, 197, 94, 1) !important;
+}
+
+.text-muted {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.text-primary {
+    color: rgba(59, 130, 246, 1) !important;
+}
+
+.text-warning {
+    color: rgba(251, 191, 36, 1) !important;
+}
+
+.text-info {
+    color: rgba(6, 182, 212, 1) !important;
+}
+
+/* Alert toast styling */
+.alert {
+    background: rgba(30, 30, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.alert-success {
+    border-color: rgba(34, 197, 94, 0.3);
+    background: rgba(34, 197, 94, 0.1);
+}
+
+.alert-danger {
+    border-color: rgba(239, 68, 68, 0.3);
+    background: rgba(239, 68, 68, 0.1);
+}
+
+.alert-info {
+    border-color: rgba(6, 182, 212, 0.3);
+    background: rgba(6, 182, 212, 0.1);
 }
 </style>
 {% endblock %}
@@ -124,86 +534,80 @@
 </nav>
 
 <!-- Header -->
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
-    <div>
-        <h1 class="mb-1"><i class="bi bi-arrow-up-right-circle"></i> Escalation Rules</h1>
-        <p class="text-muted mb-0">Automate escalation workflows for notifications and alerts</p>
-    </div>
-    
-    <div class="btn-group" role="group">
-        <button class="btn btn-primary" onclick="createNewRule()">
-            <i class="bi bi-plus-circle"></i> New Rule
-        </button>
-        <div class="dropdown">
-            <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                <i class="bi bi-download"></i> Templates
-            </button>
-            <ul class="dropdown-menu">
-                <li><a class="dropdown-item" href="#" onclick="loadTemplate('basic_notification_failure')">Basic Notification Failure</a></li>
-                <li><a class="dropdown-item" href="#" onclick="loadTemplate('critical_alert')">Critical Alert Escalation</a></li>
-                <li><a class="dropdown-item" href="#" onclick="loadTemplate('high_failure_rate')">High Failure Rate</a></li>
-                <li><hr class="dropdown-divider"></li>
-                <li><a class="dropdown-item" href="#" onclick="showAllTemplates()">Browse All Templates</a></li>
-            </ul>
+<div class="escalation-header">
+    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center gap-3">
+        <div>
+            <h1 class="page-title mb-2">
+                <i class="bi bi-arrow-up-right-circle text-primary me-2"></i>Escalation Rules
+            </h1>
+            <p class="page-subtitle mb-0">Automate escalation workflows for notifications and alerts</p>
         </div>
-        <button class="btn btn-outline-info" onclick="viewExecutions()">
-            <i class="bi bi-list-task"></i> View Executions
-        </button>
-        <button class="btn btn-outline-success" onclick="refreshRules()">
-            <i class="bi bi-arrow-clockwise"></i> Refresh
-        </button>
+
+        <div class="btn-group" role="group">
+            <button class="btn btn-primary" onclick="createNewRule()">
+                <i class="bi bi-plus-circle"></i> New Rule
+            </button>
+            <div class="dropdown">
+                <button class="btn btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
+                    <i class="bi bi-download"></i> Templates
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item" href="#" onclick="loadTemplate('basic_notification_failure')">Basic Notification Failure</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="loadTemplate('critical_alert')">Critical Alert Escalation</a></li>
+                    <li><a class="dropdown-item" href="#" onclick="loadTemplate('high_failure_rate')">High Failure Rate</a></li>
+                    <li><hr class="dropdown-divider"></li>
+                    <li><a class="dropdown-item" href="#" onclick="showAllTemplates()">Browse All Templates</a></li>
+                </ul>
+            </div>
+            <button class="btn btn-outline-info" onclick="viewExecutions()">
+                <i class="bi bi-list-task"></i> View Executions
+            </button>
+            <button class="btn btn-outline-success" onclick="refreshRules()">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
+            </button>
+        </div>
     </div>
 </div>
 
 <!-- Statistics Cards -->
 <div class="row mb-4" id="stats-container">
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h5 class="card-title text-primary">Total Rules</h5>
-                <h3 class="card-text" id="total-rules">-</h3>
-                <small class="text-muted">Configured rules</small>
-            </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card primary">
+            <h5>Total Rules</h5>
+            <h3 id="total-rules">-</h3>
+            <small>Configured rules</small>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h5 class="card-title text-success">Active Rules</h5>
-                <h3 class="card-text" id="active-rules">-</h3>
-                <small class="text-muted">Currently enabled</small>
-            </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card success">
+            <h5>Active Rules</h5>
+            <h3 id="active-rules">-</h3>
+            <small>Currently enabled</small>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h5 class="card-title text-warning">Pending Executions</h5>
-                <h3 class="card-text" id="pending-executions">-</h3>
-                <small class="text-muted">Waiting to run</small>
-            </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card warning">
+            <h5>Pending Executions</h5>
+            <h3 id="pending-executions">-</h3>
+            <small>Waiting to run</small>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card text-center">
-            <div class="card-body">
-                <h5 class="card-title text-info">24h Executions</h5>
-                <h3 class="card-text" id="recent-executions">-</h3>
-                <small class="text-muted">Last 24 hours</small>
-            </div>
+    <div class="col-md-3 mb-3">
+        <div class="stat-card info">
+            <h5>24h Executions</h5>
+            <h3 id="recent-executions">-</h3>
+            <small>Last 24 hours</small>
         </div>
     </div>
 </div>
 
 <!-- Filters and Search -->
-<div class="card mb-4">
-    <div class="card-header">
-        <div class="d-flex justify-content-between align-items-center">
-            <h5 class="mb-0"><i class="bi bi-funnel"></i> Filters</h5>
-            <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#advanced-filters" aria-expanded="false">
-                <i class="bi bi-chevron-down"></i> Advanced
-            </button>
-        </div>
+<div class="escalation-card mb-4">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0"><i class="bi bi-funnel me-2"></i>Filters</h5>
+        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#advanced-filters" aria-expanded="false">
+            <i class="bi bi-chevron-down"></i> Advanced
+        </button>
     </div>
     <div class="card-body">
         <!-- Basic Filters -->
@@ -227,7 +631,7 @@
                 </select>
             </div>
         </div>
-        
+
         <!-- Advanced Filters -->
         <div class="collapse" id="advanced-filters">
             <div class="border-top pt-3">
@@ -299,9 +703,9 @@
 </div>
 
 <!-- Rules Content -->
-<div class="card">
+<div class="escalation-card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="mb-0"><i class="bi bi-list-ul"></i> Escalation Rules</h5>
+        <h5 class="mb-0"><i class="bi bi-list-ul me-2"></i>Escalation Rules</h5>
         <div>
             <div class="form-check form-switch d-inline-block me-3">
                 <input class="form-check-input" type="checkbox" id="select-all-rules" onchange="toggleSelectAll()">
@@ -312,15 +716,15 @@
     </div>
     <div class="card-body">
         <div id="loading-spinner" class="text-center py-4">
-            <div class="spinner-border" role="status">
+            <div class="spinner-border text-primary" role="status">
                 <span class="visually-hidden">Loading...</span>
             </div>
             <div class="mt-2">Loading escalation rules...</div>
         </div>
-        
+
         <!-- Desktop Table View -->
         <div class="table-responsive" id="rules-table" style="display: none;">
-            <table class="table table-hover">
+            <table class="table table-hover rules-table">
                 <thead>
                     <tr>
                         <th width="50">
@@ -339,18 +743,18 @@
                 </tbody>
             </table>
         </div>
-        
+
         <!-- Mobile Card View -->
         <div class="rule-cards" id="rules-cards">
             <!-- Cards will be populated here -->
         </div>
-        
+
         <!-- Pagination -->
         <nav aria-label="Rules pagination" id="pagination-container" style="display: none;">
             <ul class="pagination justify-content-center" id="pagination">
             </ul>
         </nav>
-        
+
         <div id="no-rules" class="text-center py-4" style="display: none;">
             <i class="bi bi-arrow-up-right-circle fs-1 text-muted"></i>
             <h5 class="mt-3 text-muted">No escalation rules found</h5>
@@ -361,7 +765,9 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
 let currentPage = 1;
 let currentFilters = {
@@ -386,7 +792,7 @@ async function loadTriggerTypes() {
     try {
         const response = await fetch('/api/escalation/trigger-types');
         const data = await response.json();
-        
+
         const select = document.getElementById('filter-trigger-type');
         Object.entries(data).forEach(([key, value]) => {
             const option = document.createElement('option');
@@ -403,12 +809,12 @@ async function loadStatistics() {
     try {
         const response = await fetch('/api/escalation/statistics');
         const stats = await response.json();
-        
+
         document.getElementById('total-rules').textContent = stats.total_rules;
         document.getElementById('active-rules').textContent = stats.enabled_rules;
         document.getElementById('pending-executions').textContent = stats.pending_executions;
         document.getElementById('recent-executions').textContent = stats.total_executions;
-        
+
     } catch (error) {
         console.error('Error loading statistics:', error);
     }
@@ -420,38 +826,38 @@ async function loadRules() {
         document.getElementById('rules-table').style.display = 'none';
         document.getElementById('rules-cards').style.display = 'none';
         document.getElementById('no-rules').style.display = 'none';
-        
+
         const params = new URLSearchParams({
             page: currentPage,
             per_page: 20,
             ...currentFilters
         });
-        
+
         // Remove empty parameters
         for (const [key, value] of [...params.entries()]) {
             if (!value) params.delete(key);
         }
-        
+
         const response = await fetch(`/api/escalation/rules?${params}`);
         const data = await response.json();
-        
+
         document.getElementById('loading-spinner').style.display = 'none';
-        
+
         if (data.rules.length === 0) {
             document.getElementById('no-rules').style.display = 'block';
             return;
         }
-        
+
         allRules = data.rules;
         document.getElementById('rules-table').style.display = 'block';
         document.getElementById('rules-cards').style.display = 'block';
         document.getElementById('total-count').textContent = `${data.pagination.total} rules`;
-        
+
         renderRulesTable(data.rules);
         renderRulesCards(data.rules);
         updatePagination(data.pagination);
         updateFilterResultsCount(data.pagination.total);
-        
+
     } catch (error) {
         console.error('Error loading rules:', error);
         document.getElementById('loading-spinner').style.display = 'none';
@@ -462,33 +868,33 @@ async function loadRules() {
 function renderRulesTable(rules) {
     const tbody = document.getElementById('rules-tbody');
     tbody.innerHTML = '';
-    
+
     rules.forEach(rule => {
         const row = document.createElement('tr');
         row.className = rule.enabled ? '' : 'table-secondary';
-        
+
         // Status indicator
-        const statusIndicator = rule.enabled ? 
+        const statusIndicator = rule.enabled ?
             '<span class="rule-status-indicator enabled" title="Enabled"></span>' :
             '<span class="rule-status-indicator disabled" title="Disabled"></span>';
-        
+
         // Priority badge
         const priorityBadge = `<span class="badge priority-${rule.priority}">P${rule.priority}</span>`;
-        
+
         // Trigger type badge
         const triggerBadge = `<span class="badge bg-info trigger-type-badge">${rule.trigger_type.replace('_', ' ')}</span>`;
-        
+
         // Action type badges
-        const actionBadges = rule.escalation_actions.map(action => 
+        const actionBadges = rule.escalation_actions.map(action =>
             `<span class="badge bg-secondary action-type-badge">${action.action_type}</span>`
         ).join(' ');
-        
+
         // Execution count with status
         const executionCount = rule.total_executions || 0;
-        const executionDisplay = executionCount > 0 ? 
-            `<span class="text-success">${executionCount}</span>` : 
+        const executionDisplay = executionCount > 0 ?
+            `<span class="text-success">${executionCount}</span>` :
             `<span class="text-muted">0</span>`;
-        
+
         row.innerHTML = `
             <td>
                 <input type="checkbox" class="rule-checkbox" value="${rule.id}" onchange="toggleRuleSelection(${rule.id})">
@@ -502,7 +908,7 @@ function renderRulesTable(rules) {
             <td>${priorityBadge}</td>
             <td>
                 <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" ${rule.enabled ? 'checked' : ''} 
+                    <input class="form-check-input" type="checkbox" ${rule.enabled ? 'checked' : ''}
                            onchange="toggleRuleStatus(${rule.id}, this.checked)">
                 </div>
             </td>
@@ -525,7 +931,7 @@ function renderRulesTable(rules) {
                 </div>
             </td>
         `;
-        
+
         tbody.appendChild(row);
     });
 }
@@ -533,22 +939,22 @@ function renderRulesTable(rules) {
 function renderRulesCards(rules) {
     const container = document.getElementById('rules-cards');
     container.innerHTML = '';
-    
+
     rules.forEach(rule => {
         const card = document.createElement('div');
-        card.className = `rule-card card ${rule.enabled ? '' : 'disabled'}`;
-        
-        const statusIndicator = rule.enabled ? 
+        card.className = `rule-card ${rule.enabled ? '' : 'disabled'}`;
+
+        const statusIndicator = rule.enabled ?
             '<span class="rule-status-indicator enabled"></span>' :
             '<span class="rule-status-indicator disabled"></span>';
-        
+
         const priorityBadge = `<span class="badge priority-${rule.priority}">P${rule.priority}</span>`;
         const triggerBadge = `<span class="badge bg-info">${rule.trigger_type.replace('_', ' ')}</span>`;
-        
-        const actionBadges = rule.escalation_actions.map(action => 
+
+        const actionBadges = rule.escalation_actions.map(action =>
             `<span class="badge bg-secondary action-type-badge">${action.action_type}</span>`
         ).join(' ');
-        
+
         card.innerHTML = `
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start mb-2">
@@ -559,28 +965,28 @@ function renderRulesCards(rules) {
                         ${priorityBadge}
                     </div>
                     <div class="form-check form-switch">
-                        <input class="form-check-input" type="checkbox" ${rule.enabled ? 'checked' : ''} 
+                        <input class="form-check-input" type="checkbox" ${rule.enabled ? 'checked' : ''}
                                onchange="toggleRuleStatus(${rule.id}, this.checked)">
                     </div>
                 </div>
-                
+
                 ${rule.description ? `<p class="text-muted mb-2">${rule.description}</p>` : ''}
-                
+
                 <div class="mb-2">
                     <strong>Trigger:</strong> ${triggerBadge}
                 </div>
-                
+
                 <div class="mb-2">
                     <strong>Actions:</strong><br>
                     ${actionBadges}
                 </div>
-                
+
                 <div class="rule-metrics mb-3">
                     <span class="me-3"><i class="bi bi-clock"></i> ${rule.escalation_interval_minutes}min intervals</span>
                     <span class="me-3"><i class="bi bi-repeat"></i> Max ${rule.max_escalations} levels</span>
                     <span><i class="bi bi-list-task"></i> ${rule.total_executions || 0} executions</span>
                 </div>
-                
+
                 <div class="d-flex justify-content-between align-items-center">
                     <small class="text-muted">
                         Created by ${rule.created_by || 'Unknown'}
@@ -602,7 +1008,7 @@ function renderRulesCards(rules) {
                 </div>
             </div>
         `;
-        
+
         container.appendChild(card);
     });
 }
@@ -610,32 +1016,32 @@ function renderRulesCards(rules) {
 function updatePagination(pagination) {
     const container = document.getElementById('pagination-container');
     const paginationElement = document.getElementById('pagination');
-    
+
     if (pagination.pages <= 1) {
         container.style.display = 'none';
         return;
     }
-    
+
     container.style.display = 'block';
     paginationElement.innerHTML = '';
-    
+
     // Previous button
     const prevItem = document.createElement('li');
     prevItem.className = `page-item ${!pagination.has_prev ? 'disabled' : ''}`;
     prevItem.innerHTML = `<a class="page-link" href="#" onclick="changePage(${pagination.page - 1})">Previous</a>`;
     paginationElement.appendChild(prevItem);
-    
+
     // Page numbers
     const startPage = Math.max(1, pagination.page - 2);
     const endPage = Math.min(pagination.pages, pagination.page + 2);
-    
+
     for (let i = startPage; i <= endPage; i++) {
         const pageItem = document.createElement('li');
         pageItem.className = `page-item ${i === pagination.page ? 'active' : ''}`;
         pageItem.innerHTML = `<a class="page-link" href="#" onclick="changePage(${i})">${i}</a>`;
         paginationElement.appendChild(pageItem);
     }
-    
+
     // Next button
     const nextItem = document.createElement('li');
     nextItem.className = `page-item ${!pagination.has_next ? 'disabled' : ''}`;
@@ -679,16 +1085,16 @@ function updateFilterResultsCount(total) {
 function toggleSelectAll() {
     const selectAllCheckbox = document.getElementById('select-all-rules') || document.getElementById('table-select-all');
     const ruleCheckboxes = document.querySelectorAll('.rule-checkbox');
-    
+
     selectedRules.clear();
-    
+
     ruleCheckboxes.forEach(checkbox => {
         checkbox.checked = selectAllCheckbox.checked;
         if (selectAllCheckbox.checked) {
             selectedRules.add(parseInt(checkbox.value));
         }
     });
-    
+
     updateBulkActions();
 }
 
@@ -704,7 +1110,7 @@ function toggleRuleSelection(ruleId) {
 function updateBulkActions() {
     const bulkActions = document.getElementById('bulk-actions');
     const selectedCount = document.getElementById('selected-count');
-    
+
     if (selectedRules.size > 0) {
         bulkActions.style.display = 'block';
         selectedCount.textContent = selectedRules.size;
@@ -734,14 +1140,14 @@ async function toggleRuleStatus(ruleId, enabled) {
             },
             body: JSON.stringify({ enabled: enabled })
         });
-        
+
         if (response.ok) {
             showToast(`Rule ${enabled ? 'enabled' : 'disabled'} successfully`, 'success');
             loadStatistics();
         } else {
             throw new Error('Failed to update rule status');
         }
-        
+
     } catch (error) {
         console.error('Error updating rule status:', error);
         showToast('Error updating rule status', 'error');
@@ -772,12 +1178,12 @@ async function duplicateRule(ruleId) {
     try {
         const response = await fetch(`/api/escalation/rules/${ruleId}`);
         const rule = await response.json();
-        
+
         // Redirect to new rule form with pre-filled data
         const params = new URLSearchParams();
         params.set('duplicate_from', ruleId);
         window.location.href = `/escalation-rules/new?${params}`;
-        
+
     } catch (error) {
         console.error('Error duplicating rule:', error);
         showToast('Error duplicating rule', 'error');
@@ -788,12 +1194,12 @@ async function deleteRule(ruleId) {
     if (!confirm('Are you sure you want to delete this escalation rule? This action cannot be undone.')) {
         return;
     }
-    
+
     try {
         const response = await fetch(`/api/escalation/rules/${ruleId}`, {
             method: 'DELETE'
         });
-        
+
         if (response.ok) {
             showToast('Rule deleted successfully', 'success');
             loadRules();
@@ -802,7 +1208,7 @@ async function deleteRule(ruleId) {
             const data = await response.json();
             throw new Error(data.error || 'Failed to delete rule');
         }
-        
+
     } catch (error) {
         console.error('Error deleting rule:', error);
         showToast('Error deleting rule: ' + error.message, 'error');
@@ -819,12 +1225,12 @@ async function bulkDisable() {
 
 async function bulkUpdateStatus(enabled) {
     if (selectedRules.size === 0) return;
-    
+
     const action = enabled ? 'enable' : 'disable';
     if (!confirm(`Are you sure you want to ${action} ${selectedRules.size} selected rules?`)) {
         return;
     }
-    
+
     try {
         const promises = Array.from(selectedRules).map(ruleId =>
             fetch(`/api/escalation/rules/${ruleId}`, {
@@ -835,14 +1241,14 @@ async function bulkUpdateStatus(enabled) {
                 body: JSON.stringify({ enabled: enabled })
             })
         );
-        
+
         await Promise.all(promises);
-        
+
         showToast(`Successfully ${action}d ${selectedRules.size} rules`, 'success');
         clearSelection();
         loadRules();
         loadStatistics();
-        
+
     } catch (error) {
         console.error(`Error ${action}ing rules:`, error);
         showToast(`Error ${action}ing rules`, 'error');
@@ -851,25 +1257,25 @@ async function bulkUpdateStatus(enabled) {
 
 async function bulkDelete() {
     if (selectedRules.size === 0) return;
-    
+
     if (!confirm(`Are you sure you want to delete ${selectedRules.size} selected rules? This action cannot be undone.`)) {
         return;
     }
-    
+
     try {
         const promises = Array.from(selectedRules).map(ruleId =>
             fetch(`/api/escalation/rules/${ruleId}`, {
                 method: 'DELETE'
             })
         );
-        
+
         await Promise.all(promises);
-        
+
         showToast(`Successfully deleted ${selectedRules.size} rules`, 'success');
         clearSelection();
         loadRules();
         loadStatistics();
-        
+
     } catch (error) {
         console.error('Error deleting rules:', error);
         showToast('Error deleting rules', 'error');
@@ -885,7 +1291,7 @@ async function loadTemplate(templateName) {
     try {
         const response = await fetch('/api/escalation/rules/templates');
         const data = await response.json();
-        
+
         const template = data.templates.find(t => t.name.toLowerCase().includes(templateName));
         if (template) {
             // Redirect to new rule form with template data
@@ -893,7 +1299,7 @@ async function loadTemplate(templateName) {
             params.set('template', templateName);
             window.location.href = `/escalation-rules/new?${params}`;
         }
-        
+
     } catch (error) {
         console.error('Error loading template:', error);
         showToast('Error loading template', 'error');
@@ -915,9 +1321,9 @@ function showToast(message, type = 'info') {
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
-    
+
     document.body.appendChild(toast);
-    
+
     // Auto remove after 5 seconds
     setTimeout(() => {
         if (toast.parentNode) {

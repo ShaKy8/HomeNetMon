@@ -3,8 +3,23 @@ from datetime import datetime, timedelta
 from models import db, Device, MonitoringData, Alert, DeviceIpHistory
 from monitoring.monitor import DeviceMonitor
 from api.rate_limited_endpoints import create_endpoint_limiter
+from services.query_cache import get_cached_device_list, invalidate_device_cache
+from services.pagination import paginator, create_pagination_response
+from core.validators import InputValidator, validate_request
 import logging
 import ping3
+
+# Import ultra-fast cache if available
+try:
+    from services.ultra_cache import device_cache, cached_query, response_cache
+    ULTRA_CACHE_AVAILABLE = True
+except ImportError:
+    ULTRA_CACHE_AVAILABLE = False
+    # Fallback decorator
+    def cached_query(ttl=60):
+        def decorator(func):
+            return func
+        return decorator
 
 logger = logging.getLogger(__name__)
 
@@ -13,19 +28,121 @@ devices_bp = Blueprint('devices', __name__)
 @devices_bp.route('', methods=['GET'])
 @create_endpoint_limiter('relaxed')
 def get_devices():
-    """Get all devices with optional filtering"""
+    """Get all devices with optional filtering - ULTRA-CACHED VERSION"""
+    
+    # TEMPORARILY DISABLE ultra-fast cache for debugging
+    # if ULTRA_CACHE_AVAILABLE:
+    #     cache_key = f"devices:{request.args}"
+    #     cached_result = response_cache.get(cache_key)
+    #     if cached_result:
+    #         return cached_result
     try:
-        # Query parameters
-        group = request.args.get('group')
-        device_type = request.args.get('type')
-        status = request.args.get('status')
-        monitored_only = request.args.get('monitored', 'false').lower() == 'true'
-        network_filter = request.args.get('network_filter', 'true').lower() == 'true'  # Default to true for network filtering
+        # Validate and sanitize query parameters
+        group = InputValidator.sanitize_string(request.args.get('group', ''), max_length=100)
+        device_type = InputValidator.validate_device_type(request.args.get('type', ''))
+        status = request.args.get('status', '')
+        if status and status not in ['up', 'down', 'warning', 'unknown']:
+            status = None
+        monitored_only = InputValidator.validate_boolean(request.args.get('monitored', 'false'))
+        network_filter = InputValidator.validate_boolean(request.args.get('network_filter', 'false'))  # Changed default to false
         
+        # PERFORMANCE OPTIMIZATION: Use cached device list for massive speed improvement
+        try:
+            devices_data = get_cached_device_list(current_app.app_context)
+            logger.debug(f"Retrieved {len(devices_data)} devices from cache")
+        except Exception as e:
+            logger.warning(f"Cache failed, falling back to database query: {e}")
+            # Fallback to original query if cache fails
+            return get_devices_fallback(group, device_type, status, monitored_only, network_filter)
+        
+        # Apply client-side filtering to cached data (much faster than DB queries)
+        filtered_devices = devices_data
+        
+        # Apply network range filtering if requested  
+        if network_filter:
+            from api.monitoring import is_device_in_network_range, get_current_network_range
+            network_range = get_current_network_range()
+            filtered_devices = [d for d in filtered_devices if is_device_in_network_range(d['ip_address'], network_range)]
+        
+        if group:
+            filtered_devices = [d for d in filtered_devices if d.get('device_group') == group]
+        
+        if device_type:
+            filtered_devices = [d for d in filtered_devices if d.get('device_type') == device_type]
+        
+        if monitored_only:
+            filtered_devices = [d for d in filtered_devices if d.get('is_monitored')]
+        
+        if status:
+            filtered_devices = [d for d in filtered_devices if d.get('status') == status]
+        
+        # Sort by IP address (cached data might not be sorted)
+        try:
+            import ipaddress
+            filtered_devices.sort(key=lambda x: ipaddress.ip_address(x['ip_address']))
+        except:
+            # Fallback to string sorting if IP parsing fails
+            filtered_devices.sort(key=lambda x: x['ip_address'])
+        
+        # Only apply pagination if explicitly requested
+        if 'page' in request.args or 'per_page' in request.args:
+            # Apply pagination to cached results
+            page, per_page = paginator.get_request_pagination()
+            total = len(filtered_devices)
+            start = (page - 1) * per_page
+            end = start + per_page
+            paginated_devices = filtered_devices[start:end]
+            
+            # Calculate pagination metadata
+            import math
+            pages = math.ceil(total / per_page)
+            
+            response = {
+                'success': True,
+                'devices': paginated_devices,
+                'pagination': {
+                    'page': page,
+                    'per_page': per_page,
+                    'total': total,
+                    'pages': pages,
+                    'has_prev': page > 1,
+                    'has_next': page < pages
+                },
+                'cached': True  # Indicate this response was cached
+            }
+        else:
+            # No pagination - return all devices (for main dashboard compatibility)
+            response = {
+                'success': True,
+                'devices': filtered_devices,
+                'total': len(filtered_devices),
+                'cached': True  # Indicate this response was cached
+            }
+        
+        # TEMPORARILY DISABLE ultra-fast cache for debugging  
+        # if ULTRA_CACHE_AVAILABLE:
+        #     response_cache.set(cache_key, response)
+        
+        return jsonify(response)
+        
+    except Exception as e:
+        logger.error(f"Error in cached get_devices: {e}")
+        # Fallback to non-cached version
+        return get_devices_fallback(
+            request.args.get('group'),
+            request.args.get('type'),
+            request.args.get('status'),
+            request.args.get('monitored', 'false').lower() == 'true',
+            request.args.get('network_filter', 'true').lower() == 'true'
+        )
+
+def get_devices_fallback(group=None, device_type=None, status=None, monitored_only=False, network_filter=False):
+    """Fallback method for device retrieval when cache fails - WITH PAGINATION"""
+    try:
         # Build query
         query = Device.query
         
-        # Apply network range filtering if requested (default behavior)
+        # Apply network range filtering if requested
         if network_filter:
             from api.monitoring import filter_devices_by_network_range
             query = filter_devices_by_network_range(query)
@@ -39,25 +156,62 @@ def get_devices():
         if monitored_only:
             query = query.filter(Device.is_monitored == True)
         
-        devices = query.order_by(Device.ip_address).all()
+        # Order query for consistent results
+        query = query.order_by(Device.ip_address)
+        
+        # Only apply pagination if explicitly requested
+        use_pagination = 'page' in request.args or 'per_page' in request.args
+        
+        if use_pagination:
+            # Get pagination parameters
+            page, per_page = paginator.get_request_pagination()
+            
+            # Use database pagination for optimal performance
+            pagination_result = paginator.paginate_query(
+                query, 
+                page=page, 
+                per_page=per_page,
+                error_out=False
+            )
+            
+            devices = pagination_result['items']
+        else:
+            # No pagination - get all devices
+            devices = query.all()
+            pagination_result = None
         
         # Filter by status if requested (client-side filtering since status is computed)
         if status:
             devices = [d for d in devices if d.status == status]
         
-        # ENHANCED PERFORMANCE OPTIMIZATION: Use more efficient queries with new indexes
+        # Use optimized queries with new indexes
         device_ids = [d.id for d in devices]
         
         if not device_ids:
-            return jsonify({
-                'success': True,
-                'devices': [],
-                'total': 0,
-                'count': 0
-            })
+            if use_pagination and pagination_result:
+                return jsonify({
+                    'success': True,
+                    'devices': [],
+                    'pagination': {
+                        'page': pagination_result['page'],
+                        'per_page': pagination_result['per_page'],
+                        'total': pagination_result['total'],
+                        'pages': pagination_result['pages'],
+                        'has_prev': pagination_result['has_prev'],
+                        'has_next': pagination_result['has_next']
+                    },
+                    'cached': False
+                })
+            else:
+                return jsonify({
+                    'success': True,
+                    'devices': [],
+                    'total': 0,
+                    'cached': False
+                })
         
         # OPTIMIZATION: Use indexed query for latest monitoring data (much faster)
-        from sqlalchemy import func, and_, desc
+        from sqlalchemy import func, and_
         latest_monitoring_subquery = db.session.query(
             MonitoringData.device_id,
             func.max(MonitoringData.timestamp).label('max_timestamp')
@@ -101,17 +255,35 @@ def get_devices():
             
             devices_data.append(device_dict)
         
-        return jsonify({
-            'success': True,
-            'devices': devices_data,
-            'total': len(devices_data),
-            'count': len(devices_data)  # Keep both for backward compatibility
-        })
+        # Return response with optional pagination
+        if use_pagination and pagination_result:
+            return jsonify({
+                'success': True,
+                'devices': devices_data,
+                'pagination': {
+                    'page': pagination_result['page'],
+                    'per_page': pagination_result['per_page'],
+                    'total': pagination_result['total'],
+                    'pages': pagination_result['pages'],
+                    'has_prev': pagination_result['has_prev'],
+                    'has_next': pagination_result['has_next']
+                },
+                'cached': False
+            })
+        else:
+            return jsonify({
+                'success': True,
+                'devices': devices_data,
+                'total': len(devices_data),
+                'cached': False
+            })
         
     except Exception as e:
+        logger.error(f"Error in fallback get_devices: {e}")
         return jsonify({'error': str(e)}), 500
 
 @devices_bp.route('/<int:device_id>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_device(device_id):
     """Get specific device details"""
     try:
@@ -213,6 +385,7 @@ def get_device(device_id):
         return jsonify({'error': str(e)}), 500
 
 @devices_bp.route('', methods=['POST'])
+@create_endpoint_limiter('strict')
 def create_device():
     """Create a new device"""
     try:
@@ -259,10 +432,14 @@ def create_device():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
-@devices_bp.route('/<int:device_id>', methods=['PUT'])
+@devices_bp.route('/<int:device_id>', methods=['PUT', 'PATCH'])
+@create_endpoint_limiter('strict')  
+@validate_request(allowed_fields=['ip_address', 'custom_name', 'device_type', 'device_group', 'room_location', 'device_priority', 'is_monitored', 'hostname'])
 def update_device(device_id):
-    """Update device details"""
+    """Update device details with validation"""
     try:
+        # Validate device_id
+        device_id = InputValidator.validate_integer(device_id, min_val=1)
         device = Device.query.get_or_404(device_id)
         data = request.get_json()
         
@@ -271,13 +448,10 @@ def update_device(device_id):
         
         # Handle IP address change validation
         if 'ip_address' in data:
-            new_ip = data['ip_address']
-            # Validate IP address format
-            import ipaddress
             try:
-                ipaddress.ip_address(new_ip)
-            except ValueError:
-                return jsonify({'error': 'Invalid IP address format'}), 400
+                new_ip = InputValidator.validate_ip_address(data['ip_address'])
+            except ValueError as e:
+                return jsonify({'error': str(e)}), 400
             
             # Check if IP already exists on another device
             existing_device = Device.query.filter(
@@ -289,15 +463,38 @@ def update_device(device_id):
             
             device.ip_address = new_ip
         
-        # Update allowed fields
-        allowed_fields = ['custom_name', 'device_type', 'device_group', 'is_monitored', 'hostname']
+        # Update and validate allowed fields
+        allowed_fields = ['custom_name', 'device_type', 'device_group', 'room_location', 'device_priority', 'is_monitored', 'hostname']
         updated_fields = {}
         
         for field in allowed_fields:
             if field in data:
                 old_value = getattr(device, field, None)
-                setattr(device, field, data[field])
-                updated_fields[field] = {'old': old_value, 'new': data[field]}
+                
+                # Validate each field
+                if field == 'custom_name':
+                    value = InputValidator.sanitize_string(data[field], max_length=255)
+                elif field == 'device_type':
+                    value = InputValidator.validate_device_type(data[field])
+                elif field == 'device_group':
+                    value = InputValidator.sanitize_string(data[field], max_length=100)
+                elif field == 'room_location':
+                    value = InputValidator.sanitize_string(data[field], max_length=100) if data[field] else None
+                elif field == 'device_priority':
+                    # Validate device priority is one of the allowed values
+                    valid_priorities = ['critical', 'important', 'normal', 'optional']
+                    if data[field] not in valid_priorities:
+                        return jsonify({'error': f'device_priority must be one of: {", ".join(valid_priorities)}'}), 400
+                    value = data[field]
+                elif field == 'is_monitored':
+                    value = InputValidator.validate_boolean(data[field])
+                elif field == 'hostname':
+                    value = InputValidator.validate_hostname(data[field]) if data[field] else None
+                else:
+                    value = data[field]
+                    
+                setattr(device, field, value)
+                updated_fields[field] = {'old': old_value, 'new': value}
         
         device.updated_at = datetime.utcnow()
         db.session.commit()
@@ -335,6 +532,7 @@ def delete_device(device_id):
         return jsonify({'error': str(e)}), 500
 
 @devices_bp.route('/<int:device_id>/ip-history', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_device_ip_history(device_id):
     """Get IP address change history for a device"""
     try:
@@ -399,6 +597,7 @@ def track_ip_change(device_id, old_ip, new_ip, source='auto_discovery', notes=No
         return None
 
 @devices_bp.route('/<int:device_id>/ip-history', methods=['POST'])
+@create_endpoint_limiter('strict')
 def log_ip_change(device_id):
     """Manually log an IP address change"""
     try:
@@ -532,6 +731,7 @@ def ping_all_devices():
     })
 
 @devices_bp.route('/groups', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_device_groups():
     """Get all device groups"""
     try:
@@ -551,6 +751,7 @@ def get_device_groups():
         return jsonify({'error': str(e)}), 500
 
 @devices_bp.route('/types', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_device_types():
     """Get all device types"""
     try:
@@ -570,6 +771,7 @@ def get_device_types():
         return jsonify({'error': str(e)}), 500
 
 @devices_bp.route('/test-ping/<string:ip>', methods=['GET'])
+@create_endpoint_limiter('critical')
 def test_ping(ip):
     """Test ping functionality with direct IP"""
     try:
@@ -602,6 +804,7 @@ def test_ping(ip):
         return jsonify({'error': str(e)}), 500
 
 @devices_bp.route('/<int:device_id>/ping-test', methods=['POST'])
+@create_endpoint_limiter('critical')
 def ping_device_test(device_id):
     """Simple ping test endpoint"""
     try:
@@ -663,6 +866,7 @@ def ping_device_test(device_id):
         return jsonify({'error': str(e)}), 500
 
 @devices_bp.route('/summary', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_devices_summary():
     """Get summary statistics of all devices"""
     try:
@@ -696,27 +900,47 @@ def get_devices_summary():
             )
         ).subquery()
         
-        # Count devices by calculated status
+        # Count devices by calculated status with fallback to device.status field
+        # First check monitoring data, then fall back to device.status if no recent data
         status_query = db.session.query(
             func.count(Device.id).label('total_devices'),
             func.count(case((Device.is_monitored == True, 1))).label('monitored_devices'),
             func.sum(case((
-                and_(
-                    latest_data_subquery.c.timestamp >= cutoff_time,
-                    latest_data_subquery.c.response_time.isnot(None)
+                or_(
+                    # Has recent successful monitoring data
+                    and_(
+                        latest_data_subquery.c.timestamp >= cutoff_time,
+                        latest_data_subquery.c.response_time.isnot(None)
+                    ),
+                    # OR no monitoring data but device.status is 'up'
+                    and_(
+                        latest_monitoring_subquery.c.total_monitoring_records == None,
+                        Device.status == 'up'
+                    )
                 ), 1
             ), else_=0)).label('devices_up'),
             func.sum(case((
-                and_(
-                    latest_monitoring_subquery.c.total_monitoring_records > 0,
-                    or_(
-                        latest_data_subquery.c.timestamp < cutoff_time,
-                        latest_data_subquery.c.response_time.is_(None)
+                or_(
+                    # Has monitoring data but it's old or failed
+                    and_(
+                        latest_monitoring_subquery.c.total_monitoring_records > 0,
+                        or_(
+                            latest_data_subquery.c.timestamp < cutoff_time,
+                            latest_data_subquery.c.response_time.is_(None)
+                        )
+                    ),
+                    # OR no monitoring data but device.status is 'down'
+                    and_(
+                        latest_monitoring_subquery.c.total_monitoring_records == None,
+                        Device.status == 'down'
                     )
                 ), 1
             ), else_=0)).label('devices_down'),
             func.sum(case((
-                latest_monitoring_subquery.c.total_monitoring_records == 0, 1
+                and_(
+                    latest_monitoring_subquery.c.total_monitoring_records == None,
+                    or_(Device.status == 'unknown', Device.status == None)
+                ), 1
             ), else_=0)).label('devices_unknown')
         ).outerjoin(
             latest_monitoring_subquery,
@@ -766,6 +990,7 @@ def get_devices_summary():
         return jsonify({'error': str(e)}), 500
 
 @devices_bp.route('/monitored', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_monitored_devices():
     """Get only devices that are being monitored"""
     try:
@@ -1019,6 +1244,7 @@ def bulk_ping_devices():
         }), 500
 
 @devices_bp.route('/<int:device_id>/ping', methods=['POST'])
+@create_endpoint_limiter('strict')
 def ping_single_device(device_id):
     """Trigger ping for a single device"""
     try:
@@ -1056,5 +1282,207 @@ def ping_single_device(device_id):
         logger.error(f"Error pinging device {device_id}: {e}")
         return jsonify({
             'success': False,
+            'error': str(e)
+        }), 500
+
+@devices_bp.route('/<int:device_id>/monitoring', methods=['POST'])
+@create_endpoint_limiter('strict')
+def update_device_monitoring_status(device_id):
+    """Update device monitoring status"""
+    try:
+        device = Device.query.get_or_404(device_id)
+        data = request.get_json()
+        
+        if not data or 'is_monitored' not in data:
+            return jsonify({'error': 'is_monitored field is required'}), 400
+        
+        is_monitored = data['is_monitored']
+        if not isinstance(is_monitored, bool):
+            return jsonify({'error': 'is_monitored must be a boolean'}), 400
+        
+        # Update the device monitoring status
+        device.is_monitored = is_monitored
+        db.session.commit()
+        
+        # Invalidate cache to reflect changes
+        invalidate_device_cache()
+        
+        logger.info(f"Updated monitoring status for device {device_id} ({device.display_name}): {is_monitored}")
+        
+        return jsonify({
+            'success': True,
+            'message': f'Monitoring {"enabled" if is_monitored else "disabled"} for {device.display_name}',
+            'device_id': device_id,
+            'is_monitored': is_monitored
+        })
+        
+    except Exception as e:
+        db.session.rollback()
+        if '404 Not Found' in str(e):
+            return jsonify({'error': 'Device not found'}), 404
+        logger.error(f"Error updating monitoring status for device {device_id}: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+@devices_bp.before_request
+def debug_devices_request():
+    """Debug all requests to devices blueprint"""
+    print(f"🔍 DEVICES BLUEPRINT REQUEST: {request.method} {request.path}")
+    print(f"🔍 Full URL: {request.url}")
+
+@devices_bp.route('/scan', methods=['POST'])
+@devices_bp.route('/scan-now', methods=['POST'])  # Add alternative URL to bypass cache
+def scan_network():
+    """Trigger a manual network scan with progress updates"""
+    print("🚀 SCAN ENDPOINT HIT: /api/devices/scan")
+    print(f"🚀 Request method: {request.method}")
+    print(f"🚀 Request headers: {dict(request.headers)}")
+    try:
+        # Get scanner instance from app
+        scanner = current_app._scanner if hasattr(current_app, '_scanner') else None
+
+        if not scanner:
+            return jsonify({
+                'success': False,
+                'error': 'Network scanner not available'
+            }), 503
+
+        # Check if a scan is already in progress
+        if hasattr(scanner, 'scan_in_progress') and scanner.scan_in_progress:
+            return jsonify({
+                'success': False,
+                'message': 'Scan already in progress',
+                'scan_in_progress': True
+            }), 409
+
+        # Also check the scanner's is_scanning flag
+        if hasattr(scanner, 'is_scanning') and scanner.is_scanning:
+            return jsonify({
+                'success': False,
+                'message': 'Network scan already in progress',
+                'scan_in_progress': True
+            }), 409
+
+        # Start the scan in a background thread
+        import threading
+
+        # Capture the app instance before starting the thread
+        app = current_app._get_current_object()
+
+        def run_scan_with_progress():
+            scan_timeout = None
+            try:
+                # Use the application context in the thread
+                with app.app_context():
+                    # Set scan in progress flags
+                    scanner.scan_in_progress = True
+
+                    # Add scan timeout protection (5 minutes max)
+                    import threading
+                    def scan_timeout_handler():
+                        logger.error("Scan timeout - forcing cleanup after 5 minutes")
+                        scanner.scan_in_progress = False
+                        scanner.is_scanning = False
+                        if hasattr(app, 'socketio'):
+                            app.socketio.emit('scan_error', {
+                                'timestamp': datetime.now().isoformat(),
+                                'error': 'Scan timed out after 5 minutes'
+                            }, namespace='/', broadcast=True)
+
+                    scan_timeout = threading.Timer(300.0, scan_timeout_handler)  # 5 minutes
+                    scan_timeout.start()
+
+                    # Emit WebSocket event for scan start
+                    if hasattr(app, 'socketio'):
+                        app.socketio.emit('scan_started', {
+                            'timestamp': datetime.now().isoformat(),
+                            'message': 'Network scan initiated'
+                        }, namespace='/', broadcast=True)
+
+                    # Run the actual scan
+                    result = scanner.scan_network()
+
+                    # Cancel timeout since scan completed successfully
+                    if scan_timeout:
+                        scan_timeout.cancel()
+
+                    # Emit WebSocket event for scan complete
+                    if hasattr(app, 'socketio'):
+                        app.socketio.emit('scan_completed', {
+                            'timestamp': datetime.now().isoformat(),
+                            'devices_found': result if isinstance(result, int) else 0,
+                            'message': 'Network scan completed successfully'
+                        }, namespace='/', broadcast=True)
+
+            except Exception as e:
+                logger.error(f"Error during manual scan: {e}")
+                if scan_timeout:
+                    scan_timeout.cancel()
+                if hasattr(app, 'socketio'):
+                    app.socketio.emit('scan_error', {
+                        'timestamp': datetime.now().isoformat(),
+                        'error': str(e)
+                    }, namespace='/', broadcast=True)
+            finally:
+                # Always clear scan in progress flags
+                scanner.scan_in_progress = False
+                if hasattr(scanner, 'is_scanning'):
+                    scanner.is_scanning = False
+
+        # Start scan in background thread
+        scan_thread = threading.Thread(
+            target=run_scan_with_progress,
+            name='ManualNetworkScan'
+        )
+        scan_thread.daemon = True
+        scan_thread.start()
+
+        return jsonify({
+            'success': True,
+            'message': 'Network scan started',
+            'estimated_duration': 120,  # Estimated 2 minutes
+            'scan_id': datetime.now().timestamp()
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error initiating network scan: {e}")
+        return jsonify({
+            'success': False,
+            'error': str(e)
+        }), 500
+
+
+@devices_bp.route('/scan-status', methods=['GET'])
+@create_endpoint_limiter('relaxed')
+def get_scan_status():
+    """Get current scan status"""
+    try:
+        # Get scanner instance from app
+        scanner = current_app._scanner if hasattr(current_app, '_scanner') else None
+
+        if not scanner:
+            return jsonify({
+                'scan_in_progress': False,
+                'message': 'Scanner not available'
+            }), 200
+
+        # Check if scan is in progress
+        scan_in_progress = False
+        if hasattr(scanner, 'scan_in_progress') and scanner.scan_in_progress:
+            scan_in_progress = True
+        elif hasattr(scanner, 'is_scanning') and scanner.is_scanning:
+            scan_in_progress = True
+
+        return jsonify({
+            'scan_in_progress': scan_in_progress,
+            'timestamp': datetime.now().isoformat()
+        }), 200
+
+    except Exception as e:
+        logger.error(f"Error checking scan status: {e}")
+        return jsonify({
+            'scan_in_progress': False,
             'error': str(e)
         }), 500

@@ -1,40 +1,71 @@
-{% extends "base_with_quickstats.html" %}
+{% extends "base_beautiful.html" %}
 
 {% block title %}Escalation Executions - HomeNetMon{% endblock %}
 
 {% block extra_css %}
 <style>
-/* Execution-specific styles */
+/* Unified dark theme styling for escalation executions */
 .execution-status-badge {
     font-size: 0.75rem;
-    padding: 0.25rem 0.5rem;
+    padding: 0.25rem 0.75rem;
     border-radius: 12px;
+    font-weight: 500;
+    backdrop-filter: blur(20px);
 }
 
-.status-pending { background-color: #ffc107; color: #000; }
-.status-in_progress { background-color: #17a2b8; color: white; }
-.status-completed { background-color: #28a745; color: white; }
-.status-failed { background-color: #dc3545; color: white; }
-.status-cancelled { background-color: #6c757d; color: white; }
+.status-pending {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 193, 7, 0.4));
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.status-in_progress {
+    background: linear-gradient(135deg, rgba(23, 162, 184, 0.2), rgba(23, 162, 184, 0.4));
+    color: #17a2b8;
+    border: 1px solid rgba(23, 162, 184, 0.3);
+}
+
+.status-completed {
+    background: linear-gradient(135deg, rgba(0, 255, 136, 0.2), rgba(0, 255, 136, 0.4));
+    color: #00ff88;
+    border: 1px solid rgba(0, 255, 136, 0.3);
+}
+
+.status-failed {
+    background: linear-gradient(135deg, rgba(255, 71, 87, 0.2), rgba(255, 71, 87, 0.4));
+    color: #ff4757;
+    border: 1px solid rgba(255, 71, 87, 0.3);
+}
+
+.status-cancelled {
+    background: linear-gradient(135deg, rgba(108, 117, 125, 0.2), rgba(108, 117, 125, 0.4));
+    color: #6c757d;
+    border: 1px solid rgba(108, 117, 125, 0.3);
+}
 
 .execution-card {
-    transition: all 0.2s ease;
-    border: 1px solid #dee2e6;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border-radius: 12px;
     margin-bottom: 1rem;
     position: relative;
 }
 
 .execution-card:hover {
-    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
-    transform: translateY(-1px);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
 }
 
 .execution-card.status-failed {
-    border-left: 4px solid #dc3545;
+    border-left: 4px solid #ff4757;
 }
 
 .execution-card.status-completed {
-    border-left: 4px solid #28a745;
+    border-left: 4px solid #00ff88;
 }
 
 .execution-card.status-in_progress {
@@ -45,38 +76,80 @@
     border-left: 4px solid #ffc107;
 }
 
+.execution-row.status-failed {
+    border-left: 4px solid #ff4757;
+}
+
+.execution-row.status-completed {
+    border-left: 4px solid #00ff88;
+}
+
+.execution-row.status-in_progress {
+    border-left: 4px solid #17a2b8;
+}
+
+.execution-row.status-pending {
+    border-left: 4px solid #ffc107;
+}
+
 .progress-indicator {
-    height: 4px;
-    background-color: #e9ecef;
-    border-radius: 2px;
+    height: 6px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 3px;
     overflow: hidden;
     margin: 0.5rem 0;
+    backdrop-filter: blur(20px);
 }
 
 .progress-fill {
     height: 100%;
     transition: width 0.3s ease;
+    border-radius: 3px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
+}
+
+.progress-fill.bg-success {
+    background: linear-gradient(90deg, #00ff88, #00cc6a);
+}
+
+.progress-fill.bg-danger {
+    background: linear-gradient(90deg, #ff4757, #ff3742);
+}
+
+.progress-fill.bg-info {
+    background: linear-gradient(90deg, #00d4ff, #0099cc);
+}
+
+.progress-fill.bg-warning {
+    background: linear-gradient(90deg, #ffc107, #e0a800);
+}
+
+.progress-fill.bg-secondary {
+    background: linear-gradient(90deg, #6c757d, #545b62);
 }
 
 .action-log-item {
-    padding: 0.5rem;
-    margin: 0.25rem 0;
-    border-radius: 4px;
+    padding: 0.75rem;
+    margin: 0.5rem 0;
+    border-radius: 8px;
     font-size: 0.875rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
 }
 
 .action-log-item.success {
-    background-color: #d4edda;
-    border-left: 3px solid #28a745;
+    background: rgba(0, 255, 136, 0.1);
+    border-left: 3px solid #00ff88;
 }
 
 .action-log-item.failed {
-    background-color: #f8d7da;
-    border-left: 3px solid #dc3545;
+    background: rgba(255, 71, 87, 0.1);
+    border-left: 3px solid #ff4757;
 }
 
 .action-log-item.skipped {
-    background-color: #fff3cd;
+    background: rgba(255, 193, 7, 0.1);
     border-left: 3px solid #ffc107;
 }
 
@@ -84,6 +157,7 @@
     position: relative;
     padding-left: 2rem;
     padding-bottom: 1rem;
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .timeline-item::before {
@@ -93,7 +167,7 @@
     top: 0;
     bottom: 0;
     width: 2px;
-    background-color: #dee2e6;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.1));
 }
 
 .timeline-item::after {
@@ -104,65 +178,456 @@
     width: 10px;
     height: 10px;
     border-radius: 50%;
-    background-color: #6c757d;
+    background-color: rgba(108, 117, 125, 0.8);
+    border: 2px solid rgba(255, 255, 255, 0.3);
 }
 
 .timeline-item.completed::after {
-    background-color: #28a745;
+    background: linear-gradient(135deg, #00ff88, #00cc6a);
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
 }
 
 .timeline-item.failed::after {
-    background-color: #dc3545;
+    background: linear-gradient(135deg, #ff4757, #ff3742);
+    box-shadow: 0 0 10px rgba(255, 71, 87, 0.3);
 }
 
 .timeline-item.in-progress::after {
-    background-color: #17a2b8;
+    background: linear-gradient(135deg, #00d4ff, #0099cc);
+    box-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
     animation: pulse 1.5s infinite;
 }
 
 @keyframes pulse {
-    0% { opacity: 1; }
-    50% { opacity: 0.5; }
-    100% { opacity: 1; }
+    0% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.7;
+        transform: scale(1.1);
+    }
+    100% {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
 .real-time-indicator {
     width: 12px;
     height: 12px;
     border-radius: 50%;
-    background-color: #28a745;
+    background: linear-gradient(135deg, #00ff88, #00cc6a);
     display: inline-block;
     margin-right: 0.5rem;
     animation: pulse 2s infinite;
+    box-shadow: 0 0 10px rgba(0, 255, 136, 0.3);
 }
 
 .execution-metrics {
     font-size: 0.875rem;
-    color: #6c757d;
+    color: rgba(255, 255, 255, 0.7);
 }
 
 .filter-summary {
-    background-color: #f8f9fa;
-    border-radius: 6px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
     padding: 0.75rem;
     margin-top: 1rem;
+    backdrop-filter: blur(20px);
 }
 
+/* Statistics cards styling */
+.modern-card .card-body {
+    text-align: center;
+    padding: 1.5rem;
+}
+
+.modern-card .card-title {
+    font-size: 1rem;
+    font-weight: 500;
+    margin-bottom: 0.75rem;
+}
+
+.modern-card .card-text {
+    font-size: 2rem;
+    font-weight: 300;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #ffffff, rgba(255, 255, 255, 0.8));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+.text-warning .card-text {
+    background: linear-gradient(135deg, #ffc107, #e0a800) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
+.text-info .card-text {
+    background: linear-gradient(135deg, #00d4ff, #0099cc) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
+.text-success .card-text {
+    background: linear-gradient(135deg, #00ff88, #00cc6a) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
+.text-danger .card-text {
+    background: linear-gradient(135deg, #ff4757, #ff3742) !important;
+    -webkit-background-clip: text !important;
+    -webkit-text-fill-color: transparent !important;
+}
+
+/* Form controls styling */
+.form-control,
+.form-select {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    backdrop-filter: blur(20px);
+}
+
+.form-control:focus,
+.form-select:focus {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: #00d4ff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 212, 255, 0.25);
+    color: #ffffff;
+}
+
+.form-control::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.form-label {
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+}
+
+.form-check-input {
+    background-color: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.form-check-input:checked {
+    background-color: #00d4ff;
+    border-color: #00d4ff;
+}
+
+/* Table styling */
+.table {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.table td,
+.table th {
+    border-color: rgba(255, 255, 255, 0.1);
+    vertical-align: middle;
+}
+
+.table th {
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(255, 255, 255, 0.9);
+    font-weight: 500;
+}
+
+.table-hover tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+/* Button styling */
+.btn-outline-primary {
+    color: #00d4ff;
+    border-color: #00d4ff;
+    background: rgba(0, 212, 255, 0.1);
+    backdrop-filter: blur(20px);
+}
+
+.btn-outline-primary:hover {
+    background: rgba(0, 212, 255, 0.2);
+    border-color: #00d4ff;
+    color: #ffffff;
+    box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+}
+
+.btn-outline-success {
+    color: #00ff88;
+    border-color: #00ff88;
+    background: rgba(0, 255, 136, 0.1);
+    backdrop-filter: blur(20px);
+}
+
+.btn-outline-success:hover {
+    background: rgba(0, 255, 136, 0.2);
+    border-color: #00ff88;
+    color: #ffffff;
+    box-shadow: 0 4px 15px rgba(0, 255, 136, 0.3);
+}
+
+.btn-outline-secondary {
+    color: rgba(255, 255, 255, 0.8);
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+}
+
+.btn-outline-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+}
+
+.btn-outline-warning {
+    color: #ffc107;
+    border-color: #ffc107;
+    background: rgba(255, 193, 7, 0.1);
+    backdrop-filter: blur(20px);
+}
+
+.btn-outline-warning:hover {
+    background: rgba(255, 193, 7, 0.2);
+    border-color: #ffc107;
+    color: #000000;
+    box-shadow: 0 4px 15px rgba(255, 193, 7, 0.3);
+}
+
+.btn-outline-info {
+    color: #00d4ff;
+    border-color: #00d4ff;
+    background: rgba(0, 212, 255, 0.1);
+}
+
+.btn-outline-info:hover {
+    background: rgba(0, 212, 255, 0.2);
+    border-color: #00d4ff;
+    color: #ffffff;
+}
+
+.btn-outline-danger {
+    color: #ff4757;
+    border-color: #ff4757;
+    background: rgba(255, 71, 87, 0.1);
+}
+
+.btn-outline-danger:hover {
+    background: rgba(255, 71, 87, 0.2);
+    border-color: #ff4757;
+    color: #ffffff;
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #ffc107, #e0a800);
+    border: none;
+    color: #000000;
+    font-weight: 500;
+}
+
+.btn-warning:hover {
+    background: linear-gradient(135deg, #e0a800, #c69500);
+    color: #000000;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 193, 7, 0.4);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ff4757, #ff3742);
+    border: none;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #ff3742, #e73c7e);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(255, 71, 87, 0.4);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #6c757d, #545b62);
+    border: none;
+}
+
+.btn-secondary:hover {
+    background: linear-gradient(135deg, #545b62, #495057);
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(108, 117, 125, 0.4);
+}
+
+/* Badge styling */
+.badge.bg-info {
+    background: linear-gradient(135deg, #00d4ff, #0099cc) !important;
+    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.3);
+}
+
+.badge.bg-primary {
+    background: linear-gradient(135deg, #007bff, #0056b3) !important;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+}
+
+.badge.bg-secondary {
+    background: linear-gradient(135deg, #6c757d, #545b62) !important;
+    box-shadow: 0 2px 8px rgba(108, 117, 125, 0.3);
+}
+
+/* Modal styling */
+.modal-content {
+    background: rgba(30, 30, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+}
+
+.modal-header {
+    border-bottom-color: rgba(255, 255, 255, 0.1);
+}
+
+.modal-footer {
+    border-top-color: rgba(255, 255, 255, 0.1);
+}
+
+.modal-title {
+    color: #ffffff;
+}
+
+/* Dropdown menu styling */
+.dropdown-menu {
+    background: rgba(30, 30, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+}
+
+.dropdown-item {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.dropdown-item:hover {
+    background: rgba(0, 212, 255, 0.1);
+    color: #ffffff;
+}
+
+/* Breadcrumb styling */
+.breadcrumb {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    backdrop-filter: blur(20px);
+}
+
+.breadcrumb-item a {
+    color: #00d4ff;
+    text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+    color: #ffffff;
+}
+
+.breadcrumb-item.active {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Alert styling */
+.alert {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.alert-danger {
+    background: rgba(255, 71, 87, 0.1);
+    border-color: rgba(255, 71, 87, 0.3);
+    color: #ffffff;
+}
+
+.alert-success {
+    background: rgba(0, 255, 136, 0.1);
+    border-color: rgba(0, 255, 136, 0.3);
+    color: #ffffff;
+}
+
+.alert-info {
+    background: rgba(0, 212, 255, 0.1);
+    border-color: rgba(0, 212, 255, 0.3);
+    color: #ffffff;
+}
+
+/* Pagination styling */
+.pagination .page-link {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(20px);
+}
+
+.pagination .page-link:hover {
+    background: rgba(0, 212, 255, 0.1);
+    border-color: #00d4ff;
+    color: #ffffff;
+}
+
+.pagination .page-item.active .page-link {
+    background: linear-gradient(135deg, #00d4ff, #0099cc);
+    border-color: #00d4ff;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.3);
+}
+
+.pagination .page-item.disabled .page-link {
+    background: rgba(255, 255, 255, 0.02);
+    border-color: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.3);
+}
+
+/* Pre/code styling */
+pre {
+    background: rgba(0, 0, 0, 0.3) !important;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    backdrop-filter: blur(20px);
+}
+
+code {
+    background: rgba(0, 0, 0, 0.2);
+    color: rgba(255, 255, 255, 0.9);
+    padding: 0.125rem 0.25rem;
+    border-radius: 4px;
+}
+
+/* Spinner styling */
+.spinner-border {
+    color: #00d4ff;
+}
+
+/* Responsive design */
 @media (max-width: 768px) {
     .table-responsive {
         display: none !important;
     }
-    
+
     .execution-cards {
         display: block !important;
     }
-    
+
     .desktop-only {
         display: none !important;
     }
-    
+
     .timeline-item {
         padding-left: 1.5rem;
+    }
+
+    .d-flex.flex-md-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+
+    .btn-group {
+        flex-wrap: wrap;
+        gap: 0.5rem;
     }
 }
 
@@ -170,6 +635,39 @@
     .execution-cards {
         display: none !important;
     }
+}
+
+/* Loading animations */
+.card-body h3 {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Enhanced hover effects */
+.execution-card:hover .execution-status-badge {
+    transform: scale(1.05);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    transition: all 0.3s ease;
+}
+
+/* Filter badge styling */
+.filter-summary .badge {
+    background: linear-gradient(135deg, #007bff, #0056b3) !important;
+    box-shadow: 0 2px 8px rgba(0, 123, 255, 0.3);
+    margin: 0.125rem;
 }
 </style>
 {% endblock %}
@@ -193,7 +691,7 @@
         </h1>
         <p class="text-muted mb-0">Monitor active and completed escalation workflows</p>
     </div>
-    
+
     <div class="btn-group" role="group">
         <a href="{{ url_for('escalation_rules') }}" class="btn btn-outline-primary">
             <i class="bi bi-arrow-up-right-circle"></i> Manage Rules
@@ -219,7 +717,7 @@
 <!-- Live Statistics -->
 <div class="row mb-4" id="live-stats">
     <div class="col-md-3">
-        <div class="card text-center">
+        <div class="modern-card text-center">
             <div class="card-body">
                 <h5 class="card-title text-warning">Pending</h5>
                 <h3 class="card-text" id="pending-count">-</h3>
@@ -228,7 +726,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center">
+        <div class="modern-card text-center">
             <div class="card-body">
                 <h5 class="card-title text-info">In Progress</h5>
                 <h3 class="card-text" id="in-progress-count">-</h3>
@@ -237,7 +735,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center">
+        <div class="modern-card text-center">
             <div class="card-body">
                 <h5 class="card-title text-success">Completed</h5>
                 <h3 class="card-text" id="completed-count">-</h3>
@@ -246,7 +744,7 @@
         </div>
     </div>
     <div class="col-md-3">
-        <div class="card text-center">
+        <div class="modern-card text-center">
             <div class="card-body">
                 <h5 class="card-title text-danger">Failed</h5>
                 <h3 class="card-text" id="failed-count">-</h3>
@@ -257,7 +755,7 @@
 </div>
 
 <!-- Filters -->
-<div class="card mb-4">
+<div class="modern-card mb-4">
     <div class="card-header">
         <div class="d-flex justify-content-between align-items-center">
             <h5 class="mb-0"><i class="bi bi-funnel"></i> Filters</h5>
@@ -305,7 +803,7 @@
                 </select>
             </div>
         </div>
-        
+
         <!-- Advanced Filters -->
         <div class="collapse" id="execution-filters">
             <div class="border-top pt-3">
@@ -334,7 +832,7 @@
                 </div>
             </div>
         </div>
-        
+
         <!-- Active Filters Summary -->
         <div class="filter-summary" id="active-filters" style="display: none;">
             <strong>Active Filters:</strong>
@@ -344,7 +842,7 @@
 </div>
 
 <!-- Bulk Actions Panel -->
-<div class="card mb-4" id="bulk-actions-panel" style="display: none;">
+<div class="modern-card mb-4" id="bulk-actions-panel" style="display: none;">
     <div class="card-body">
         <div class="d-flex justify-content-between align-items-center">
             <div>
@@ -366,7 +864,7 @@
 </div>
 
 <!-- Executions List -->
-<div class="card">
+<div class="modern-card">
     <div class="card-header d-flex justify-content-between align-items-center">
         <h5 class="mb-0"><i class="bi bi-activity"></i> Execution History</h5>
         <div>
@@ -380,7 +878,7 @@
             </div>
             <div class="mt-2">Loading escalation executions...</div>
         </div>
-        
+
         <!-- Desktop Table View -->
         <div class="table-responsive" id="executions-table" style="display: none;">
             <table class="table table-hover">
@@ -402,18 +900,18 @@
                 </tbody>
             </table>
         </div>
-        
+
         <!-- Mobile Card View -->
         <div class="execution-cards" id="executions-cards">
             <!-- Cards will be populated here -->
         </div>
-        
+
         <!-- Pagination -->
         <nav aria-label="Executions pagination" id="pagination-container" style="display: none;">
             <ul class="pagination justify-content-center" id="pagination">
             </ul>
         </nav>
-        
+
         <div id="no-executions" class="text-center py-4" style="display: none;">
             <i class="bi bi-list-task fs-1 text-muted"></i>
             <h5 class="mt-3 text-muted">No executions found</h5>
@@ -442,7 +940,9 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
 let currentPage = 1;
 let currentFilters = {
@@ -463,7 +963,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadRules();
     loadStatistics();
     loadExecutions();
-    
+
     // Start real-time updates
     startRealTimeUpdates();
 });
@@ -489,7 +989,7 @@ async function loadRules() {
     try {
         const response = await fetch('/api/escalation/rules');
         const data = await response.json();
-        
+
         const select = document.getElementById('filter-rule');
         data.rules.forEach(rule => {
             const option = document.createElement('option');
@@ -506,12 +1006,12 @@ async function loadStatistics() {
     try {
         const response = await fetch('/api/escalation/statistics');
         const stats = await response.json();
-        
+
         document.getElementById('pending-count').textContent = stats.pending_executions;
         document.getElementById('in-progress-count').textContent = stats.total_executions - stats.completed_executions - stats.failed_executions - stats.pending_executions;
         document.getElementById('completed-count').textContent = stats.completed_executions;
         document.getElementById('failed-count').textContent = stats.failed_executions;
-        
+
     } catch (error) {
         console.error('Error loading statistics:', error);
     }
@@ -525,47 +1025,47 @@ async function loadExecutions(silent = false) {
             document.getElementById('executions-cards').style.display = 'none';
             document.getElementById('no-executions').style.display = 'none';
         }
-        
+
         const params = new URLSearchParams({
             page: currentPage,
             per_page: 20,
             ...currentFilters
         });
-        
+
         // Remove empty parameters
         for (const [key, value] of [...params.entries()]) {
             if (!value) params.delete(key);
         }
-        
+
         const response = await fetch(`/api/escalation/executions?${params}`);
         const data = await response.json();
-        
+
         if (!silent) {
             document.getElementById('loading-spinner').style.display = 'none';
         }
-        
+
         if (data.executions.length === 0) {
             if (!silent) {
                 document.getElementById('no-executions').style.display = 'block';
             }
             return;
         }
-        
+
         allExecutions = data.executions;
-        
+
         if (!silent) {
             document.getElementById('executions-table').style.display = 'block';
             document.getElementById('executions-cards').style.display = 'block';
             document.getElementById('executions-count').textContent = `${data.pagination.total} executions`;
         }
-        
+
         renderExecutionsTable(data.executions);
         renderExecutionsCards(data.executions);
-        
+
         if (!silent) {
             updatePagination(data.pagination);
         }
-        
+
     } catch (error) {
         console.error('Error loading executions:', error);
         if (!silent) {
@@ -578,14 +1078,14 @@ async function loadExecutions(silent = false) {
 function renderExecutionsTable(executions) {
     const tbody = document.getElementById('executions-tbody');
     tbody.innerHTML = '';
-    
+
     executions.forEach(execution => {
         const row = document.createElement('tr');
         row.className = `execution-row status-${execution.status}`;
-        
+
         // Status badge
         const statusBadge = `<span class="execution-status-badge status-${execution.status}">${execution.status.replace('_', ' ').toUpperCase()}</span>`;
-        
+
         // Progress calculation
         const progress = calculateProgress(execution);
         const progressBar = `
@@ -594,11 +1094,11 @@ function renderExecutionsTable(executions) {
             </div>
             <small class="text-muted">${progress}%</small>
         `;
-        
+
         // Time formatting
         const createdAt = new Date(execution.created_at).toLocaleString();
         const scheduledFor = execution.scheduled_for ? new Date(execution.scheduled_for).toLocaleString() : 'N/A';
-        
+
         row.innerHTML = `
             <td>
                 <input type="checkbox" class="execution-checkbox" value="${execution.id}" onchange="toggleExecutionSelection(${execution.id})">
@@ -625,7 +1125,7 @@ function renderExecutionsTable(executions) {
                     <button class="btn btn-outline-info" onclick="viewExecutionDetails(${execution.id})" title="View Details">
                         <i class="bi bi-eye"></i>
                     </button>
-                    ${execution.status === 'pending' || execution.status === 'in_progress' ? 
+                    ${execution.status === 'pending' || execution.status === 'in_progress' ?
                         `<button class="btn btn-outline-warning" onclick="cancelExecution(${execution.id})" title="Cancel">
                             <i class="bi bi-stop-circle"></i>
                         </button>` : ''
@@ -633,7 +1133,7 @@ function renderExecutionsTable(executions) {
                 </div>
             </td>
         `;
-        
+
         tbody.appendChild(row);
     });
 }
@@ -641,14 +1141,14 @@ function renderExecutionsTable(executions) {
 function renderExecutionsCards(executions) {
     const container = document.getElementById('executions-cards');
     container.innerHTML = '';
-    
+
     executions.forEach(execution => {
         const card = document.createElement('div');
         card.className = `execution-card card status-${execution.status}`;
-        
+
         const statusBadge = `<span class="execution-status-badge status-${execution.status}">${execution.status.replace('_', ' ').toUpperCase()}</span>`;
         const progress = calculateProgress(execution);
-        
+
         card.innerHTML = `
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-start mb-2">
@@ -658,7 +1158,7 @@ function renderExecutionsCards(executions) {
                     </div>
                     ${statusBadge}
                 </div>
-                
+
                 <div class="row mb-2">
                     <div class="col-6">
                         <small class="text-muted">Trigger:</small><br>
@@ -669,7 +1169,7 @@ function renderExecutionsCards(executions) {
                         <span class="badge bg-primary">Level ${execution.current_escalation_level + 1}</span>
                     </div>
                 </div>
-                
+
                 <div class="mb-2">
                     <small class="text-muted">Progress:</small>
                     <div class="progress-indicator">
@@ -677,12 +1177,12 @@ function renderExecutionsCards(executions) {
                     </div>
                     <small class="text-muted">${progress}%</small>
                 </div>
-                
+
                 <div class="execution-metrics mb-3">
                     <span class="me-3"><i class="bi bi-clock"></i> ${new Date(execution.created_at).toLocaleDateString()}</span>
                     <span><i class="bi bi-lightning"></i> ${execution.total_actions_executed || 0} actions</span>
                 </div>
-                
+
                 <div class="d-flex justify-content-between align-items-center">
                     <small class="text-muted">
                         ${execution.scheduled_for ? `Next: ${new Date(execution.scheduled_for).toLocaleString()}` : ''}
@@ -691,7 +1191,7 @@ function renderExecutionsCards(executions) {
                         <button class="btn btn-outline-info" onclick="viewExecutionDetails(${execution.id})">
                             <i class="bi bi-eye"></i> Details
                         </button>
-                        ${execution.status === 'pending' || execution.status === 'in_progress' ? 
+                        ${execution.status === 'pending' || execution.status === 'in_progress' ?
                             `<button class="btn btn-outline-warning" onclick="cancelExecution(${execution.id})">
                                 <i class="bi bi-stop-circle"></i>
                             </button>` : ''
@@ -700,7 +1200,7 @@ function renderExecutionsCards(executions) {
                 </div>
             </div>
         `;
-        
+
         container.appendChild(card);
     });
 }
@@ -708,11 +1208,11 @@ function renderExecutionsCards(executions) {
 function calculateProgress(execution) {
     if (execution.status === 'completed') return 100;
     if (execution.status === 'failed' || execution.status === 'cancelled') return 0;
-    
+
     // Calculate based on current escalation level and total actions
     const totalLevels = execution.total_actions_executed || 1;
     const currentLevel = execution.current_escalation_level + 1;
-    
+
     return Math.round((currentLevel / Math.max(totalLevels, currentLevel)) * 100);
 }
 
@@ -729,32 +1229,32 @@ function getProgressColor(status) {
 function updatePagination(pagination) {
     const container = document.getElementById('pagination-container');
     const paginationElement = document.getElementById('pagination');
-    
+
     if (pagination.pages <= 1) {
         container.style.display = 'none';
         return;
     }
-    
+
     container.style.display = 'block';
     paginationElement.innerHTML = '';
-    
+
     // Previous button
     const prevItem = document.createElement('li');
     prevItem.className = `page-item ${!pagination.has_prev ? 'disabled' : ''}`;
     prevItem.innerHTML = `<a class="page-link" href="#" onclick="changePage(${pagination.page - 1})">Previous</a>`;
     paginationElement.appendChild(prevItem);
-    
+
     // Page numbers
     const startPage = Math.max(1, pagination.page - 2);
     const endPage = Math.min(pagination.pages, pagination.page + 2);
-    
+
     for (let i = startPage; i <= endPage; i++) {
         const pageItem = document.createElement('li');
         pageItem.className = `page-item ${i === pagination.page ? 'active' : ''}`;
         pageItem.innerHTML = `<a class="page-link" href="#" onclick="changePage(${i})">${i}</a>`;
         paginationElement.appendChild(pageItem);
     }
-    
+
     // Next button
     const nextItem = document.createElement('li');
     nextItem.className = `page-item ${!pagination.has_next ? 'disabled' : ''}`;
@@ -795,10 +1295,10 @@ function clearAllFilters() {
 function updateActiveFilters() {
     const activeFilters = document.getElementById('active-filters');
     const filterBadges = document.getElementById('filter-badges');
-    
+
     filterBadges.innerHTML = '';
     let hasActiveFilters = false;
-    
+
     Object.entries(currentFilters).forEach(([key, value]) => {
         if (value && value !== '24') { // 24 hours is default
             const badge = document.createElement('span');
@@ -808,7 +1308,7 @@ function updateActiveFilters() {
             hasActiveFilters = true;
         }
     });
-    
+
     activeFilters.style.display = hasActiveFilters ? 'block' : 'none';
 }
 
@@ -816,16 +1316,16 @@ function updateActiveFilters() {
 function toggleSelectAll() {
     const selectAllCheckbox = document.getElementById('select-all-executions');
     const executionCheckboxes = document.querySelectorAll('.execution-checkbox');
-    
+
     selectedExecutions.clear();
-    
+
     executionCheckboxes.forEach(checkbox => {
         checkbox.checked = selectAllCheckbox.checked;
         if (selectAllCheckbox.checked) {
             selectedExecutions.add(parseInt(checkbox.value));
         }
     });
-    
+
     updateBulkActionsDisplay();
 }
 
@@ -842,7 +1342,7 @@ function updateBulkActionsDisplay() {
     const bulkActionsToggle = document.getElementById('bulk-actions-toggle');
     const bulkActionsPanel = document.getElementById('bulk-actions-panel');
     const selectedCount = document.getElementById('selected-executions-count');
-    
+
     if (selectedExecutions.size > 0) {
         bulkActionsToggle.style.display = 'block';
         selectedCount.textContent = selectedExecutions.size;
@@ -871,23 +1371,23 @@ async function viewExecutionDetails(executionId) {
     try {
         const response = await fetch(`/api/escalation/executions/${executionId}`);
         const execution = await response.json();
-        
+
         currentExecutionId = executionId;
-        
+
         const modal = new bootstrap.Modal(document.getElementById('executionDetailsModal'));
         const content = document.getElementById('execution-details-content');
         const cancelBtn = document.getElementById('cancel-execution-btn');
-        
+
         // Show cancel button if execution can be cancelled
         if (execution.status === 'pending' || execution.status === 'in_progress') {
             cancelBtn.style.display = 'block';
         } else {
             cancelBtn.style.display = 'none';
         }
-        
+
         content.innerHTML = generateExecutionDetailsHTML(execution);
         modal.show();
-        
+
     } catch (error) {
         console.error('Error loading execution details:', error);
         showToast('Error loading execution details', 'error');
@@ -907,7 +1407,7 @@ function generateExecutionDetailsHTML(execution) {
                     <tr><td><strong>Actions Executed:</strong></td><td>${execution.total_actions_executed || 0}</td></tr>
                 </table>
             </div>
-            
+
             <div class="col-md-6">
                 <h6><i class="bi bi-clock"></i> Timing</h6>
                 <table class="table table-sm">
@@ -918,20 +1418,20 @@ function generateExecutionDetailsHTML(execution) {
                 </table>
             </div>
         </div>
-        
+
         <div class="mb-4">
             <h6><i class="bi bi-gear"></i> Trigger Context</h6>
             <pre class="bg-light p-3 rounded"><code>${JSON.stringify(execution.trigger_context, null, 2)}</code></pre>
         </div>
     `;
-    
+
     if (execution.action_logs && execution.action_logs.length > 0) {
         html += `
             <div class="mb-4">
                 <h6><i class="bi bi-list-task"></i> Action Logs</h6>
                 <div class="timeline">
         `;
-        
+
         execution.action_logs.forEach(log => {
             html += `
                 <div class="timeline-item ${log.status}">
@@ -950,13 +1450,13 @@ function generateExecutionDetailsHTML(execution) {
                 </div>
             `;
         });
-        
+
         html += `
                 </div>
             </div>
         `;
     }
-    
+
     if (execution.error_message) {
         html += `
             <div class="alert alert-danger">
@@ -965,27 +1465,27 @@ function generateExecutionDetailsHTML(execution) {
             </div>
         `;
     }
-    
+
     return html;
 }
 
 async function cancelExecution(executionId = null) {
     const id = executionId || currentExecutionId;
     if (!id) return;
-    
+
     if (!confirm('Are you sure you want to cancel this execution?')) {
         return;
     }
-    
+
     try {
         const response = await fetch(`/api/escalation/executions/${id}/cancel`, {
             method: 'POST'
         });
-        
+
         if (response.ok) {
             showToast('Execution cancelled successfully', 'success');
             loadExecutions();
-            
+
             // Close modal if open
             const modal = bootstrap.Modal.getInstance(document.getElementById('executionDetailsModal'));
             if (modal) {
@@ -995,7 +1495,7 @@ async function cancelExecution(executionId = null) {
             const error = await response.json();
             throw new Error(error.error || 'Failed to cancel execution');
         }
-        
+
     } catch (error) {
         console.error('Error cancelling execution:', error);
         showToast('Error cancelling execution: ' + error.message, 'error');
@@ -1004,24 +1504,24 @@ async function cancelExecution(executionId = null) {
 
 async function bulkCancelExecutions() {
     if (selectedExecutions.size === 0) return;
-    
+
     if (!confirm(`Are you sure you want to cancel ${selectedExecutions.size} selected executions?`)) {
         return;
     }
-    
+
     try {
         const promises = Array.from(selectedExecutions).map(id =>
             fetch(`/api/escalation/executions/${id}/cancel`, {
                 method: 'POST'
             })
         );
-        
+
         await Promise.all(promises);
-        
+
         showToast(`Successfully cancelled ${selectedExecutions.size} executions`, 'success');
         clearSelection();
         loadExecutions();
-        
+
     } catch (error) {
         console.error('Error cancelling executions:', error);
         showToast('Error cancelling executions', 'error');
@@ -1030,11 +1530,11 @@ async function bulkCancelExecutions() {
 
 async function bulkDeleteExecutions() {
     if (selectedExecutions.size === 0) return;
-    
+
     if (!confirm(`Are you sure you want to delete ${selectedExecutions.size} selected executions? This action cannot be undone.`)) {
         return;
     }
-    
+
     // Note: This would require a delete endpoint in the API
     showToast('Bulk delete functionality coming soon', 'info');
 }
@@ -1049,10 +1549,10 @@ async function exportExecutions(format) {
         const params = new URLSearchParams(currentFilters);
         params.set('format', format);
         params.set('export', 'true');
-        
+
         const response = await fetch(`/api/escalation/executions?${params}`);
         const blob = await response.blob();
-        
+
         // Create download link
         const url = window.URL.createObjectURL(blob);
         const a = document.createElement('a');
@@ -1062,9 +1562,9 @@ async function exportExecutions(format) {
         document.body.appendChild(a);
         a.click();
         window.URL.revokeObjectURL(url);
-        
+
         showToast(`Executions exported as ${format.toUpperCase()}`, 'success');
-        
+
     } catch (error) {
         console.error('Error exporting executions:', error);
         showToast('Error exporting executions', 'error');
@@ -1081,9 +1581,9 @@ function showToast(message, type = 'info') {
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
-    
+
     document.body.appendChild(toast);
-    
+
     setTimeout(() => {
         if (toast.parentNode) {
             toast.parentNode.removeChild(toast);

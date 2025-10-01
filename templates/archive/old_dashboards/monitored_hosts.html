@@ -1,0 +1,3504 @@
+{% extends "base_with_quickstats.html" %}
+
+{% block title %}Monitored Hosts - HomeNetMon{% endblock %}
+<!-- TEMPLATE CACHE BUSTER: Modified 2025-08-30 15:30:45 -->
+
+{% block content %}
+<!-- Skip link for accessibility -->
+<a href="#main-content" class="skip-link">Skip to main content</a>
+
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <!-- Enhanced Header with Progressive Disclosure -->
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <div>
+                    <h1 class="h2 mb-1 fw-bold">
+                        <i class="bi bi-hdd-network text-primary me-3" style="font-size: 1.5rem;"></i>Monitored Hosts
+                    </h1>
+                    <p class="text-muted mb-0 fs-6">Monitor the health and status of your network devices</p>
+                </div>
+                
+                <!-- Primary Actions -->
+                <div class="d-flex gap-2 align-items-center">
+                    <button class="btn btn-primary btn-lg" onclick="refreshMonitoredHosts()" title="Refresh monitored hosts">
+                        <i class="bi bi-arrow-clockwise"></i> <span class="d-none d-md-inline">Refresh</span>
+                    </button>
+                    
+                    <!-- Auto-refresh toggle -->
+                    <button class="btn btn-outline-warning" onclick="toggleAutoRefresh()" id="auto-refresh-btn" title="Resume auto-refresh">
+                        <i class="bi bi-play-circle"></i> <span class="d-none d-md-inline">Resume</span>
+                    </button>
+                    
+                    <!-- Advanced Actions Dropdown -->
+                    <div class="dropdown">
+                        <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="advanced-actions" data-bs-toggle="dropdown" aria-expanded="false" title="More actions">
+                            <i class="bi bi-three-dots"></i> <span class="d-none d-lg-inline">More</span>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="advanced-actions">
+                            <li><h6 class="dropdown-header">Export Options</h6></li>
+                            <li><a class="dropdown-item" href="#" onclick="exportMonitoredHosts()">
+                                <i class="bi bi-download me-2"></i>Export CSV
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" onclick="exportDetailedReport()">
+                                <i class="bi bi-file-earmark-text me-2"></i>Detailed Report
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><h6 class="dropdown-header">View Options</h6></li>
+                            <li><a class="dropdown-item" href="#" id="toggle-view-mode">
+                                <i class="bi bi-grid me-2"></i>Card View
+                            </a></li>
+                            <li><a class="dropdown-item" href="#" id="show-advanced-filters">
+                                <i class="bi bi-funnel me-2"></i>Advanced Filters
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Hero Status Dashboard -->
+            <div id="status-summary" class="card border-0 bg-gradient-primary text-white mb-4 shadow-sm">
+                <div class="card-body py-4">
+                    <div class="row align-items-center">
+                        <div class="col-md-8">
+                            <div class="d-flex align-items-center">
+                                <div class="status-hero-indicator me-3">
+                                    <span id="system-status-indicator" class="status-indicator-hero up" title="Network Health"></span>
+                                </div>
+                                <div>
+                                    <h3 class="mb-1 fw-bold" id="hero-summary">Network Status</h3>
+                                    <div class="d-flex align-items-center gap-4">
+                                        <div class="d-flex align-items-center">
+                                            <span id="quick-host-summary" class="fs-4 fw-bold">Loading...</span>
+                                            <small class="ms-2 opacity-75">devices online</small>
+                                        </div>
+                                        <div class="d-none d-md-flex align-items-center gap-3 ms-4">
+                                            <div class="status-mini-hero">
+                                                <span class="status-dot-small up me-2"></span>
+                                                <span id="quick-online" class="fw-medium">-</span>
+                                                <small class="ms-1 opacity-75">online</small>
+                                            </div>
+                                            <div class="status-mini-hero">
+                                                <span class="status-dot-small down me-2"></span>
+                                                <span id="quick-offline" class="fw-medium">-</span>
+                                                <small class="ms-1 opacity-75">offline</small>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-4 text-md-end">
+                            <div class="d-flex align-items-center justify-content-md-end gap-2">
+                                <span class="badge bg-light text-dark px-3 py-2" id="filtered-count-header">0 shown</span>
+                                <button type="button" class="btn btn-light btn-sm" id="show-detailed-status" title="Show detailed metrics">
+                                    <i class="bi bi-bar-chart me-1"></i>Details
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Detailed Status Cards (Hidden by default) -->
+            <div id="detailed-status-cards" class="row mb-4" style="display: none;">
+                <div class="col-md-3">
+                    <div class="card bg-primary text-white status-card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="card-title mb-0 counter" id="total-monitored" data-target="0">-</h5>
+                                    <small>Total Monitored</small>
+                                </div>
+                                <i class="bi bi-hdd-network fs-2 opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-success text-white status-card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="card-title mb-0 counter" id="hosts-online" data-target="0">-</h5>
+                                    <small>Online</small>
+                                </div>
+                                <i class="bi bi-check-circle fs-2 opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-danger text-white status-card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="card-title mb-0 counter" id="hosts-offline" data-target="0">-</h5>
+                                    <small>Offline</small>
+                                </div>
+                                <i class="bi bi-x-circle fs-2 opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card bg-warning text-dark status-card">
+                        <div class="card-body">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <div>
+                                    <h5 class="card-title mb-0 counter" id="hosts-warning" data-target="0">-</h5>
+                                    <small>Warning</small>
+                                </div>
+                                <i class="bi bi-exclamation-triangle fs-2 opacity-75"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-12 mt-2">
+                    <div class="d-flex justify-content-end">
+                        <button type="button" class="btn btn-sm btn-outline-secondary" id="hide-detailed-status">
+                            <i class="bi bi-x"></i> Hide Details
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bulk operations controls -->
+            <div id="bulk-selection-controls" class="alert alert-info d-none align-items-center justify-content-between mb-3">
+                <div class="d-flex align-items-center">
+                    <input type="checkbox" class="form-check-input me-2" id="select-all-devices" onchange="toggleSelectAll(this.checked)">
+                    <span><span id="selected-device-count">0</span> devices selected</span>
+                </div>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn btn-success" onclick="bulkEnableMonitoring()">
+                        <i class="bi bi-check-circle"></i> Enable Monitoring
+                    </button>
+                    <button class="btn btn-warning" onclick="bulkDisableMonitoring()">
+                        <i class="bi bi-x-circle"></i> Disable Monitoring
+                    </button>
+                    <button class="btn btn-secondary" onclick="toggleBulkMode()">
+                        <i class="bi bi-x"></i> Cancel
+                    </button>
+                </div>
+            </div>
+
+            <!-- Advanced filters (hidden by default) -->
+            <div id="advanced-host-filters" class="card mb-3" style="display: none;">
+                <div class="card-body">
+                    <h6 class="card-title mb-3">
+                        <i class="bi bi-funnel"></i> Advanced Filters
+                        <button class="btn btn-sm btn-outline-secondary float-end" onclick="hideAdvancedFilters()">
+                            <i class="bi bi-x"></i> Close
+                        </button>
+                    </h6>
+                    <div class="row g-2">
+                        <div class="col-md-3">
+                            <label class="form-label small">Response Time</label>
+                            <select class="form-select form-select-sm" id="response-time-filter" onchange="filterHosts()">
+                                <option value="">All</option>
+                                <option value="excellent">&lt; 10ms (Excellent)</option>
+                                <option value="good">10-50ms (Good)</option>
+                                <option value="fair">50-200ms (Fair)</option>
+                                <option value="poor">&gt; 200ms (Poor)</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Uptime</label>
+                            <select class="form-select form-select-sm" id="uptime-filter" onchange="filterHosts()">
+                                <option value="">All</option>
+                                <option value="100">100%</option>
+                                <option value="99">&gt; 99%</option>
+                                <option value="95">&gt; 95%</option>
+                                <option value="90">&gt; 90%</option>
+                                <option value="low">&lt; 90%</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Vendor</label>
+                            <select class="form-select form-select-sm" id="vendor-filter" onchange="filterHosts()">
+                                <option value="">All Vendors</option>
+                            </select>
+                        </div>
+                        <div class="col-md-3">
+                            <label class="form-label small">Alerts</label>
+                            <select class="form-select form-select-sm" id="alerts-filter" onchange="filterHosts()">
+                                <option value="">All</option>
+                                <option value="has-alerts">Has Alerts</option>
+                                <option value="no-alerts">No Alerts</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Bulk operations hidden for home users - available in settings if needed -->
+
+            <!-- Quick Monitoring Status Toggle -->
+            <div class="row mb-3">
+                <div class="col-12">
+                    <div class="btn-group w-100" role="group" aria-label="Monitoring status filter">
+                        <button type="button" class="btn btn-outline-primary active" id="filter-monitored" onclick="setMonitoringFilter('monitored')">
+                            <i class="bi bi-eye"></i> Monitored <span class="badge bg-primary ms-1" id="monitored-count">0</span>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="filter-not-monitored" onclick="setMonitoringFilter('not-monitored')">
+                            <i class="bi bi-eye-slash"></i> Not Monitored <span class="badge bg-secondary ms-1" id="not-monitored-count">0</span>
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary" id="filter-all" onclick="setMonitoringFilter('all')">
+                            <i class="bi bi-list"></i> All Devices <span class="badge bg-secondary ms-1" id="all-count">0</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Smart Monitoring Presets -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="monitoring-presets-card">
+                        <div class="preset-header mb-3">
+                            <h5 class="mb-1"><i class="bi bi-magic text-primary me-2"></i>Smart Setup</h5>
+                            <small class="text-muted">Choose what to monitor with one click</small>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-3">
+                                <button class="btn btn-preset btn-preset-security w-100 h-100" onclick="applyMonitoringPreset('security')">
+                                    <div class="preset-icon mb-2">🔒</div>
+                                    <div class="preset-title">Security First</div>
+                                    <small class="preset-desc">Cameras + Network</small>
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-preset btn-preset-home w-100 h-100" onclick="applyMonitoringPreset('smart_home')">
+                                    <div class="preset-icon mb-2">🏠</div>
+                                    <div class="preset-title">Smart Home</div>
+                                    <small class="preset-desc">IoT + Entertainment</small>
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-preset btn-preset-essential w-100 h-100" onclick="applyMonitoringPreset('infrastructure')">
+                                    <div class="preset-icon mb-2">🌐</div>
+                                    <div class="preset-title">Essential Only</div>
+                                    <small class="preset-desc">Router + Core</small>
+                                </button>
+                            </div>
+                            <div class="col-md-3">
+                                <button class="btn btn-preset btn-preset-custom w-100 h-100" onclick="showCustomPresetModal()">
+                                    <div class="preset-icon mb-2">⚙️</div>
+                                    <div class="preset-title">Custom</div>
+                                    <small class="preset-desc">Pick & Choose</small>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Smart Search Experience -->
+            <div class="row g-3 mb-4">
+                <!-- Intelligent Search -->
+                <div class="col-md-8">
+                    <div class="search-box-enhanced position-relative">
+                        <div class="search-input-wrapper">
+                            <i class="bi bi-search search-icon"></i>
+                            <input type="text" class="form-control form-control-lg ps-5" id="host-search" 
+                                   placeholder="🔍 Find devices... (try 'living room', 'cameras', or 'offline')" 
+                                   aria-label="Smart device search" onkeyup="debouncedFilter()" autocomplete="off">
+                            <button class="btn btn-link search-clear" id="clear-search" style="display: none;" onclick="clearSearch()">
+                                <i class="bi bi-x-circle"></i>
+                            </button>
+                        </div>
+                        <!-- Quick search suggestions -->
+                        <div class="search-suggestions mt-2" id="search-suggestions" style="display: none;">
+                            <small class="text-muted me-2">Quick filters:</small>
+                            <span class="badge badge-pill bg-light text-dark me-2 cursor-pointer" onclick="setQuickSearch('offline')">offline devices</span>
+                            <span class="badge badge-pill bg-light text-dark me-2 cursor-pointer" onclick="setQuickSearch('cameras')">cameras</span>
+                            <span class="badge badge-pill bg-light text-dark me-2 cursor-pointer" onclick="setQuickSearch('warning')">issues</span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Smart Category Filter -->
+                <div class="col-md-4">
+                    <div class="category-filter-enhanced">
+                        <select class="form-select form-select-lg" id="category-filter" aria-label="Filter by device type" onchange="clearCategoryFilter(); filterHosts()">
+                            <option value="">📋 All Device Types</option>
+                            <option value="infrastructure">🌐 Network Equipment</option>
+                            <option value="cameras">📹 Security Cameras</option>
+                            <option value="smart_home">🏠 Smart Home Devices</option>
+                            <option value="personal">📱 Personal Devices</option>
+                            <option value="entertainment">📺 Entertainment</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- View Options -->
+                <div class="col-md-1">
+                    <button class="btn btn-outline-secondary btn-lg" id="toggle-host-view" onclick="toggleViewMode()" title="Toggle view">
+                        <i class="bi bi-grid"></i>
+                    </button>
+                    <div class="dropdown d-inline-block">
+                        <button class="btn btn-outline-info btn-lg dropdown-toggle w-100" 
+                                data-bs-toggle="dropdown" aria-expanded="false" title="View options">
+                            <i class="bi bi-layout-three-columns"></i>
+                        </button>
+                        <ul class="dropdown-menu">
+                            <li><h6 class="dropdown-header">View By</h6></li>
+                            <li><a class="dropdown-item" onclick="setViewMode('list')">
+                                <i class="bi bi-list-ul me-2"></i>Device List
+                            </a></li>
+                            <li><a class="dropdown-item" onclick="setViewMode('rooms')">
+                                <i class="bi bi-house me-2"></i>Group by Room
+                            </a></li>
+                            <li><a class="dropdown-item" onclick="setViewMode('priority')">
+                                <i class="bi bi-star me-2"></i>Group by Priority
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" onclick="clearAllFilters()">
+                                <i class="bi bi-x-circle me-2"></i>Clear Filters
+                            </a></li>
+                            <li><hr class="dropdown-divider"></li>
+                            <li><a class="dropdown-item" onclick="showAdvancedFilters()">
+                                <i class="bi bi-funnel-fill me-2"></i>Advanced Filters
+                            </a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Advanced filters removed for home user simplicity -->
+
+            <!-- Main Content Area -->
+            <main id="main-content" tabindex="-1">
+                <!-- Enhanced Loading Indicator -->
+                <div id="loading-indicator" class="text-center py-5" role="status" aria-live="polite">
+                    <div class="d-flex flex-column align-items-center">
+                        <div class="spinner-border text-primary mb-3" style="width: 3rem; height: 3rem;" aria-hidden="true">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <div class="loading-skeleton mb-2" style="width: 200px; height: 20px; border-radius: 4px;"></div>
+                        <p class="mt-2 text-muted" id="loading-text">Loading monitored hosts...</p>
+                    </div>
+                </div>
+
+                <!-- Table View -->
+                <div id="table-view" style="display: none;">
+                    <div class="card">
+                        <div class="card-header">
+                            <div class="d-flex justify-content-between align-items-center">
+                                <h5 class="card-title mb-0">
+                                    <i class="bi bi-table me-2"></i>Monitored Hosts
+                                </h5>
+                                <div class="d-flex align-items-center gap-2">
+                                    <span id="filtered-count" class="badge bg-secondary">0</span>
+                                    <button class="btn btn-sm btn-outline-secondary" id="toggle-table-density" title="Toggle table density">
+                                        <i class="bi bi-list"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <!-- Enhanced Hosts Table -->
+                            <div class="table-responsive" id="hosts-table-container">
+                                <table class="table table-hover align-middle mb-0 enhanced-table" id="hosts-table" role="grid" aria-label="Monitored Hosts">
+                                    <thead class="enhanced-table-header sticky-top">
+                                        <tr role="row">
+                                            <th width="80" scope="col" class="sortable enhanced-th" onclick="sortTable('status')" tabindex="0" role="columnheader" aria-sort="none">
+                                                <div class="th-content">
+                                                    <i class="bi bi-activity me-2"></i>Status 
+                                                    <i class="bi bi-arrow-down-up sort-indicator"></i>
+                                                </div>
+                                            </th>
+                                            <th scope="col" class="sortable enhanced-th" onclick="sortTable('name')" tabindex="0" role="columnheader" aria-sort="none">
+                                                <div class="th-content">
+                                                    <i class="bi bi-device-hdd me-2"></i>Device 
+                                                    <i class="bi bi-arrow-down-up sort-indicator"></i>
+                                                </div>
+                                            </th>
+                                            <th scope="col" class="sortable enhanced-th" onclick="sortTable('room')" tabindex="0" role="columnheader" aria-sort="none">
+                                                <div class="th-content">
+                                                    <i class="bi bi-house me-2"></i>Location 
+                                                    <i class="bi bi-arrow-down-up sort-indicator"></i>
+                                                </div>
+                                            </th>
+                                            <th scope="col" class="sortable enhanced-th" onclick="sortTable('last_seen')" tabindex="0" role="columnheader" aria-sort="none">
+                                                <div class="th-content">
+                                                    <i class="bi bi-clock me-2"></i>Last Seen 
+                                                    <i class="bi bi-arrow-down-up sort-indicator"></i>
+                                                </div>
+                                            </th>
+                                            <th width="140" scope="col" class="text-center enhanced-th">Monitoring</th>
+                                            <th width="120" scope="col" class="enhanced-th">Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="hosts-tbody" role="rowgroup">
+                                        <!-- Hosts will be populated here -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Card View (Mobile-friendly) -->
+                <div id="card-view" style="display: none;">
+                    <div class="row" id="hosts-cards-container">
+                        <!-- Cards will be populated here -->
+                    </div>
+                </div>
+
+                <!-- Enhanced Empty State -->
+                <div id="empty-state" class="text-center py-5" style="display: none;" role="status">
+                    <div class="empty-state-content">
+                        <i class="bi bi-hdd-network text-muted mb-3" style="font-size: 4rem;"></i>
+                        <h4 class="text-muted mb-3">No Monitored Hosts Found</h4>
+                        <p class="text-muted mb-4">No devices are currently being monitored, or none match your current filters.</p>
+                        <div class="d-flex justify-content-center gap-2">
+                            <a href="/settings" class="btn btn-primary">
+                                <i class="bi bi-gear me-2"></i>Configure Monitoring
+                            </a>
+                            <button class="btn btn-outline-secondary" onclick="clearAllFilters()">
+                                <i class="bi bi-funnel me-2"></i>Clear Filters
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+</div>
+
+<!-- Bulk Monitoring Actions Modal -->
+<div class="modal fade" id="bulkMonitoringModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Bulk Monitoring Actions</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">Select devices in the table below, then choose an action:</p>
+                <div class="d-grid gap-2">
+                    <button class="btn btn-success" onclick="bulkEnableMonitoring()">
+                        <i class="bi bi-check-circle me-2"></i>Enable Monitoring for Selected
+                    </button>
+                    <button class="btn btn-warning" onclick="bulkDisableMonitoring()">
+                        <i class="bi bi-x-circle me-2"></i>Disable Monitoring for Selected
+                    </button>
+                    <button class="btn btn-primary" onclick="bulkPingDevices()">
+                        <i class="bi bi-wifi me-2"></i>Ping Selected Devices
+                    </button>
+                </div>
+                <div class="mt-3">
+                    <small class="text-muted">
+                        <span id="selected-count">0</span> devices selected
+                    </small>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_css %}
+<style>
+/* ============= MODERN UI ENHANCEMENTS ============= */
+/* Hero gradient backgrounds */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+.bg-gradient-primary::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    right: -50%;
+    bottom: -50%;
+    left: -50%;
+    background: radial-gradient(circle, rgba(255,255,255,0.1) 0%, transparent 70%);
+    animation: shimmer 3s ease-in-out infinite;
+}
+
+@keyframes shimmer {
+    0%, 100% { transform: translate(-50%, -50%) scale(1); opacity: 0.5; }
+    50% { transform: translate(-50%, -50%) scale(1.5); opacity: 0.3; }
+}
+
+/* Enhanced status indicators with glow */
+.status-indicator-hero {
+    display: inline-block;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    position: relative;
+    box-shadow: 0 0 0 3px rgba(255,255,255,0.3);
+}
+
+.status-indicator-hero.up {
+    background: linear-gradient(135deg, #00ff88, #00cc66);
+    animation: pulse-success 2s infinite;
+}
+
+.status-indicator-hero.down {
+    background: linear-gradient(135deg, #ff4444, #cc0000);
+    animation: pulse-danger 2s infinite;
+}
+
+.status-indicator-hero.warning {
+    background: linear-gradient(135deg, #ffaa00, #ff6600);
+    animation: pulse-warning 2s infinite;
+}
+
+@keyframes pulse-success {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(255,255,255,0.3), 0 0 20px rgba(0,255,136,0.6); }
+    50% { box-shadow: 0 0 0 3px rgba(255,255,255,0.3), 0 0 40px rgba(0,255,136,0.8); }
+}
+
+@keyframes pulse-danger {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(255,255,255,0.3), 0 0 20px rgba(255,68,68,0.6); }
+    50% { box-shadow: 0 0 0 3px rgba(255,255,255,0.3), 0 0 40px rgba(255,68,68,0.8); }
+}
+
+@keyframes pulse-warning {
+    0%, 100% { box-shadow: 0 0 0 3px rgba(255,255,255,0.3), 0 0 20px rgba(255,170,0,0.6); }
+    50% { box-shadow: 0 0 0 3px rgba(255,255,255,0.3), 0 0 40px rgba(255,170,0,0.8); }
+}
+
+/* Modern cards with subtle shadows */
+.status-card {
+    background: white;
+    border: none;
+    border-radius: 12px;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    box-shadow: 0 1px 3px rgba(0,0,0,0.12), 0 1px 2px rgba(0,0,0,0.24);
+}
+
+.status-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 10px 20px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.16);
+}
+
+.status-card.bg-success {
+    background: linear-gradient(135deg, #00c851, #00a846) !important;
+}
+
+.status-card.bg-danger {
+    background: linear-gradient(135deg, #ff4444, #cc0000) !important;
+}
+
+.status-card.bg-warning {
+    background: linear-gradient(135deg, #ffbb33, #ff8800) !important;
+}
+
+.status-card.bg-primary {
+    background: linear-gradient(135deg, #4285f4, #1a73e8) !important;
+}
+
+/* Enhanced search box */
+.search-box {
+    position: relative;
+}
+
+.search-box .form-control {
+    border: 2px solid transparent;
+    background: white;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+    transition: all 0.3s ease;
+}
+
+.search-box .form-control:focus {
+    border-color: #667eea;
+    box-shadow: 0 4px 20px rgba(102,126,234,0.2);
+    transform: translateY(-1px);
+}
+
+.search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #667eea;
+    z-index: 10;
+}
+
+/* Modern table styling */
+.table {
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+}
+
+.table thead {
+    background: linear-gradient(135deg, #f5f7fa, #e9ecef);
+}
+
+.table thead th {
+    border: none;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+    color: #495057;
+    padding: 1rem;
+}
+
+.table tbody tr {
+    transition: all 0.2s ease;
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.table tbody tr:hover {
+    background: linear-gradient(90deg, rgba(102,126,234,0.05), rgba(102,126,234,0.02));
+    transform: scale(1.01);
+}
+
+/* Modern buttons */
+.btn {
+    border-radius: 8px;
+    font-weight: 500;
+    transition: all 0.3s ease;
+    border: none;
+    text-transform: uppercase;
+    font-size: 0.75rem;
+    letter-spacing: 0.5px;
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #667eea, #764ba2);
+    box-shadow: 0 4px 15px rgba(102,126,234,0.4);
+}
+
+.btn-primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102,126,234,0.5);
+}
+
+.btn-success {
+    background: linear-gradient(135deg, #00c851, #00a846);
+    box-shadow: 0 4px 15px rgba(0,200,81,0.4);
+}
+
+.btn-warning {
+    background: linear-gradient(135deg, #ffbb33, #ff8800);
+    box-shadow: 0 4px 15px rgba(255,187,51,0.4);
+}
+
+/* Loading skeleton animation */
+.loading-skeleton {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 4px;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Hero Status Indicators */
+.status-indicator-hero {
+    display: inline-block;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 4px solid rgba(255,255,255,0.3);
+    position: relative;
+    cursor: help;
+    background: linear-gradient(135deg, #28a745, #20c997);
+    box-shadow: 0 4px 20px rgba(40, 167, 69, 0.3);
+    animation: heroStatusPulse 3s infinite;
+}
+
+.status-indicator-hero.down {
+    background: linear-gradient(135deg, #dc3545, #e74c3c);
+    box-shadow: 0 4px 20px rgba(220, 53, 69, 0.4);
+    animation: heroStatusDanger 2s infinite;
+}
+
+.status-indicator-hero.warning {
+    background: linear-gradient(135deg, #ffc107, #f39c12);
+    box-shadow: 0 4px 20px rgba(255, 193, 7, 0.4);
+}
+
+/* Enhanced status indicators */
+.status-indicator-large {
+    display: inline-block;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    border: 2px solid #fff;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
+    position: relative;
+    cursor: help;
+    animation: statusPulse 2s infinite;
+}
+
+.status-dot-small {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid rgba(255,255,255,0.5);
+}
+
+.status-indicator-small {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1px solid #fff;
+    box-shadow: 0 0 0 1px rgba(0,0,0,0.1);
+}
+
+.status-indicator-large.up, .status-indicator-small.up { background-color: #28a745; }
+.status-indicator-large.down, .status-indicator-small.down { 
+    background-color: #dc3545; 
+    animation: criticalPulse 1.5s infinite;
+}
+.status-indicator-large.warning, .status-indicator-small.warning { background-color: #ffc107; }
+.status-indicator-large.unknown, .status-indicator-small.unknown { background-color: #6c757d; }
+
+@keyframes heroStatusPulse {
+    0%, 100% { 
+        opacity: 1; 
+        transform: scale(1);
+        box-shadow: 0 4px 20px rgba(40, 167, 69, 0.3);
+    }
+    50% { 
+        opacity: 0.9;
+        transform: scale(1.05);
+        box-shadow: 0 8px 30px rgba(40, 167, 69, 0.5);
+    }
+}
+
+@keyframes heroStatusDanger {
+    0%, 100% { 
+        opacity: 1;
+        transform: scale(1);
+        box-shadow: 0 4px 20px rgba(220, 53, 69, 0.4);
+    }
+    50% { 
+        opacity: 0.8;
+        transform: scale(1.1);
+        box-shadow: 0 8px 35px rgba(220, 53, 69, 0.6);
+    }
+}
+
+@keyframes statusPulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+@keyframes criticalPulse {
+    0%, 100% { 
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% { 
+        opacity: 0.6;
+        transform: scale(1.1);
+    }
+}
+
+/* Enhanced table styling */
+.enhanced-table {
+    border-collapse: separate;
+    border-spacing: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+
+.enhanced-table-header {
+    background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+    border-bottom: 2px solid #dee2e6;
+}
+
+.enhanced-th {
+    padding: 1rem;
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #495057;
+    border: none;
+    position: relative;
+}
+
+.th-content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.table th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: all 0.2s ease;
+    border-bottom: 3px solid transparent;
+}
+
+.table th.sortable:hover {
+    background: linear-gradient(135deg, rgba(13, 110, 253, 0.1) 0%, rgba(13, 110, 253, 0.05) 100%);
+    border-bottom-color: #007bff;
+    transform: translateY(-1px);
+}
+
+.table th.sorted {
+    background: linear-gradient(135deg, rgba(13, 110, 253, 0.15) 0%, rgba(13, 110, 253, 0.08) 100%);
+    border-bottom-color: #007bff;
+}
+
+/* Enhanced table rows */
+.enhanced-table tbody tr {
+    border-bottom: 1px solid rgba(0,0,0,0.05);
+    transition: all 0.3s ease;
+}
+
+.enhanced-table tbody tr:hover {
+    background: linear-gradient(135deg, rgba(13, 110, 253, 0.02) 0%, rgba(13, 110, 253, 0.01) 100%);
+    transform: translateX(4px);
+    box-shadow: 4px 0 0 0 #007bff;
+}
+
+.enhanced-table tbody td {
+    padding: 1rem;
+    border: none;
+    vertical-align: middle;
+}
+
+/* Row status indicators */
+.row-status-online {
+    border-left: 4px solid #28a745;
+}
+
+.row-status-offline {
+    border-left: 4px solid #dc3545;
+    background: rgba(220, 53, 69, 0.02);
+}
+
+.row-status-warning {
+    border-left: 4px solid #ffc107;
+    background: rgba(255, 193, 7, 0.02);
+}
+
+.sort-indicator {
+    opacity: 0.4;
+    transition: all 0.2s ease;
+    font-size: 0.75rem;
+}
+
+.table th.sortable:hover .sort-indicator {
+    opacity: 0.8;
+    transform: scale(1.1);
+}
+
+.table th.sorted .sort-indicator {
+    opacity: 1;
+    color: #007bff;
+    transform: scale(1.2);
+}
+
+/* Enhanced row styling */
+.table tbody tr {
+    transition: all 0.2s ease;
+    border-left: 3px solid transparent;
+}
+
+.table tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+    border-left-color: #0d6efd;
+    transform: translateX(2px);
+}
+
+.table tbody tr:focus-within {
+    outline: 2px solid rgba(13, 110, 253, 0.5);
+    outline-offset: -2px;
+}
+
+.table tbody tr.status-changed {
+    animation: rowChanged 2s ease-in-out;
+    border-left-color: #ffc107;
+}
+
+@keyframes rowChanged {
+    0% { 
+        background-color: rgba(255, 193, 7, 0.1);
+        transform: scale(1);
+    }
+    50% { 
+        background-color: rgba(255, 193, 7, 0.2);
+        transform: scale(1.01);
+    }
+    100% { 
+        background-color: transparent;
+        transform: scale(1);
+    }
+}
+
+/* Card view styling */
+.host-card {
+    transition: all 0.2s ease-in-out;
+    border: 1px solid rgba(0,0,0,0.125);
+    border-radius: 8px;
+    margin-bottom: 1rem;
+}
+
+.host-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    border-color: rgba(13, 110, 253, 0.25);
+}
+
+.host-card.selected {
+    border-color: #0d6efd;
+    background-color: rgba(13, 110, 253, 0.05);
+}
+
+/* Performance indicators */
+.performance-metrics {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.response-time-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+}
+
+.response-time-excellent { background-color: #d1ecf1; color: #0c5460; }
+.response-time-good { background-color: #d4edda; color: #155724; }
+.response-time-fair { background-color: #fff3cd; color: #856404; }
+.response-time-poor { background-color: #f8d7da; color: #721c24; }
+
+.uptime-indicator {
+    position: relative;
+    display: flex;
+    align-items: center;
+    min-width: 80px;
+}
+
+.uptime-bar {
+    height: 6px;
+    border-radius: 3px;
+    margin-right: 0.5rem;
+}
+
+/* Smooth counter animations */
+.counter {
+    font-size: 2rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.counter {
+    transition: all 0.3s ease;
+}
+
+/* Enhanced responsiveness */
+@media (max-width: 768px) {
+    /* Hide table on mobile, show enhanced cards */
+    #table-view {
+        display: none !important;
+    }
+    
+    #card-view {
+        display: block !important;
+    }
+    
+    /* Mobile-optimized cards */
+    .host-card {
+        padding: 1rem;
+        margin-bottom: 1rem;
+        border-radius: 12px;
+    }
+    
+    .device-name-large {
+        font-size: 1.1rem;
+    }
+    
+    .performance-grid {
+        grid-template-columns: 1fr;
+        gap: 0.75rem;
+    }
+    
+    .status-row {
+        padding: 0.75rem;
+        margin: 0.75rem 0;
+    }
+    
+    /* Larger touch targets */
+    .btn-sm {
+        min-height: 44px;
+        min-width: 44px;
+    }
+    
+    /* Better spacing on mobile */
+    .gap-2 { gap: 1rem !important; }
+    .gap-3 { gap: 1.5rem !important; }
+    
+    /* Improved mobile search */
+    .search-box .form-control {
+        font-size: 16px; /* Prevents zoom on iOS */
+        min-height: 48px;
+    }
+    
+    /* Mobile status cards */
+    .status-card .card-body {
+        padding: 1rem 0.75rem;
+    }
+    
+    /* Simplified mobile header */
+    .d-none.d-md-inline, .d-none.d-md-flex {
+        display: none !important;
+    }
+    
+    /* Enhanced host cards */
+    .host-card {
+        margin-bottom: 1rem;
+        padding: 1.5rem;
+        border-radius: 16px;
+        background: white;
+        box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+    }
+    
+    .host-card:hover {
+        border-color: #007bff;
+        transform: translateY(-4px);
+        box-shadow: 0 8px 25px rgba(0,123,255,0.15);
+    }
+    
+    .host-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 1rem;
+    }
+    
+    .device-name-large {
+        font-size: 1.25rem;
+        font-weight: 600;
+        color: #2c3e50;
+        margin: 0;
+    }
+    
+    .device-type-badge {
+        background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+        border: 1px solid #dee2e6;
+        color: #6c757d;
+        padding: 0.25rem 0.75rem;
+        border-radius: 20px;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+    
+    .status-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 1rem;
+        background: #f8f9fa;
+        border-radius: 12px;
+        margin: 1rem 0;
+    }
+    
+    .performance-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+        margin-top: 1rem;
+    }
+    
+    .performance-metric {
+        text-align: center;
+        padding: 0.75rem;
+        background: rgba(0,123,255,0.05);
+        border-radius: 8px;
+        border: 1px solid rgba(0,123,255,0.1);
+    }
+    
+    .metric-value {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #007bff;
+    }
+    
+    .metric-label {
+        font-size: 0.75rem;
+        color: #6c757d;
+        margin-top: 0.25rem;
+    }
+    
+    .mobile-device-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        margin-bottom: 0.75rem;
+    }
+    
+    .mobile-device-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+        margin-bottom: 0.5rem;
+    }
+    
+    .mobile-device-metrics {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        margin-top: 0.75rem;
+        padding-top: 0.75rem;
+        border-top: 1px solid rgba(0,0,0,0.1);
+    }
+}
+
+/* Improved focus states for accessibility */
+.btn:focus, 
+.form-control:focus, 
+.form-select:focus {
+    box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
+    border-color: #86b7fe;
+    outline: 0;
+}
+
+/* Progressive disclosure animations */
+.fade-in {
+    opacity: 0;
+    animation: fadeIn 0.3s ease-in-out forwards;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(-10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* High contrast mode support */
+@media (prefers-contrast: high) {
+    .status-indicator-large, .status-indicator-small {
+        border-width: 3px;
+        border-color: #000;
+    }
+    
+    .table {
+        border-width: 2px;
+    }
+}
+
+/* Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+    .loading-skeleton,
+    .fade-in,
+    .host-card,
+    .status-card,
+    .table tbody tr,
+    .btn {
+        animation: none !important;
+        transition: none !important;
+    }
+}
+
+/* Dark mode improvements */
+@media (prefers-color-scheme: dark) {
+    .loading-skeleton {
+        background: linear-gradient(90deg, #2d3748 25%, #4a5568 50%, #2d3748 75%);
+    }
+    
+    .status-indicator-large, .status-indicator-small {
+        border-color: #2d3748;
+        box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
+    }
+    
+    .table tbody tr:hover {
+        background-color: rgba(255, 255, 255, 0.05);
+    }
+}
+
+/* Skip links for accessibility */
+.skip-link {
+    position: absolute;
+    top: -40px;
+    left: 6px;
+    background: #000;
+    color: #fff;
+    padding: 8px;
+    text-decoration: none;
+    border-radius: 4px;
+    z-index: 1070;
+}
+
+.skip-link:focus {
+    top: 6px;
+}
+
+/* Enhanced empty state */
+.empty-state-content {
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+/* Bulk selection styling */
+#bulk-selection-controls {
+    border-left: 4px solid #0d6efd;
+}
+
+/* Device category icons */
+.category-icon {
+    display: inline-block;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1rem;
+    margin-right: 0.75rem;
+}
+
+.category-icon.infrastructure {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+}
+
+.category-icon.cameras {
+    background: linear-gradient(135deg, #dc3545, #c82333);
+    color: white;
+}
+
+.category-icon.smart_home {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.category-icon.personal {
+    background: linear-gradient(135deg, #6f42c1, #563d7c);
+    color: white;
+}
+
+.category-icon.entertainment {
+    background: linear-gradient(135deg, #fd7e14, #e55353);
+    color: white;
+}
+
+/* Quick action buttons */
+.quick-action-btn {
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    border: none;
+    font-weight: 500;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.quick-action-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.action-enable {
+    background: linear-gradient(135deg, #28a745, #20c997);
+    color: white;
+}
+
+.action-disable {
+    background: linear-gradient(135deg, #6c757d, #5a6268);
+    color: white;
+}
+
+.action-details {
+    background: linear-gradient(135deg, #007bff, #0056b3);
+    color: white;
+}
+
+/* Hero Status Dashboard */
+.bg-gradient-primary {
+    background: linear-gradient(135deg, #007bff 0%, #0056b3 100%);
+}
+
+.status-hero-indicator {
+    padding: 8px;
+    background: rgba(255,255,255,0.1);
+    border-radius: 50%;
+    backdrop-filter: blur(10px);
+}
+
+.status-mini-hero {
+    background: rgba(255,255,255,0.1);
+    padding: 8px 12px;
+    border-radius: 20px;
+    backdrop-filter: blur(5px);
+    border: 1px solid rgba(255,255,255,0.2);
+}
+
+.status-dot-small.up { background-color: #28a745; }
+.status-dot-small.down { background-color: #dc3545; }
+.status-dot-small.warning { background-color: #ffc107; }
+.status-dot-small.unknown { background-color: #6c757d; }
+
+/* Smart Search Enhancement */
+.search-box-enhanced {
+    position: relative;
+}
+
+.search-input-wrapper {
+    position: relative;
+}
+
+.search-icon {
+    position: absolute;
+    left: 15px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #6c757d;
+    z-index: 5;
+}
+
+.search-clear {
+    position: absolute;
+    right: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    border: none;
+    background: none;
+    color: #6c757d;
+    padding: 0;
+    z-index: 5;
+}
+
+.search-suggestions {
+    animation: fadeInUp 0.3s ease;
+}
+
+@keyframes fadeInUp {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Monitoring Presets */
+.monitoring-presets-card {
+    background: #f8f9fa;
+    border-radius: 12px;
+    padding: 1.5rem;
+    border: 1px solid rgba(0,0,0,0.05);
+}
+
+.preset-header h5 {
+    color: #495057;
+    font-weight: 600;
+}
+
+.btn-preset {
+    border: 2px solid transparent;
+    border-radius: 12px;
+    padding: 1.5rem 1rem;
+    background: white;
+    color: #495057;
+    transition: all 0.3s ease;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
+.btn-preset:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.15);
+}
+
+.btn-preset-security:hover {
+    border-color: #dc3545;
+    background: #fff5f5;
+    color: #dc3545;
+}
+
+.btn-preset-home:hover {
+    border-color: #28a745;
+    background: #f0fff4;
+    color: #28a745;
+}
+
+.btn-preset-essential:hover {
+    border-color: #007bff;
+    background: #f0f8ff;
+    color: #007bff;
+}
+
+.btn-preset-custom:hover {
+    border-color: #6f42c1;
+    background: #faf5ff;
+    color: #6f42c1;
+}
+
+.preset-icon {
+    font-size: 2rem;
+    line-height: 1;
+}
+
+.preset-title {
+    font-weight: 600;
+    font-size: 1rem;
+    margin-bottom: 0.25rem;
+}
+
+.preset-desc {
+    font-size: 0.75rem;
+    opacity: 0.7;
+}
+
+/* View mode toggle */
+.view-mode-active {
+    background-color: #0d6efd;
+    color: white;
+}
+</style>
+{% endblock %}
+
+{% block scripts %}
+<script>
+let monitoredHosts = [];
+let allDevices = []; // Store all devices including not monitored
+let filteredHosts = [];
+let currentView = 'table'; // 'table' or 'card'
+let monitoringFilterMode = 'monitored'; // 'monitored', 'not-monitored', 'all'
+let categoryFilterMode = null; // null, 'cameras', 'infrastructure', etc.
+let currentSort = { field: null, direction: 'asc' };
+let bulkSelectionMode = false;
+
+// ============= PERFORMANCE OPTIMIZATIONS =============
+// Virtual DOM implementation for efficient updates
+const virtualDOM = {
+    currentRows: new Map(),
+    pendingUpdates: new Map(),
+    updateTimer: null,
+    
+    scheduleUpdate(deviceId, data) {
+        this.pendingUpdates.set(deviceId, data);
+        if (!this.updateTimer) {
+            this.updateTimer = requestAnimationFrame(() => this.applyUpdates());
+        }
+    },
+    
+    applyUpdates() {
+        const tbody = document.getElementById('hosts-tbody');
+        if (!tbody) {
+            this.updateTimer = null;
+            return;
+        }
+        
+        this.pendingUpdates.forEach((data, deviceId) => {
+            const existingRow = tbody.querySelector(`tr[data-device-id="${deviceId}"]`);
+            if (existingRow) {
+                // Update only changed cells
+                this.updateRowCells(existingRow, data);
+            } else if (data.shouldRender) {
+                // Add new row
+                const newRow = this.createRow(data);
+                tbody.appendChild(newRow);
+            }
+        });
+        
+        this.pendingUpdates.clear();
+        this.updateTimer = null;
+    },
+    
+    updateRowCells(row, data) {
+        // Only update cells that have changed
+        const statusCell = row.querySelector('.status-cell');
+        const lastSeenCell = row.querySelector('.last-seen');
+        const responseTimeCell = row.querySelector('.response-time');
+        
+        if (statusCell && data.status !== statusCell.dataset.status) {
+            statusCell.innerHTML = this.getStatusHTML(data.status);
+            statusCell.dataset.status = data.status;
+            row.classList.add('status-changed');
+            setTimeout(() => row.classList.remove('status-changed'), 2000);
+        }
+        
+        if (lastSeenCell && data.last_seen) {
+            lastSeenCell.textContent = this.formatLastSeen(data.last_seen);
+        }
+        
+        if (responseTimeCell && data.avg_response_time !== undefined) {
+            responseTimeCell.textContent = `${data.avg_response_time.toFixed(1)}ms`;
+        }
+    },
+    
+    createRow(data) {
+        const tr = document.createElement('tr');
+        tr.dataset.deviceId = data.id;
+        tr.innerHTML = this.getRowHTML(data);
+        return tr;
+    },
+    
+    getStatusHTML(status) {
+        return `<span class="status-indicator-large ${status}" title="${homeStatusLabels[status] || 'Unknown'}"></span>`;
+    },
+    
+    formatLastSeen(lastSeen) {
+        if (!lastSeen) return 'Never';
+        const date = new Date(lastSeen);
+        const now = new Date();
+        const diff = Math.floor((now - date) / 1000);
+        
+        if (diff < 60) return 'Just now';
+        if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+        if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+        return date.toLocaleDateString();
+    },
+    
+    getRowHTML(data) {
+        // Generate full row HTML for new rows
+        return `
+            <td class="status-cell" data-status="${data.status}">
+                ${this.getStatusHTML(data.status)}
+            </td>
+            <td>${data.display_name || data.hostname || 'Unknown'}</td>
+            <td>${data.room || ''}</td>
+            <td class="last-seen">${this.formatLastSeen(data.last_seen)}</td>
+            <td class="text-center">
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" 
+                           ${data.is_monitored ? 'checked' : ''} 
+                           onchange="toggleMonitoring(${data.id}, this.checked)">
+                </div>
+            </td>
+            <td>
+                <button class="btn btn-sm btn-outline-primary" onclick="viewDevice(${data.id})">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </td>
+        `;
+    }
+};
+
+// Debounce utility for search and filters
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+// Pre-computed search index for faster filtering
+const searchIndex = {
+    deviceMap: new Map(),
+    searchTerms: new Map(),
+    
+    build(devices) {
+        this.deviceMap.clear();
+        this.searchTerms.clear();
+        
+        devices.forEach(device => {
+            this.deviceMap.set(device.id, device);
+            
+            // Pre-compute searchable terms
+            const terms = [
+                device.name,
+                device.display_name,
+                device.hostname,
+                device.ip_address,
+                device.mac_address,
+                device.vendor,
+                device.room,
+                device.location,
+                device.device_type
+            ].filter(Boolean).map(t => t.toLowerCase());
+            
+            this.searchTerms.set(device.id, terms.join(' '));
+        });
+    },
+    
+    search(query) {
+        if (!query) return Array.from(this.deviceMap.values());
+        
+        const lowerQuery = query.toLowerCase();
+        const results = [];
+        
+        this.searchTerms.forEach((terms, deviceId) => {
+            if (terms.includes(lowerQuery)) {
+                results.push(this.deviceMap.get(deviceId));
+            }
+        });
+        
+        return results;
+    }
+};
+
+// WebSocket update batching
+const updateBatcher = {
+    updates: [],
+    timer: null,
+    
+    add(update) {
+        this.updates.push(update);
+        if (!this.timer) {
+            this.timer = requestAnimationFrame(() => this.flush());
+        }
+    },
+    
+    flush() {
+        const updates = this.updates.splice(0);
+        updates.forEach(update => {
+            const device = allDevices.find(d => d.id === update.id);
+            if (device) {
+                Object.assign(device, update);
+                virtualDOM.scheduleUpdate(update.id, update);
+            }
+        });
+        
+        // Update summary without full re-render
+        updateQuickStatusSummary();
+        this.timer = null;
+    }
+};
+
+// Optimized debounced filter
+const debouncedFilter = debounce(function() {
+    filterHosts();
+}, 150);
+
+// Simplified status system for home users
+const statusColors = {
+    'up': 'success',
+    'down': 'danger', 
+    'warning': 'warning',
+    'unknown': 'secondary'
+};
+
+const statusIcons = {
+    'up': 'check-circle-fill',
+    'down': 'x-circle-fill',
+    'warning': 'exclamation-triangle-fill',
+    'unknown': 'question-circle-fill'
+};
+
+// Home-friendly status labels
+const homeStatusLabels = {
+    'up': 'Online',
+    'down': 'Offline',
+    'warning': 'Needs Attention',
+    'unknown': 'Unknown'
+};
+
+// Progressive disclosure functions
+function showDetailedStatus() {
+    document.getElementById('status-summary').style.display = 'none';
+    document.getElementById('detailed-status-cards').style.display = 'block';
+    document.getElementById('detailed-status-cards').classList.add('fade-in');
+}
+
+function hideDetailedStatus() {
+    document.getElementById('status-summary').style.display = 'block';
+    document.getElementById('detailed-status-cards').style.display = 'none';
+}
+
+function showAdvancedFilters() {
+    document.getElementById('advanced-host-filters').style.display = 'block';
+    document.getElementById('advanced-host-filters').classList.add('fade-in');
+}
+
+function hideAdvancedFilters() {
+    document.getElementById('advanced-host-filters').style.display = 'none';
+}
+
+function toggleBulkMode() {
+    bulkSelectionMode = !bulkSelectionMode;
+    const controls = document.getElementById('bulk-selection-controls');
+    
+    if (bulkSelectionMode) {
+        controls.style.display = 'flex';
+        controls.classList.add('fade-in');
+        // Update table to show checkboxes
+        updateTableForBulkMode(true);
+    } else {
+        controls.style.display = 'none';
+        updateTableForBulkMode(false);
+        clearSelection();
+    }
+}
+
+function updateTableForBulkMode(enabled) {
+    const checkboxes = document.querySelectorAll('.device-checkbox');
+    const selectAllCheckbox = document.getElementById('select-all');
+    
+    if (enabled) {
+        checkboxes.forEach(cb => cb.style.display = 'block');
+        if (selectAllCheckbox) selectAllCheckbox.style.display = 'block';
+    } else {
+        checkboxes.forEach(cb => cb.style.display = 'none');
+        if (selectAllCheckbox) selectAllCheckbox.style.display = 'none';
+    }
+}
+
+function toggleViewMode() {
+    currentView = currentView === 'table' ? 'card' : 'table';
+    
+    const tableView = document.getElementById('table-view');
+    const cardView = document.getElementById('card-view');
+    const toggleButton = document.getElementById('toggle-host-view');
+    
+    if (currentView === 'card') {
+        tableView.style.display = 'none';
+        cardView.style.display = 'block';
+        toggleButton.innerHTML = '<i class="bi bi-table"></i>';
+        toggleButton.title = 'Switch to table view';
+        renderHostsCards();
+    } else {
+        tableView.style.display = 'block';
+        cardView.style.display = 'none';
+        toggleButton.innerHTML = '<i class="bi bi-grid"></i>';
+        toggleButton.title = 'Switch to card view';
+        renderHostsTable();
+    }
+}
+
+// Enhanced loading states
+function setLoadingState(isLoading, message = 'Loading monitored hosts...') {
+    const loadingIndicator = document.getElementById('loading-indicator');
+    const loadingText = document.getElementById('loading-text');
+    const tableView = document.getElementById('table-view');
+    const cardView = document.getElementById('card-view');
+    const emptyState = document.getElementById('empty-state');
+    
+    if (isLoading) {
+        loadingIndicator.style.display = 'block';
+        tableView.style.display = 'none';
+        cardView.style.display = 'none';
+        emptyState.style.display = 'none';
+        if (loadingText) loadingText.textContent = message;
+        
+        // Announce to screen readers
+        loadingIndicator.setAttribute('aria-label', message);
+    } else {
+        loadingIndicator.style.display = 'none';
+        // Show appropriate view
+        if (filteredHosts.length > 0) {
+            if (currentView === 'card') {
+                cardView.style.display = 'block';
+            } else {
+                tableView.style.display = 'block';
+            }
+        } else {
+            emptyState.style.display = 'block';
+        }
+    }
+}
+
+// Enhanced status update with hero dashboard
+function updateQuickStatusSummary() {
+    const indicator = document.getElementById('system-status-indicator');
+    const summary = document.getElementById('quick-host-summary');
+    const heroSummary = document.getElementById('hero-summary');
+    const onlineCount = document.getElementById('quick-online');
+    const offlineCount = document.getElementById('quick-offline');
+    const filteredCountHeader = document.getElementById('filtered-count-header');
+    
+    if (!monitoredHosts || !monitoredHosts.length) return;
+    
+    const total = monitoredHosts.length;
+    const online = monitoredHosts.filter(h => h.status === 'up').length;
+    const offline = monitoredHosts.filter(h => h.status === 'down').length;
+    
+    // Update hero status indicator
+    const healthPercentage = total > 0 ? (online / total) * 100 : 0;
+    let statusClass = 'up';
+    let statusMessage = 'All Systems Healthy';
+    
+    if (healthPercentage < 70) {
+        statusClass = 'down';
+        statusMessage = 'Network Issues Detected';
+    } else if (healthPercentage < 90) {
+        statusClass = 'warning';
+        statusMessage = 'Some Issues Detected';
+    }
+    
+    if (indicator) {
+        indicator.className = `status-indicator-hero ${statusClass}`;
+        indicator.title = `${healthPercentage.toFixed(0)}% network health`;
+    }
+    
+    // Update hero summary
+    if (heroSummary) {
+        heroSummary.textContent = statusMessage;
+    }
+    
+    // Update summary text with animation
+    if (summary) {
+        const newText = `${online}/${total}`;
+        if (summary.textContent !== newText) {
+            summary.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+                summary.textContent = newText;
+                summary.style.transform = 'scale(1)';
+            }, 150);
+        }
+    }
+    
+    if (onlineCount) {
+        animateCountUpdate(onlineCount, online);
+    }
+    if (offlineCount) {
+        animateCountUpdate(offlineCount, offline);
+    }
+    if (filteredCountHeader) {
+        filteredCountHeader.textContent = `${filteredHosts.length} devices`;
+    }
+}
+
+// Animate number updates
+function animateCountUpdate(element, newValue) {
+    const currentValue = parseInt(element.textContent) || 0;
+    if (currentValue !== newValue) {
+        element.style.transform = 'scale(1.1)';
+        element.style.transition = 'transform 0.2s ease';
+        setTimeout(() => {
+            element.textContent = newValue;
+            element.style.transform = 'scale(1)';
+        }, 100);
+    }
+}
+
+// Smart search enhancements
+function clearSearch() {
+    document.getElementById('host-search').value = '';
+    document.getElementById('clear-search').style.display = 'none';
+    document.getElementById('search-suggestions').style.display = 'none';
+    filterHosts();
+}
+
+function setQuickSearch(term) {
+    const searchInput = document.getElementById('host-search');
+    searchInput.value = term;
+    document.getElementById('clear-search').style.display = 'block';
+    document.getElementById('search-suggestions').style.display = 'none';
+    filterHosts();
+}
+
+// Show custom preset modal placeholder
+function showCustomPresetModal() {
+    alert('Custom preset configuration coming soon! You can manually enable/disable monitoring for individual devices using the toggle switches in the table.');
+}
+
+// Show search suggestions on focus  
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.getElementById('host-search');
+    const clearButton = document.getElementById('clear-search');
+    const suggestions = document.getElementById('search-suggestions');
+    
+    if (searchInput && clearButton && suggestions) {
+        searchInput.addEventListener('focus', function() {
+            if (!this.value) {
+                suggestions.style.display = 'block';
+            }
+        });
+        
+        searchInput.addEventListener('input', function() {
+            if (this.value) {
+                clearButton.style.display = 'block';
+                suggestions.style.display = 'none';
+            } else {
+                clearButton.style.display = 'none';
+                suggestions.style.display = 'block';
+            }
+        });
+        
+        searchInput.addEventListener('blur', function() {
+            setTimeout(() => {
+                suggestions.style.display = 'none';
+            }, 200);
+        });
+    }
+});
+
+// Load monitored hosts data with enhanced feedback
+async function loadMonitoredHosts() {
+    console.log('Starting loadMonitoredHosts...');
+    try {
+        setLoadingState(true, 'Loading devices...');
+
+        const response = await fetch('/api/devices'); // Load all devices
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        const data = await response.json();
+        console.log('Loaded devices:', data.devices ? data.devices.length : 0);
+        
+        if (data.devices) {
+            allDevices = data.devices || [];
+            
+            // Build search index for fast filtering
+            searchIndex.build(allDevices);
+            
+            // Update counts
+            const monitoredDevices = allDevices.filter(d => d.is_monitored);
+            const notMonitoredDevices = allDevices.filter(d => !d.is_monitored);
+            
+            // Update DOM elements with null checks
+            const monitoredCountEl = document.getElementById('monitored-count');
+            const notMonitoredCountEl = document.getElementById('not-monitored-count');
+            const allCountEl = document.getElementById('all-count');
+            
+            if (monitoredCountEl) monitoredCountEl.textContent = monitoredDevices.length;
+            if (notMonitoredCountEl) notMonitoredCountEl.textContent = notMonitoredDevices.length;
+            if (allCountEl) allCountEl.textContent = allDevices.length;
+            
+            // Update cameras only count
+            const cameraDevices = allDevices.filter(d => getDeviceCategory(d) === 'cameras');
+            const camerasCountEl = document.getElementById('cameras-only-count');
+            if (camerasCountEl) camerasCountEl.textContent = cameraDevices.length;
+            
+            // Apply monitoring filter
+            applyMonitoringFilter();
+            
+            // Update status information
+            updateStatusCards();
+            updateQuickStatusSummary();
+            
+            // Apply filters and render the view
+            filterHosts(); // This will render the appropriate view
+            
+            // Clear loading state after everything is done
+            setLoadingState(false);
+        } else {
+            throw new Error('Failed to load monitored hosts');
+        }
+    } catch (error) {
+        console.error('Error loading monitored hosts:', error);
+        setLoadingState(false);
+        showToast('Error loading monitored hosts: ' + error.message, 'error');
+    }
+}
+
+// Update status overview cards
+function updateStatusCards() {
+    const total = monitoredHosts.length;
+    const online = monitoredHosts.filter(h => h.status === 'up').length;
+    const offline = monitoredHosts.filter(h => h.status === 'down').length;
+    const warning = monitoredHosts.filter(h => h.status === 'warning').length;
+
+    document.getElementById('total-monitored').textContent = total;
+    document.getElementById('hosts-online').textContent = online;
+    document.getElementById('hosts-offline').textContent = offline;
+    document.getElementById('hosts-warning').textContent = warning;
+}
+
+// Filter hosts based on search and filter criteria
+// Set monitoring filter mode
+function setMonitoringFilter(mode) {
+    monitoringFilterMode = mode;
+    
+    // Update button states
+    document.querySelectorAll('#filter-monitored, #filter-not-monitored, #filter-all').forEach(btn => {
+        btn.classList.remove('active', 'btn-outline-primary');
+        btn.classList.add('btn-outline-secondary');
+    });
+    
+    const activeBtn = document.getElementById('filter-' + mode.replace('not-monitored', 'not-monitored'));
+    activeBtn.classList.remove('btn-outline-secondary');
+    activeBtn.classList.add('btn-outline-primary', 'active');
+    
+    applyMonitoringFilter();
+    filterHosts();
+}
+
+// Apply monitoring filter to base dataset
+function applyMonitoringFilter() {
+    switch(monitoringFilterMode) {
+        case 'monitored':
+            monitoredHosts = allDevices.filter(d => d.is_monitored);
+            break;
+        case 'not-monitored':
+            monitoredHosts = allDevices.filter(d => !d.is_monitored);
+            break;
+        case 'all':
+        default:
+            monitoredHosts = [...allDevices];
+            break;
+    }
+}
+
+// Set device category filter mode
+function setDeviceCategoryFilter(category) {
+    categoryFilterMode = category;
+    
+    // Reset dropdown category filter to avoid conflicts
+    const categoryDropdown = document.getElementById('category-filter');
+    if (categoryDropdown) categoryDropdown.value = '';
+    
+    // Update button states
+    document.getElementById('filter-cameras-only').classList.remove('active', 'btn-outline-info');
+    document.getElementById('filter-cameras-only').classList.add('btn-outline-secondary');
+    
+    if (category === 'cameras') {
+        document.getElementById('filter-cameras-only').classList.remove('btn-outline-secondary');
+        document.getElementById('filter-cameras-only').classList.add('btn-outline-info', 'active');
+    }
+    
+    applyMonitoringFilter();
+    filterHosts();
+}
+
+// Clear category filter
+function clearCategoryFilter() {
+    categoryFilterMode = null;
+    document.getElementById('filter-cameras-only').classList.remove('active', 'btn-outline-info');
+    document.getElementById('filter-cameras-only').classList.add('btn-outline-secondary');
+    filterHosts();
+}
+
+// Get device category
+function getDeviceCategory(device) {
+    const type = (device.device_type || '').toLowerCase();
+    const hostname = (device.hostname || '').toLowerCase();
+    const displayName = (device.display_name || '').toLowerCase();
+    
+    // Infrastructure
+    if (type === 'router' || hostname.includes('router') || hostname.includes('switch') || 
+        hostname.includes('gateway') || hostname.includes('nest-wifi')) {
+        return 'infrastructure';
+    }
+    
+    // Cameras
+    if (type === 'camera' || hostname.includes('cam') || hostname.includes('ring') || 
+        hostname.includes('wyze') || displayName.includes('cam')) {
+        return 'cameras';
+    }
+    
+    // Smart Home
+    if (type === 'smart_home' || type === 'iot' || hostname.includes('sonos') || 
+        hostname.includes('nest') || hostname.includes('google') || hostname.includes('litter')) {
+        return 'smart_home';
+    }
+    
+    // Personal Devices
+    if (type === 'phone' || type === 'apple' || type === 'computer' || 
+        hostname.includes('phone') || hostname.includes('watch') || hostname.includes('macbook')) {
+        return 'personal';
+    }
+    
+    return 'other';
+}
+
+// Get device category icon
+function getDeviceCategoryIcon(category) {
+    const icons = {
+        'infrastructure': '<i class="bi bi-router text-primary" title="Infrastructure"></i>',
+        'cameras': '<i class="bi bi-camera-video text-info" title="Camera"></i>',
+        'smart_home': '<i class="bi bi-house-gear text-warning" title="Smart Home"></i>',
+        'personal': '<i class="bi bi-phone text-success" title="Personal Device"></i>',
+        'other': '<i class="bi bi-question-circle text-muted" title="Other/Unknown"></i>'
+    };
+    return icons[category] || icons['other'];
+}
+
+// Get device category badge
+function getDeviceCategoryBadge(category) {
+    const badges = {
+        'infrastructure': '<span class="badge bg-primary me-1">🔧 Infrastructure</span>',
+        'cameras': '<span class="badge bg-info me-1">📹 Camera</span>',
+        'smart_home': '<span class="badge bg-warning me-1">🏠 Smart Home</span>',
+        'personal': '<span class="badge bg-success me-1">📱 Personal</span>',
+        'other': '<span class="badge bg-secondary me-1">❓ Other</span>'
+    };
+    return badges[category] || badges['other'];
+}
+
+// Simplified home-friendly filtering
+function filterHosts() {
+    const searchTerm = document.getElementById('host-search').value.toLowerCase();
+    const categoryFilter = document.getElementById('category-filter').value;
+
+    filteredHosts = monitoredHosts.filter(host => {
+        const friendlyName = getFriendlyDeviceName(host).toLowerCase();
+        const deviceType = getSimpleDeviceType(host).toLowerCase();
+        const locationInfo = getDeviceLocationInfo(host).toLowerCase();
+        
+        const matchesSearch = !searchTerm || 
+            friendlyName.includes(searchTerm) ||
+            host.ip_address.toLowerCase().includes(searchTerm) ||
+            deviceType.includes(searchTerm) ||
+            locationInfo.includes(searchTerm) ||
+            (host.hostname && host.hostname.toLowerCase().includes(searchTerm));
+        
+        const matchesCategory = !categoryFilter || getDeviceCategory(host) === categoryFilter;
+        const matchesCategoryFilter = !categoryFilterMode || getDeviceCategory(host) === categoryFilterMode;
+
+        return matchesSearch && matchesCategory && matchesCategoryFilter;
+    });
+
+    // Render based on current view
+    if (currentView === 'card') {
+        renderHostsCards();
+    } else {
+        renderHostsTable();
+    }
+}
+
+// Simplified home-friendly table renderer  
+function renderHostsTable() {
+    const tbody = document.getElementById('hosts-tbody');
+    const filteredCount = document.getElementById('filtered-count');
+    
+    filteredCount.textContent = filteredHosts.length;
+
+    if (filteredHosts.length === 0) {
+        setLoadingState(false);
+        return;
+    }
+
+    tbody.innerHTML = filteredHosts.map((host, index) => {
+        const statusClass = statusColors[host.status] || 'secondary';
+        const statusLabel = homeStatusLabels[host.status] || 'Unknown';
+        const lastSeen = getSimpleTimeAgo(host.last_seen);
+        const friendlyName = getFriendlyDeviceName(host);
+        const locationInfo = getDeviceLocationInfo(host);
+
+        return `
+            <tr data-device-id="${host.id}" role="row" tabindex="0" 
+                onclick="viewDevice(${host.id})" class="device-row">
+                <td role="gridcell" class="text-center">
+                    <div class="d-flex align-items-center justify-content-center">
+                        <span class="status-indicator-large ${host.status} me-2" 
+                              title="${statusLabel}"
+                              aria-label="${friendlyName} is ${statusLabel}"></span>
+                        <span class="small fw-medium text-${statusClass}">${statusLabel}</span>
+                    </div>
+                </td>
+                <td role="gridcell">
+                    <div class="device-info">
+                        <div class="d-flex align-items-center">
+                            <div class="me-2">${getDeviceCategoryIcon(getDeviceCategory(host))}</div>
+                            <div>
+                                <div class="device-name fw-bold">${friendlyName}</div>
+                                <div class="device-meta d-flex align-items-center gap-2">
+                                    <span class="device-type text-muted small">${getSimpleDeviceType(host)}</span>
+                                    ${(() => {
+                                        const priorityInfo = getDevicePriorityInfo(host);
+                                        if (priorityInfo.label !== 'Normal') {
+                                            return `<span class="badge bg-${priorityInfo.class} badge-sm" title="${priorityInfo.label} priority">
+                                                <i class="bi bi-${priorityInfo.icon} me-1"></i>${priorityInfo.label}
+                                            </span>`;
+                                        }
+                                        return '';
+                                    })()}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td role="gridcell">
+                    <div class="room-info">
+                        <div class="d-flex align-items-center">
+                            <span class="me-2">${getRoomIcon(locationInfo)}</span>
+                            <div>
+                                <div class="room-name">${locationInfo}</div>
+                                <small class="text-muted ip-address"><code>${host.ip_address}</code></small>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+                <td role="gridcell">
+                    <div class="activity-info">
+                        <span class="last-seen">${lastSeen}</span>
+                    </div>
+                </td>
+                <td role="gridcell" class="text-center">
+                    <div class="monitoring-toggle">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" 
+                                   ${host.is_monitored ? 'checked' : ''} 
+                                   onchange="event.stopPropagation(); toggleMonitoring(${host.id}, this.checked)"
+                                   title="Toggle monitoring for ${friendlyName}">
+                            <label class="form-check-label small text-muted">
+                                ${host.is_monitored ? 'On' : 'Off'}
+                            </label>
+                        </div>
+                    </div>
+                </td>
+                <td role="gridcell">
+                    <div class="quick-actions d-flex gap-1">
+                        <button class="btn btn-sm btn-outline-primary" 
+                                onclick="event.stopPropagation(); viewDevice(${host.id})" 
+                                title="View ${friendlyName} details">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                        <div class="dropdown">
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                                    onclick="event.stopPropagation();"
+                                    data-bs-toggle="dropdown" aria-expanded="false"
+                                    title="Quick settings">
+                                <i class="bi bi-gear"></i>
+                            </button>
+                            <ul class="dropdown-menu">
+                                <li><h6 class="dropdown-header">Room Assignment</h6></li>
+                                <li><a class="dropdown-item" onclick="setDeviceRoom(${host.id}, 'Living Room')">
+                                    🛋️ Living Room
+                                </a></li>
+                                <li><a class="dropdown-item" onclick="setDeviceRoom(${host.id}, 'Kitchen')">
+                                    🍽️ Kitchen
+                                </a></li>
+                                <li><a class="dropdown-item" onclick="setDeviceRoom(${host.id}, 'Bedroom')">
+                                    🛏️ Bedroom
+                                </a></li>
+                                <li><a class="dropdown-item" onclick="setDeviceRoom(${host.id}, 'Office')">
+                                    💼 Office
+                                </a></li>
+                                <li><a class="dropdown-item" onclick="setDeviceRoom(${host.id}, 'Garage')">
+                                    🚗 Garage
+                                </a></li>
+                                <li><hr class="dropdown-divider"></li>
+                                <li><h6 class="dropdown-header">Priority</h6></li>
+                                <li><a class="dropdown-item" onclick="setDevicePriority(${host.id}, 'critical')">
+                                    <i class="bi bi-exclamation-triangle text-danger"></i> Critical
+                                </a></li>
+                                <li><a class="dropdown-item" onclick="setDevicePriority(${host.id}, 'important')">
+                                    <i class="bi bi-star text-warning"></i> Important
+                                </a></li>
+                                <li><a class="dropdown-item" onclick="setDevicePriority(${host.id}, 'normal')">
+                                    <i class="bi bi-circle text-info"></i> Normal
+                                </a></li>
+                                <li><a class="dropdown-item" onclick="setDevicePriority(${host.id}, 'optional')">
+                                    <i class="bi bi-dash-circle text-secondary"></i> Optional
+                                </a></li>
+                            </ul>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+// Simplified home-friendly card view renderer
+function renderHostsCards() {
+    const container = document.getElementById('hosts-cards-container');
+    
+    if (filteredHosts.length === 0) {
+        setLoadingState(false);
+        return;
+    }
+
+    container.innerHTML = filteredHosts.map(host => {
+        const statusLabel = homeStatusLabels[host.status] || 'Unknown';
+        const statusClass = statusColors[host.status] || 'secondary';
+        const friendlyName = getFriendlyDeviceName(host);
+        const deviceType = getSimpleDeviceType(host);
+        const lastSeen = getSimpleTimeAgo(host.last_seen);
+        const locationInfo = getDeviceLocationInfo(host);
+
+        return `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="host-card card" 
+                     data-device-id="${host.id}"
+                     onclick="viewDevice(${host.id})">
+                    <div class="card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-3">
+                            <div class="d-flex align-items-center">
+                                <div class="me-2">${getDeviceCategoryIcon(getDeviceCategory(host))}</div>
+                                <div>
+                                    <h6 class="card-title mb-1">${friendlyName}</h6>
+                                    <small class="text-muted">${deviceType}</small>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <span class="status-indicator-large ${host.status} mb-1" 
+                                      title="${statusLabel}"></span>
+                                <div class="small text-${statusClass} fw-medium">${statusLabel}</div>
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="small text-muted mb-1">Location</div>
+                            <div><code class="small">${host.ip_address}</code></div>
+                            <small class="text-muted">${locationInfo}</small>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <div class="small text-muted mb-1">Last Seen</div>
+                            <div class="small">${lastSeen}</div>
+                        </div>
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" 
+                                       ${host.is_monitored ? 'checked' : ''} 
+                                       onchange="event.stopPropagation(); toggleMonitoring(${host.id}, this.checked)"
+                                       title="Monitor ${friendlyName}">
+                                <label class="form-check-label small">Monitor</label>
+                            </div>
+                            <button class="btn btn-outline-primary btn-sm" 
+                                    onclick="event.stopPropagation(); viewDevice(${host.id})" 
+                                    title="View ${friendlyName} details">
+                                <i class="bi bi-eye me-1"></i>Details
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+// Toggle select all checkboxes
+function toggleSelectAll() {
+    const selectAll = document.getElementById('select-all');
+    const checkboxes = document.querySelectorAll('.device-checkbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = selectAll.checked;
+    });
+    
+    updateSelectedCount();
+}
+
+// Update selected device count
+function updateSelectedCount() {
+    const selected = document.querySelectorAll('.device-checkbox:checked').length;
+    document.getElementById('selected-count').textContent = selected;
+}
+
+// Toggle monitoring for a device
+async function toggleMonitoring(deviceId, enabled) {
+    try {
+        const response = await fetch(`/api/devices/${deviceId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_monitored: enabled })
+        });
+        
+        if (response.ok) {
+            showToast(`Monitoring ${enabled ? 'enabled' : 'disabled'} for device`, 'success');
+            // Update local data
+            const host = monitoredHosts.find(h => h.id === deviceId);
+            if (host) {
+                host.is_monitored = enabled;
+            }
+        } else {
+            throw new Error('Failed to update monitoring status');
+        }
+    } catch (error) {
+        showToast('Error updating monitoring status: ' + error.message, 'error');
+        // Revert the switch
+        setTimeout(() => loadMonitoredHosts(), 500);
+    }
+}
+
+// Apply monitoring preset
+async function applyMonitoringPreset(preset) {
+    const devices = [...allDevices];
+    let devicesToEnable = [];
+    let devicesToDisable = [];
+    
+    switch(preset) {
+        case 'security':
+            // Enable cameras and infrastructure
+            devices.forEach(device => {
+                const category = getDeviceCategory(device);
+                if (category === 'cameras' || category === 'infrastructure') {
+                    if (!device.is_monitored) devicesToEnable.push(device.id);
+                } else {
+                    if (device.is_monitored) devicesToDisable.push(device.id);
+                }
+            });
+            break;
+            
+        case 'infrastructure':
+            // Only infrastructure
+            devices.forEach(device => {
+                const category = getDeviceCategory(device);
+                if (category === 'infrastructure') {
+                    if (!device.is_monitored) devicesToEnable.push(device.id);
+                } else {
+                    if (device.is_monitored) devicesToDisable.push(device.id);
+                }
+            });
+            break;
+            
+        case 'minimal':
+            // Only routers/gateways
+            devices.forEach(device => {
+                if (device.device_type === 'router' || device.hostname === '_gateway') {
+                    if (!device.is_monitored) devicesToEnable.push(device.id);
+                } else {
+                    if (device.is_monitored) devicesToDisable.push(device.id);
+                }
+            });
+            break;
+            
+        case 'none':
+            // Disable all
+            devices.forEach(device => {
+                if (device.is_monitored) devicesToDisable.push(device.id);
+            });
+            break;
+    }
+    
+    // Apply changes
+    try {
+        showToast(`Applying ${preset} monitoring preset...`, 'info');
+        
+        // Enable devices
+        for (const deviceId of devicesToEnable) {
+            await updateMonitoringStatus(deviceId, true, false);
+        }
+        
+        // Disable devices
+        for (const deviceId of devicesToDisable) {
+            await updateMonitoringStatus(deviceId, false, false);
+        }
+        
+        // Reload to show changes
+        await loadMonitoredHosts();
+        showToast(`Applied ${preset} monitoring preset successfully!`, 'success');
+        
+    } catch (error) {
+        showToast(`Failed to apply preset: ${error.message}`, 'error');
+    }
+}
+
+// Update monitoring status with optional UI update
+async function updateMonitoringStatus(deviceId, isMonitored, updateUI = true) {
+    const response = await fetch(`/api/devices/${deviceId}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ is_monitored: isMonitored })
+    });
+    
+    if (!response.ok) {
+        throw new Error(`Failed to update device ${deviceId}`);
+    }
+    
+    if (updateUI) {
+        await loadMonitoredHosts();
+    }
+}
+
+// Refresh monitored hosts data
+function refreshMonitoredHosts() {
+    loadMonitoredHosts();
+    showToast('Refreshing devices...', 'info');
+}
+
+// Set device room location
+async function setDeviceRoom(deviceId, room) {
+    try {
+        const response = await fetch(`/api/devices/${deviceId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                room_location: room
+            })
+        });
+
+        if (response.ok) {
+            showToast(`Device moved to ${room}`, 'success');
+            await loadMonitoredHosts(); // Refresh the device list
+        } else {
+            throw new Error(`Failed to update room: ${response.status}`);
+        }
+    } catch (error) {
+        console.error('Error setting device room:', error);
+        showToast('Failed to update device room', 'error');
+    }
+}
+
+// Set device priority level
+async function setDevicePriority(deviceId, priority) {
+    try {
+        const response = await fetch(`/api/devices/${deviceId}`, {
+            method: 'PATCH',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify({
+                device_priority: priority
+            })
+        });
+
+        if (response.ok) {
+            const priorityLabels = {
+                'critical': 'Critical',
+                'important': 'Important', 
+                'normal': 'Normal',
+                'optional': 'Optional'
+            };
+            showToast(`Device priority set to ${priorityLabels[priority]}`, 'success');
+            await loadMonitoredHosts(); // Refresh the device list
+        } else {
+            throw new Error(`Failed to update priority: ${response.status}`);
+        }
+    } catch (error) {
+        console.error('Error setting device priority:', error);
+        showToast('Failed to update device priority', 'error');
+    }
+}
+
+// Sort table by field with home-friendly sorting priorities
+function sortTable(field) {
+    const direction = (currentSort.field === field && currentSort.direction === 'asc') ? 'desc' : 'asc';
+    currentSort = { field, direction };
+    
+    filteredHosts.sort((a, b) => {
+        let valueA, valueB;
+        
+        switch(field) {
+            case 'status':
+                // Priority order: critical -> important -> normal -> optional for offline devices
+                const statusPriority = { 'up': 4, 'warning': 3, 'down': 2, 'unknown': 1 };
+                const priorityA = getDevicePriorityInfo(a);
+                const priorityB = getDevicePriorityInfo(b);
+                const statusA = statusPriority[a.status] || 0;
+                const statusB = statusPriority[b.status] || 0;
+                
+                // If same status, sort by priority (critical devices first)
+                if (statusA === statusB) {
+                    const devicePriorityOrder = { 'critical': 4, 'important': 3, 'normal': 2, 'optional': 1 };
+                    valueA = devicePriorityOrder[priorityA.label.toLowerCase()] || 2;
+                    valueB = devicePriorityOrder[priorityB.label.toLowerCase()] || 2;
+                } else {
+                    valueA = statusA;
+                    valueB = statusB;
+                }
+                break;
+                
+            case 'name':
+                valueA = getFriendlyDeviceName(a).toLowerCase();
+                valueB = getFriendlyDeviceName(b).toLowerCase();
+                break;
+                
+            case 'room':
+                valueA = getDeviceLocationInfo(a).toLowerCase();
+                valueB = getDeviceLocationInfo(b).toLowerCase();
+                break;
+                
+            case 'last_seen':
+                valueA = a.last_seen ? new Date(a.last_seen + 'Z') : new Date(0);
+                valueB = b.last_seen ? new Date(b.last_seen + 'Z') : new Date(0);
+                break;
+                
+            case 'priority':
+                const priorityOrder = { 'critical': 4, 'important': 3, 'normal': 2, 'optional': 1 };
+                valueA = priorityOrder[a.device_priority] || 2;
+                valueB = priorityOrder[b.device_priority] || 2;
+                break;
+                
+            default:
+                return 0;
+        }
+        
+        if (valueA < valueB) return direction === 'asc' ? -1 : 1;
+        if (valueA > valueB) return direction === 'asc' ? 1 : -1;
+        return 0;
+    });
+    
+    // Update sort indicators
+    document.querySelectorAll('.sort-indicator').forEach(indicator => {
+        indicator.className = 'bi bi-arrow-down-up sort-indicator';
+    });
+    
+    const currentHeader = document.querySelector(`th[onclick="sortTable('${field}')"] .sort-indicator`);
+    if (currentHeader) {
+        currentHeader.className = `bi bi-arrow-${direction === 'asc' ? 'up' : 'down'} sort-indicator`;
+    }
+    
+    // Re-render with sorted data
+    if (currentView === 'card') {
+        renderHostsCards();
+    } else {
+        renderHostsTable();
+    }
+}
+
+// Set view mode (list, rooms, priority)
+// Removed duplicate - using currentView instead
+
+function setViewMode(mode) {
+    currentView = mode;
+    
+    switch(mode) {
+        case 'list':
+            renderHostsTable();
+            break;
+        case 'rooms':
+            renderHostsGroupedByRoom();
+            break;
+        case 'priority':
+            renderHostsGroupedByPriority();
+            break;
+    }
+    
+    showToast(`View changed to ${mode} mode`, 'info');
+}
+
+function renderHostsGroupedByRoom() {
+    const tbody = document.getElementById('hosts-tbody');
+    const filteredCount = document.getElementById('filtered-count');
+    
+    filteredCount.textContent = filteredHosts.length;
+    
+    if (filteredHosts.length === 0) {
+        setLoadingState(false);
+        return;
+    }
+    
+    // Group devices by room
+    const roomGroups = {};
+    filteredHosts.forEach(host => {
+        const room = getDeviceLocationInfo(host);
+        if (!roomGroups[room]) {
+            roomGroups[room] = [];
+        }
+        roomGroups[room].push(host);
+    });
+    
+    // Sort rooms alphabetically, with "Unassigned" last
+    const sortedRooms = Object.keys(roomGroups).sort((a, b) => {
+        if (a === 'Unassigned') return 1;
+        if (b === 'Unassigned') return -1;
+        return a.localeCompare(b);
+    });
+    
+    let html = '';
+    sortedRooms.forEach(room => {
+        const devices = roomGroups[room];
+        const roomIcon = getRoomIcon(room);
+        
+        // Room header
+        html += `
+            <tr class="room-header">
+                <td colspan="6" class="bg-light">
+                    <strong>${roomIcon} ${room}</strong>
+                    <span class="badge bg-secondary ms-2">${devices.length} device${devices.length !== 1 ? 's' : ''}</span>
+                </td>
+            </tr>
+        `;
+        
+        // Room devices
+        devices.forEach(host => {
+            const statusLabel = homeStatusLabels[host.status] || 'Unknown';
+            const statusClass = statusColors[host.status] || 'secondary';
+            const friendlyName = getFriendlyDeviceName(host);
+            const lastSeen = getSimpleTimeAgo(host.last_seen);
+            const priorityInfo = getDevicePriorityInfo(host);
+            
+            html += `
+                <tr data-device-id="${host.id}" onclick="viewDevice(${host.id})" class="device-row">
+                    <td class="text-center">
+                        <span class="status-indicator-large ${host.status} me-2" title="${statusLabel}"></span>
+                        <span class="small fw-medium text-${statusClass}">${statusLabel}</span>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="me-2">${getDeviceCategoryIcon(getDeviceCategory(host))}</div>
+                            <div>
+                                <div class="device-name fw-bold">${friendlyName}</div>
+                                <div class="device-meta d-flex align-items-center gap-2">
+                                    <span class="device-type text-muted small">${getSimpleDeviceType(host)}</span>
+                                    ${priorityInfo.label !== 'Normal' ? 
+                                        `<span class="badge bg-${priorityInfo.class} badge-sm">
+                                            <i class="bi bi-${priorityInfo.icon} me-1"></i>${priorityInfo.label}
+                                        </span>` : ''}
+                                </div>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <small class="text-muted ip-address"><code>${host.ip_address}</code></small>
+                    </td>
+                    <td>
+                        <span class="last-seen">${lastSeen}</span>
+                    </td>
+                    <td class="text-center">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" 
+                                   ${host.is_monitored ? 'checked' : ''} 
+                                   onchange="event.stopPropagation(); toggleMonitoring(${host.id}, this.checked)"
+                                   title="Monitor ${friendlyName}">
+                            <label class="form-check-label small">${host.is_monitored ? 'On' : 'Off'}</label>
+                        </div>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" 
+                                onclick="event.stopPropagation(); viewDevice(${host.id})" 
+                                title="View ${friendlyName} details">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    });
+    
+    tbody.innerHTML = html;
+}
+
+function renderHostsGroupedByPriority() {
+    const tbody = document.getElementById('hosts-tbody');
+    const filteredCount = document.getElementById('filtered-count');
+    
+    filteredCount.textContent = filteredHosts.length;
+    
+    if (filteredHosts.length === 0) {
+        setLoadingState(false);
+        return;
+    }
+    
+    // Group devices by priority
+    const priorityGroups = {};
+    filteredHosts.forEach(host => {
+        const priority = host.device_priority || 'normal';
+        if (!priorityGroups[priority]) {
+            priorityGroups[priority] = [];
+        }
+        priorityGroups[priority].push(host);
+    });
+    
+    // Sort priorities by importance
+    const priorityOrder = ['critical', 'important', 'normal', 'optional'];
+    const sortedPriorities = priorityOrder.filter(p => priorityGroups[p]);
+    
+    let html = '';
+    sortedPriorities.forEach(priority => {
+        const devices = priorityGroups[priority];
+        const priorityInfo = getDevicePriorityInfo({ device_priority: priority });
+        
+        // Priority header
+        html += `
+            <tr class="priority-header">
+                <td colspan="6" class="bg-light">
+                    <strong><i class="bi bi-${priorityInfo.icon} me-2 text-${priorityInfo.class}"></i>${priorityInfo.label} Priority</strong>
+                    <span class="badge bg-secondary ms-2">${devices.length} device${devices.length !== 1 ? 's' : ''}</span>
+                </td>
+            </tr>
+        `;
+        
+        // Priority devices
+        devices.forEach(host => {
+            const statusLabel = homeStatusLabels[host.status] || 'Unknown';
+            const statusClass = statusColors[host.status] || 'secondary';
+            const friendlyName = getFriendlyDeviceName(host);
+            const lastSeen = getSimpleTimeAgo(host.last_seen);
+            const locationInfo = getDeviceLocationInfo(host);
+            
+            html += `
+                <tr data-device-id="${host.id}" onclick="viewDevice(${host.id})" class="device-row">
+                    <td class="text-center">
+                        <span class="status-indicator-large ${host.status} me-2" title="${statusLabel}"></span>
+                        <span class="small fw-medium text-${statusClass}">${statusLabel}</span>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <div class="me-2">${getDeviceCategoryIcon(getDeviceCategory(host))}</div>
+                            <div>
+                                <div class="device-name fw-bold">${friendlyName}</div>
+                                <span class="device-type text-muted small">${getSimpleDeviceType(host)}</span>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <div class="d-flex align-items-center">
+                            <span class="me-2">${getRoomIcon(locationInfo)}</span>
+                            <div>
+                                <div class="room-name">${locationInfo}</div>
+                                <small class="text-muted ip-address"><code>${host.ip_address}</code></small>
+                            </div>
+                        </div>
+                    </td>
+                    <td>
+                        <span class="last-seen">${lastSeen}</span>
+                    </td>
+                    <td class="text-center">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" 
+                                   ${host.is_monitored ? 'checked' : ''} 
+                                   onchange="event.stopPropagation(); toggleMonitoring(${host.id}, this.checked)"
+                                   title="Monitor ${friendlyName}">
+                            <label class="form-check-label small">${host.is_monitored ? 'On' : 'Off'}</label>
+                        </div>
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-primary" 
+                                onclick="event.stopPropagation(); viewDevice(${host.id})" 
+                                title="View ${friendlyName} details">
+                            <i class="bi bi-eye"></i>
+                        </button>
+                    </td>
+                </tr>
+            `;
+        });
+    });
+    
+    tbody.innerHTML = html;
+}
+
+// Export monitored hosts to CSV
+function exportMonitoredHosts() {
+    const csv = [
+        ['Name', 'Hostname', 'IP Address', 'MAC Address', 'Vendor', 'Status', 'Device Type', 'Last Seen', 'Response Time', 'Uptime %', 'Alerts', 'Monitoring Enabled']
+    ];
+    
+    filteredHosts.forEach(host => {
+        csv.push([
+            host.display_name,
+            host.hostname || '',
+            host.ip_address,
+            host.mac_address || '',
+            host.vendor || 'Unknown Vendor',
+            host.status,
+            host.device_type || 'Unknown',
+            host.last_seen ? new Date(host.last_seen + 'Z').toLocaleString() : 'Never',
+            host.latest_response_time ? `${host.latest_response_time}ms` : '-',
+            formatUptimePercentage(host.uptime_percentage),
+            host.active_alerts || 0,
+            host.is_monitored ? 'Yes' : 'No'
+        ]);
+    });
+    
+    const csvContent = csv.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `monitored_hosts_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+    
+    showToast('Monitored hosts exported to CSV', 'success');
+}
+
+// Export detailed report (enhanced version with more data)
+function exportDetailedReport() {
+    const timestamp = new Date().toISOString().split('T')[0];
+    const csv = [
+        ['HomeNetMon Detailed Device Report - ' + timestamp],
+        [''],
+        ['Device Name', 'Display Name', 'Hostname', 'IP Address', 'MAC Address', 'Vendor', 'Status', 'Device Type', 'Room/Location', 'Last Seen', 'Response Time (ms)', 'Uptime %', 'Active Alerts', 'Monitoring', 'First Discovered', 'Total Checks', 'Successful Checks']
+    ];
+    
+    // Include all devices, not just monitored
+    allDevices.forEach(device => {
+        const displayName = device.display_name || device.hostname || device.mac_address || 'Unknown Device';
+        const uptime = device.total_checks > 0 ? ((device.successful_checks / device.total_checks) * 100).toFixed(1) : 'N/A';
+        
+        csv.push([
+            device.name || '',
+            displayName,
+            device.hostname || '',
+            device.ip_address,
+            device.mac_address || '',
+            device.vendor || 'Unknown',
+            device.status || 'unknown',
+            device.device_type || 'unknown',
+            device.room || device.location || '',
+            device.last_seen ? new Date(device.last_seen).toLocaleString() : 'Never',
+            device.avg_response_time ? device.avg_response_time.toFixed(1) : '',
+            uptime,
+            device.active_alerts || 0,
+            device.is_monitored ? 'Yes' : 'No',
+            device.first_seen ? new Date(device.first_seen).toLocaleString() : '',
+            device.total_checks || 0,
+            device.successful_checks || 0
+        ]);
+    });
+    
+    // Add summary statistics
+    csv.push(['']);
+    csv.push(['Summary Statistics']);
+    csv.push(['Total Devices', allDevices.length]);
+    csv.push(['Monitored Devices', allDevices.filter(d => d.is_monitored).length]);
+    csv.push(['Online Devices', allDevices.filter(d => d.status === 'up').length]);
+    csv.push(['Offline Devices', allDevices.filter(d => d.status === 'down').length]);
+    csv.push(['Report Generated', new Date().toLocaleString()]);
+    
+    const csvContent = csv.map(row => row.join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `homenetmon-detailed-report-${timestamp}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+    
+    showToast('Detailed report exported to CSV', 'success');
+}
+
+// Bulk operations
+function bulkEnableMonitoring() {
+    bulkUpdateMonitoring(true);
+}
+
+function bulkDisableMonitoring() {
+    bulkUpdateMonitoring(false);
+}
+
+async function bulkUpdateMonitoring(enabled) {
+    const selectedIds = Array.from(document.querySelectorAll('.device-checkbox:checked')).map(cb => parseInt(cb.value));
+    
+    if (selectedIds.length === 0) {
+        showToast('No devices selected', 'warning');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/devices/bulk-update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                device_ids: selectedIds,
+                is_monitored: enabled 
+            })
+        });
+        
+        if (response.ok) {
+            showToast(`Monitoring ${enabled ? 'enabled' : 'disabled'} for ${selectedIds.length} devices`, 'success');
+            bootstrap.Modal.getInstance(document.getElementById('bulkMonitoringModal')).hide();
+            loadMonitoredHosts();
+        } else {
+            throw new Error('Bulk update failed');
+        }
+    } catch (error) {
+        showToast('Error performing bulk update: ' + error.message, 'error');
+    }
+}
+
+async function bulkPingDevices() {
+    const selectedIds = Array.from(document.querySelectorAll('.device-checkbox:checked')).map(cb => parseInt(cb.value));
+    
+    if (selectedIds.length === 0) {
+        showToast('No devices selected', 'warning');
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/devices/bulk-ping', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ device_ids: selectedIds })
+        });
+        
+        if (response.ok) {
+            showToast(`Pinging ${selectedIds.length} devices...`, 'info');
+            bootstrap.Modal.getInstance(document.getElementById('bulkMonitoringModal')).hide();
+        } else {
+            throw new Error('Bulk ping failed');
+        }
+    } catch (error) {
+        showToast('Error pinging devices: ' + error.message, 'error');
+    }
+}
+
+// Individual device actions
+async function pingDevice(deviceId) {
+    try {
+        const response = await fetch(`/api/devices/${deviceId}/ping`, { method: 'POST' });
+        if (response.ok) {
+            showToast('Ping initiated', 'info');
+        }
+    } catch (error) {
+        showToast('Error pinging device', 'error');
+    }
+}
+
+function viewDevice(deviceId) {
+    window.open(`/device/${deviceId}`, '_blank');
+}
+
+// Real-time updates via WebSocket
+if (typeof socket !== 'undefined') {
+    socket.on('device_status_update', function(devices) {
+        // Use optimized batch updates instead of immediate re-render
+        devices.forEach(device => {
+            // Update all devices, not just monitored
+            const existingDevice = allDevices.find(d => d.id === device.id);
+            if (existingDevice) {
+                Object.assign(existingDevice, device);
+            }
+            
+            // Also update monitored hosts if applicable
+            const existingHost = monitoredHosts.find(h => h.id === device.id);
+            if (existingHost) {
+                Object.assign(existingHost, device);
+            }
+            
+            // Add to batch updater for efficient DOM updates
+            updateBatcher.add(device);
+        });
+        
+        // Update status cards without full re-render
+        updateStatusCards();
+    });
+}
+
+
+// Home-friendly utility functions
+function getFriendlyDeviceName(device) {
+    // Try to create a more user-friendly name
+    if (device.display_name && !device.display_name.match(/^192\.168\./)) {
+        return device.display_name;
+    }
+    
+    if (device.hostname) {
+        const hostname = device.hostname.toLowerCase();
+        
+        // Replace common technical prefixes with friendly names
+        if (hostname.includes('ring-')) return hostname.replace('ring-', 'Ring ').replace('.lan', '');
+        if (hostname.includes('nest-')) return hostname.replace('nest-', 'Nest ').replace('.lan', '');
+        if (hostname.includes('google-')) return hostname.replace('google-', 'Google ').replace('.lan', '');
+        if (hostname.includes('wyze')) return hostname.replace('wyze', 'Wyze ').replace('.lan', '');
+        if (hostname.includes('sonos')) return hostname.replace('sonos', 'Sonos ').replace('.lan', '');
+        if (hostname.includes('chromecast')) return 'Chromecast';
+        if (hostname === '_gateway') return 'Router/Gateway';
+        if (hostname.includes('macbook')) return 'MacBook';
+        if (hostname.includes('iphone')) return 'iPhone';
+        if (hostname.includes('ipad')) return 'iPad';
+        
+        // Clean up and capitalize
+        return hostname.replace('.lan', '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+    }
+    
+    return device.ip_address;
+}
+
+function getSimpleDeviceType(device) {
+    const category = getDeviceCategory(device);
+    const type = (device.device_type || '').toLowerCase();
+    const hostname = (device.hostname || '').toLowerCase();
+    
+    // More specific types for home users
+    if (hostname.includes('ring')) return 'Security Camera';
+    if (hostname.includes('wyze')) return 'Smart Camera';
+    if (hostname.includes('nest')) return 'Smart Home Device';
+    if (hostname.includes('sonos')) return 'Speaker';
+    if (hostname.includes('chromecast')) return 'Media Device';
+    if (hostname === '_gateway' || type === 'router') return 'Network Router';
+    if (hostname.includes('macbook') || hostname.includes('mac')) return 'Computer';
+    if (hostname.includes('iphone') || hostname.includes('phone')) return 'Phone';
+    if (hostname.includes('ipad')) return 'Tablet';
+    if (hostname.includes('watch')) return 'Smart Watch';
+    if (hostname.includes('google')) return 'Smart Assistant';
+    
+    // Fallback to category
+    const categoryLabels = {
+        'infrastructure': 'Network Device',
+        'cameras': 'Camera',
+        'smart_home': 'Smart Home',
+        'personal': 'Personal Device',
+        'other': 'Device'
+    };
+    
+    return categoryLabels[category] || 'Network Device';
+}
+
+function getDeviceLocationInfo(device) {
+    // Use assigned room location first
+    if (device.room_location) {
+        return device.room_location;
+    }
+    
+    // Try to infer location from hostname patterns
+    const hostname = (device.hostname || '').toLowerCase();
+    if (hostname.includes('kitchen')) return 'Kitchen';
+    if (hostname.includes('living')) return 'Living Room';
+    if (hostname.includes('bedroom')) return 'Bedroom';
+    if (hostname.includes('office')) return 'Office';
+    if (hostname.includes('garage')) return 'Garage';
+    if (hostname.includes('basement')) return 'Basement';
+    if (hostname.includes('upstairs')) return 'Upstairs';
+    if (hostname.includes('downstairs')) return 'Downstairs';
+    
+    // Fallback to vendor info or default
+    if (device.vendor && device.vendor !== 'Unknown Vendor') {
+        return device.vendor;
+    }
+    
+    return 'Unassigned';
+}
+
+function getDevicePriorityInfo(device) {
+    const priority = device.device_priority || 'normal';
+    const priorityLabels = {
+        'critical': { label: 'Critical', class: 'danger', icon: 'exclamation-triangle' },
+        'important': { label: 'Important', class: 'warning', icon: 'star' },
+        'normal': { label: 'Normal', class: 'info', icon: 'circle' },
+        'optional': { label: 'Optional', class: 'secondary', icon: 'dash-circle' }
+    };
+    
+    return priorityLabels[priority] || priorityLabels['normal'];
+}
+
+function getRoomIcon(room) {
+    const roomIcons = {
+        'living room': '🛋️',
+        'kitchen': '🍽️',
+        'bedroom': '🛏️',
+        'office': '💼',
+        'garage': '🚗',
+        'basement': '⬇️',
+        'upstairs': '⬆️',
+        'bathroom': '🚿',
+        'dining room': '🍽️',
+        'family room': '👨‍👩‍👧‍👦',
+        'study': '📚',
+        'guest room': '🛎️',
+        'laundry': '👕',
+        'outdoor': '🌳',
+        'network closet': '🔧',
+        'unassigned': '📍'
+    };
+    
+    return roomIcons[room?.toLowerCase()] || '📍';
+}
+
+function getSimpleTimeAgo(timestamp) {
+    if (!timestamp) return 'Never seen';
+    
+    const now = new Date();
+    const past = new Date(timestamp + 'Z');
+    const diffMs = now - past;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffMins < 5) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hours ago`;
+    if (diffDays < 7) return `${diffDays} days ago`;
+    
+    return 'Over a week ago';
+}
+
+// Utility functions for enhanced UX (kept for backward compatibility)
+function getResponseTimeDisplay(responseTime) {
+    if (!responseTime) return { html: '<span class="text-muted">-</span>', text: '-' };
+    
+    let className, badgeClass;
+    if (responseTime < 50) {
+        className = 'text-success';
+        badgeClass = 'response-time-excellent';
+    } else if (responseTime < 200) {
+        className = 'text-success';
+        badgeClass = 'response-time-good';
+    } else if (responseTime < 500) {
+        className = 'text-warning';
+        badgeClass = 'response-time-fair';
+    } else {
+        className = 'text-danger';
+        badgeClass = 'response-time-poor';
+    }
+    
+    const text = `${responseTime}ms`;
+    return {
+        html: `<span class="response-time-badge ${badgeClass}">${text}</span>`,
+        text: `<span class="${className}">${text}</span>`
+    };
+}
+
+function getUptimeColor(uptime) {
+    if (uptime === null || uptime === undefined || isNaN(uptime)) return 'secondary';
+    if (uptime >= 95) return 'success';
+    if (uptime >= 80) return 'warning';
+    return 'danger';
+}
+
+function formatUptimePercentage(uptime) {
+    // Robust handler for uptime percentage formatting
+    if (uptime === null || uptime === undefined || isNaN(uptime)) {
+        return '-';
+    }
+    
+    // Ensure it's a number
+    const uptimeNum = parseFloat(uptime);
+    if (isNaN(uptimeNum)) {
+        return '-';
+    }
+    
+    return `${uptimeNum.toFixed(1)}%`;
+}
+
+function getAlertBadge(alertCount) {
+    if (alertCount > 0) {
+        return `<span class="badge bg-danger" title="${alertCount} active alert${alertCount > 1 ? 's' : ''}">${alertCount}</span>`;
+    }
+    return '<span class="text-muted">-</span>';
+}
+
+function getTimeAgo(timestamp) {
+    if (!timestamp) return 'Never';
+    
+    const now = new Date();
+    const past = new Date(timestamp + 'Z');
+    const diffMs = now - past;
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return past.toLocaleDateString();
+}
+
+// Enhanced interaction handlers
+function handleRowKeydown(event, deviceId) {
+    if (event.key === 'Enter' || event.key === ' ') {
+        event.preventDefault();
+        if (bulkSelectionMode) {
+            toggleDeviceSelection(deviceId);
+        } else {
+            viewDevice(deviceId);
+        }
+    }
+}
+
+function handleRowClick(event, deviceId) {
+    // Only handle if not clicking on interactive elements
+    if (!event.target.closest('button, input, a, .dropdown')) {
+        if (bulkSelectionMode) {
+            toggleDeviceSelection(deviceId);
+        }
+    }
+}
+
+function toggleDeviceSelection(deviceId) {
+    const checkbox = document.querySelector(`input[value="${deviceId}"]`);
+    if (checkbox) {
+        checkbox.checked = !checkbox.checked;
+        updateSelectedCount();
+    }
+}
+
+function clearSelection() {
+    document.querySelectorAll('.device-checkbox').forEach(cb => cb.checked = false);
+    document.getElementById('select-all').checked = false;
+    updateSelectedCount();
+}
+
+function clearAllFilters() {
+    document.getElementById('host-search').value = '';
+    document.getElementById('status-filter').value = '';
+    document.getElementById('category-filter').value = '';
+    document.getElementById('type-filter').value = '';
+    document.getElementById('uptime-filter').value = '';
+    document.getElementById('response-filter').value = '';
+    clearCategoryFilter();
+    filterHosts();
+}
+
+// Enhanced toast notifications
+function showToast(message, type = 'info', duration = 5000) {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '1060';
+        document.body.appendChild(toastContainer);
+    }
+    
+    // Create toast element
+    const toastId = 'toast-' + Date.now();
+    const toastHTML = `
+        <div id="${toastId}" class="toast fade-in" role="alert" aria-live="assertive" aria-atomic="true" data-bs-autohide="false">
+            <div class="toast-header bg-${type === 'error' ? 'danger' : type} text-white">
+                <strong class="me-auto">
+                    <i class="bi bi-${getToastIcon(type)} me-1"></i>
+                    ${getToastTitle(type)}
+                </strong>
+                <small class="text-white-50">${new Date().toLocaleTimeString()}</small>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast" aria-label="Close"></button>
+            </div>
+            <div class="toast-body">
+                ${message}
+            </div>
+        </div>
+    `;
+    
+    toastContainer.insertAdjacentHTML('beforeend', toastHTML);
+    
+    // Initialize and show toast
+    const toastElement = document.getElementById(toastId);
+    const toast = new bootstrap.Toast(toastElement);
+    toast.show();
+    
+    // Auto-hide after duration
+    setTimeout(() => {
+        toast.hide();
+        setTimeout(() => {
+            toastElement.remove();
+        }, 300);
+    }, duration);
+}
+
+function getToastIcon(type) {
+    const icons = {
+        'success': 'check-circle',
+        'error': 'exclamation-circle',
+        'warning': 'exclamation-triangle',
+        'info': 'info-circle',
+        'danger': 'exclamation-circle'
+    };
+    return icons[type] || 'info-circle';
+}
+
+function getToastTitle(type) {
+    const titles = {
+        'success': 'Success',
+        'error': 'Error',
+        'warning': 'Warning', 
+        'info': 'Information',
+        'danger': 'Error'
+    };
+    return titles[type] || 'Notification';
+}
+
+// Quick ping function with enhanced feedback
+async function quickPing(deviceId) {
+    try {
+        const host = monitoredHosts.find(h => h.id === deviceId);
+        showToast(`Pinging ${host ? host.display_name : 'device'}...`, 'info', 2000);
+        
+        const response = await fetch(`/api/devices/${deviceId}/ping`, { method: 'POST' });
+        if (response.ok) {
+            const row = document.querySelector(`tr[data-device-id="${deviceId}"]`);
+            if (row) {
+                row.classList.add('status-changed');
+                setTimeout(() => row.classList.remove('status-changed'), 2000);
+            }
+        }
+    } catch (error) {
+        showToast('Error pinging device', 'error');
+    }
+}
+
+// Enhanced real-time updates with visual feedback
+function updateDeviceStatus(deviceData) {
+    const device = monitoredHosts.find(d => d.id === deviceData.device_id);
+    if (device) {
+        const oldStatus = device.status;
+        Object.assign(device, deviceData);
+        
+        // Show notification for significant status changes
+        if (oldStatus !== deviceData.status && (oldStatus === 'down' || deviceData.status === 'down')) {
+            const statusMessages = {
+                'up': '✅ Online',
+                'down': '❌ Offline', 
+                'warning': '⚠️ Warning',
+                'unknown': '❓ Unknown'
+            };
+            showToast(`${device.display_name} is now ${statusMessages[deviceData.status]}`, 
+                     deviceData.status === 'up' ? 'success' : 'warning', 3000);
+        }
+        
+        // Update displays
+        updateStatusCards();
+        updateQuickStatusSummary();
+        filterHosts(); // Re-render with updated data
+    }
+}
+
+// Load data when page loads with enhanced initialization
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize view mode based on screen size
+    if (window.innerWidth < 768) {
+        currentView = 'card';
+    }
+    
+    // Progressive disclosure event listeners
+    document.getElementById('show-detailed-status')?.addEventListener('click', showDetailedStatus);
+    document.getElementById('hide-detailed-status')?.addEventListener('click', hideDetailedStatus);
+    document.getElementById('show-host-filters')?.addEventListener('click', showAdvancedFilters);
+    document.getElementById('hide-host-filters')?.addEventListener('click', hideAdvancedFilters);
+    document.getElementById('bulk-actions-toggle')?.addEventListener('click', (e) => {
+        e.preventDefault();
+        toggleBulkMode();
+    });
+    document.getElementById('exit-bulk-mode')?.addEventListener('click', toggleBulkMode);
+    document.getElementById('toggle-host-view')?.addEventListener('click', toggleViewMode);
+    document.getElementById('clear-host-filters')?.addEventListener('click', clearAllFilters);
+    document.getElementById('clear-host-selection')?.addEventListener('click', clearSelection);
+    
+    // Load initial data
+    loadMonitoredHosts();
+    
+    // Auto-refresh management
+    let autoRefreshEnabled = false;
+    let autoRefreshInterval = null;
+    
+    function startAutoRefresh() {
+        if (autoRefreshInterval) {
+            clearInterval(autoRefreshInterval);
+        }
+        
+        autoRefreshInterval = setInterval(() => {
+            if (autoRefreshEnabled && !document.hidden) {
+                // Check if user is actively editing
+                const activeElement = document.activeElement;
+                const isEditing = activeElement && (
+                    activeElement.tagName === 'INPUT' || 
+                    activeElement.tagName === 'SELECT' || 
+                    activeElement.tagName === 'TEXTAREA' ||
+                    activeElement.contentEditable === 'true'
+                );
+                
+                if (!isEditing) {
+                    loadMonitoredHosts();
+                }
+            }
+        }, 30000);
+    }
+    
+    function toggleAutoRefresh() {
+        autoRefreshEnabled = !autoRefreshEnabled;
+        const btn = document.getElementById('auto-refresh-btn');
+        const icon = btn.querySelector('i');
+        const text = btn.querySelector('span');
+        
+        if (autoRefreshEnabled) {
+            icon.className = 'bi bi-pause-circle';
+            text.textContent = 'Pause';
+            btn.title = 'Pause auto-refresh';
+            btn.className = 'btn btn-outline-secondary';
+        } else {
+            icon.className = 'bi bi-play-circle';
+            text.textContent = 'Resume';
+            btn.title = 'Resume auto-refresh';
+            btn.className = 'btn btn-outline-warning';
+        }
+        
+        showToast(autoRefreshEnabled ? 'Auto-refresh resumed' : 'Auto-refresh paused', 'info');
+    }
+    
+    // Start auto-refresh interval (disabled by default)
+    startAutoRefresh();
+    
+    // Note: Visibility change auto-refresh has been disabled to prevent interruptions
+});
+</script>
+{% endblock %}

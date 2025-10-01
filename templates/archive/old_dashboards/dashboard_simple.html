@@ -1,0 +1,925 @@
+{% extends "base_with_quickstats.html" %}
+
+{% block title %}Network Overview - HomeNetMon{% endblock %}
+
+{% block head %}
+<style>
+/* Reset and Modern Foundation */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* Override Bootstrap and base template styles */
+.main-content {
+    background: #0f0f23 !important;
+    color: #ffffff !important;
+    padding: 0 !important;
+}
+
+.container, .container-fluid, .row, .col, .col-xl-11, .col-lg-11, .col-md-11 {
+    background: transparent !important;
+    color: #ffffff !important;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif !important;
+    background: #0f0f23 !important;
+    color: #ffffff !important;
+    line-height: 1.6;
+    overflow-x: hidden;
+}
+
+/* Animated background */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+    z-index: -1;
+    animation: backgroundShift 20s ease-in-out infinite;
+}
+
+@keyframes backgroundShift {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.1) rotate(0.5deg); }
+}
+
+.dashboard {
+    padding: 2rem;
+    max-width: 1400px;
+    margin: 0 auto;
+    position: relative;
+}
+
+/* Header Section */
+.header {
+    text-align: center;
+    margin-bottom: 4rem;
+    position: relative;
+}
+
+.header h1 {
+    font-size: clamp(2.5rem, 5vw, 4rem);
+    font-weight: 200;
+    letter-spacing: -2px;
+    background: linear-gradient(135deg, #ffffff 0%, #a0a0ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin-bottom: 0.5rem;
+}
+
+.header p {
+    font-size: 1.125rem;
+    opacity: 0.7;
+    font-weight: 300;
+}
+
+/* Main Grid Layout */
+.main-grid {
+    display: grid;
+    grid-template-areas: 
+        "health metrics metrics"
+        "activity activity charts";
+    grid-template-columns: 400px 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 2rem;
+    margin-bottom: 3rem;
+}
+
+/* Health Score - Hero Element */
+.health-section {
+    grid-area: health;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 24px;
+    padding: 3rem 2rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s ease;
+}
+
+.health-section::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: conic-gradient(from 0deg, transparent, rgba(120, 119, 198, 0.1), transparent);
+    animation: rotate 8s linear infinite;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}
+
+.health-content {
+    position: relative;
+    z-index: 2;
+}
+
+.health-ring {
+    position: relative;
+    width: 180px;
+    height: 180px;
+    margin: 0 auto 2rem;
+}
+
+.health-ring svg {
+    transform: rotate(-90deg);
+    filter: drop-shadow(0 0 10px rgba(120, 119, 198, 0.3));
+}
+
+.health-score {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-size: 3rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, #7877c6, #ff77c6);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.health-label {
+    font-size: 1rem;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    opacity: 0.6;
+    margin-bottom: 1rem;
+}
+
+.health-status {
+    display: inline-block;
+    padding: 0.75rem 1.5rem;
+    border-radius: 50px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+/* Metrics Cards */
+.metrics-section {
+    grid-area: metrics;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+}
+
+.metric-card {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
+    position: relative;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.metric-card:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateY(-4px);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
+}
+
+.metric-header {
+    display: flex;
+    justify-content: between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.metric-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.125rem;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+    margin-bottom: 1rem;
+}
+
+.metric-card.devices { --color-primary: #10b981; --color-secondary: #34d399; }
+.metric-card.uptime { --color-primary: #3b82f6; --color-secondary: #60a5fa; }
+.metric-card.response { --color-primary: #8b5cf6; --color-secondary: #a78bfa; }
+.metric-card.alerts { --color-primary: #f59e0b; --color-secondary: #fbbf24; }
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: 700;
+    line-height: 1;
+    margin-bottom: 0.5rem;
+    color: #ffffff;
+}
+
+.metric-label {
+    font-size: 0.875rem;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    font-weight: 500;
+}
+
+.metric-trend {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.75rem;
+    font-weight: bold;
+}
+
+.trend-up { background: rgba(16, 185, 129, 0.2); color: #10b981; }
+.trend-down { background: rgba(239, 68, 68, 0.2); color: #ef4444; }
+.trend-neutral { background: rgba(107, 114, 128, 0.2); color: #9ca3af; }
+
+/* Activity Section */
+.activity-section {
+    grid-area: activity;
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 20px;
+    padding: 2rem;
+}
+
+.section-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin-bottom: 1.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.section-title i {
+    color: #7877c6;
+}
+
+.activity-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.activity-item {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    transition: all 0.2s ease;
+}
+
+.activity-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    transform: translateX(4px);
+}
+
+.activity-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.activity-dot.success { background: #10b981; box-shadow: 0 0 10px rgba(16, 185, 129, 0.5); }
+.activity-dot.error { background: #ef4444; box-shadow: 0 0 10px rgba(239, 68, 68, 0.5); }
+.activity-dot.warning { background: #f59e0b; box-shadow: 0 0 10px rgba(245, 158, 11, 0.5); }
+.activity-dot.info { background: #3b82f6; box-shadow: 0 0 10px rgba(59, 130, 246, 0.5); }
+
+.activity-content {
+    flex: 1;
+}
+
+.activity-text {
+    font-size: 0.9rem;
+    margin-bottom: 0.25rem;
+    color: #ffffff;
+}
+
+.activity-time {
+    font-size: 0.75rem;
+    opacity: 0.6;
+}
+
+/* Charts Section */
+.charts-section {
+    grid-area: charts;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.chart-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
+    flex: 1;
+}
+
+.chart-title {
+    font-size: 1rem;
+    font-weight: 600;
+    margin-bottom: 1rem;
+    opacity: 0.9;
+}
+
+/* Quick Actions */
+.actions {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.action-btn {
+    padding: 0.875rem 2rem;
+    border: none;
+    border-radius: 12px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    position: relative;
+    overflow: hidden;
+}
+
+.action-btn.primary {
+    background: linear-gradient(135deg, #7877c6, #ff77c6);
+    color: #ffffff;
+    box-shadow: 0 4px 20px rgba(120, 119, 198, 0.4);
+}
+
+.action-btn.primary:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 30px rgba(120, 119, 198, 0.6);
+}
+
+.action-btn.secondary {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.action-btn.secondary:hover {
+    background: rgba(255, 255, 255, 0.15);
+    transform: translateY(-2px);
+}
+
+/* Status Colors */
+.status-excellent {
+    background: linear-gradient(135deg, #10b981, #34d399);
+    color: #ffffff;
+}
+
+.status-good {
+    background: linear-gradient(135deg, #3b82f6, #60a5fa);
+    color: #ffffff;
+}
+
+.status-warning {
+    background: linear-gradient(135deg, #f59e0b, #fbbf24);
+    color: #ffffff;
+}
+
+.status-critical {
+    background: linear-gradient(135deg, #ef4444, #f87171);
+    color: #ffffff;
+}
+
+/* Loading States */
+.skeleton {
+    background: linear-gradient(90deg, rgba(255,255,255,0.1) 25%, rgba(255,255,255,0.2) 50%, rgba(255,255,255,0.1) 75%);
+    background-size: 200% 100%;
+    animation: loading 1.5s infinite;
+    border-radius: 8px;
+}
+
+@keyframes loading {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+}
+
+/* Responsive Design */
+@media (max-width: 1200px) {
+    .main-grid {
+        grid-template-areas: 
+            "health health"
+            "metrics metrics"
+            "activity charts";
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 768px) {
+    .dashboard {
+        padding: 1rem;
+    }
+    
+    .main-grid {
+        grid-template-areas: 
+            "health"
+            "metrics" 
+            "activity"
+            "charts";
+        grid-template-columns: 1fr;
+        gap: 1.5rem;
+    }
+    
+    .health-section {
+        padding: 2rem 1.5rem;
+    }
+    
+    .health-ring {
+        width: 140px;
+        height: 140px;
+    }
+    
+    .health-score {
+        font-size: 2.5rem;
+    }
+    
+    .metrics-section {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* Fade in animations */
+.fade-in {
+    animation: fadeIn 0.8s ease-out forwards;
+    opacity: 0;
+    transform: translateY(20px);
+}
+
+.fade-in:nth-child(1) { animation-delay: 0.1s; }
+.fade-in:nth-child(2) { animation-delay: 0.2s; }
+.fade-in:nth-child(3) { animation-delay: 0.3s; }
+.fade-in:nth-child(4) { animation-delay: 0.4s; }
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Hide base template elements */
+.sidebar, .hero-dashboard, .fab, .fab-menu {
+    display: none !important;
+}
+
+.main-content {
+    margin-left: 0 !important;
+    background: transparent !important;
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard">
+    <!-- Header -->
+    <div class="header fade-in">
+        <h1>Network Overview</h1>
+        <p>Real-time monitoring dashboard</p>
+    </div>
+
+    <!-- Main Grid -->
+    <div class="main-grid">
+        <!-- Health Score -->
+        <div class="health-section fade-in">
+            <div class="health-content">
+                <div class="health-ring">
+                    <svg width="180" height="180">
+                        <circle cx="90" cy="90" r="80" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8"/>
+                        <circle cx="90" cy="90" r="80" fill="none" stroke="url(#healthGradient)" 
+                                stroke-width="8" stroke-linecap="round"
+                                stroke-dasharray="502" stroke-dashoffset="502" id="health-ring">
+                        </circle>
+                        <defs>
+                            <linearGradient id="healthGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                                <stop offset="0%" style="stop-color:#7877c6"/>
+                                <stop offset="100%" style="stop-color:#ff77c6"/>
+                            </linearGradient>
+                        </defs>
+                    </svg>
+                    <div class="health-score" id="health-score">--</div>
+                </div>
+                <div class="health-label">Network Health</div>
+                <div class="health-status" id="health-status">Analyzing...</div>
+            </div>
+        </div>
+
+        <!-- Metrics -->
+        <div class="metrics-section">
+            <div class="metric-card devices fade-in">
+                <div class="metric-icon">
+                    <i class="bi bi-wifi"></i>
+                </div>
+                <div class="metric-trend trend-neutral" id="devices-trend">→</div>
+                <div class="metric-value" id="devices-online">--</div>
+                <div class="metric-label">Devices Online</div>
+            </div>
+
+            <div class="metric-card uptime fade-in">
+                <div class="metric-icon">
+                    <i class="bi bi-clock"></i>
+                </div>
+                <div class="metric-trend trend-neutral" id="uptime-trend">→</div>
+                <div class="metric-value" id="network-uptime">--</div>
+                <div class="metric-label">Network Uptime</div>
+            </div>
+
+            <div class="metric-card response fade-in">
+                <div class="metric-icon">
+                    <i class="bi bi-speedometer2"></i>
+                </div>
+                <div class="metric-trend trend-neutral" id="response-trend">→</div>
+                <div class="metric-value" id="avg-response">--</div>
+                <div class="metric-label">Response Time</div>
+            </div>
+
+            <div class="metric-card alerts fade-in">
+                <div class="metric-icon">
+                    <i class="bi bi-bell"></i>
+                </div>
+                <div class="metric-trend trend-neutral" id="alerts-trend">→</div>
+                <div class="metric-value" id="active-alerts">--</div>
+                <div class="metric-label">Active Alerts</div>
+            </div>
+        </div>
+
+        <!-- Activity Feed -->
+        <div class="activity-section fade-in">
+            <h2 class="section-title">
+                <i class="bi bi-activity"></i>
+                Recent Activity
+            </h2>
+            <div class="activity-list" id="activity-feed">
+                <div class="skeleton" style="height: 50px;"></div>
+                <div class="skeleton" style="height: 50px;"></div>
+                <div class="skeleton" style="height: 50px;"></div>
+            </div>
+        </div>
+
+        <!-- Charts -->
+        <div class="charts-section fade-in">
+            <div class="chart-card">
+                <h3 class="chart-title">Network Status</h3>
+                <canvas id="status-chart" height="120"></canvas>
+            </div>
+            <div class="chart-card">
+                <h3 class="chart-title">Performance Trend</h3>
+                <canvas id="performance-chart" height="120"></canvas>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="actions fade-in">
+        <button class="action-btn primary" onclick="scanNetwork()">
+            <i class="bi bi-radar"></i>
+            Scan Network
+        </button>
+        <a href="/monitored-hosts" class="action-btn secondary">
+            <i class="bi bi-list"></i>
+            View Devices
+        </a>
+        <a href="/settings" class="action-btn secondary">
+            <i class="bi bi-gear"></i>
+            Settings
+        </a>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+let statusChart = null;
+let performanceChart = null;
+let lastHealthScore = 0;
+
+document.addEventListener('DOMContentLoaded', function() {
+    initCharts();
+    loadDashboardData();
+    setInterval(loadDashboardData, 30000);
+});
+
+function initCharts() {
+    // Status Chart
+    const statusCtx = document.getElementById('status-chart').getContext('2d');
+    statusChart = new Chart(statusCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Online', 'Offline', 'Unknown'],
+            datasets: [{
+                data: [0, 0, 0],
+                backgroundColor: ['#10b981', '#ef4444', '#6b7280'],
+                borderWidth: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: '#ffffff', font: { size: 11 } }
+                }
+            }
+        }
+    });
+
+    // Performance Chart
+    const perfCtx = document.getElementById('performance-chart').getContext('2d');
+    performanceChart = new Chart(perfCtx, {
+        type: 'line',
+        data: {
+            labels: Array(12).fill('').map((_, i) => `${new Date().getHours() - 11 + i}:00`),
+            datasets: [{
+                label: 'Health',
+                data: Array(12).fill(0).map(() => 75 + Math.random() * 20),
+                borderColor: '#7877c6',
+                backgroundColor: 'rgba(120, 119, 198, 0.1)',
+                tension: 0.4,
+                fill: true,
+                pointRadius: 0
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false }
+            },
+            scales: {
+                y: {
+                    beginAtZero: true,
+                    max: 100,
+                    ticks: { color: '#ffffff80', font: { size: 10 } },
+                    grid: { color: 'rgba(255,255,255,0.1)' }
+                },
+                x: {
+                    ticks: { color: '#ffffff80', font: { size: 10 } },
+                    grid: { color: 'rgba(255,255,255,0.1)' }
+                }
+            }
+        }
+    });
+}
+
+async function loadDashboardData() {
+    try {
+        const [summaryResponse, activityResponse] = await Promise.all([
+            fetch('/api/monitoring/summary'),
+            fetch('/api/monitoring/recent-activity?limit=5')
+        ]);
+
+        const summary = await summaryResponse.json();
+        const activity = await activityResponse.json();
+
+        updateHealthScore(summary);
+        updateMetrics(summary);
+        updateCharts(summary);
+        updateActivityFeed(activity);
+        
+    } catch (error) {
+        console.error('Dashboard error:', error);
+    }
+}
+
+function updateHealthScore(data) {
+    const total = data.total_devices || 0;
+    const online = data.devices_up || 0;
+    const responseTime = data.avg_response_time || 0;
+    const alerts = data.active_alerts || 0;
+    
+    let score = 100;
+    if (total > 0) {
+        const upPercent = (online / total) * 100;
+        score = Math.min(score, upPercent);
+    }
+    
+    if (responseTime > 100) score -= 10;
+    if (responseTime > 200) score -= 10;
+    if (responseTime > 500) score -= 20;
+    score -= Math.min(alerts * 0.5, 30);
+    score = Math.max(0, Math.round(score));
+    
+    // Animate score
+    animateValue('health-score', lastHealthScore, score, 1000);
+    lastHealthScore = score;
+    
+    // Update ring
+    const ring = document.getElementById('health-ring');
+    const circumference = 2 * Math.PI * 80;
+    const offset = circumference - (score / 100) * circumference;
+    ring.style.strokeDashoffset = offset;
+    
+    // Update status
+    const healthStatus = document.getElementById('health-status');
+    if (score >= 90) {
+        healthStatus.textContent = 'Excellent';
+        healthStatus.className = 'health-status status-excellent';
+    } else if (score >= 70) {
+        healthStatus.textContent = 'Good';
+        healthStatus.className = 'health-status status-good';
+    } else if (score >= 50) {
+        healthStatus.textContent = 'Needs Attention';
+        healthStatus.className = 'health-status status-warning';
+    } else {
+        healthStatus.textContent = 'Critical';
+        healthStatus.className = 'health-status status-critical';
+    }
+}
+
+function updateMetrics(data) {
+    // Devices Online
+    const total = data.total_devices || 0;
+    const online = data.devices_up || 0;
+    document.getElementById('devices-online').textContent = `${online}/${total}`;
+    updateTrend('devices-trend', online / total);
+    
+    // Network Uptime
+    document.getElementById('network-uptime').textContent = data.network_uptime || '99.9%';
+    
+    // Response Time
+    const avgResponse = data.avg_response_time || 0;
+    document.getElementById('avg-response').textContent = 
+        avgResponse < 1000 ? `${Math.round(avgResponse)}ms` : `${(avgResponse/1000).toFixed(1)}s`;
+    updateTrend('response-trend', avgResponse < 100 ? 0.9 : avgResponse < 200 ? 0.7 : 0.3);
+    
+    // Active Alerts
+    const alerts = data.active_alerts || 0;
+    document.getElementById('active-alerts').textContent = alerts;
+    updateTrend('alerts-trend', alerts === 0 ? 0.9 : alerts <= 5 ? 0.7 : 0.3);
+}
+
+function updateTrend(id, ratio) {
+    const element = document.getElementById(id);
+    if (ratio >= 0.8) {
+        element.textContent = '↗';
+        element.className = 'metric-trend trend-up';
+    } else if (ratio >= 0.6) {
+        element.textContent = '→';
+        element.className = 'metric-trend trend-neutral';
+    } else {
+        element.textContent = '↘';
+        element.className = 'metric-trend trend-down';
+    }
+}
+
+function updateCharts(data) {
+    // Update status chart
+    statusChart.data.datasets[0].data = [
+        data.devices_up || 0,
+        data.devices_down || 0,
+        data.devices_unknown || 0
+    ];
+    statusChart.update();
+}
+
+function updateActivityFeed(data) {
+    const feed = document.getElementById('activity-feed');
+    
+    if (!data.activities || data.activities.length === 0) {
+        feed.innerHTML = `
+            <div class="activity-item">
+                <div class="activity-dot success"></div>
+                <div class="activity-content">
+                    <div class="activity-text">No recent events</div>
+                    <div class="activity-time">System running normally</div>
+                </div>
+            </div>
+        `;
+        return;
+    }
+    
+    feed.innerHTML = data.activities.map(activity => {
+        const dotClass = getDotClass(activity.type);
+        const time = getRelativeTime(activity.timestamp);
+        
+        return `
+            <div class="activity-item">
+                <div class="activity-dot ${dotClass}"></div>
+                <div class="activity-content">
+                    <div class="activity-text">${activity.message}</div>
+                    <div class="activity-time">${time}</div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function getDotClass(type) {
+    const classes = {
+        'device_up': 'success',
+        'device_down': 'error',
+        'alert': 'warning',
+        'scan': 'info'
+    };
+    return classes[type] || 'info';
+}
+
+function getRelativeTime(timestamp) {
+    const now = new Date();
+    const then = new Date(timestamp);
+    const diff = Math.floor((now - then) / 1000);
+    
+    if (diff < 60) return 'Just now';
+    if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+    if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+    return `${Math.floor(diff / 86400)}d ago`;
+}
+
+function animateValue(id, start, end, duration) {
+    const element = document.getElementById(id);
+    const range = end - start;
+    const startTime = performance.now();
+    
+    function updateValue(currentTime) {
+        const elapsed = currentTime - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        const value = Math.floor(start + range * progress);
+        element.textContent = value;
+        
+        if (progress < 1) {
+            requestAnimationFrame(updateValue);
+        }
+    }
+    
+    requestAnimationFrame(updateValue);
+}
+
+function scanNetwork() {
+    fetch('/api/scan', { method: 'POST' })
+        .then(() => {
+            showToast('Network scan started');
+            setTimeout(loadDashboardData, 3000);
+        });
+}
+
+function showToast(message) {
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position: fixed;
+        bottom: 2rem;
+        right: 2rem;
+        background: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.2);
+        color: #ffffff;
+        padding: 1rem 1.5rem;
+        border-radius: 12px;
+        z-index: 9999;
+        animation: slideIn 0.3s ease;
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.animation = 'slideOut 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes slideIn {
+        from { transform: translateY(100%); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    @keyframes slideOut {
+        from { opacity: 1; }
+        to { opacity: 0; }
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

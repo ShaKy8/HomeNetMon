@@ -7,11 +7,13 @@ Provides version information, system statistics, and application details.
 from flask import Blueprint, jsonify
 from version import get_complete_info, get_version_info, get_system_info, get_application_info
 import logging
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 logger = logging.getLogger(__name__)
 system_bp = Blueprint('system', __name__)
 
 @system_bp.route('/info', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_system_info_endpoint():
     """Get comprehensive system information including version, app details, and system stats"""
     try:
@@ -28,6 +30,7 @@ def get_system_info_endpoint():
         }), 500
 
 @system_bp.route('/version', methods=['GET']) 
+@create_endpoint_limiter('relaxed')
 def get_version_endpoint():
     """Get version information only"""
     try:
@@ -44,6 +47,7 @@ def get_version_endpoint():
         }), 500
 
 @system_bp.route('/stats', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_system_stats_endpoint():
     """Get system statistics only"""
     try:
@@ -60,6 +64,7 @@ def get_system_stats_endpoint():
         }), 500
 
 @system_bp.route('/about', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_application_info_endpoint():
     """Get application information only"""
     try:
@@ -76,6 +81,7 @@ def get_application_info_endpoint():
         }), 500
 
 @system_bp.route('/health', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def health_check():
     """Simple health check endpoint"""
     try:

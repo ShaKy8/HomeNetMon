@@ -1,121 +1,652 @@
-{% extends "base_with_quickstats.html" %}
+{% extends "base_beautiful.html" %}
 
 {% block title %}Performance Dashboard - HomeNetMon{% endblock %}
 
+{% block extra_css %}
+<style>
+/* Performance Dashboard specific styling */
+.performance-header {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    padding: 2rem;
+    margin-bottom: 2rem;
+}
+
+.performance-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    transition: all 0.3s ease;
+    overflow: hidden;
+}
+
+.performance-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.metric-card {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.2) 0%, rgba(139, 92, 246, 0.2) 100%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    padding: 1.5rem;
+    color: white;
+    transition: all 0.3s ease;
+}
+
+.metric-card.primary {
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.3) 0%, rgba(37, 99, 235, 0.3) 100%);
+}
+
+.metric-card.success {
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.3) 0%, rgba(22, 163, 74, 0.3) 100%);
+}
+
+.metric-card.warning {
+    background: linear-gradient(135deg, rgba(251, 191, 36, 0.3) 0%, rgba(245, 158, 11, 0.3) 100%);
+}
+
+.metric-card.info {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.3) 0%, rgba(8, 145, 178, 0.3) 100%);
+}
+
+.metric-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.interactive-chart-container {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    transition: all 0.3s ease;
+}
+
+.interactive-chart-container:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2);
+}
+
+.chart-interaction-hint {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(0, 0, 0, 0.7);
+    color: rgba(255, 255, 255, 0.9);
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 0.75rem;
+    opacity: 0.7;
+    z-index: 10;
+}
+
+.loading-spinner {
+    color: rgba(59, 130, 246, 0.8);
+}
+
+/* Health Score Heatmap Styles */
+.health-heatmap-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: 8px;
+    padding: 16px 0;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.health-heatmap-cell {
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.2s ease-in-out;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.health-heatmap-cell:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+}
+
+.cell-content {
+    padding: 8px;
+    text-align: center;
+    border-radius: 8px;
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.cell-name {
+    font-size: 0.65rem;
+    opacity: 0.9;
+    margin-bottom: 2px;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.cell-score {
+    font-size: 1rem;
+    font-weight: 700;
+    margin: 2px 0;
+}
+
+.cell-grade {
+    font-size: 0.6rem;
+    opacity: 0.8;
+    background: rgba(255,255,255,0.2);
+    padding: 1px 4px;
+    border-radius: 3px;
+    display: inline-block;
+}
+
+.heatmap-group-header {
+    grid-column: 1 / -1;
+    padding: 8px 12px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 6px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.9);
+    border-left: 4px solid rgba(59, 130, 246, 0.8);
+    margin: 8px 0 4px 0;
+}
+
+/* Health Score Scale */
+.health-score-scale {
+    margin-top: 16px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.scale-gradient {
+    height: 20px;
+    background: linear-gradient(to right,
+        #dc3545 0%,
+        #fd7e14 20%,
+        #ffc107 40%,
+        #20c997 60%,
+        #198754 80%,
+        #28a745 100%);
+    border-radius: 10px;
+    position: relative;
+    margin: 8px 0;
+}
+
+.scale-marker {
+    position: absolute;
+    top: -5px;
+    width: 2px;
+    height: 30px;
+    background: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    font-size: 0.7rem;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    text-align: center;
+    line-height: 35px;
+}
+
+.scale-marker[data-score="0"] { left: 0%; }
+.scale-marker[data-score="25"] { left: 25%; }
+.scale-marker[data-score="50"] { left: 50%; }
+.scale-marker[data-score="75"] { left: 75%; }
+.scale-marker[data-score="100"] { left: 100%; }
+
+.scale-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.7rem;
+    font-weight: 500;
+    margin-top: 8px;
+}
+
+.scale-label-critical { color: #dc3545; }
+.scale-label-poor { color: #fd7e14; }
+.scale-label-fair { color: #ffc107; }
+.scale-label-good { color: #20c997; }
+.scale-label-excellent { color: #28a745; }
+
+/* Component Score Styles */
+.component-score-item {
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+    margin-bottom: 0.75rem;
+}
+
+.component-score-item:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.component-label {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.component-score {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: rgba(255, 255, 255, 1);
+}
+
+.component-description {
+    font-size: 0.75rem;
+    line-height: 1.2;
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.performance-table {
+    background: rgba(255, 255, 255, 0.03);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.performance-table th {
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.8);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.performance-table td {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.performance-table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.status-indicator {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 0.5rem;
+}
+
+.status-indicator.bg-success {
+    background-color: rgba(34, 197, 94, 0.8) !important;
+}
+
+.status-indicator.bg-danger {
+    background-color: rgba(239, 68, 68, 0.8) !important;
+}
+
+.status-indicator.bg-warning {
+    background-color: rgba(251, 191, 36, 0.8) !important;
+}
+
+.status-indicator.bg-secondary {
+    background-color: rgba(156, 163, 175, 0.8) !important;
+}
+
+.device-row {
+    transition: all 0.2s ease;
+}
+
+.device-row:hover {
+    background: rgba(255, 255, 255, 0.05) !important;
+}
+
+.badge {
+    background: rgba(59, 130, 246, 0.2) !important;
+    color: rgba(59, 130, 246, 1) !important;
+    border: 1px solid rgba(59, 130, 246, 0.3) !important;
+}
+
+.badge.bg-success {
+    background: rgba(34, 197, 94, 0.2) !important;
+    color: rgba(34, 197, 94, 1) !important;
+    border: 1px solid rgba(34, 197, 94, 0.3) !important;
+}
+
+.badge.bg-info {
+    background: rgba(6, 182, 212, 0.2) !important;
+    color: rgba(6, 182, 212, 1) !important;
+    border: 1px solid rgba(6, 182, 212, 0.3) !important;
+}
+
+.badge.bg-warning {
+    background: rgba(251, 191, 36, 0.2) !important;
+    color: rgba(251, 191, 36, 1) !important;
+    border: 1px solid rgba(251, 191, 36, 0.3) !important;
+}
+
+.badge.bg-danger {
+    background: rgba(239, 68, 68, 0.2) !important;
+    color: rgba(239, 68, 68, 1) !important;
+    border: 1px solid rgba(239, 68, 68, 0.3) !important;
+}
+
+.badge.bg-secondary {
+    background: rgba(156, 163, 175, 0.2) !important;
+    color: rgba(156, 163, 175, 1) !important;
+    border: 1px solid rgba(156, 163, 175, 0.3) !important;
+}
+
+.progress {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+}
+
+.progress-bar {
+    border-radius: 4px;
+    transition: width 0.8s ease-in-out;
+}
+
+.progress-bar.bg-success {
+    background: linear-gradient(90deg, rgba(34, 197, 94, 0.8) 0%, rgba(22, 163, 74, 0.8) 100%) !important;
+}
+
+.progress-bar.bg-info {
+    background: linear-gradient(90deg, rgba(6, 182, 212, 0.8) 0%, rgba(8, 145, 178, 0.8) 100%) !important;
+}
+
+.progress-bar.bg-warning {
+    background: linear-gradient(90deg, rgba(251, 191, 36, 0.8) 0%, rgba(245, 158, 11, 0.8) 100%) !important;
+}
+
+.progress-bar.bg-danger {
+    background: linear-gradient(90deg, rgba(239, 68, 68, 0.8) 0%, rgba(220, 38, 38, 0.8) 100%) !important;
+}
+
+.progress-bar.bg-secondary {
+    background: linear-gradient(90deg, rgba(156, 163, 175, 0.8) 0%, rgba(107, 114, 128, 0.8) 100%) !important;
+}
+
+.progress-bar.bg-white {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.8) 0%, rgba(255, 255, 255, 0.6) 100%) !important;
+}
+
+/* Filter badges */
+.filter-badges .badge {
+    background: rgba(59, 130, 246, 0.2) !important;
+    color: rgba(59, 130, 246, 1) !important;
+    border: 1px solid rgba(59, 130, 246, 0.3) !important;
+}
+
+/* Dropdown styling */
+.dropdown-menu {
+    background: rgba(30, 30, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+}
+
+.dropdown-item {
+    color: rgba(255, 255, 255, 0.8);
+    transition: all 0.2s ease;
+}
+
+.dropdown-item:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 1);
+}
+
+.dropdown-item.active {
+    background: rgba(59, 130, 246, 0.3);
+    color: rgba(255, 255, 255, 1);
+}
+
+/* Button styling */
+.btn-outline-primary {
+    border-color: rgba(59, 130, 246, 0.5);
+    color: rgba(59, 130, 246, 1);
+    background: rgba(59, 130, 246, 0.1);
+}
+
+.btn-outline-primary:hover {
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.8);
+    color: rgba(255, 255, 255, 1);
+}
+
+.btn-outline-success {
+    border-color: rgba(34, 197, 94, 0.5);
+    color: rgba(34, 197, 94, 1);
+    background: rgba(34, 197, 94, 0.1);
+}
+
+.btn-outline-success:hover {
+    background: rgba(34, 197, 94, 0.2);
+    border-color: rgba(34, 197, 94, 0.8);
+    color: rgba(255, 255, 255, 1);
+}
+
+.btn-outline-secondary {
+    border-color: rgba(156, 163, 175, 0.5);
+    color: rgba(156, 163, 175, 1);
+    background: rgba(156, 163, 175, 0.1);
+}
+
+.btn-outline-secondary:hover {
+    background: rgba(156, 163, 175, 0.2);
+    border-color: rgba(156, 163, 175, 0.8);
+    color: rgba(255, 255, 255, 1);
+}
+
+.btn-outline-light {
+    border-color: rgba(255, 255, 255, 0.3);
+    color: rgba(255, 255, 255, 0.8);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-outline-light:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.5);
+    color: rgba(255, 255, 255, 1);
+}
+
+/* Modal styling for device performance */
+.modal-content {
+    background: rgba(20, 20, 20, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+}
+
+.modal-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-footer {
+    border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.device-info-item {
+    margin-bottom: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.device-info-item:last-child {
+    border-bottom: none;
+}
+
+.metric-item {
+    padding: 8px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 6px;
+    margin-bottom: 8px;
+}
+
+.metric-item:last-child {
+    margin-bottom: 0;
+}
+
+.timeline-btn.active {
+    background-color: rgba(59, 130, 246, 0.8);
+    color: white;
+    border-color: rgba(59, 130, 246, 0.8);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .health-heatmap-grid {
+        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+        gap: 6px;
+    }
+
+    .cell-content {
+        padding: 6px;
+        font-size: 0.7rem;
+    }
+
+    .cell-score {
+        font-size: 0.9rem;
+    }
+
+    .component-score-item {
+        padding: 8px;
+    }
+
+    .metric-card {
+        padding: 1rem;
+    }
+
+    .performance-header {
+        padding: 1.5rem;
+    }
+}
+
+/* Animation for score updates */
+@keyframes scoreUpdate {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
+}
+
+.cell-content.score-updated {
+    animation: scoreUpdate 0.5s ease-in-out;
+}
+
+.component-score.score-updated {
+    animation: scoreUpdate 0.5s ease-in-out;
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-        <h1><i class="bi bi-speedometer2"></i> Performance Dashboard</h1>
-        <p class="text-muted mb-0">Real-time network performance monitoring and device health scoring</p>
-        <!-- Active Filters Display -->
-        <div id="active-filters" class="mt-2" style="display: none;">
-            <span class="text-muted small">Active filters:</span>
-            <span id="filter-badges"></span>
-            <button class="btn btn-sm btn-link text-decoration-none p-0 ms-2" onclick="GlobalFilters.clearFilters()">
-                <i class="bi bi-x-circle"></i> Clear all
+<!-- Header Section -->
+<div class="performance-header">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+        <div>
+            <h1 class="page-title mb-2">
+                <i class="bi bi-speedometer2 text-primary me-2"></i>Performance Dashboard
+            </h1>
+            <p class="page-subtitle mb-0">Real-time network performance monitoring and device health scoring</p>
+        </div>
+
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-outline-primary" id="refresh-performance">
+                <i class="bi bi-arrow-clockwise"></i> Refresh
             </button>
+            <button type="button" class="btn btn-outline-success" id="collect-metrics">
+                <i class="bi bi-play-circle"></i> Collect Metrics
+            </button>
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
+                    <i class="bi bi-clock"></i> Time Range
+                </button>
+                <ul class="dropdown-menu">
+                    <li><a class="dropdown-item time-range-option" href="#" data-hours="1">Last Hour</a></li>
+                    <li><a class="dropdown-item time-range-option" href="#" data-hours="6">Last 6 Hours</a></li>
+                    <li><a class="dropdown-item time-range-option active" href="#" data-hours="24">Last 24 Hours</a></li>
+                    <li><a class="dropdown-item time-range-option" href="#" data-hours="168">Last Week</a></li>
+                </ul>
+            </div>
         </div>
     </div>
-    
-    <div class="btn-group" role="group">
-        <button type="button" class="btn btn-outline-primary" id="refresh-performance">
-            <i class="bi bi-arrow-clockwise"></i> Refresh
+
+    <!-- Active Filters Display -->
+    <div id="active-filters" class="mt-2" style="display: none;">
+        <span class="text-muted small">Active filters:</span>
+        <span id="filter-badges" class="filter-badges"></span>
+        <button class="btn btn-sm btn-link text-decoration-none p-0 ms-2" onclick="GlobalFilters.clearFilters()">
+            <i class="bi bi-x-circle"></i> Clear all
         </button>
-        <button type="button" class="btn btn-outline-success" id="collect-metrics">
-            <i class="bi bi-play-circle"></i> Collect Metrics
-        </button>
-        <div class="btn-group" role="group">
-            <button type="button" class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown">
-                <i class="bi bi-clock"></i> Time Range
-            </button>
-            <ul class="dropdown-menu">
-                <li><a class="dropdown-item time-range-option" href="#" data-hours="1">Last Hour</a></li>
-                <li><a class="dropdown-item time-range-option" href="#" data-hours="6">Last 6 Hours</a></li>
-                <li><a class="dropdown-item time-range-option active" href="#" data-hours="24">Last 24 Hours</a></li>
-                <li><a class="dropdown-item time-range-option" href="#" data-hours="168">Last Week</a></li>
-            </ul>
-        </div>
     </div>
 </div>
 
 <!-- Network Performance Overview Cards -->
 <div class="row g-3 mb-4">
     <div class="col-xl-3 col-lg-6">
-        <div class="card bg-primary text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title mb-0">Network Health</h6>
-                        <h2 class="mb-0" id="network-health-score">--</h2>
-                        <small class="opacity-75" id="network-health-grade">Loading...</small>
-                    </div>
-                    <div class="text-end">
-                        <i class="bi bi-heart-pulse display-6 opacity-50"></i>
-                    </div>
+        <div class="metric-card primary">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-0">Network Health</h6>
+                    <h2 class="mb-0" id="network-health-score">--</h2>
+                    <small class="opacity-75" id="network-health-grade">Loading...</small>
                 </div>
-                <div class="progress mt-2" style="height: 4px;">
-                    <div class="progress-bar bg-white" id="network-health-bar" style="width: 0%"></div>
+                <div class="text-end">
+                    <i class="bi bi-heart-pulse display-6 opacity-50"></i>
                 </div>
+            </div>
+            <div class="progress mt-2" style="height: 4px;">
+                <div class="progress-bar bg-white" id="network-health-bar" style="width: 0%"></div>
             </div>
         </div>
     </div>
-    
+
     <div class="col-xl-3 col-lg-6">
-        <div class="card bg-success text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title mb-0">Devices Monitored</h6>
-                        <h2 class="mb-0" id="devices-monitored">--</h2>
-                        <small class="opacity-75" id="devices-with-data">-- with data</small>
-                    </div>
-                    <div class="text-end">
-                        <i class="bi bi-router display-6 opacity-50"></i>
-                    </div>
+        <div class="metric-card success">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-0">Devices Monitored</h6>
+                    <h2 class="mb-0" id="devices-monitored">--</h2>
+                    <small class="opacity-75" id="devices-with-data">-- with data</small>
                 </div>
-                <div class="progress mt-2" style="height: 4px;">
-                    <div class="progress-bar bg-white" id="devices-health-bar" style="width: 0%"></div>
+                <div class="text-end">
+                    <i class="bi bi-router display-6 opacity-50"></i>
                 </div>
+            </div>
+            <div class="progress mt-2" style="height: 4px;">
+                <div class="progress-bar bg-white" id="devices-health-bar" style="width: 0%"></div>
             </div>
         </div>
     </div>
-    
+
     <div class="col-xl-3 col-lg-6">
-        <div class="card bg-warning text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title mb-0">Avg Response Time</h6>
-                        <h2 class="mb-0" id="avg-response-time">--</h2>
-                        <small class="opacity-75">milliseconds</small>
-                    </div>
-                    <div class="text-end">
-                        <i class="bi bi-lightning display-6 opacity-50"></i>
-                    </div>
+        <div class="metric-card warning">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-0">Avg Response Time</h6>
+                    <h2 class="mb-0" id="avg-response-time">--</h2>
+                    <small class="opacity-75">milliseconds</small>
                 </div>
-                <div class="progress mt-2" style="height: 4px;">
-                    <div class="progress-bar bg-white" id="response-performance-bar" style="width: 0%"></div>
+                <div class="text-end">
+                    <i class="bi bi-lightning display-6 opacity-50"></i>
                 </div>
+            </div>
+            <div class="progress mt-2" style="height: 4px;">
+                <div class="progress-bar bg-white" id="response-performance-bar" style="width: 0%"></div>
             </div>
         </div>
     </div>
-    
+
     <div class="col-xl-3 col-lg-6">
-        <div class="card bg-info text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between align-items-center">
-                    <div>
-                        <h6 class="card-title mb-0">Network Uptime</h6>
-                        <h2 class="mb-0" id="network-uptime">--</h2>
-                        <small class="opacity-75">percentage</small>
-                    </div>
-                    <div class="text-end">
-                        <i class="bi bi-graph-up display-6 opacity-50"></i>
-                    </div>
+        <div class="metric-card info">
+            <div class="d-flex justify-content-between align-items-center">
+                <div>
+                    <h6 class="mb-0">Network Uptime</h6>
+                    <h2 class="mb-0" id="network-uptime">--</h2>
+                    <small class="opacity-75">percentage</small>
                 </div>
-                <div class="progress mt-2" style="height: 4px;">
-                    <div class="progress-bar bg-white" id="uptime-bar" style="width: 0%"></div>
+                <div class="text-end">
+                    <i class="bi bi-graph-up display-6 opacity-50"></i>
                 </div>
+            </div>
+            <div class="progress mt-2" style="height: 4px;">
+                <div class="progress-bar bg-white" id="uptime-bar" style="width: 0%"></div>
             </div>
         </div>
     </div>
@@ -125,35 +656,35 @@
 <div class="row g-3 mb-4">
     <!-- Health Score Distribution Chart -->
     <div class="col-lg-6">
-        <div class="card interactive-chart-container">
+        <div class="interactive-chart-container performance-card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-pie-chart"></i> Health Score Distribution
+                <h5 class="mb-0">
+                    <i class="bi bi-pie-chart me-2"></i>Health Score Distribution
                 </h5>
                 <div class="btn-group btn-group-sm" role="group">
-                    <button class="btn btn-outline-secondary btn-sm" onclick="refreshHealthDistribution()">
+                    <button class="btn btn-outline-light btn-sm" onclick="refreshHealthDistribution()">
                         <i class="bi bi-arrow-clockwise"></i>
                     </button>
                 </div>
             </div>
-            <div class="card-body">
+            <div class="card-body position-relative">
                 <div class="chart-interaction-hint">Click to filter</div>
                 <canvas id="health-distribution-chart" height="300"></canvas>
                 <div id="health-distribution-loading" class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
+                    <div class="spinner-border loading-spinner" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <!-- Top Performers Chart -->
     <div class="col-lg-6">
-        <div class="card interactive-chart-container">
+        <div class="interactive-chart-container performance-card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-trophy"></i> Top Performers
+                <h5 class="mb-0">
+                    <i class="bi bi-trophy me-2"></i>Top Performers
                 </h5>
                 <div class="btn-group btn-group-sm" role="group">
                     <button class="btn btn-outline-secondary dropdown-toggle btn-sm" data-bs-toggle="dropdown">
@@ -167,11 +698,11 @@
                     </ul>
                 </div>
             </div>
-            <div class="card-body">
+            <div class="card-body position-relative">
                 <div class="chart-interaction-hint">Click to drill down</div>
                 <canvas id="top-performers-chart" height="300"></canvas>
                 <div id="top-performers-loading" class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
+                    <div class="spinner-border loading-spinner" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
                 </div>
@@ -184,16 +715,16 @@
 <div class="row g-3 mb-4">
     <!-- Health Score Heatmap -->
     <div class="col-lg-8">
-        <div class="card">
+        <div class="performance-card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-grid-3x3-gap"></i> Device Health Score Matrix
+                <h5 class="mb-0">
+                    <i class="bi bi-grid-3x3-gap me-2"></i>Device Health Score Matrix
                 </h5>
                 <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-secondary" onclick="refreshHealthHeatmap()" title="Refresh">
+                    <button class="btn btn-outline-light" onclick="refreshHealthHeatmap()" title="Refresh">
                         <i class="bi bi-arrow-clockwise"></i>
                     </button>
-                    <button class="btn btn-outline-secondary dropdown-toggle" data-bs-toggle="dropdown" title="View Options">
+                    <button class="btn btn-outline-light dropdown-toggle" data-bs-toggle="dropdown" title="View Options">
                         <i class="bi bi-eye"></i>
                     </button>
                     <ul class="dropdown-menu">
@@ -206,7 +737,7 @@
             <div class="card-body">
                 <div id="health-heatmap-container">
                     <div id="health-heatmap-loading" class="text-center py-4">
-                        <div class="spinner-border text-primary" role="status">
+                        <div class="spinner-border loading-spinner" role="status">
                             <span class="visually-hidden">Loading health matrix...</span>
                         </div>
                     </div>
@@ -214,7 +745,7 @@
                         <!-- Dynamic heatmap cells will be inserted here -->
                     </div>
                 </div>
-                
+
                 <!-- Health Score Scale -->
                 <div class="health-score-scale mt-3">
                     <div class="scale-label">Health Score</div>
@@ -236,25 +767,25 @@
             </div>
         </div>
     </div>
-    
+
     <!-- Component Score Breakdown -->
     <div class="col-lg-4">
-        <div class="card">
+        <div class="performance-card">
             <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-speedometer2"></i> Component Scores
+                <h5 class="mb-0">
+                    <i class="bi bi-speedometer2 me-2"></i>Component Scores
                 </h5>
             </div>
             <div class="card-body">
                 <div id="component-scores-loading" class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
+                    <div class="spinner-border loading-spinner" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
                 </div>
-                
+
                 <div id="component-scores-container" style="display: none;">
                     <!-- Responsiveness Score -->
-                    <div class="component-score-item mb-3">
+                    <div class="component-score-item">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span class="component-label">
                                 <i class="bi bi-lightning-charge text-warning"></i>
@@ -265,11 +796,11 @@
                         <div class="progress mb-1" style="height: 8px;">
                             <div class="progress-bar" id="responsiveness-bar" role="progressbar" style="width: 0%"></div>
                         </div>
-                        <small class="text-muted component-description">Network response times and latency</small>
+                        <small class="component-description">Network response times and latency</small>
                     </div>
-                    
+
                     <!-- Reliability Score -->
-                    <div class="component-score-item mb-3">
+                    <div class="component-score-item">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span class="component-label">
                                 <i class="bi bi-shield-check text-success"></i>
@@ -280,11 +811,11 @@
                         <div class="progress mb-1" style="height: 8px;">
                             <div class="progress-bar" id="reliability-bar" role="progressbar" style="width: 0%"></div>
                         </div>
-                        <small class="text-muted component-description">Uptime and availability metrics</small>
+                        <small class="component-description">Uptime and availability metrics</small>
                     </div>
-                    
+
                     <!-- Efficiency Score -->
-                    <div class="component-score-item mb-3">
+                    <div class="component-score-item">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span class="component-label">
                                 <i class="bi bi-graph-up text-info"></i>
@@ -295,11 +826,11 @@
                         <div class="progress mb-1" style="height: 8px;">
                             <div class="progress-bar" id="efficiency-bar" role="progressbar" style="width: 0%"></div>
                         </div>
-                        <small class="text-muted component-description">Bandwidth utilization and throughput</small>
+                        <small class="component-description">Bandwidth utilization and throughput</small>
                     </div>
-                    
+
                     <!-- Stability Score -->
-                    <div class="component-score-item mb-3">
+                    <div class="component-score-item">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <span class="component-label">
                                 <i class="bi bi-bar-chart text-primary"></i>
@@ -310,7 +841,7 @@
                         <div class="progress mb-1" style="height: 8px;">
                             <div class="progress-bar" id="stability-bar" role="progressbar" style="width: 0%"></div>
                         </div>
-                        <small class="text-muted component-description">Connection consistency and jitter</small>
+                        <small class="component-description">Connection consistency and jitter</small>
                     </div>
                 </div>
             </div>
@@ -321,10 +852,10 @@
 <!-- Device Performance Table -->
 <div class="row g-3 mb-4">
     <div class="col-12">
-        <div class="card">
+        <div class="performance-card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-table"></i> Device Performance Overview
+                <h5 class="mb-0">
+                    <i class="bi bi-table me-2"></i>Device Performance Overview
                 </h5>
                 <div class="d-flex gap-2">
                     <div class="btn-group btn-group-sm" role="group">
@@ -363,7 +894,7 @@
             </div>
             <div class="card-body">
                 <div class="table-responsive">
-                    <table class="table table-hover" id="devices-performance-table">
+                    <table class="table table-hover performance-table" id="devices-performance-table">
                         <thead>
                             <tr>
                                 <th>Device</th>
@@ -380,7 +911,7 @@
                         <tbody id="devices-performance-tbody">
                             <tr>
                                 <td colspan="9" class="text-center py-4">
-                                    <div class="spinner-border text-primary" role="status">
+                                    <div class="spinner-border loading-spinner" role="status">
                                         <span class="visually-hidden">Loading...</span>
                                     </div>
                                     <div class="mt-2">Loading device performance data...</div>
@@ -398,39 +929,39 @@
 <div class="row g-3">
     <!-- Network Health Trend -->
     <div class="col-lg-6">
-        <div class="card interactive-chart-container">
+        <div class="interactive-chart-container performance-card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-graph-up-arrow"></i> Network Health Trend
+                <h5 class="mb-0">
+                    <i class="bi bi-graph-up-arrow me-2"></i>Network Health Trend
                 </h5>
                 <small class="text-muted" id="health-trend-period">Last 24 Hours</small>
             </div>
-            <div class="card-body">
+            <div class="card-body position-relative">
                 <div class="chart-interaction-hint">Real-time updates</div>
                 <canvas id="health-trend-chart" height="250"></canvas>
                 <div id="health-trend-loading" class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
+                    <div class="spinner-border loading-spinner" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <!-- Response Time Distribution -->
     <div class="col-lg-6">
-        <div class="card interactive-chart-container">
+        <div class="interactive-chart-container performance-card">
             <div class="card-header d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-speedometer"></i> Response Time Distribution
+                <h5 class="mb-0">
+                    <i class="bi bi-speedometer me-2"></i>Response Time Distribution
                 </h5>
                 <small class="text-muted" id="response-distribution-period">Current Period</small>
             </div>
-            <div class="card-body">
+            <div class="card-body position-relative">
                 <div class="chart-interaction-hint">Hover for details</div>
                 <canvas id="response-distribution-chart" height="250"></canvas>
                 <div id="response-distribution-loading" class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
+                    <div class="spinner-border loading-spinner" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
                 </div>
@@ -438,7 +969,9 @@
         </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     let currentTimeRange = 24; // hours
@@ -447,19 +980,19 @@ document.addEventListener('DOMContentLoaded', function() {
     let currentSort = 'health_score';
     let currentOrder = 'desc';
     let currentTopPerformersMetric = 'health_score';
-    
+
     // Chart instances
     let healthDistributionChart = null;
     let topPerformersChart = null;
     let healthTrendChart = null;
     let responseDistributionChart = null;
-    
+
     // Initialize dashboard
     initializePerformanceDashboard();
-    
+
     function initializePerformanceDashboard() {
         console.log('🚀 Initializing Performance Dashboard');
-        
+
         // Load initial data
         loadNetworkPerformanceSummary();
         loadHealthScoreDistribution();
@@ -469,51 +1002,51 @@ document.addEventListener('DOMContentLoaded', function() {
         createResponseDistributionChart();
         loadHealthHeatmap();
         loadComponentScores();
-        
+
         // Setup event listeners
         setupEventListeners();
-        
+
         // Setup real-time updates
         setupRealTimeUpdates();
-        
+
         // Setup global filter handling
         setupGlobalFilterHandling();
-        
+
         console.log('✅ Performance Dashboard initialized');
     }
-    
+
     function setupEventListeners() {
         // Refresh button
         document.getElementById('refresh-performance').addEventListener('click', function() {
             refreshAllData();
         });
-        
+
         // Collect metrics button
         document.getElementById('collect-metrics').addEventListener('click', function() {
             triggerMetricsCollection();
         });
-        
+
         // Time range selection
         document.querySelectorAll('.time-range-option').forEach(option => {
             option.addEventListener('click', function(e) {
                 e.preventDefault();
-                
+
                 // Update active state
                 document.querySelectorAll('.time-range-option').forEach(opt => opt.classList.remove('active'));
                 this.classList.add('active');
-                
+
                 // Update time range
                 currentTimeRange = parseInt(this.dataset.hours);
-                
+
                 // Update global filter
                 const timeRangeMap = {1: '1h', 6: '6h', 24: '24h', 168: '7d'};
                 GlobalFilters.updateFilter('timeRange', timeRangeMap[currentTimeRange] || '24h');
-                
+
                 // Refresh data
                 refreshAllData();
             });
         });
-        
+
         // Device type filters
         document.querySelectorAll('.device-type-filter').forEach(filter => {
             filter.addEventListener('click', function(e) {
@@ -523,7 +1056,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadDevicesPerformance();
             });
         });
-        
+
         // Performance status filters
         document.querySelectorAll('.performance-status-filter').forEach(filter => {
             filter.addEventListener('click', function(e) {
@@ -532,7 +1065,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadDevicesPerformance();
             });
         });
-        
+
         // Sort options
         document.querySelectorAll('.sort-option').forEach(option => {
             option.addEventListener('click', function(e) {
@@ -542,7 +1075,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadDevicesPerformance();
             });
         });
-        
+
         // Top performers metric selection
         document.querySelectorAll('.top-performers-metric').forEach(metric => {
             metric.addEventListener('click', function(e) {
@@ -552,7 +1085,7 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-    
+
     function loadNetworkPerformanceSummary() {
         fetch(`/api/performance/summary?hours=${currentTimeRange}`)
             .then(response => response.json())
@@ -564,36 +1097,36 @@ document.addEventListener('DOMContentLoaded', function() {
                 showErrorToast('Failed to load network performance summary');
             });
     }
-    
+
     function updateOverviewCards(data) {
         const networkHealth = data.network_health || {};
-        
+
         // Network Health Score
         const healthScore = networkHealth.avg_health_score || 0;
         document.getElementById('network-health-score').textContent = healthScore.toFixed(1);
         document.getElementById('network-health-grade').textContent = getPerformanceGrade(healthScore);
         document.getElementById('network-health-bar').style.width = healthScore + '%';
-        
+
         // Devices Monitored
         document.getElementById('devices-monitored').textContent = networkHealth.total_devices || 0;
         document.getElementById('devices-with-data').textContent = `${networkHealth.devices_with_data || 0} with data`;
-        const deviceHealthPercent = networkHealth.total_devices > 0 ? 
+        const deviceHealthPercent = networkHealth.total_devices > 0 ?
             (networkHealth.devices_with_data / networkHealth.total_devices * 100) : 0;
         document.getElementById('devices-health-bar').style.width = deviceHealthPercent + '%';
-        
+
         // Average Response Time (placeholder - would need API enhancement)
         document.getElementById('avg-response-time').textContent = '-- ms';
         document.getElementById('response-performance-bar').style.width = '0%';
-        
+
         // Network Uptime
         const uptime = networkHealth.avg_uptime_percentage || 0;
         document.getElementById('network-uptime').textContent = uptime.toFixed(1) + '%';
         document.getElementById('uptime-bar').style.width = uptime + '%';
     }
-    
+
     function loadHealthScoreDistribution() {
         showChartLoading('health-distribution-chart');
-        
+
         fetch(`/api/performance/health-scores?hours=${currentTimeRange}`)
             .then(response => response.json())
             .then(data => {
@@ -606,14 +1139,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 showErrorToast('Failed to load health score distribution');
             });
     }
-    
+
     function createHealthDistributionChart(data) {
         const ctx = document.getElementById('health-distribution-chart').getContext('2d');
-        
+
         if (healthDistributionChart) {
             healthDistributionChart.destroy();
         }
-        
+
         const distribution = data.health_score_distribution || {};
         const labels = ['Excellent', 'Good', 'Fair', 'Poor', 'Critical'];
         const values = [
@@ -623,7 +1156,7 @@ document.addEventListener('DOMContentLoaded', function() {
             distribution.poor || 0,
             distribution.critical || 0
         ];
-        
+
         const config = ChartConfigFactory.createDoughnutConfig({
             interactionType: 'filter',
             data: {
@@ -655,21 +1188,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-        
+
         healthDistributionChart = new Chart(ctx, config);
-        
+
         // Register for real-time updates
         ChartUpdateManager.registerChart('healthDistributionChart', healthDistributionChart, 'performance', {
             dataType: 'healthDistribution',
             refreshCallback: loadHealthScoreDistribution
         });
-        
+
         enhanceChartAccessibility(healthDistributionChart, 'Health score distribution showing performance levels across all devices');
     }
-    
+
     function loadTopPerformers() {
         showChartLoading('top-performers-chart');
-        
+
         fetch(`/api/performance/top-performers?hours=${currentTimeRange}&metric=${currentTopPerformersMetric}&limit=10`)
             .then(response => response.json())
             .then(data => {
@@ -682,14 +1215,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 showErrorToast('Failed to load top performers');
             });
     }
-    
+
     function createTopPerformersChart(data) {
         const ctx = document.getElementById('top-performers-chart').getContext('2d');
-        
+
         if (topPerformersChart) {
             topPerformersChart.destroy();
         }
-        
+
         const performers = data.top_performers || [];
         const labels = performers.map(p => p.device_name);
         const values = performers.map(p => {
@@ -701,7 +1234,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 default: return metrics.health_score || 0;
             }
         });
-        
+
         const config = ChartConfigFactory.createBarConfig({
             interactionType: 'navigation',
             data: {
@@ -735,38 +1268,38 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-        
+
         topPerformersChart = new Chart(ctx, config);
-        
+
         // Register for real-time updates
         ChartUpdateManager.registerChart('topPerformersChart', topPerformersChart, 'performance', {
             dataType: 'topPerformers',
             refreshCallback: loadTopPerformers
         });
     }
-    
+
     function loadDevicesPerformance() {
         const tbody = document.getElementById('devices-performance-tbody');
         tbody.innerHTML = `
             <tr>
                 <td colspan="9" class="text-center py-4">
-                    <div class="spinner-border text-primary" role="status">
+                    <div class="spinner-border loading-spinner" role="status">
                         <span class="visually-hidden">Loading...</span>
                     </div>
                     <div class="mt-2">Loading device performance data...</div>
                 </td>
             </tr>
         `;
-        
+
         const params = new URLSearchParams({
             hours: currentTimeRange,
             sort_by: currentSort,
             order: currentOrder,
             limit: 50
         });
-        
+
         if (currentDeviceType) params.set('device_type', currentDeviceType);
-        
+
         fetch(`/api/performance/devices?${params}`)
             .then(response => response.json())
             .then(data => {
@@ -783,10 +1316,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 `;
             });
     }
-    
+
     function updateDevicesPerformanceTable(devices) {
         const tbody = document.getElementById('devices-performance-tbody');
-        
+
         if (devices.length === 0) {
             tbody.innerHTML = `
                 <tr>
@@ -797,14 +1330,14 @@ document.addEventListener('DOMContentLoaded', function() {
             `;
             return;
         }
-        
+
         tbody.innerHTML = devices.map(device => {
             const metrics = device.performance_metrics;
             const healthScore = metrics.health_score || 0;
             const responseTime = metrics.avg_response_time_ms;
             const uptime = metrics.uptime_percentage || 0;
             const reliability = metrics.reliability_score || 0;
-            
+
             return `
                 <tr class="device-row" data-device-id="${device.device_id}">
                     <td>
@@ -822,7 +1355,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <td>
                         <div class="d-flex align-items-center">
                             <div class="progress me-2" style="width: 50px; height: 8px;">
-                                <div class="progress-bar ${getHealthScoreClass(healthScore)}" 
+                                <div class="progress-bar ${getHealthScoreClass(healthScore)}"
                                      style="width: ${healthScore}%"></div>
                             </div>
                             <span class="fw-medium">${healthScore.toFixed(1)}</span>
@@ -854,11 +1387,11 @@ document.addEventListener('DOMContentLoaded', function() {
                     </td>
                     <td>
                         <div class="btn-group btn-group-sm">
-                            <button class="btn btn-outline-primary btn-sm view-device-btn" 
+                            <button class="btn btn-outline-primary btn-sm view-device-btn"
                                     data-device-id="${device.device_id}" title="View Details">
                                 <i class="bi bi-eye"></i>
                             </button>
-                            <button class="btn btn-outline-success btn-sm collect-device-metrics-btn" 
+                            <button class="btn btn-outline-success btn-sm collect-device-metrics-btn"
                                     data-device-id="${device.device_id}" title="Collect Metrics">
                                 <i class="bi bi-play-circle"></i>
                             </button>
@@ -867,11 +1400,11 @@ document.addEventListener('DOMContentLoaded', function() {
                 </tr>
             `;
         }).join('');
-        
+
         // Add event listeners for action buttons
         setupTableActionListeners();
     }
-    
+
     function setupTableActionListeners() {
         // View device details
         document.querySelectorAll('.view-device-btn').forEach(btn => {
@@ -883,7 +1416,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 });
             });
         });
-        
+
         // Collect device metrics
         document.querySelectorAll('.collect-device-metrics-btn').forEach(btn => {
             btn.addEventListener('click', function() {
@@ -892,22 +1425,22 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         });
     }
-    
+
     function setupRealTimeUpdates() {
         // Listen for performance metric updates
         if (window.socket) {
             socket.on('performance_metrics_update', function(data) {
                 console.log('Performance metrics update:', data);
-                
+
                 // Update overview cards
                 if (data.type === 'network_summary') {
                     updateOverviewCards(data.data);
                 }
-                
+
                 // Refresh charts periodically
                 if (data.type === 'device_performance') {
                     // Refresh device table every 30 seconds
-                    if (!window.lastDeviceTableUpdate || 
+                    if (!window.lastDeviceTableUpdate ||
                         Date.now() - window.lastDeviceTableUpdate > 30000) {
                         loadDevicesPerformance();
                         window.lastDeviceTableUpdate = Date.now();
@@ -916,24 +1449,24 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     }
-    
+
     function setupGlobalFilterHandling() {
         document.addEventListener('globalFiltersChanged', function(event) {
             const filters = event.detail.filters;
             updateActiveFiltersDisplay(filters);
-            
+
             // Apply device type filter
             if (filters.deviceType !== currentDeviceType) {
                 currentDeviceType = filters.deviceType || '';
                 loadDevicesPerformance();
             }
-            
+
             // Apply time range filter
             const timeRangeHours = {
                 '1h': 1, '6h': 6, '24h': 24, '7d': 168
             };
             const newTimeRange = timeRangeHours[filters.timeRange] || 24;
-            
+
             if (newTimeRange !== currentTimeRange) {
                 currentTimeRange = newTimeRange;
                 updateTimeRangeButtons();
@@ -941,22 +1474,22 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
+
     function refreshAllData() {
         console.log('🔄 Refreshing all performance data');
         loadNetworkPerformanceSummary();
         loadHealthScoreDistribution();
         loadTopPerformers();
         loadDevicesPerformance();
-        
+
         showSuccessToast('Performance data refreshed');
     }
-    
+
     function triggerMetricsCollection() {
         const btn = document.getElementById('collect-metrics');
         btn.disabled = true;
         btn.innerHTML = '<i class="bi bi-hourglass-split"></i> Collecting...';
-        
+
         fetch('/api/performance/collect', {
             method: 'POST'
         })
@@ -978,7 +1511,7 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.innerHTML = '<i class="bi bi-play-circle"></i> Collect Metrics';
         });
     }
-    
+
     function triggerDeviceMetricsCollection(deviceId) {
         fetch(`/api/performance/collect/${deviceId}`, {
             method: 'POST'
@@ -997,7 +1530,7 @@ document.addEventListener('DOMContentLoaded', function() {
             showErrorToast('Error collecting device metrics');
         });
     }
-    
+
     // Helper functions
     function getPerformanceGrade(score) {
         if (score >= 95) return 'A+';
@@ -1010,7 +1543,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (score >= 60) return 'D';
         return 'F';
     }
-    
+
     function getHealthScoreClass(score) {
         if (score >= 90) return 'bg-success';
         if (score >= 80) return 'bg-info';
@@ -1018,7 +1551,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (score >= 60) return 'bg-danger';
         return 'bg-secondary';
     }
-    
+
     function getGradeBadgeClass(grade) {
         if (['A+', 'A'].includes(grade)) return 'bg-success';
         if (['B+', 'B'].includes(grade)) return 'bg-info';
@@ -1026,7 +1559,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (['D+', 'D'].includes(grade)) return 'bg-danger';
         return 'bg-secondary';
     }
-    
+
     function getStatusClass(status) {
         switch(status) {
             case 'up': return 'bg-success';
@@ -1035,7 +1568,7 @@ document.addEventListener('DOMContentLoaded', function() {
             default: return 'bg-secondary';
         }
     }
-    
+
     function showChartLoading(chartId) {
         const loadingId = chartId.replace('-chart', '-loading');
         const loading = document.getElementById(loadingId);
@@ -1045,7 +1578,7 @@ document.addEventListener('DOMContentLoaded', function() {
             chart.style.display = 'none';
         }
     }
-    
+
     function hideChartLoading(chartId) {
         const loadingId = chartId.replace('-chart', '-loading');
         const loading = document.getElementById(loadingId);
@@ -1055,61 +1588,61 @@ document.addEventListener('DOMContentLoaded', function() {
             chart.style.display = 'block';
         }
     }
-    
+
     function formatDateTime(isoString) {
         return new Date(isoString).toLocaleString();
     }
-    
+
     function updateActiveFiltersDisplay(filters) {
         const activeFiltersDiv = document.getElementById('active-filters');
         const filterBadges = document.getElementById('filter-badges');
-        
+
         let badges = '';
         let hasActiveFilters = false;
-        
+
         if (filters.deviceType) {
             badges += `<span class="badge bg-primary me-1">Type: ${filters.deviceType}</span>`;
             hasActiveFilters = true;
         }
-        
+
         if (filters.timeRange && filters.timeRange !== '24h') {
             badges += `<span class="badge bg-info me-1">Time: ${filters.timeRange}</span>`;
             hasActiveFilters = true;
         }
-        
+
         filterBadges.innerHTML = badges;
         activeFiltersDiv.style.display = hasActiveFilters ? 'block' : 'none';
     }
-    
+
     function updateTimeRangeButtons() {
         document.querySelectorAll('.time-range-option').forEach(option => {
             const hours = parseInt(option.dataset.hours);
             option.classList.toggle('active', hours === currentTimeRange);
         });
     }
-    
+
     function createHealthTrendChart() {
         const ctx = document.getElementById('health-trend-chart').getContext('2d');
-        
+
         if (healthTrendChart) {
             ChartUpdateManager.unregisterChart('healthTrendChart');
             healthTrendChart.destroy();
         }
-        
+
         // Generate sample health trend data (last 24 hours)
         const labels = [];
         const healthData = [];
         const now = new Date();
-        
+
         for (let i = 23; i >= 0; i--) {
             const time = new Date(now.getTime() - i * 60 * 60 * 1000);
             labels.push(time.getHours().toString().padStart(2, '0') + ':00');
             // Sample fluctuating health scores between 85-95
             healthData.push(85 + Math.random() * 10 + Math.sin(i / 4) * 3);
         }
-        
+
         hideChartLoading('health-trend-chart');
-        
+
         const config = ChartConfigFactory.createLineConfig({
             interactionType: 'performance',
             data: {
@@ -1161,27 +1694,27 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-        
+
         healthTrendChart = new Chart(ctx, config);
-        
+
         // Register for real-time updates
         ChartUpdateManager.registerChart('healthTrendChart', healthTrendChart, 'performance', {
             dataType: 'healthTrend'
         });
-        
+
         enhanceChartAccessibility(healthTrendChart, 'Network health score trend over the last 24 hours');
     }
-    
+
     function createResponseDistributionChart() {
         const ctx = document.getElementById('response-distribution-chart').getContext('2d');
-        
+
         if (responseDistributionChart) {
             ChartUpdateManager.unregisterChart('responseDistributionChart');
             responseDistributionChart.destroy();
         }
-        
+
         hideChartLoading('response-distribution-chart');
-        
+
         // Response time distribution ranges
         const responseRanges = ['< 10ms', '10-50ms', '50-100ms', '100-500ms', '> 500ms'];
         const deviceCounts = [18, 22, 6, 2, 1]; // Sample distribution
@@ -1192,7 +1725,7 @@ document.addEventListener('DOMContentLoaded', function() {
             CHART_COLORS.danger,
             '#6c757d'
         ];
-        
+
         const config = ChartConfigFactory.createBarConfig({
             interactionType: 'filter',
             data: {
@@ -1241,31 +1774,31 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
         });
-        
+
         responseDistributionChart = new Chart(ctx, config);
-        
+
         // Register for real-time updates
         ChartUpdateManager.registerChart('responseDistributionChart', responseDistributionChart, 'performance', {
             dataType: 'responseDistribution'
         });
-        
+
         enhanceChartAccessibility(responseDistributionChart, 'Response time distribution showing device counts across different response time ranges');
     }
-    
+
     function refreshHealthDistribution() {
         loadHealthScoreDistribution();
     }
-    
+
     // Health Score Heatmap Functions
     function loadHealthHeatmap() {
         console.log('📊 Loading health score heatmap');
-        
+
         const loadingElement = document.getElementById('health-heatmap-loading');
         const gridElement = document.getElementById('health-heatmap-grid');
-        
+
         loadingElement.style.display = 'block';
         gridElement.style.display = 'none';
-        
+
         fetch('/api/performance/devices?hours=' + currentTimeRange + '&limit=50')
             .then(response => response.json())
             .then(data => {
@@ -1280,18 +1813,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadingElement.innerHTML = '<div class="text-danger">Error loading heatmap data</div>';
             });
     }
-    
+
     function renderHealthHeatmap(devices, grouping = 'none') {
         const gridElement = document.getElementById('health-heatmap-grid');
         gridElement.innerHTML = '';
-        
+
         // Sort devices by health score (best first)
         devices.sort((a, b) => {
             const scoreA = a.performance_metrics.health_score || 0;
             const scoreB = b.performance_metrics.health_score || 0;
             return scoreB - scoreA;
         });
-        
+
         // Group devices if needed
         let groupedDevices = {};
         if (grouping === 'type') {
@@ -1320,28 +1853,28 @@ document.addEventListener('DOMContentLoaded', function() {
         } else {
             groupedDevices = { 'All Devices': devices };
         }
-        
+
         // Render groups
         Object.entries(groupedDevices).forEach(([groupName, groupDevices]) => {
             if (groupDevices.length === 0) return;
-            
+
             if (grouping !== 'none') {
                 const groupHeader = document.createElement('div');
                 groupHeader.className = 'heatmap-group-header';
                 groupHeader.textContent = `${groupName} (${groupDevices.length})`;
                 gridElement.appendChild(groupHeader);
             }
-            
+
             // Render device cells
             groupDevices.forEach(device => {
                 const cell = document.createElement('div');
                 cell.className = 'health-heatmap-cell';
                 cell.dataset.deviceId = device.device_id;
-                
+
                 const healthScore = device.performance_metrics.health_score || 0;
                 const grade = getPerformanceGrade(healthScore);
                 const statusClass = getHealthScoreColorClass(healthScore);
-                
+
                 cell.innerHTML = `
                     <div class="cell-content ${statusClass}">
                         <div class="cell-name" title="${device.device_name}">${device.device_name.substring(0, 8)}</div>
@@ -1349,24 +1882,24 @@ document.addEventListener('DOMContentLoaded', function() {
                         <div class="cell-grade">${grade}</div>
                     </div>
                 `;
-                
+
                 // Add click handler for drill-down
                 cell.addEventListener('click', () => {
                     showDevicePerformanceModal(device);
                 });
-                
+
                 // Add hover tooltip
                 cell.title = `${device.device_name}\nIP: ${device.device_ip}\nHealth Score: ${healthScore.toFixed(1)}\nGrade: ${grade}\nClick for details`;
-                
+
                 gridElement.appendChild(cell);
             });
         });
     }
-    
+
     function refreshHealthHeatmap() {
         loadHealthHeatmap();
     }
-    
+
     function setHeatmapGrouping(grouping) {
         // Re-render the current heatmap with new grouping
         fetch('/api/performance/devices?hours=' + currentTimeRange + '&limit=50')
@@ -1380,17 +1913,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 console.error('Error setting heatmap grouping:', error);
             });
     }
-    
+
     // Component Scores Functions
     function loadComponentScores() {
         console.log('📊 Loading component scores');
-        
+
         const loadingElement = document.getElementById('component-scores-loading');
         const containerElement = document.getElementById('component-scores-container');
-        
+
         loadingElement.style.display = 'block';
         containerElement.style.display = 'none';
-        
+
         fetch('/api/performance/health-scores?hours=' + currentTimeRange)
             .then(response => response.json())
             .then(data => {
@@ -1405,20 +1938,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 loadingElement.innerHTML = '<div class="text-danger">Error loading component data</div>';
             });
     }
-    
+
     function updateComponentScores(componentAverages) {
         const components = ['responsiveness', 'reliability', 'efficiency', 'stability'];
-        
+
         components.forEach(component => {
             const score = componentAverages[component] || 0;
             const scoreElement = document.getElementById(`${component}-score`);
             const barElement = document.getElementById(`${component}-bar`);
-            
+
             if (scoreElement && barElement) {
                 scoreElement.textContent = score.toFixed(1);
                 barElement.style.width = score + '%';
                 barElement.className = 'progress-bar ' + getHealthScoreColorClass(score);
-                
+
                 // Add animation
                 setTimeout(() => {
                     barElement.style.transition = 'width 0.8s ease-in-out';
@@ -1426,7 +1959,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     }
-    
+
     // Helper function for health score color classes
     function getHealthScoreColorClass(score) {
         if (score >= 90) return 'bg-success';
@@ -1435,11 +1968,11 @@ document.addEventListener('DOMContentLoaded', function() {
         if (score >= 60) return 'bg-danger';
         return 'bg-secondary';
     }
-    
+
     // Device Performance Modal
     function showDevicePerformanceModal(device) {
         console.log('🔍 Device drill-down for:', device.device_name);
-        
+
         // Create modal HTML
         const modalHtml = `
             <div class="modal fade" id="devicePerformanceModal" tabindex="-1" aria-labelledby="devicePerformanceModalLabel" aria-hidden="true">
@@ -1447,7 +1980,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title" id="devicePerformanceModalLabel">
-                                <i class="bi bi-speedometer2"></i> 
+                                <i class="bi bi-speedometer2"></i>
                                 Performance Details: <span class="text-primary">${device.device_name}</span>
                             </h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -1456,31 +1989,31 @@ document.addEventListener('DOMContentLoaded', function() {
                             <div class="row g-3 mb-4">
                                 <!-- Device Info -->
                                 <div class="col-md-4">
-                                    <div class="card h-100">
+                                    <div class="performance-card h-100">
                                         <div class="card-body">
                                             <h6 class="card-title">Device Information</h6>
                                             <div class="device-info-item">
                                                 <strong>IP Address:</strong> ${device.device_ip}
                                             </div>
                                             <div class="device-info-item">
-                                                <strong>Device Type:</strong> 
+                                                <strong>Device Type:</strong>
                                                 <span class="badge bg-secondary">${device.device_type || 'Unknown'}</span>
                                             </div>
                                             <div class="device-info-item">
-                                                <strong>Status:</strong> 
+                                                <strong>Status:</strong>
                                                 <span class="badge ${getStatusClass(device.device_status)}">${device.device_status}</span>
                                             </div>
                                             <div class="device-info-item">
-                                                <strong>Health Grade:</strong> 
+                                                <strong>Health Grade:</strong>
                                                 <span class="badge ${getGradeBadgeClass(getPerformanceGrade(device.performance_metrics.health_score))}">${getPerformanceGrade(device.performance_metrics.health_score)}</span>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
-                                
+
                                 <!-- Health Score Breakdown -->
                                 <div class="col-md-8">
-                                    <div class="card h-100">
+                                    <div class="performance-card h-100">
                                         <div class="card-body">
                                             <h6 class="card-title">Performance Score Breakdown</h6>
                                             <div class="row g-3">
@@ -1491,7 +2024,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                                             <strong class="text-primary">${(device.performance_metrics.health_score || 0).toFixed(1)}</strong>
                                                         </div>
                                                         <div class="progress mt-1" style="height: 6px;">
-                                                            <div class="progress-bar ${getHealthScoreColorClass(device.performance_metrics.health_score)}" 
+                                                            <div class="progress-bar ${getHealthScoreColorClass(device.performance_metrics.health_score)}"
                                                                  style="width: ${device.performance_metrics.health_score || 0}%"></div>
                                                         </div>
                                                     </div>
@@ -1503,7 +2036,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                                             <strong>${(device.performance_metrics.responsiveness_score || 0).toFixed(1)}</strong>
                                                         </div>
                                                         <div class="progress mt-1" style="height: 6px;">
-                                                            <div class="progress-bar ${getHealthScoreColorClass(device.performance_metrics.responsiveness_score)}" 
+                                                            <div class="progress-bar ${getHealthScoreColorClass(device.performance_metrics.responsiveness_score)}"
                                                                  style="width: ${device.performance_metrics.responsiveness_score || 0}%"></div>
                                                         </div>
                                                     </div>
@@ -1515,7 +2048,7 @@ document.addEventListener('DOMContentLoaded', function() {
                                                             <strong>${(device.performance_metrics.reliability_score || 0).toFixed(1)}</strong>
                                                         </div>
                                                         <div class="progress mt-1" style="height: 6px;">
-                                                            <div class="progress-bar ${getHealthScoreColorClass(device.performance_metrics.reliability_score)}" 
+                                                            <div class="progress-bar ${getHealthScoreColorClass(device.performance_metrics.reliability_score)}"
                                                                  style="width: ${device.performance_metrics.reliability_score || 0}%"></div>
                                                         </div>
                                                     </div>
@@ -1527,68 +2060,9 @@ document.addEventListener('DOMContentLoaded', function() {
                                                             <strong>${(device.performance_metrics.efficiency_score || 0).toFixed(1)}</strong>
                                                         </div>
                                                         <div class="progress mt-1" style="height: 6px;">
-                                                            <div class="progress-bar ${getHealthScoreColorClass(device.performance_metrics.efficiency_score)}" 
+                                                            <div class="progress-bar ${getHealthScoreColorClass(device.performance_metrics.efficiency_score)}"
                                                                  style="width: ${device.performance_metrics.efficiency_score || 0}%"></div>
                                                         </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Performance Charts -->
-                            <div class="row g-3 mb-4">
-                                <div class="col-lg-6">
-                                    <div class="card">
-                                        <div class="card-header d-flex justify-content-between align-items-center">
-                                            <h6 class="mb-0">Health Score History</h6>
-                                            <div class="btn-group btn-group-sm">
-                                                <button class="btn btn-outline-secondary timeline-btn active" data-hours="24">24h</button>
-                                                <button class="btn btn-outline-secondary timeline-btn" data-hours="168">7d</button>
-                                            </div>
-                                        </div>
-                                        <div class="card-body">
-                                            <canvas id="deviceHealthChart" height="200"></canvas>
-                                            <div id="deviceHealthLoading" class="text-center py-3">
-                                                <div class="spinner-border spinner-border-sm" role="status">
-                                                    <span class="visually-hidden">Loading...</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                                
-                                <div class="col-lg-6">
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h6 class="mb-0">Response Time Trend</h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <canvas id="deviceResponseChart" height="200"></canvas>
-                                            <div id="deviceResponseLoading" class="text-center py-3">
-                                                <div class="spinner-border spinner-border-sm" role="status">
-                                                    <span class="visually-hidden">Loading...</span>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <!-- Detailed Metrics Table -->
-                            <div class="row g-3">
-                                <div class="col-12">
-                                    <div class="card">
-                                        <div class="card-header">
-                                            <h6 class="mb-0">Recent Performance Metrics</h6>
-                                        </div>
-                                        <div class="card-body">
-                                            <div id="deviceMetricsTable">
-                                                <div class="text-center py-3">
-                                                    <div class="spinner-border" role="status">
-                                                        <span class="visually-hidden">Loading metrics...</span>
                                                     </div>
                                                 </div>
                                             </div>
@@ -1610,273 +2084,40 @@ document.addEventListener('DOMContentLoaded', function() {
                 </div>
             </div>
         `;
-        
+
         // Remove existing modal if present
         const existingModal = document.getElementById('devicePerformanceModal');
         if (existingModal) {
             existingModal.remove();
         }
-        
+
         // Add modal to DOM
         document.body.insertAdjacentHTML('beforeend', modalHtml);
-        
+
         // Initialize and show modal
         const modalElement = document.getElementById('devicePerformanceModal');
         const modal = new bootstrap.Modal(modalElement);
-        
-        // Load detailed performance data
-        loadDevicePerformanceDetails(device.device_id);
-        
-        // Setup event listeners for timeline buttons
-        modalElement.querySelectorAll('.timeline-btn').forEach(btn => {
-            btn.addEventListener('click', function() {
-                modalElement.querySelectorAll('.timeline-btn').forEach(b => b.classList.remove('active'));
-                this.classList.add('active');
-                loadDeviceHealthTimeline(device.device_id, parseInt(this.dataset.hours));
-            });
-        });
-        
+
         // Show modal
         modal.show();
-        
+
         // Clean up on close
         modalElement.addEventListener('hidden.bs.modal', function () {
             this.remove();
         });
     }
-    
-    // Load detailed device performance data
-    function loadDevicePerformanceDetails(deviceId) {
-        // Load health timeline
-        loadDeviceHealthTimeline(deviceId, 24);
-        
-        // Load response time data
-        loadDeviceResponseTimeline(deviceId);
-        
-        // Load recent metrics table
-        loadDeviceMetricsTable(deviceId);
-    }
-    
-    function loadDeviceHealthTimeline(deviceId, hours = 24) {
-        const loadingElement = document.getElementById('deviceHealthLoading');
-        const chartElement = document.getElementById('deviceHealthChart');
-        
-        loadingElement.style.display = 'block';
-        chartElement.style.display = 'none';
-        
-        fetch(`/api/performance/device/${deviceId}/timeline?hours=${hours}&granularity=hour`)
-            .then(response => response.json())
-            .then(data => {
-                createDeviceHealthChart(data.timeline);
-                loadingElement.style.display = 'none';
-                chartElement.style.display = 'block';
-            })
-            .catch(error => {
-                console.error('Error loading device health timeline:', error);
-                loadingElement.innerHTML = '<div class="text-danger">Error loading timeline</div>';
-            });
-    }
-    
-    function loadDeviceResponseTimeline(deviceId) {
-        const loadingElement = document.getElementById('deviceResponseLoading');
-        const chartElement = document.getElementById('deviceResponseChart');
-        
-        loadingElement.style.display = 'block';
-        chartElement.style.display = 'none';
-        
-        // Use existing device response chart API
-        fetch(`/api/monitoring/device/${deviceId}/data?hours=24&limit=100`)
-            .then(response => response.json())
-            .then(data => {
-                createDeviceResponseChart(data.data);
-                loadingElement.style.display = 'none';
-                chartElement.style.display = 'block';
-            })
-            .catch(error => {
-                console.error('Error loading device response timeline:', error);
-                loadingElement.innerHTML = '<div class="text-danger">Error loading response data</div>';
-            });
-    }
-    
-    function loadDeviceMetricsTable(deviceId) {
-        const tableElement = document.getElementById('deviceMetricsTable');
-        
-        fetch(`/api/performance/device/${deviceId}?hours=168&include_raw=true`)
-            .then(response => response.json())
-            .then(data => {
-                createDeviceMetricsTable(data.raw_metrics || []);
-            })
-            .catch(error => {
-                console.error('Error loading device metrics table:', error);
-                tableElement.innerHTML = '<div class="text-danger">Error loading metrics data</div>';
-            });
-    }
-    
-    function createDeviceHealthChart(timelineData) {
-        const ctx = document.getElementById('deviceHealthChart').getContext('2d');
-        
-        const labels = timelineData.map(d => new Date(d.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}));
-        const healthScores = timelineData.map(d => d.health_score);
-        const responseUptimes = timelineData.map(d => d.uptime_percentage);
-        
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [
-                    {
-                        label: 'Health Score',
-                        data: healthScores,
-                        borderColor: CHART_COLORS.primary,
-                        backgroundColor: CHART_COLORS.primary + '20',
-                        tension: 0.4,
-                        fill: true,
-                        yAxisID: 'y'
-                    },
-                    {
-                        label: 'Uptime %',
-                        data: responseUptimes,
-                        borderColor: CHART_COLORS.success,
-                        backgroundColor: CHART_COLORS.success + '20',
-                        tension: 0.4,
-                        fill: false,
-                        yAxisID: 'y'
-                    }
-                ]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: false,
-                        min: 50,
-                        max: 100,
-                        title: { display: true, text: 'Score / Percentage' }
-                    },
-                    x: {
-                        title: { display: true, text: 'Time' }
-                    }
-                },
-                plugins: {
-                    legend: { display: true },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `${context.dataset.label}: ${context.parsed.y?.toFixed(1) || 'N/A'}`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-    
-    function createDeviceResponseChart(responseData) {
-        const ctx = document.getElementById('deviceResponseChart').getContext('2d');
-        
-        const labels = responseData.map(d => new Date(d.timestamp).toLocaleTimeString([], {hour: '2-digit', minute: '2-digit'}));
-        const responseTimes = responseData.map(d => d.response_time);
-        
-        new Chart(ctx, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    label: 'Response Time (ms)',
-                    data: responseTimes,
-                    borderColor: CHART_COLORS.info,
-                    backgroundColor: CHART_COLORS.info + '20',
-                    tension: 0.4,
-                    fill: true,
-                    pointRadius: 2
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        title: { display: true, text: 'Response Time (ms)' }
-                    },
-                    x: {
-                        title: { display: true, text: 'Time' }
-                    }
-                },
-                plugins: {
-                    legend: { display: true },
-                    tooltip: {
-                        callbacks: {
-                            label: function(context) {
-                                return `${context.parsed.y?.toFixed(2) || 'N/A'} ms`;
-                            }
-                        }
-                    }
-                }
-            }
-        });
-    }
-    
-    function createDeviceMetricsTable(metricsData) {
-        const tableElement = document.getElementById('deviceMetricsTable');
-        
-        if (!metricsData.length) {
-            tableElement.innerHTML = '<div class="text-muted text-center py-3">No recent metrics data available</div>';
-            return;
-        }
-        
-        const tableHtml = `
-            <div class="table-responsive">
-                <table class="table table-sm table-hover">
-                    <thead>
-                        <tr>
-                            <th>Timestamp</th>
-                            <th>Health Score</th>
-                            <th>Resp. Time</th>
-                            <th>Uptime %</th>
-                            <th>Bandwidth In</th>
-                            <th>Bandwidth Out</th>
-                            <th>Jitter</th>
-                            <th>Packet Loss</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${metricsData.slice(0, 10).map(metric => `
-                            <tr>
-                                <td><small>${new Date(metric.timestamp).toLocaleString()}</small></td>
-                                <td>
-                                    <span class="badge ${getGradeBadgeClass(getPerformanceGrade(metric.health_score))}">
-                                        ${(metric.health_score || 0).toFixed(1)}
-                                    </span>
-                                </td>
-                                <td>${(metric.avg_response_time || 0).toFixed(1)}ms</td>
-                                <td>${(metric.uptime_percentage || 0).toFixed(1)}%</td>
-                                <td>${(metric.avg_bandwidth_in_mbps || 0).toFixed(2)} Mbps</td>
-                                <td>${(metric.avg_bandwidth_out_mbps || 0).toFixed(2)} Mbps</td>
-                                <td>${(metric.jitter_ms || 0).toFixed(1)}ms</td>
-                                <td>${(metric.packet_loss_percentage || 0).toFixed(1)}%</td>
-                            </tr>
-                        `).join('')}
-                    </tbody>
-                </table>
-            </div>
-        `;
-        
-        tableElement.innerHTML = tableHtml;
-    }
-    
+
     function openDeviceDetailPage(deviceId) {
         window.open(`/device/${deviceId}`, '_blank');
     }
-    
+
     // Initialize filters display
     updateActiveFiltersDisplay(GlobalFilters);
-    
+
     // Demo logging
     console.log('🎯 Performance Dashboard Features:');
     console.log('📊 Real-time health score monitoring');
-    console.log('🏆 Top performers analysis'); 
+    console.log('🏆 Top performers analysis');
     console.log('📈 Interactive performance charts');
     console.log('🔍 Device drill-down capabilities');
     console.log('⚡ Live metric collection');
@@ -1884,294 +2125,4 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('⏱️ Response time distribution');
 });
 </script>
-
-<!-- Additional CSS for Health Score Visualizations -->
-<style>
-/* Health Score Heatmap Styles */
-.health-heatmap-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-    gap: 8px;
-    padding: 16px 0;
-    max-height: 400px;
-    overflow-y: auto;
-}
-
-.health-heatmap-cell {
-    cursor: pointer;
-    border-radius: 8px;
-    transition: all 0.2s ease-in-out;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-.health-heatmap-cell:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
-
-.cell-content {
-    padding: 8px;
-    text-align: center;
-    border-radius: 8px;
-    color: white;
-    font-size: 0.75rem;
-    font-weight: 600;
-}
-
-.cell-name {
-    font-size: 0.65rem;
-    opacity: 0.9;
-    margin-bottom: 2px;
-    text-overflow: ellipsis;
-    overflow: hidden;
-    white-space: nowrap;
-}
-
-.cell-score {
-    font-size: 1rem;
-    font-weight: 700;
-    margin: 2px 0;
-}
-
-.cell-grade {
-    font-size: 0.6rem;
-    opacity: 0.8;
-    background: rgba(255,255,255,0.2);
-    padding: 1px 4px;
-    border-radius: 3px;
-    display: inline-block;
-}
-
-.heatmap-group-header {
-    grid-column: 1 / -1;
-    padding: 8px 12px;
-    background: var(--bs-light);
-    border-radius: 6px;
-    font-weight: 600;
-    color: var(--bs-dark);
-    border-left: 4px solid var(--bs-primary);
-    margin: 8px 0 4px 0;
-}
-
-/* Health Score Scale */
-.health-score-scale {
-    margin-top: 16px;
-    padding: 12px;
-    background: var(--bs-light);
-    border-radius: 8px;
-}
-
-.scale-gradient {
-    height: 20px;
-    background: linear-gradient(to right, 
-        #dc3545 0%, 
-        #fd7e14 20%, 
-        #ffc107 40%, 
-        #20c997 60%, 
-        #198754 80%, 
-        #28a745 100%);
-    border-radius: 10px;
-    position: relative;
-    margin: 8px 0;
-}
-
-.scale-marker {
-    position: absolute;
-    top: -5px;
-    width: 2px;
-    height: 30px;
-    background: white;
-    border: 1px solid #ccc;
-    font-size: 0.7rem;
-    font-weight: 600;
-    color: #666;
-    text-align: center;
-    line-height: 35px;
-}
-
-.scale-marker[data-score="0"] { left: 0%; }
-.scale-marker[data-score="25"] { left: 25%; }
-.scale-marker[data-score="50"] { left: 50%; }
-.scale-marker[data-score="75"] { left: 75%; }
-.scale-marker[data-score="100"] { left: 100%; }
-
-.scale-labels {
-    display: flex;
-    justify-content: space-between;
-    font-size: 0.7rem;
-    font-weight: 500;
-    margin-top: 8px;
-}
-
-.scale-label-critical { color: #dc3545; }
-.scale-label-poor { color: #fd7e14; }
-.scale-label-fair { color: #ffc107; }
-.scale-label-good { color: #20c997; }
-.scale-label-excellent { color: #28a745; }
-
-/* Component Score Styles */
-.component-score-item {
-    padding: 12px;
-    background: var(--bs-light);
-    border-radius: 8px;
-    transition: background-color 0.2s;
-}
-
-.component-score-item:hover {
-    background: var(--bs-gray-200);
-}
-
-.component-label {
-    font-weight: 600;
-    font-size: 0.9rem;
-}
-
-.component-score {
-    font-weight: 700;
-    font-size: 1.1rem;
-    color: var(--bs-dark);
-}
-
-.component-description {
-    font-size: 0.75rem;
-    line-height: 1.2;
-}
-
-.progress {
-    transition: all 0.3s ease-in-out;
-}
-
-.progress-bar {
-    transition: width 0.8s ease-in-out, background-color 0.3s ease-in-out;
-}
-
-/* Health Score Color Classes with enhanced contrast */
-.bg-success {
-    background-color: #198754 !important;
-}
-
-.bg-info {
-    background-color: #0dcaf0 !important;
-}
-
-.bg-warning {
-    background-color: #ffc107 !important;
-    color: #000 !important;
-}
-
-.bg-danger {
-    background-color: #dc3545 !important;
-}
-
-.bg-secondary {
-    background-color: #6c757d !important;
-}
-
-/* Responsive adjustments */
-@media (max-width: 768px) {
-    .health-heatmap-grid {
-        grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
-        gap: 6px;
-    }
-    
-    .cell-content {
-        padding: 6px;
-        font-size: 0.7rem;
-    }
-    
-    .cell-score {
-        font-size: 0.9rem;
-    }
-    
-    .component-score-item {
-        padding: 8px;
-    }
-}
-
-/* Loading states */
-.health-heatmap-grid.loading {
-    opacity: 0.6;
-    pointer-events: none;
-}
-
-.component-scores-container.loading {
-    opacity: 0.6;
-    pointer-events: none;
-}
-
-/* Animation for health score updates */
-@keyframes scoreUpdate {
-    0% { transform: scale(1); }
-    50% { transform: scale(1.05); }
-    100% { transform: scale(1); }
-}
-
-.cell-content.score-updated {
-    animation: scoreUpdate 0.5s ease-in-out;
-}
-
-.component-score.score-updated {
-    animation: scoreUpdate 0.5s ease-in-out;
-}
-
-/* Device Performance Modal Styles */
-.device-info-item {
-    margin-bottom: 8px;
-    padding: 4px 0;
-    border-bottom: 1px solid var(--bs-gray-200);
-}
-
-.device-info-item:last-child {
-    border-bottom: none;
-}
-
-.metric-item {
-    padding: 8px;
-    background: var(--bs-light);
-    border-radius: 6px;
-    margin-bottom: 8px;
-}
-
-.metric-item:last-child {
-    margin-bottom: 0;
-}
-
-.timeline-btn.active {
-    background-color: var(--bs-primary);
-    color: white;
-    border-color: var(--bs-primary);
-}
-
-.modal-xl .card-body canvas {
-    max-height: 200px;
-}
-
-.table-responsive {
-    max-height: 300px;
-    overflow-y: auto;
-}
-
-/* Enhanced modal responsiveness */
-@media (max-width: 1200px) {
-    .modal-xl {
-        max-width: 95%;
-    }
-}
-
-@media (max-width: 768px) {
-    .modal-xl .row {
-        margin-left: 0;
-        margin-right: 0;
-    }
-    
-    .modal-xl .col-lg-6 {
-        margin-bottom: 1rem;
-    }
-    
-    .device-info-item {
-        font-size: 0.9rem;
-    }
-}
-</style>
-
 {% endblock %}

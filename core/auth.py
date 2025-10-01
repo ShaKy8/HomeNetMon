@@ -1,301 +1,266 @@
-import logging
-import jwt
+"""
+Authentication module for HomeNetMon
+Provides user authentication and session management
+"""
+
 import os
-from datetime import datetime, timedelta, timezone
-from typing import Optional, Dict, Any, List
-from functools import wraps
-from flask import request, jsonify, current_app, g
-from werkzeug.security import check_password_hash, generate_password_hash
-import secrets
 import hashlib
+import secrets
+from functools import wraps
+from datetime import datetime, timedelta
+from flask import session, redirect, url_for, request, jsonify, flash
+from werkzeug.security import generate_password_hash, check_password_hash
+from models import db, User, Session
+import logging
 
 logger = logging.getLogger(__name__)
 
 class AuthManager:
-    """Manages JWT-based authentication and authorization."""
-    
-    def __init__(self, app=None, secret_key: Optional[str] = None):
+    """Manages authentication and user sessions"""
+
+    def __init__(self, app=None):
         self.app = app
-        self.secret_key = secret_key or os.environ.get('JWT_SECRET_KEY') or secrets.token_urlsafe(32)
-        self.algorithm = 'HS256'
-        self.access_token_expires = timedelta(hours=1)
-        self.refresh_token_expires = timedelta(days=7)
-        
-        # In-memory user store (replace with database in production)
-        self.users = {}
-        self.refresh_tokens = {}
-        self.revoked_tokens = set()
-        
+        self.admin_password = os.environ.get('ADMIN_PASSWORD')
+        self.session_timeout = int(os.environ.get('SESSION_TIMEOUT', '3600'))  # 1 hour default
+
         if app:
             self.init_app(app)
-            
-        logger.info("AuthManager initialized")
-        
+
     def init_app(self, app):
-        """Initialize the auth manager with a Flask app."""
+        """Initialize the authentication manager with the Flask app"""
         self.app = app
-        app.config['JWT_SECRET_KEY'] = self.secret_key
-        
-        # Register error handlers
-        @app.errorhandler(401)
-        def unauthorized(error):
-            return jsonify({'error': 'Unauthorized access'}), 401
-            
-        @app.errorhandler(403)
-        def forbidden(error):
-            return jsonify({'error': 'Forbidden'}), 403
-            
-        # Create default admin user if not exists
-        self._create_default_admin()
-        
-    def _create_default_admin(self):
-        """Create a default admin user if none exists."""
-        if 'admin' not in self.users:
-            admin_password = os.environ.get('ADMIN_PASSWORD', 'changeme123')
-            self.create_user('admin', admin_password, roles=['admin', 'user'])
-            logger.info("Created default admin user (password from ADMIN_PASSWORD env or 'changeme123')")
-            
-    def create_user(self, username: str, password: str, roles: List[str] = None) -> bool:
-        """Create a new user."""
-        if username in self.users:
-            logger.warning(f"User {username} already exists")
-            return False
-            
-        self.users[username] = {
-            'username': username,
-            'password_hash': generate_password_hash(password),
-            'roles': roles or ['user'],
-            'created_at': datetime.now(timezone.utc),
-            'is_active': True
-        }
-        
-        logger.info(f"Created user: {username} with roles: {roles}")
-        return True
-        
-    def authenticate(self, username: str, password: str) -> Optional[Dict[str, Any]]:
-        """Authenticate a user with username and password."""
-        user = self.users.get(username)
-        
-        if not user:
-            logger.warning(f"Authentication failed: user {username} not found")
-            return None
-            
-        if not user['is_active']:
-            logger.warning(f"Authentication failed: user {username} is inactive")
-            return None
-            
-        if not check_password_hash(user['password_hash'], password):
-            logger.warning(f"Authentication failed: invalid password for {username}")
-            return None
-            
-        logger.info(f"User {username} authenticated successfully")
-        return {
-            'username': user['username'],
-            'roles': user['roles']
-        }
-        
-    def generate_tokens(self, user: Dict[str, Any]) -> Dict[str, str]:
-        """Generate access and refresh tokens for a user."""
-        now = datetime.now(timezone.utc)
-        
-        # Access token payload
-        access_payload = {
-            'username': user['username'],
-            'roles': user['roles'],
-            'type': 'access',
-            'iat': now,
-            'exp': now + self.access_token_expires,
-            'jti': secrets.token_urlsafe(16)  # JWT ID for revocation
-        }
-        
-        # Refresh token payload
-        refresh_payload = {
-            'username': user['username'],
-            'type': 'refresh',
-            'iat': now,
-            'exp': now + self.refresh_token_expires,
-            'jti': secrets.token_urlsafe(16)
-        }
-        
-        access_token = jwt.encode(access_payload, self.secret_key, algorithm=self.algorithm)
-        refresh_token = jwt.encode(refresh_payload, self.secret_key, algorithm=self.algorithm)
-        
-        # Store refresh token
-        self.refresh_tokens[refresh_payload['jti']] = {
-            'username': user['username'],
-            'expires': refresh_payload['exp']
-        }
-        
-        logger.debug(f"Generated tokens for user {user['username']}")
-        
-        return {
-            'access_token': access_token,
-            'refresh_token': refresh_token,
-            'token_type': 'Bearer'
-        }
-        
-    def verify_token(self, token: str, token_type: str = 'access') -> Optional[Dict[str, Any]]:
-        """Verify and decode a JWT token."""
+        app.auth_manager = self
+
+        # Setup session configuration
+        app.config['SESSION_COOKIE_SECURE'] = os.environ.get('HTTPS_ENABLED', 'false').lower() == 'true'
+        app.config['SESSION_COOKIE_HTTPONLY'] = True
+        app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+        app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(seconds=self.session_timeout)
+
+        logger.info(f"Authentication manager initialized (admin_password={'set' if self.admin_password else 'not set'})")
+
+    def create_default_admin(self):
+        """Create default admin user if it doesn't exist"""
         try:
-            payload = jwt.decode(token, self.secret_key, algorithms=[self.algorithm])
-            
-            # Check token type
-            if payload.get('type') != token_type:
-                logger.warning(f"Invalid token type: expected {token_type}, got {payload.get('type')}")
-                return None
-                
-            # Check if token is revoked
-            if payload.get('jti') in self.revoked_tokens:
-                logger.warning(f"Token {payload.get('jti')} is revoked")
-                return None
-                
-            return payload
-            
-        except jwt.ExpiredSignatureError:
-            logger.warning("Token has expired")
+            admin = User.query.filter_by(username='admin').first()
+            if not admin and self.admin_password:
+                admin = User(
+                    username='admin',
+                    email='admin@localhost',
+                    role='admin',
+                    is_active=True
+                )
+                admin.set_password(self.admin_password)
+                db.session.add(admin)
+                db.session.commit()
+                logger.info("Default admin user created")
+            elif admin and self.admin_password:
+                # Update password if ADMIN_PASSWORD env var changed
+                admin.set_password(self.admin_password)
+                db.session.commit()
+                logger.info("Admin password updated from environment variable")
+        except Exception as e:
+            logger.error(f"Error creating default admin: {e}")
+            db.session.rollback()
+
+    def authenticate(self, username, password):
+        """Authenticate a user with username and password"""
+        if not username or not password:
             return None
-        except jwt.InvalidTokenError as e:
-            logger.warning(f"Invalid token: {e}")
-            return None
-            
-    def refresh_access_token(self, refresh_token: str) -> Optional[Dict[str, str]]:
-        """Generate a new access token using a refresh token."""
-        payload = self.verify_token(refresh_token, token_type='refresh')
-        
-        if not payload:
-            return None
-            
-        # Check if refresh token is still valid
-        jti = payload.get('jti')
-        if jti not in self.refresh_tokens:
-            logger.warning(f"Refresh token {jti} not found")
-            return None
-            
-        user = self.users.get(payload['username'])
-        if not user or not user['is_active']:
-            logger.warning(f"User {payload['username']} not found or inactive")
-            return None
-            
-        # Generate new access token only
-        now = datetime.now(timezone.utc)
-        access_payload = {
-            'username': user['username'],
-            'roles': user['roles'],
-            'type': 'access',
-            'iat': now,
-            'exp': now + self.access_token_expires,
-            'jti': secrets.token_urlsafe(16)
-        }
-        
-        access_token = jwt.encode(access_payload, self.secret_key, algorithm=self.algorithm)
-        
-        return {
-            'access_token': access_token,
-            'token_type': 'Bearer'
-        }
-        
-    def revoke_token(self, token: str) -> bool:
-        """Revoke a token."""
-        payload = self.verify_token(token)
-        if payload and 'jti' in payload:
-            self.revoked_tokens.add(payload['jti'])
-            
-            # Remove from refresh tokens if it's a refresh token
-            if payload.get('type') == 'refresh' and payload['jti'] in self.refresh_tokens:
-                del self.refresh_tokens[payload['jti']]
-                
-            logger.info(f"Revoked token {payload['jti']}")
+
+        # Check database users
+        user = User.query.filter_by(username=username, is_active=True).first()
+        if user and user.check_password(password):
+            # Update last login
+            user.last_login = datetime.utcnow()
+            db.session.commit()
+            logger.info(f"User {username} authenticated successfully")
+            return user
+
+        # Fallback to environment variable for admin (backwards compatibility)
+        if username == 'admin' and self.admin_password and password == self.admin_password:
+            # Create or get admin user
+            admin = User.query.filter_by(username='admin').first()
+            if not admin:
+                self.create_default_admin()
+                admin = User.query.filter_by(username='admin').first()
+            return admin
+
+        logger.warning(f"Failed authentication attempt for username: {username}")
+        return None
+
+    def login(self, user):
+        """Log in a user by creating a session"""
+        try:
+            # Clear any existing session
+            session.clear()
+
+            # Set session data
+            session['user_id'] = user.id
+            session['username'] = user.username
+            session['role'] = user.role
+            session['logged_in'] = True
+            session['login_time'] = datetime.utcnow().isoformat()
+            session.permanent = True
+
+            # Create database session record
+            session_token = secrets.token_urlsafe(32)
+            user_session = Session(
+                user_id=user.id,
+                token=session_token,
+                ip_address=request.remote_addr,
+                user_agent=request.headers.get('User-Agent', '')[:200]
+            )
+            db.session.add(user_session)
+            db.session.commit()
+
+            session['session_token'] = session_token
+            logger.info(f"User {user.username} logged in successfully")
             return True
-        return False
-        
-    def get_current_user(self) -> Optional[Dict[str, Any]]:
-        """Get the current authenticated user from the request context."""
-        return g.get('current_user')
-        
-    def cleanup_expired_tokens(self):
-        """Clean up expired tokens from storage."""
-        now = datetime.now(timezone.utc)
-        
-        # Clean up expired refresh tokens
-        expired_tokens = []
-        for jti, data in self.refresh_tokens.items():
-            if data['expires'] < now:
-                expired_tokens.append(jti)
-                
-        for jti in expired_tokens:
-            del self.refresh_tokens[jti]
-            
-        if expired_tokens:
-            logger.info(f"Cleaned up {len(expired_tokens)} expired refresh tokens")
+        except Exception as e:
+            logger.error(f"Error during login: {e}")
+            return False
 
+    def logout(self):
+        """Log out the current user"""
+        try:
+            if 'session_token' in session:
+                # Invalidate database session
+                user_session = Session.query.filter_by(token=session['session_token']).first()
+                if user_session:
+                    db.session.delete(user_session)
+                    db.session.commit()
 
-def auth_required(f):
-    """Decorator to require authentication for a route."""
+            username = session.get('username', 'Unknown')
+            session.clear()
+            logger.info(f"User {username} logged out")
+            return True
+        except Exception as e:
+            logger.error(f"Error during logout: {e}")
+            session.clear()
+            return False
+
+    def is_authenticated(self):
+        """Check if the current session is authenticated"""
+        if not session.get('logged_in'):
+            return False
+
+        # Check session token validity
+        if 'session_token' in session:
+            user_session = Session.query.filter_by(
+                token=session['session_token'],
+                is_active=True
+            ).first()
+
+            if not user_session:
+                session.clear()
+                return False
+
+            # Check session expiry
+            if user_session.is_expired():
+                user_session.is_active = False
+                db.session.commit()
+                session.clear()
+                return False
+
+        return True
+
+    def get_current_user(self):
+        """Get the current logged-in user"""
+        if self.is_authenticated() and 'user_id' in session:
+            return User.query.get(session['user_id'])
+        return None
+
+    def has_role(self, role):
+        """Check if the current user has a specific role"""
+        return session.get('role') == role
+
+    def cleanup_expired_sessions(self):
+        """Clean up expired sessions from the database"""
+        try:
+            expired_time = datetime.utcnow() - timedelta(seconds=self.session_timeout)
+            expired_sessions = Session.query.filter(
+                Session.created_at < expired_time,
+                Session.is_active == True
+            ).all()
+
+            for sess in expired_sessions:
+                sess.is_active = False
+
+            db.session.commit()
+            if expired_sessions:
+                logger.info(f"Cleaned up {len(expired_sessions)} expired sessions")
+        except Exception as e:
+            logger.error(f"Error cleaning up sessions: {e}")
+            db.session.rollback()
+
+def login_required(f):
+    """Decorator to require login for routes"""
     @wraps(f)
     def decorated_function(*args, **kwargs):
-        auth_header = request.headers.get('Authorization')
-        
-        if not auth_header:
-            logger.warning("No authorization header provided")
-            return jsonify({'error': 'Authorization header required'}), 401
-            
-        try:
-            # Extract token from "Bearer <token>" format
-            parts = auth_header.split()
-            if len(parts) != 2 or parts[0] != 'Bearer':
-                return jsonify({'error': 'Invalid authorization header format'}), 401
-                
-            token = parts[1]
-            auth_manager = current_app.extensions.get('auth_manager')
-            
-            if not auth_manager:
-                logger.error("AuthManager not initialized")
-                return jsonify({'error': 'Authentication system not configured'}), 500
-                
-            payload = auth_manager.verify_token(token)
-            
-            if not payload:
-                return jsonify({'error': 'Invalid or expired token'}), 401
-                
-            # Set current user in request context
-            g.current_user = {
-                'username': payload['username'],
-                'roles': payload.get('roles', [])
-            }
-            
-            return f(*args, **kwargs)
-            
-        except Exception as e:
-            logger.error(f"Authentication error: {e}")
-            return jsonify({'error': 'Authentication failed'}), 401
-            
+        auth_manager = getattr(request, 'auth_manager', None)
+        if not auth_manager:
+            # Fallback for routes without middleware
+            from flask import current_app
+            auth_manager = getattr(current_app, 'auth_manager', None)
+
+        if not auth_manager or not auth_manager.is_authenticated():
+            if request.is_json:
+                return jsonify({'error': 'Authentication required'}), 401
+            flash('Please log in to access this page.', 'warning')
+            return redirect(url_for('login', next=request.url))
+        return f(*args, **kwargs)
     return decorated_function
 
-
-def roles_required(*required_roles):
-    """Decorator to require specific roles for a route."""
-    def decorator(f):
-        @wraps(f)
-        @auth_required
-        def decorated_function(*args, **kwargs):
-            current_user = g.get('current_user')
-            
-            if not current_user:
-                return jsonify({'error': 'Authentication required'}), 401
-                
-            user_roles = set(current_user.get('roles', []))
-            required_roles_set = set(required_roles)
-            
-            if not user_roles.intersection(required_roles_set):
-                logger.warning(f"User {current_user['username']} lacks required roles: {required_roles}")
-                return jsonify({'error': 'Insufficient permissions'}), 403
-                
-            return f(*args, **kwargs)
-            
-        return decorated_function
-    return decorator
-
-
 def admin_required(f):
-    """Decorator to require admin role for a route."""
-    return roles_required('admin')(f)
+    """Decorator to require admin role for routes"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        auth_manager = getattr(request, 'auth_manager', None)
+        if not auth_manager:
+            from flask import current_app
+            auth_manager = getattr(current_app, 'auth_manager', None)
+
+        if not auth_manager or not auth_manager.is_authenticated():
+            if request.is_json:
+                return jsonify({'error': 'Authentication required'}), 401
+            flash('Please log in to access this page.', 'warning')
+            return redirect(url_for('login', next=request.url))
+
+        if not auth_manager.has_role('admin'):
+            if request.is_json:
+                return jsonify({'error': 'Admin access required'}), 403
+            flash('Admin access required.', 'danger')
+            return redirect(url_for('dashboard'))
+
+        return f(*args, **kwargs)
+    return decorated_function
+
+def api_key_required(f):
+    """Decorator to require API key for API routes"""
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        api_key = request.headers.get('X-API-Key') or request.args.get('api_key')
+
+        if not api_key:
+            return jsonify({'error': 'API key required'}), 401
+
+        # Validate API key against database
+        from models import APIKey
+        key = APIKey.query.filter_by(key=api_key, is_active=True).first()
+
+        if not key:
+            return jsonify({'error': 'Invalid API key'}), 401
+
+        if key.is_expired():
+            return jsonify({'error': 'API key expired'}), 401
+
+        # Update last used timestamp
+        key.last_used = datetime.utcnow()
+        key.usage_count += 1
+        db.session.commit()
+
+        # Store API key info in request context
+        request.api_key = key
+        return f(*args, **kwargs)
+    return decorated_function

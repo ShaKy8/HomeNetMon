@@ -1,0 +1,858 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Devices - HomeNetMon</title>
+    
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
+    
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#0f0f23">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="HomeNetMon">
+    
+    <!-- Socket.IO -->
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    
+<style>
+/* Reset and Modern Foundation */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'Inter', sans-serif;
+    background: #0f0f23;
+    color: #ffffff;
+    line-height: 1.6;
+    overflow-x: hidden;
+    min-height: 100vh;
+    padding-top: 80px;
+}
+
+/* Animated background */
+body::before {
+    content: '';
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: 
+        radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
+        radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
+    z-index: -1;
+    animation: backgroundShift 20s ease-in-out infinite;
+}
+
+@keyframes backgroundShift {
+    0%, 100% { transform: scale(1) rotate(0deg); }
+    50% { transform: scale(1.1) rotate(0.5deg); }
+}
+
+/* Navigation Bar */
+.top-nav {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 70px;
+    background: rgba(15, 15, 35, 0.95);
+    backdrop-filter: blur(20px);
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 2rem;
+    z-index: 1000;
+}
+
+.nav-brand h2 {
+    font-size: 1.5rem;
+    font-weight: 300;
+    letter-spacing: -1px;
+    background: linear-gradient(135deg, #ffffff 0%, #a0a0ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    margin: 0;
+}
+
+.nav-links {
+    display: flex;
+    gap: 2rem;
+    align-items: center;
+}
+
+.nav-link {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+    font-weight: 400;
+    font-size: 0.9rem;
+    transition: all 0.3s ease;
+    padding: 0.5rem 1rem;
+    border-radius: 8px;
+    position: relative;
+}
+
+.nav-link:hover {
+    color: #ffffff;
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.nav-link.active {
+    color: #ffffff;
+    background: rgba(120, 119, 198, 0.2);
+}
+
+/* Main Container */
+.container {
+    padding: 2rem;
+    max-width: 1600px;
+    margin: 0 auto;
+}
+
+/* Header Section */
+.header {
+    margin-bottom: 3rem;
+}
+
+.page-title {
+    font-size: 2.5rem;
+    font-weight: 200;
+    letter-spacing: -1px;
+    margin-bottom: 0.5rem;
+    background: linear-gradient(135deg, #ffffff 0%, #a0a0ff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.page-subtitle {
+    font-size: 1rem;
+    opacity: 0.7;
+}
+
+/* Stats Overview */
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+.stat-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 300;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.stat-icon {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+    opacity: 0.8;
+}
+
+/* Search and Filter Bar */
+.controls-bar {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+}
+
+.search-box {
+    flex: 1;
+    min-width: 300px;
+    position: relative;
+}
+
+.search-input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 3rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #ffffff;
+    font-size: 0.95rem;
+    transition: all 0.3s ease;
+}
+
+.search-input::placeholder {
+    color: rgba(255, 255, 255, 0.5);
+}
+
+.search-input:focus {
+    outline: none;
+    background: rgba(255, 255, 255, 0.08);
+    border-color: rgba(120, 119, 198, 0.5);
+}
+
+.search-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    opacity: 0.5;
+}
+
+.filter-btn {
+    padding: 0.75rem 1.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    transition: all 0.3s ease;
+}
+
+.filter-btn:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: #ffffff;
+}
+
+.filter-btn.active {
+    background: rgba(120, 119, 198, 0.2);
+    border-color: rgba(120, 119, 198, 0.5);
+    color: #ffffff;
+}
+
+/* Devices Grid */
+.devices-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 3rem;
+}
+
+.device-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.device-card::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 3px;
+    background: linear-gradient(90deg, transparent, rgba(120, 119, 198, 0.5), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.6s ease;
+}
+
+.device-card:hover::before {
+    transform: translateX(100%);
+}
+
+.device-card:hover {
+    transform: translateY(-4px);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.device-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.device-name {
+    font-size: 1.125rem;
+    font-weight: 500;
+}
+
+.device-status {
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    animation: pulse 2s infinite;
+}
+
+.status-online {
+    background: #22c55e;
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.5);
+}
+
+.status-offline {
+    background: #ef4444;
+    box-shadow: 0 0 10px rgba(239, 68, 68, 0.5);
+}
+
+.status-unknown {
+    background: #64748b;
+    box-shadow: 0 0 10px rgba(100, 116, 139, 0.5);
+}
+
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.5; }
+}
+
+.device-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.info-row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.875rem;
+}
+
+.info-label {
+    opacity: 0.6;
+}
+
+.info-value {
+    opacity: 0.9;
+    font-family: 'SF Mono', monospace;
+}
+
+.device-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.action-btn {
+    flex: 1;
+    padding: 0.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: rgba(255, 255, 255, 0.8);
+    cursor: pointer;
+    transition: all 0.3s ease;
+    text-align: center;
+    font-size: 0.875rem;
+}
+
+.action-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+}
+
+/* Loading State */
+.loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 400px;
+}
+
+.loading-spinner {
+    width: 60px;
+    height: 60px;
+    border: 3px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #7877c6;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-text {
+    margin-top: 1rem;
+    opacity: 0.7;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    opacity: 0.7;
+}
+
+.empty-icon {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+    opacity: 0.5;
+}
+
+.empty-title {
+    font-size: 1.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.empty-subtitle {
+    font-size: 1rem;
+    opacity: 0.7;
+}
+
+/* Toast Notifications */
+.toast {
+    position: fixed;
+    bottom: 2rem;
+    right: 2rem;
+    padding: 1rem 1.5rem;
+    background: rgba(15, 15, 35, 0.95);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #ffffff;
+    transform: translateX(400px);
+    transition: transform 0.3s ease;
+    z-index: 2000;
+}
+
+.toast.show {
+    transform: translateX(0);
+}
+
+.toast.success {
+    border-color: rgba(34, 197, 94, 0.5);
+}
+
+.toast.error {
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+.toast.info {
+    border-color: rgba(59, 130, 246, 0.5);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .container {
+        padding: 1rem;
+    }
+    
+    .devices-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .stats-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+    
+    .controls-bar {
+        flex-direction: column;
+    }
+    
+    .search-box {
+        min-width: 100%;
+    }
+}
+</style>
+</head>
+<body>
+
+<!-- Navigation -->
+<nav class="top-nav">
+    <div class="nav-brand">
+        <h2>HomeNetMon</h2>
+    </div>
+    <div class="nav-links">
+        <a href="/" class="nav-link">Dashboard</a>
+        <a href="/full-view" class="nav-link">Full View</a>
+        <a href="/devices" class="nav-link active">Devices</a>
+        <a href="/network-map" class="nav-link">Network Map</a>
+        <a href="/security" class="nav-link">Security</a>
+        <a href="/analytics" class="nav-link">Reports</a>
+        <a href="/alerts" class="nav-link">Alerts</a>
+        <a href="/settings" class="nav-link">Settings</a>
+    </div>
+</nav>
+
+<!-- Main Container -->
+<div class="container">
+    <!-- Header -->
+    <div class="header">
+        <h1 class="page-title">Network Devices</h1>
+        <p class="page-subtitle">Monitor and manage your network devices</p>
+    </div>
+
+    <!-- Stats Overview -->
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-icon">📊</div>
+            <div class="stat-value" id="total-devices">--</div>
+            <div class="stat-label">Total Devices</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">✅</div>
+            <div class="stat-value" id="online-devices">--</div>
+            <div class="stat-label">Online</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">❌</div>
+            <div class="stat-value" id="offline-devices">--</div>
+            <div class="stat-label">Offline</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-icon">👁️</div>
+            <div class="stat-value" id="monitored-devices">--</div>
+            <div class="stat-label">Monitored</div>
+        </div>
+    </div>
+
+    <!-- Search and Filter Bar -->
+    <div class="controls-bar">
+        <div class="search-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" id="search-input" placeholder="Search devices by name, IP, or type...">
+        </div>
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="online">Online</button>
+        <button class="filter-btn" data-filter="offline">Offline</button>
+        <button class="filter-btn" data-filter="monitored">Monitored</button>
+    </div>
+
+    <!-- Devices Grid -->
+    <div class="devices-grid" id="devices-grid">
+        <!-- Loading State -->
+        <div class="loading-container" id="loading-container">
+            <div class="loading-spinner"></div>
+            <p class="loading-text">Loading devices...</p>
+        </div>
+    </div>
+
+    <!-- Empty State (hidden by default) -->
+    <div class="empty-state" id="empty-state" style="display: none;">
+        <div class="empty-icon">📡</div>
+        <h2 class="empty-title">No devices found</h2>
+        <p class="empty-subtitle">Try adjusting your search or filters</p>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div id="toast-container"></div>
+
+<script>
+// State management
+let allDevices = [];
+let filteredDevices = [];
+let currentFilter = 'all';
+let searchTerm = '';
+let socket;
+
+// Initialize on page load
+document.addEventListener('DOMContentLoaded', function() {
+    initializeSocket();
+    loadDevices();
+    setupEventListeners();
+});
+
+// Socket.IO connection for real-time updates
+function initializeSocket() {
+    try {
+        socket = io();
+        
+        socket.on('connect', function() {
+            console.log('Connected to server');
+        });
+        
+        socket.on('connect_error', function(error) {
+            console.warn('Socket.IO connection failed:', error);
+            console.log('Real-time updates disabled - page will still function');
+        });
+        
+        socket.on('disconnect', function(reason) {
+            console.log('Socket.IO disconnected:', reason);
+        });
+        
+        socket.on('device_status_update', function(data) {
+            updateDeviceStatus(data);
+        });
+    } catch (error) {
+        console.error('Failed to initialize Socket.IO:', error);
+        console.log('Continuing without real-time updates');
+    }
+}
+
+// Load devices from API
+async function loadDevices() {
+    try {
+        showLoading(true);
+        
+        const response = await fetch('/api/devices');
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`API Error ${response.status}: ${errorText || response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        // Validate response format
+        if (!data) {
+            throw new Error('Empty response from API');
+        }
+        
+        // Handle different response formats
+        if (Array.isArray(data)) {
+            allDevices = data;
+        } else if (data.devices && Array.isArray(data.devices)) {
+            allDevices = data.devices;
+        } else {
+            throw new Error(`Invalid API response format: ${JSON.stringify(data).substring(0, 100)}...`);
+        }
+        
+        console.log(`Loaded ${allDevices.length} devices successfully`);
+        updateStats();
+        applyFilters();
+        showLoading(false);
+        
+    } catch (error) {
+        console.error('Error loading devices:', error);
+        showToast(`Failed to load devices: ${error.message}`, 'error');
+        showLoading(false);
+        
+        // Provide fallback empty state
+        allDevices = [];
+        updateStats();
+        applyFilters();
+    }
+}
+
+// Update statistics
+function updateStats() {
+    const total = allDevices.length;
+    const online = allDevices.filter(d => d.status === 'up').length;
+    const offline = allDevices.filter(d => d.status === 'down').length;
+    const monitored = allDevices.filter(d => d.is_monitored).length;
+    
+    document.getElementById('total-devices').textContent = total;
+    document.getElementById('online-devices').textContent = online;
+    document.getElementById('offline-devices').textContent = offline;
+    document.getElementById('monitored-devices').textContent = monitored;
+}
+
+// Apply filters and search
+function applyFilters() {
+    filteredDevices = allDevices.filter(device => {
+        // Apply status filter
+        let matchesFilter = true;
+        if (currentFilter === 'online') {
+            matchesFilter = device.status === 'up';
+        } else if (currentFilter === 'offline') {
+            matchesFilter = device.status === 'down';
+        } else if (currentFilter === 'monitored') {
+            matchesFilter = device.is_monitored;
+        }
+        
+        // Apply search
+        let matchesSearch = true;
+        if (searchTerm) {
+            const search = searchTerm.toLowerCase();
+            matchesSearch = 
+                (device.display_name || '').toLowerCase().includes(search) ||
+                (device.ip_address || '').toLowerCase().includes(search) ||
+                (device.hostname || '').toLowerCase().includes(search) ||
+                (device.device_type || '').toLowerCase().includes(search);
+        }
+        
+        return matchesFilter && matchesSearch;
+    });
+    
+    renderDevices();
+}
+
+// Render devices grid
+function renderDevices() {
+    const grid = document.getElementById('devices-grid');
+    const emptyState = document.getElementById('empty-state');
+    
+    if (filteredDevices.length === 0) {
+        grid.innerHTML = '';
+        emptyState.style.display = 'block';
+        return;
+    }
+    
+    emptyState.style.display = 'none';
+    
+    grid.innerHTML = filteredDevices.map(device => `
+        <div class="device-card" data-device-id="${device.id}">
+            <div class="device-header">
+                <div class="device-name">${device.display_name || device.hostname || device.ip_address}</div>
+                <div class="device-status status-${device.status === 'up' ? 'online' : device.status === 'down' ? 'offline' : 'unknown'}"></div>
+            </div>
+            <div class="device-info">
+                <div class="info-row">
+                    <span class="info-label">IP Address</span>
+                    <span class="info-value">${device.ip_address}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Status</span>
+                    <span class="info-value">${device.status === 'up' ? 'Online' : device.status === 'down' ? 'Offline' : 'Unknown'}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Type</span>
+                    <span class="info-value">${getDeviceType(device)}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Last Seen</span>
+                    <span class="info-value">${getLastSeen(device.last_seen)}</span>
+                </div>
+            </div>
+            <div class="device-actions">
+                <button class="action-btn" onclick="pingDevice(${device.id})">Ping</button>
+                <button class="action-btn" onclick="toggleMonitoring(${device.id}, ${!device.is_monitored})">
+                    ${device.is_monitored ? 'Unmonitor' : 'Monitor'}
+                </button>
+                <button class="action-btn" onclick="viewDetails(${device.id})">Details</button>
+            </div>
+        </div>
+    `).join('');
+}
+
+// Get device type display string
+function getDeviceType(device) {
+    if (device.device_type) {
+        return device.device_type.charAt(0).toUpperCase() + device.device_type.slice(1);
+    }
+    return 'Unknown';
+}
+
+// Get last seen display string
+function getLastSeen(lastSeen) {
+    if (!lastSeen) return 'Never';
+    
+    const date = new Date(lastSeen + 'Z');
+    const now = new Date();
+    const diff = now - date;
+    
+    const minutes = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    
+    if (minutes < 1) return 'Just now';
+    if (minutes < 60) return `${minutes}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    return `${days}d ago`;
+}
+
+// Setup event listeners
+function setupEventListeners() {
+    // Search input
+    const searchInput = document.getElementById('search-input');
+    searchInput.addEventListener('input', (e) => {
+        searchTerm = e.target.value;
+        applyFilters();
+    });
+    
+    // Filter buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            currentFilter = btn.dataset.filter;
+            applyFilters();
+        });
+    });
+}
+
+// Device actions
+async function pingDevice(deviceId) {
+    try {
+        const response = await fetch(`/api/devices/${deviceId}/ping`, { method: 'POST' });
+        if (response.ok) {
+            showToast('Ping initiated', 'info');
+        }
+    } catch (error) {
+        showToast('Failed to ping device', 'error');
+    }
+}
+
+async function toggleMonitoring(deviceId, enable) {
+    try {
+        const response = await fetch(`/api/devices/${deviceId}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_monitored: enable })
+        });
+        
+        if (response.ok) {
+            showToast(`Monitoring ${enable ? 'enabled' : 'disabled'}`, 'success');
+            loadDevices(); // Reload to show changes
+        }
+    } catch (error) {
+        showToast('Failed to update monitoring', 'error');
+    }
+}
+
+function viewDetails(deviceId) {
+    window.location.href = `/device/${deviceId}`;
+}
+
+// Update device status in real-time
+function updateDeviceStatus(data) {
+    const device = allDevices.find(d => d.id === data.device_id);
+    if (device) {
+        device.status = data.status;
+        updateStats();
+        applyFilters();
+    }
+}
+
+// Show/hide loading state
+function showLoading(show) {
+    const loading = document.getElementById('loading-container');
+    if (!loading) {
+        console.warn('Loading container not found - continuing without loading indicator');
+        return;
+    }
+    if (show) {
+        loading.style.display = 'flex';
+    } else {
+        loading.style.display = 'none';
+    }
+}
+
+// Toast notifications
+function showToast(message, type = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast ${type}`;
+    toast.textContent = message;
+    
+    document.body.appendChild(toast);
+    
+    setTimeout(() => toast.classList.add('show'), 100);
+    
+    setTimeout(() => {
+        toast.classList.remove('show');
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+</script>
+
+</body>
+</html>

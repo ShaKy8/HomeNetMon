@@ -2,10 +2,12 @@ from flask import Blueprint, request, jsonify, current_app
 from datetime import datetime
 from services.device_control import device_control_service
 from models import Device
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 device_control_bp = Blueprint('device_control', __name__)
 
 @device_control_bp.route('/wake-on-lan', methods=['POST'])
+@create_endpoint_limiter('strict')
 def wake_on_lan():
     """Send Wake-on-LAN magic packet to device"""
     try:
@@ -41,6 +43,7 @@ def wake_on_lan():
         return jsonify({'error': str(e)}), 500
 
 @device_control_bp.route('/ping', methods=['POST'])
+@create_endpoint_limiter('strict')
 def ping_device():
     """Ping a device to test connectivity"""
     try:
@@ -76,6 +79,7 @@ def ping_device():
         return jsonify({'error': str(e)}), 500
 
 @device_control_bp.route('/port-scan', methods=['POST'])
+@create_endpoint_limiter('critical')
 def scan_ports():
     """Scan ports on a device"""
     try:
@@ -117,6 +121,7 @@ def scan_ports():
         return jsonify({'error': str(e)}), 500
 
 @device_control_bp.route('/discover-info', methods=['POST'])
+@create_endpoint_limiter('strict')
 def discover_info():
     """Discover additional information about a device"""
     try:
@@ -147,6 +152,7 @@ def discover_info():
         return jsonify({'error': str(e)}), 500
 
 @device_control_bp.route('/traceroute', methods=['POST'])
+@create_endpoint_limiter('strict')
 def traceroute():
     """Perform traceroute to a device"""
     try:
@@ -177,6 +183,7 @@ def traceroute():
         return jsonify({'error': str(e)}), 500
 
 @device_control_bp.route('/capabilities/<int:device_id>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_capabilities(device_id):
     """Get available control capabilities for a device"""
     try:
@@ -200,6 +207,7 @@ def get_capabilities(device_id):
         return jsonify({'error': str(e)}), 500
 
 @device_control_bp.route('/bulk-wake', methods=['POST'])
+@create_endpoint_limiter('bulk')
 def bulk_wake_on_lan():
     """Send Wake-on-LAN to multiple devices"""
     try:
@@ -269,6 +277,7 @@ def bulk_wake_on_lan():
         return jsonify({'error': str(e)}), 500
 
 @device_control_bp.route('/bulk-ping', methods=['POST'])
+@create_endpoint_limiter('bulk')
 def bulk_ping():
     """Ping multiple devices"""
     try:
@@ -333,6 +342,7 @@ def bulk_ping():
         return jsonify({'error': str(e)}), 500
 
 @device_control_bp.route('/service-status', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_service_status():
     """Get device control service status and available tools"""
     try:

@@ -14,6 +14,7 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 import logging
 import statistics
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 from services.performance_analyzer import performance_analyzer
 from models import (db, Device, PerformanceSnapshot, BandwidthTest, LatencyAnalysis, 
@@ -27,6 +28,7 @@ performance_api = Blueprint('performance_api', __name__, url_prefix='/api/perfor
 
 # Performance Analysis Endpoints
 @performance_api.route('/start', methods=['POST'])
+@create_endpoint_limiter('strict')
 def start_performance_analysis():
     """Start the performance analysis engine"""
     try:
@@ -43,6 +45,7 @@ def start_performance_analysis():
 
 
 @performance_api.route('/stop', methods=['POST'])
+@create_endpoint_limiter('strict')
 def stop_performance_analysis():
     """Stop the performance analysis engine"""
     try:
@@ -59,6 +62,7 @@ def stop_performance_analysis():
 
 
 @performance_api.route('/status', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_performance_status():
     """Get performance analyzer status"""
     try:
@@ -71,6 +75,7 @@ def get_performance_status():
 
 
 @performance_api.route('/summary', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_performance_summary():
     """Get comprehensive performance summary"""
     try:
@@ -85,6 +90,7 @@ def get_performance_summary():
 
 # Device Performance Endpoints
 @performance_api.route('/device/<int:device_id>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_device_performance(device_id):
     """Get detailed performance analysis for a specific device"""
     try:
@@ -98,6 +104,7 @@ def get_device_performance(device_id):
 
 
 @performance_api.route('/device/<int:device_id>/metrics', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_device_metrics_history(device_id):
     """Get historical performance metrics for a device"""
     try:
@@ -130,6 +137,7 @@ def get_device_metrics_history(device_id):
 
 
 @performance_api.route('/device/<int:device_id>/latency', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_device_latency_analysis(device_id):
     """Get detailed latency analysis for a device"""
     try:
@@ -155,6 +163,7 @@ def get_device_latency_analysis(device_id):
 
 # Bandwidth Testing Endpoints
 @performance_api.route('/bandwidth/test', methods=['POST'])
+@create_endpoint_limiter('critical')
 def trigger_bandwidth_test():
     """Trigger a manual bandwidth test"""
     try:
@@ -173,6 +182,7 @@ def trigger_bandwidth_test():
 
 
 @performance_api.route('/bandwidth/history', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_bandwidth_history():
     """Get bandwidth test history"""
     try:
@@ -200,6 +210,7 @@ def get_bandwidth_history():
 
 
 @performance_api.route('/bandwidth/latest', methods=['GET'])
+@create_endpoint_limiter('critical')
 def get_latest_bandwidth():
     """Get the latest bandwidth test results"""
     try:
@@ -223,6 +234,7 @@ def get_latest_bandwidth():
 
 # Performance Alerts Endpoints
 @performance_api.route('/alerts', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_performance_alerts():
     """Get performance alerts"""
     try:
@@ -260,6 +272,7 @@ def get_performance_alerts():
 
 
 @performance_api.route('/alerts/<string:alert_id>/acknowledge', methods=['POST'])
+@create_endpoint_limiter('strict')
 def acknowledge_performance_alert(alert_id):
     """Acknowledge a performance alert"""
     try:
@@ -299,6 +312,7 @@ def acknowledge_performance_alert(alert_id):
 
 # Optimization Recommendations Endpoints
 @performance_api.route('/recommendations', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_optimization_recommendations():
     """Get optimization recommendations"""
     try:
@@ -342,6 +356,7 @@ def get_optimization_recommendations():
 
 
 @performance_api.route('/recommendations', methods=['POST'])
+@create_endpoint_limiter('strict')
 def create_optimization_recommendation():
     """Create a new optimization recommendation"""
     try:
@@ -382,6 +397,7 @@ def create_optimization_recommendation():
 
 
 @performance_api.route('/recommendations/<string:recommendation_id>/status', methods=['PUT'])
+@create_endpoint_limiter('strict')
 def update_recommendation_status(recommendation_id):
     """Update optimization recommendation status"""
     try:
@@ -431,6 +447,7 @@ def update_recommendation_status(recommendation_id):
 
 # Performance Metrics Endpoints
 @performance_api.route('/metrics', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_performance_metrics():
     """Get aggregated performance metrics"""
     try:
@@ -500,6 +517,7 @@ def get_performance_metrics():
 
 
 @performance_api.route('/metrics/trends', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_performance_trends():
     """Get performance trends over time"""
     try:
@@ -565,6 +583,7 @@ def get_performance_trends():
 
 # Network Quality Endpoints
 @performance_api.route('/quality/score', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_network_quality_score():
     """Get overall network quality score"""
     try:

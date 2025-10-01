@@ -8,6 +8,7 @@ to enforce rate limiting based on endpoint type and sensitivity.
 from functools import wraps
 from flask import current_app
 import logging
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 logger = logging.getLogger(__name__)
 

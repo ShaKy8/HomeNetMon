@@ -261,17 +261,19 @@ class AlertManager:
                         ).first()
                         
                         if not existing_recovery_alert:
-                            # Create recovery alert
+                            # Create recovery alert - auto-resolve since it's informational
                             recovery_alert = Alert(
                                 device_id=device.id,
                                 alert_type='device_recovery',
                                 severity='info',
-                                message=f"Device {device.display_name} ({device.ip_address}) is back online after being down"
+                                message=f"Device {device.display_name} ({device.ip_address}) is back online after being down",
+                                resolved=True,  # Auto-resolve recovery alerts since they're informational
+                                resolved_at=datetime.utcnow()
                             )
-                            
+
                             # Calculate priority score
                             recovery_alert.calculate_and_update_priority(self.app)
-                            
+
                             db.session.add(recovery_alert)
                             db.session.commit()
                             
@@ -630,9 +632,12 @@ This is an automated message from HomeNetMon.
         
         # Setup default suppression rules to reduce alert noise
         self.setup_default_suppressions()
-        
+
         # Cleanup old alerts on startup
         self.cleanup_old_alerts()
+
+        # Clean up orphaned recovery alerts on startup
+        self.cleanup_orphaned_recovery_alerts()
         
         while not self._stop_event.is_set():
             try:
@@ -790,11 +795,43 @@ This is an automated message from HomeNetMon.
             if not self.correlation_service:
                 from services.alert_correlation import AlertCorrelationService
                 self.correlation_service = AlertCorrelationService(self.app)
-            
+
             self.correlation_service.cleanup_duplicate_alerts()
-            
+
         except Exception as e:
             logger.error(f"Error cleaning up duplicate alerts: {e}")
+
+    def cleanup_orphaned_recovery_alerts(self):
+        """Clean up orphaned recovery alerts that should be auto-resolved"""
+        try:
+            if not self.app:
+                return
+
+            with self.app.app_context():
+                # Find all unresolved recovery alerts - these should be auto-resolved
+                unresolved_recovery_alerts = Alert.query.filter_by(
+                    alert_type='device_recovery',
+                    resolved=False
+                ).all()
+
+                if unresolved_recovery_alerts:
+                    logger.info(f"Cleaning up {len(unresolved_recovery_alerts)} orphaned recovery alerts")
+
+                    for alert in unresolved_recovery_alerts:
+                        alert.resolved = True
+                        alert.resolved_at = datetime.utcnow()
+                        alert.resolution_message = "Auto-resolved: Recovery alerts are informational and should not remain unresolved"
+
+                        logger.debug(f"Auto-resolved recovery alert for {alert.device.display_name}")
+
+                    db.session.commit()
+                    logger.info(f"Successfully cleaned up {len(unresolved_recovery_alerts)} orphaned recovery alerts")
+
+        except Exception as e:
+            logger.error(f"Error cleaning up orphaned recovery alerts: {e}")
+            if self.app:
+                with self.app.app_context():
+                    db.session.rollback()
 
     def _emit_alert_update(self, alert, action='created'):
         """Emit real-time alert update via WebSocket"""
@@ -813,7 +850,7 @@ This is an automated message from HomeNetMon.
             with self.app.app_context():
                 from models import AlertSuppression
                 
-                # Default suppression rules to reduce alert noise
+                # Enhanced default suppression rules to dramatically reduce alert noise
                 default_suppressions = [
                     {
                         'name': 'Quiet Hours - Night Time',
@@ -827,19 +864,66 @@ This is an automated message from HomeNetMon.
                     },
                     {
                         'name': 'Performance Warning Suppression',
-                        'description': 'Suppress performance warning alerts to reduce noise',
+                        'description': 'Suppress performance warning alerts to reduce noise - only show critical performance issues',
                         'enabled': True,
                         'alert_type': 'performance',
                         'severity': 'warning',
                         'suppression_type': 'silence'
                     },
                     {
-                        'name': 'Anomaly Alert Suppression', 
+                        'name': 'Performance Reliability Rate Limiting',
+                        'description': 'Limit performance reliability alerts to max 1 per device per hour',
+                        'enabled': True,
+                        'alert_type': 'performance',
+                        'alert_subtype': 'performance_reliability',
+                        'suppression_type': 'rate_limit',
+                        'rate_limit_window_minutes': 60,
+                        'max_alerts_per_window': 1
+                    },
+                    {
+                        'name': 'Performance Responsiveness Rate Limiting',
+                        'description': 'Limit performance responsiveness alerts to max 1 per device per hour',
+                        'enabled': True,
+                        'alert_type': 'performance',
+                        'alert_subtype': 'performance_responsiveness',
+                        'suppression_type': 'rate_limit',
+                        'rate_limit_window_minutes': 60,
+                        'max_alerts_per_window': 1
+                    },
+                    {
+                        'name': 'Recurring Performance Alert Suppression',
+                        'description': 'Suppress recurring performance alerts for same device within 4 hours',
+                        'enabled': True,
+                        'alert_type': 'performance',
+                        'suppression_type': 'duplicate_window',
+                        'duplicate_window_hours': 4
+                    },
+                    {
+                        'name': 'Anomaly Alert Suppression',
                         'description': 'Suppress noisy anomaly detection alerts',
                         'enabled': True,
                         'alert_type': 'anomaly',
                         'severity': None,  # All severities
                         'suppression_type': 'silence'
+                    },
+                    {
+                        'name': 'Info Level Recovery Alert Suppression',
+                        'description': 'Suppress info-level recovery alerts during business hours to reduce noise',
+                        'enabled': True,
+                        'alert_type': 'device_recovery',
+                        'severity': 'info',
+                        'daily_start_hour': 8,   # 8 AM
+                        'daily_end_hour': 18,    # 6 PM
+                        'suppression_type': 'silence'
+                    },
+                    {
+                        'name': 'Performance Alert Burst Protection',
+                        'description': 'Prevent performance alert storms - max 3 performance alerts per device per 30 minutes',
+                        'enabled': True,
+                        'alert_type': 'performance',
+                        'suppression_type': 'burst_protection',
+                        'burst_window_minutes': 30,
+                        'max_alerts_per_burst': 3
                     }
                 ]
                 

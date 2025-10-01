@@ -11,11 +11,13 @@ from models import db, EscalationRule, EscalationExecution, EscalationActionLog,
 from sqlalchemy import and_, desc, func, or_
 from collections import defaultdict
 import logging
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 logger = logging.getLogger(__name__)
 escalation_bp = Blueprint('escalation', __name__)
 
 @escalation_bp.route('/rules', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_escalation_rules():
     """Get all escalation rules with optional filtering"""
     try:
@@ -59,6 +61,7 @@ def get_escalation_rules():
         return jsonify({'error': str(e)}), 500
 
 @escalation_bp.route('/rules', methods=['POST'])
+@create_endpoint_limiter('strict')
 def create_escalation_rule():
     """Create a new escalation rule"""
     try:
@@ -104,6 +107,7 @@ def create_escalation_rule():
         return jsonify({'error': str(e)}), 500
 
 @escalation_bp.route('/rules/<int:rule_id>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_escalation_rule(rule_id):
     """Get a specific escalation rule"""
     try:
@@ -138,6 +142,7 @@ def get_escalation_rule(rule_id):
         return jsonify({'error': str(e)}), 500
 
 @escalation_bp.route('/rules/<int:rule_id>', methods=['PUT'])
+@create_endpoint_limiter('strict')
 def update_escalation_rule(rule_id):
     """Update an escalation rule"""
     try:
@@ -168,6 +173,7 @@ def update_escalation_rule(rule_id):
         return jsonify({'error': str(e)}), 500
 
 @escalation_bp.route('/rules/<int:rule_id>', methods=['DELETE'])
+@create_endpoint_limiter('critical')
 def delete_escalation_rule(rule_id):
     """Delete an escalation rule"""
     try:
@@ -196,6 +202,7 @@ def delete_escalation_rule(rule_id):
         return jsonify({'error': str(e)}), 500
 
 @escalation_bp.route('/rules/<int:rule_id>/test', methods=['POST'])
+@create_endpoint_limiter('critical')
 def test_escalation_rule(rule_id):
     """Test an escalation rule with provided context"""
     try:
@@ -236,6 +243,7 @@ def test_escalation_rule(rule_id):
         return jsonify({'error': str(e)}), 500
 
 @escalation_bp.route('/executions', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_escalation_executions():
     """Get escalation executions with filtering and pagination"""
     try:
@@ -288,6 +296,7 @@ def get_escalation_executions():
         return jsonify({'error': str(e)}), 500
 
 @escalation_bp.route('/executions/<int:execution_id>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_escalation_execution(execution_id):
     """Get a specific escalation execution with full details"""
     try:
@@ -309,6 +318,7 @@ def get_escalation_execution(execution_id):
         return jsonify({'error': str(e)}), 500
 
 @escalation_bp.route('/executions/<int:execution_id>/cancel', methods=['POST'])
+@create_endpoint_limiter('strict')
 def cancel_escalation_execution(execution_id):
     """Cancel a pending or in-progress escalation execution"""
     try:
@@ -334,6 +344,7 @@ def cancel_escalation_execution(execution_id):
         return jsonify({'error': str(e)}), 500
 
 @escalation_bp.route('/statistics', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_escalation_statistics():
     """Get escalation system statistics"""
     try:
@@ -405,6 +416,7 @@ def get_escalation_statistics():
         return jsonify({'error': str(e)}), 500
 
 @escalation_bp.route('/trigger-types', methods=['GET'])
+@create_endpoint_limiter('critical')
 def get_trigger_types():
     """Get available escalation trigger types"""
     try:
@@ -443,6 +455,7 @@ def get_trigger_types():
         return jsonify({'error': str(e)}), 500
 
 @escalation_bp.route('/action-types', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_action_types():
     """Get available escalation action types"""
     try:
@@ -515,6 +528,7 @@ def get_action_types():
         return jsonify({'error': str(e)}), 500
 
 @escalation_bp.route('/rules/templates', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_rule_templates():
     """Get common escalation rule templates"""
     try:

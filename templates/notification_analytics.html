@@ -1,100 +1,417 @@
-{% extends "base_with_quickstats.html" %}
+{% extends "base_beautiful.html" %}
 
 {% block title %}Notification Analytics - HomeNetMon{% endblock %}
 
 {% block extra_css %}
 <style>
-/* Analytics-specific styles */
+/* Unified dark theme styling for notification analytics */
 .analytics-card {
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
+    background: linear-gradient(135deg, rgba(102, 126, 234, 0.2), rgba(118, 75, 162, 0.3));
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
 }
 
 .metric-card {
     transition: all 0.3s ease;
-    border: none;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border-radius: 12px;
 }
 
 .metric-card:hover {
     transform: translateY(-2px);
-    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    background: rgba(255, 255, 255, 0.05);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+}
+
+.metric-card .card-body {
+    text-align: center;
+    padding: 1.5rem;
+}
+
+.metric-card .h2 {
+    background: linear-gradient(135deg, #ffffff, rgba(255, 255, 255, 0.8));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    font-weight: 300;
 }
 
 .trend-indicator.up {
-    color: #28a745;
+    color: #00ff88;
 }
 
 .trend-indicator.down {
-    color: #dc3545;
+    color: #ff4757;
 }
 
 .trend-indicator.stable {
-    color: #6c757d;
+    color: rgba(255, 255, 255, 0.6);
 }
 
 .prediction-badge {
     font-size: 0.75rem;
     margin-left: 0.5rem;
+    border-radius: 8px;
+    padding: 0.25rem 0.5rem;
+    font-weight: 500;
 }
 
 .confidence-high {
-    background-color: #28a745;
+    background: linear-gradient(135deg, #00ff88, #00cc6a);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 255, 136, 0.3);
 }
 
 .confidence-medium {
-    background-color: #ffc107;
-    color: #000;
+    background: linear-gradient(135deg, #ffc107, #e0a800);
+    color: #000000;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
 }
 
 .confidence-low {
-    background-color: #dc3545;
+    background: linear-gradient(135deg, #ff4757, #ff3742);
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(255, 71, 87, 0.3);
 }
 
 .performance-bar {
     height: 8px;
     border-radius: 4px;
     overflow: hidden;
-    background-color: #e9ecef;
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
 }
 
 .performance-fill {
     height: 100%;
     transition: width 0.5s ease;
+    border-radius: 4px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
 }
 
 .recommendation-card {
     border-left: 4px solid;
     margin-bottom: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    border-radius: 8px;
+    transition: all 0.3s ease;
+}
+
+.recommendation-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    transform: translateY(-1px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 .recommendation-card.high {
-    border-left-color: #dc3545;
+    border-left-color: #ff4757;
+    background: rgba(255, 71, 87, 0.05);
 }
 
 .recommendation-card.medium {
     border-left-color: #ffc107;
+    background: rgba(255, 193, 7, 0.05);
 }
 
 .recommendation-card.low {
-    border-left-color: #28a745;
+    border-left-color: #00ff88;
+    background: rgba(0, 255, 136, 0.05);
+}
+
+.recommendation-card .card-title {
+    color: #ffffff;
+    font-size: 1rem;
+    font-weight: 500;
+}
+
+.recommendation-card .card-text {
+    color: rgba(255, 255, 255, 0.8);
 }
 
 .chart-container {
     position: relative;
     height: 300px;
     margin: 1rem 0;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 8px;
+    padding: 1rem;
+    backdrop-filter: blur(20px);
 }
 
+/* Button styling */
+.btn-outline-primary {
+    color: #00d4ff;
+    border-color: #00d4ff;
+    background: rgba(0, 212, 255, 0.1);
+    backdrop-filter: blur(20px);
+}
+
+.btn-outline-primary:hover {
+    background: rgba(0, 212, 255, 0.2);
+    border-color: #00d4ff;
+    color: #ffffff;
+    box-shadow: 0 4px 15px rgba(0, 212, 255, 0.3);
+}
+
+.btn-outline-secondary {
+    color: rgba(255, 255, 255, 0.8);
+    border-color: rgba(255, 255, 255, 0.2);
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(20px);
+}
+
+.btn-outline-secondary:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.3);
+    color: #ffffff;
+}
+
+.btn-outline-secondary.active {
+    background: rgba(0, 212, 255, 0.2);
+    border-color: #00d4ff;
+    color: #ffffff;
+    box-shadow: 0 2px 8px rgba(0, 212, 255, 0.3);
+}
+
+.btn-outline-info {
+    color: #00d4ff;
+    border-color: #00d4ff;
+    background: rgba(0, 212, 255, 0.1);
+}
+
+.btn-outline-info:hover {
+    background: rgba(0, 212, 255, 0.2);
+    border-color: #00d4ff;
+    color: #ffffff;
+}
+
+/* Badge styling */
+.badge.bg-success {
+    background: linear-gradient(135deg, #00ff88, #00cc6a) !important;
+    box-shadow: 0 2px 8px rgba(0, 255, 136, 0.3);
+}
+
+.badge.bg-warning {
+    background: linear-gradient(135deg, #ffc107, #e0a800) !important;
+    color: #000000 !important;
+    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+}
+
+.badge.bg-danger {
+    background: linear-gradient(135deg, #ff4757, #ff3742) !important;
+    box-shadow: 0 2px 8px rgba(255, 71, 87, 0.3);
+}
+
+/* Text color overrides for metrics */
+.text-success {
+    color: #00ff88 !important;
+}
+
+.text-warning {
+    color: #ffc107 !important;
+}
+
+.text-danger {
+    color: #ff4757 !important;
+}
+
+/* Dropdown menu styling */
+.dropdown-menu {
+    background: rgba(30, 30, 30, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+}
+
+.dropdown-item {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+.dropdown-item:hover {
+    background: rgba(0, 212, 255, 0.1);
+    color: #ffffff;
+}
+
+/* Breadcrumb styling */
+.breadcrumb {
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    backdrop-filter: blur(20px);
+}
+
+.breadcrumb-item a {
+    color: #00d4ff;
+    text-decoration: none;
+}
+
+.breadcrumb-item a:hover {
+    color: #ffffff;
+}
+
+.breadcrumb-item.active {
+    color: rgba(255, 255, 255, 0.8);
+}
+
+/* Alert styling */
+.alert {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+    color: rgba(255, 255, 255, 0.9);
+    border-radius: 8px;
+}
+
+.alert-warning {
+    background: rgba(255, 193, 7, 0.1);
+    border-color: rgba(255, 193, 7, 0.3);
+    color: #ffffff;
+}
+
+.alert-success {
+    background: rgba(0, 255, 136, 0.1);
+    border-color: rgba(0, 255, 136, 0.3);
+    color: #ffffff;
+}
+
+.alert-info {
+    background: rgba(0, 212, 255, 0.1);
+    border-color: rgba(0, 212, 255, 0.3);
+    color: #ffffff;
+}
+
+.alert-danger {
+    background: rgba(255, 71, 87, 0.1);
+    border-color: rgba(255, 71, 87, 0.3);
+    color: #ffffff;
+}
+
+/* Loading overlay styling */
+#loading-overlay {
+    background: rgba(30, 30, 30, 0.9) !important;
+    backdrop-filter: blur(20px);
+}
+
+#loading-overlay .spinner-border {
+    color: #00d4ff;
+}
+
+#loading-overlay .h5 {
+    color: #ffffff;
+}
+
+#loading-overlay .text-muted {
+    color: rgba(255, 255, 255, 0.7) !important;
+}
+
+/* Chart styling - Dark theme for Chart.js */
+.chart-container canvas {
+    filter: brightness(1.2) contrast(1.1);
+}
+
+/* Responsive design */
 @media (max-width: 768px) {
     .chart-container {
         height: 250px;
+        padding: 0.5rem;
     }
-    
+
     .metric-card {
         margin-bottom: 1rem;
     }
+
+    .metric-card .card-body {
+        padding: 1rem;
+    }
+
+    .prediction-badge {
+        font-size: 0.7rem;
+        padding: 0.2rem 0.4rem;
+    }
+
+    .d-flex.flex-md-row {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+
+    .btn-group {
+        flex-wrap: wrap;
+        gap: 0.5rem;
+    }
+}
+
+/* Small text styling */
+.small, small {
+    color: rgba(255, 255, 255, 0.7);
+}
+
+.tiny {
+    font-size: 0.7rem;
+    color: rgba(255, 255, 255, 0.6);
+}
+
+/* Fw-bold text */
+.fw-bold {
+    color: rgba(255, 255, 255, 0.95);
+}
+
+/* Performance bars with gradients */
+.performance-fill[style*="background-color: #28a745"] {
+    background: linear-gradient(90deg, #00ff88, #00cc6a) !important;
+}
+
+.performance-fill[style*="background-color: #ffc107"] {
+    background: linear-gradient(90deg, #ffc107, #e0a800) !important;
+}
+
+.performance-fill[style*="background-color: #dc3545"] {
+    background: linear-gradient(90deg, #ff4757, #ff3742) !important;
+}
+
+/* Hover effects */
+.metric-card:hover .h2 {
+    background: linear-gradient(135deg, #00d4ff, #ffffff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+}
+
+/* Animation for loading elements */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.metric-card {
+    animation: fadeIn 0.5s ease-in-out;
+}
+
+.recommendation-card {
+    animation: fadeIn 0.6s ease-in-out;
+}
+
+/* Trend insights styling */
+#trend-insights .fw-bold {
+    color: #ffffff;
+    font-size: 1.1rem;
+}
+
+#trend-insights .d-flex {
+    background: rgba(255, 255, 255, 0.03);
+    border-radius: 8px;
+    padding: 0.75rem;
+    backdrop-filter: blur(20px);
 }
 </style>
 {% endblock %}
@@ -115,7 +432,7 @@
         <h1 class="mb-1"><i class="bi bi-graph-up"></i> Notification Analytics</h1>
         <p class="text-muted mb-0">Advanced insights and predictive analytics for notification delivery</p>
     </div>
-    
+
     <div class="btn-group" role="group">
         <button class="btn btn-outline-primary" id="refresh-analytics">
             <i class="bi bi-arrow-clockwise"></i> Refresh
@@ -144,7 +461,7 @@
 <!-- Trends Analysis -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card">
+        <div class="modern-card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h5 class="mb-0"><i class="bi bi-graph-up"></i> Delivery Trends</h5>
                 <div class="btn-group btn-group-sm">
@@ -167,7 +484,7 @@
 <!-- Performance Analysis -->
 <div class="row mb-4">
     <div class="col-lg-6">
-        <div class="card h-100">
+        <div class="modern-card h-100">
             <div class="card-header">
                 <h5 class="mb-0"><i class="bi bi-speedometer2"></i> Performance by Type</h5>
             </div>
@@ -178,9 +495,9 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-6">
-        <div class="card h-100">
+        <div class="modern-card h-100">
             <div class="card-header">
                 <h5 class="mb-0"><i class="bi bi-clock"></i> Hourly Performance</h5>
             </div>
@@ -196,7 +513,7 @@
 <!-- Predictions & Insights -->
 <div class="row mb-4">
     <div class="col-lg-8">
-        <div class="card">
+        <div class="modern-card">
             <div class="card-header">
                 <h5 class="mb-0"><i class="bi bi-crystal-ball"></i> Predictive Analytics</h5>
             </div>
@@ -207,9 +524,9 @@
             </div>
         </div>
     </div>
-    
+
     <div class="col-lg-4">
-        <div class="card">
+        <div class="modern-card">
             <div class="card-header">
                 <h5 class="mb-0"><i class="bi bi-lightbulb"></i> Recommendations</h5>
             </div>
@@ -230,7 +547,9 @@
         <div class="text-muted">Analyzing notification patterns and performance</div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
 let currentTimeframe = 168; // Default to 7 days
 let currentGranularity = 'hour';
@@ -247,7 +566,7 @@ function setupEventListeners() {
     document.getElementById('refresh-analytics').addEventListener('click', function() {
         loadAllAnalytics();
     });
-    
+
     // Timeframe selection
     document.querySelectorAll('.timeframe-option').forEach(button => {
         button.addEventListener('click', function(e) {
@@ -257,7 +576,7 @@ function setupEventListeners() {
             loadAllAnalytics();
         });
     });
-    
+
     // Granularity selection
     document.querySelectorAll('.granularity-btn').forEach(button => {
         button.addEventListener('click', function() {
@@ -293,15 +612,15 @@ async function loadTrendsAnalysis() {
     try {
         const response = await fetch(`/api/notifications/analytics/trends?hours=${currentTimeframe}&granularity=${currentGranularity}`);
         const data = await response.json();
-        
+
         if (!response.ok) {
             throw new Error(data.error || 'Failed to load trends data');
         }
-        
+
         renderTrendsChart(data);
         renderTrendInsights(data);
         updateMetricsOverview(data.summary);
-        
+
     } catch (error) {
         console.error('Error loading trends:', error);
         document.getElementById('trend-insights').innerHTML = `
@@ -317,14 +636,14 @@ async function loadPerformanceAnalysis() {
     try {
         const response = await fetch(`/api/notifications/analytics/performance?hours=${currentTimeframe}`);
         const data = await response.json();
-        
+
         if (!response.ok) {
             throw new Error(data.error || 'Failed to load performance data');
         }
-        
+
         renderPerformanceByType(data);
         renderHourlyPerformanceChart(data);
-        
+
     } catch (error) {
         console.error('Error loading performance:', error);
         document.getElementById('performance-by-type').innerHTML = `
@@ -340,7 +659,7 @@ async function loadPredictiveAnalytics() {
     try {
         const response = await fetch('/api/notifications/analytics/predictions');
         const data = await response.json();
-        
+
         if (!response.ok) {
             if (response.status === 422) {
                 document.getElementById('predictions-content').innerHTML = `
@@ -354,9 +673,9 @@ async function loadPredictiveAnalytics() {
             }
             throw new Error(data.error || 'Failed to load predictions');
         }
-        
+
         renderPredictions(data);
-        
+
     } catch (error) {
         console.error('Error loading predictions:', error);
         document.getElementById('predictions-content').innerHTML = `
@@ -370,16 +689,16 @@ async function loadPredictiveAnalytics() {
 
 function renderTrendsChart(data) {
     const ctx = document.getElementById('trendsChart').getContext('2d');
-    
+
     // Destroy existing chart if it exists
     if (trendsChart) {
         trendsChart.destroy();
     }
-    
+
     const labels = data.trends.map(t => t.time_bucket);
     const successRates = data.trends.map(t => t.success_rate);
     const totalCounts = data.trends.map(t => t.total_notifications);
-    
+
     trendsChart = new Chart(ctx, {
         type: 'line',
         data: {
@@ -387,15 +706,15 @@ function renderTrendsChart(data) {
             datasets: [{
                 label: 'Success Rate (%)',
                 data: successRates,
-                borderColor: '#28a745',
-                backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                borderColor: '#00ff88',
+                backgroundColor: 'rgba(0, 255, 136, 0.1)',
                 tension: 0.3,
                 yAxisID: 'y'
             }, {
                 label: 'Total Notifications',
                 data: totalCounts,
-                borderColor: '#007bff',
-                backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                borderColor: '#00d4ff',
+                backgroundColor: 'rgba(0, 212, 255, 0.1)',
                 tension: 0.3,
                 yAxisID: 'y1'
             }]
@@ -403,6 +722,24 @@ function renderTrendsChart(data) {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: true,
+                    position: 'top',
+                    labels: {
+                        color: 'rgba(255, 255, 255, 0.9)'
+                    }
+                },
+                tooltip: {
+                    mode: 'index',
+                    intersect: false,
+                    backgroundColor: 'rgba(30, 30, 30, 0.9)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderWidth: 1
+                }
+            },
             scales: {
                 y: {
                     type: 'linear',
@@ -410,10 +747,17 @@ function renderTrendsChart(data) {
                     position: 'left',
                     title: {
                         display: true,
-                        text: 'Success Rate (%)'
+                        text: 'Success Rate (%)',
+                        color: 'rgba(255, 255, 255, 0.9)'
                     },
                     min: 0,
-                    max: 100
+                    max: 100,
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
                 },
                 y1: {
                     type: 'linear',
@@ -421,21 +765,24 @@ function renderTrendsChart(data) {
                     position: 'right',
                     title: {
                         display: true,
-                        text: 'Total Count'
+                        text: 'Total Count',
+                        color: 'rgba(255, 255, 255, 0.9)'
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
                     },
                     grid: {
                         drawOnChartArea: false,
-                    },
-                }
-            },
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'top'
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
                 },
-                tooltip: {
-                    mode: 'index',
-                    intersect: false
+                x: {
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
+                    }
                 }
             },
             interaction: {
@@ -448,12 +795,12 @@ function renderTrendsChart(data) {
 }
 
 function renderTrendInsights(data) {
-    const trendClass = data.trend_direction === 'improving' ? 'up' : 
+    const trendClass = data.trend_direction === 'improving' ? 'up' :
                       data.trend_direction === 'declining' ? 'down' : 'stable';
-    
-    const trendIcon = data.trend_direction === 'improving' ? 'bi-arrow-up' : 
+
+    const trendIcon = data.trend_direction === 'improving' ? 'bi-arrow-up' :
                      data.trend_direction === 'declining' ? 'bi-arrow-down' : 'bi-arrow-right';
-    
+
     document.getElementById('trend-insights').innerHTML = `
         <div class="row">
             <div class="col-md-4">
@@ -479,7 +826,7 @@ function renderTrendInsights(data) {
 
 function updateMetricsOverview(summary) {
     const container = document.getElementById('metrics-overview');
-    
+
     container.innerHTML = `
         <div class="col-md-3">
             <div class="card metric-card analytics-card text-white">
@@ -518,12 +865,12 @@ function updateMetricsOverview(summary) {
 
 function renderPerformanceByType(data) {
     const container = document.getElementById('performance-by-type');
-    
+
     let html = '';
     for (const [type, perf] of Object.entries(data.performance_by_type)) {
         const successRate = perf.success_rate;
-        const barColor = successRate >= 95 ? '#28a745' : successRate >= 85 ? '#ffc107' : '#dc3545';
-        
+        const barColor = successRate >= 95 ? '#00ff88' : successRate >= 85 ? '#ffc107' : '#ff4757';
+
         html += `
             <div class="mb-3">
                 <div class="d-flex justify-content-between align-items-center mb-1">
@@ -537,9 +884,9 @@ function renderPerformanceByType(data) {
             </div>
         `;
     }
-    
+
     container.innerHTML = html || '<div class="text-muted">No performance data available</div>';
-    
+
     // Render recommendations
     if (data.recommendations && data.recommendations.length > 0) {
         let recommendationsHtml = '';
@@ -567,15 +914,15 @@ function renderPerformanceByType(data) {
 
 function renderHourlyPerformanceChart(data) {
     const ctx = document.getElementById('hourlyPerformanceChart').getContext('2d');
-    
+
     // Destroy existing chart if it exists
     if (hourlyChart) {
         hourlyChart.destroy();
     }
-    
+
     const labels = Object.keys(data.hourly_performance).sort();
     const values = labels.map(hour => data.hourly_performance[hour]);
-    
+
     hourlyChart = new Chart(ctx, {
         type: 'bar',
         data: {
@@ -583,38 +930,58 @@ function renderHourlyPerformanceChart(data) {
             datasets: [{
                 label: 'Success Rate (%)',
                 data: values,
-                backgroundColor: values.map(v => v >= 95 ? '#28a745' : v >= 85 ? '#ffc107' : '#dc3545'),
-                borderWidth: 1
+                backgroundColor: values.map(v => v >= 95 ? '#00ff88' : v >= 85 ? '#ffc107' : '#ff4757'),
+                borderWidth: 1,
+                borderColor: 'rgba(255, 255, 255, 0.1)'
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    display: false
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(30, 30, 30, 0.9)',
+                    titleColor: '#ffffff',
+                    bodyColor: '#ffffff',
+                    borderColor: 'rgba(255, 255, 255, 0.1)',
+                    borderWidth: 1,
+                    callbacks: {
+                        label: function(context) {
+                            return `Success Rate: ${context.parsed.y.toFixed(1)}%`;
+                        }
+                    }
+                }
+            },
             scales: {
                 y: {
                     beginAtZero: true,
                     max: 100,
                     title: {
                         display: true,
-                        text: 'Success Rate (%)'
+                        text: 'Success Rate (%)',
+                        color: 'rgba(255, 255, 255, 0.9)'
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
                     }
                 },
                 x: {
                     title: {
                         display: true,
-                        text: 'Hour of Day'
-                    }
-                }
-            },
-            plugins: {
-                legend: {
-                    display: false
-                },
-                tooltip: {
-                    callbacks: {
-                        label: function(context) {
-                            return `Success Rate: ${context.parsed.y.toFixed(1)}%`;
-                        }
+                        text: 'Hour of Day',
+                        color: 'rgba(255, 255, 255, 0.9)'
+                    },
+                    ticks: {
+                        color: 'rgba(255, 255, 255, 0.7)'
+                    },
+                    grid: {
+                        color: 'rgba(255, 255, 255, 0.1)'
                     }
                 }
             }
@@ -624,7 +991,7 @@ function renderHourlyPerformanceChart(data) {
 
 function renderPredictions(data) {
     const container = document.getElementById('predictions-content');
-    
+
     let predictionsHtml = `
         <div class="row mb-3">
             <div class="col-md-6">
@@ -636,16 +1003,16 @@ function renderPredictions(data) {
                 <div class="fw-bold">${data.total_notifications_analyzed}</div>
             </div>
         </div>
-        
+
         <h6>Next 24 Hours Forecast</h6>
         <div class="row g-2 mb-3">
     `;
-    
+
     // Show next 6 hours predictions
     data.predicted_24h_volume.slice(0, 6).forEach(pred => {
-        const badgeClass = pred.confidence === 'high' ? 'confidence-high' : 
+        const badgeClass = pred.confidence === 'high' ? 'confidence-high' :
                           pred.confidence === 'medium' ? 'confidence-medium' : 'confidence-low';
-        
+
         predictionsHtml += `
             <div class="col-4 col-md-2 text-center">
                 <div class="small fw-bold">${pred.hour}</div>
@@ -654,18 +1021,18 @@ function renderPredictions(data) {
             </div>
         `;
     });
-    
+
     predictionsHtml += `
         </div>
-        
+
         <h6>Risk Analysis</h6>
     `;
-    
+
     if (data.risk_analysis.high_risk_hours.length > 0) {
         predictionsHtml += `
             <div class="alert alert-warning">
                 <strong>High Risk Hours:</strong>
-                ${data.risk_analysis.high_risk_hours.map(risk => 
+                ${data.risk_analysis.high_risk_hours.map(risk =>
                     `${risk.hour} (${risk.failure_rate}% failure rate)`
                 ).join(', ')}
             </div>
@@ -677,18 +1044,18 @@ function renderPredictions(data) {
             </div>
         `;
     }
-    
+
     if (data.capacity_planning.recommendations.length > 0) {
         predictionsHtml += `
             <h6>Capacity Planning</h6>
             <div class="small">
-                Peak: ${data.capacity_planning.max_hourly_volume}/hour | 
+                Peak: ${data.capacity_planning.max_hourly_volume}/hour |
                 Average: ${data.capacity_planning.average_hourly_volume}/hour
             </div>
         `;
-        
+
         data.capacity_planning.recommendations.forEach(rec => {
-            const alertClass = rec.priority === 'high' ? 'alert-danger' : 
+            const alertClass = rec.priority === 'high' ? 'alert-danger' :
                               rec.priority === 'medium' ? 'alert-warning' : 'alert-info';
             predictionsHtml += `
                 <div class="alert ${alertClass} mt-2">
@@ -697,7 +1064,7 @@ function renderPredictions(data) {
             `;
         });
     }
-    
+
     container.innerHTML = predictionsHtml;
 }
 
@@ -716,9 +1083,9 @@ function showToast(message, type = 'info') {
         ${message}
         <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
     `;
-    
+
     document.body.appendChild(toast);
-    
+
     // Auto remove after 5 seconds
     setTimeout(() => {
         if (toast.parentNode) {

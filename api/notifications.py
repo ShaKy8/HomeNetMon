@@ -6,10 +6,12 @@ import statistics
 from collections import defaultdict
 import secrets
 import hashlib
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 notifications_bp = Blueprint('notifications', __name__)
 
 @notifications_bp.route('/history', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_notification_history():
     """Get notification history with optional filtering"""
     try:
@@ -69,6 +71,7 @@ def get_notification_history():
         return jsonify({'error': str(e)}), 500
 
 @notifications_bp.route('/stats', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_notification_stats():
     """Get notification statistics"""
     try:
@@ -135,6 +138,7 @@ def get_notification_stats():
         return jsonify({'error': str(e)}), 500
 
 @notifications_bp.route('/types', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_notification_types():
     """Get available notification types"""
     try:
@@ -160,6 +164,7 @@ def get_notification_types():
         return jsonify({'error': str(e)}), 500
 
 @notifications_bp.route('/clear', methods=['DELETE'])
+@create_endpoint_limiter('critical')
 def clear_notification_history():
     """Clear old notification history"""
     try:
@@ -182,6 +187,7 @@ def clear_notification_history():
         return jsonify({'error': str(e)}), 500
 
 @notifications_bp.route('/retry/<int:notification_id>', methods=['POST'])
+@create_endpoint_limiter('strict')
 def retry_notification(notification_id):
     """Retry a failed notification"""
     try:
@@ -265,6 +271,7 @@ def retry_notification(notification_id):
         return jsonify({'error': str(e)}), 500
 
 @notifications_bp.route('/alert/<int:alert_id>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_notifications_for_alert(alert_id):
     """Get all notifications sent for a specific alert"""
     try:
@@ -293,6 +300,7 @@ def get_notifications_for_alert(alert_id):
         return jsonify({'error': str(e)}), 500
 
 @notifications_bp.route('/send-test', methods=['POST'])
+@create_endpoint_limiter('critical')
 def send_test_notification():
     """Send a test notification"""
     try:
@@ -340,6 +348,7 @@ def send_test_notification():
         return jsonify({'error': str(e)}), 500
 
 @notifications_bp.route('/failure-analysis', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_notification_failure_analysis():
     """Get detailed failure analysis for notifications"""
     try:
@@ -465,6 +474,7 @@ def get_notification_failure_analysis():
         return jsonify({'error': str(e)}), 500
 
 @notifications_bp.route('/analytics/trends', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_notification_trends():
     """Get detailed notification trends analysis"""
     try:
@@ -570,6 +580,7 @@ def get_notification_trends():
         return jsonify({'error': str(e)}), 500
 
 @notifications_bp.route('/analytics/performance', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_notification_performance():
     """Get delivery performance metrics"""
     try:
@@ -675,6 +686,7 @@ def get_notification_performance():
         return jsonify({'error': str(e)}), 500
 
 @notifications_bp.route('/analytics/predictions', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_notification_predictions():
     """Get predictive analytics and forecasting"""
     try:
@@ -811,6 +823,7 @@ def generate_performance_recommendations(performance_by_type, hourly_rates):
 
 # Read Receipt Tracking Endpoints
 @notifications_bp.route('/receipt/generate', methods=['POST'])
+@create_endpoint_limiter('strict')
 def generate_read_receipt_token():
     """Generate a unique tracking token for read receipt tracking"""
     try:
@@ -851,6 +864,7 @@ def generate_read_receipt_token():
         return jsonify({'error': str(e)}), 500
 
 @notifications_bp.route('/receipt/track', methods=['POST'])
+@create_endpoint_limiter('strict')
 def track_read_receipt():
     """Track a read receipt interaction"""
     try:
@@ -900,6 +914,7 @@ def track_read_receipt():
         return jsonify({'error': str(e)}), 500
 
 @notifications_bp.route('/receipt/pixel/<tracking_token>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def read_receipt_pixel(tracking_token):
     """Tracking pixel endpoint for email-based read receipts"""
     try:
@@ -938,6 +953,7 @@ def read_receipt_pixel(tracking_token):
         return Response(pixel_data, mimetype='image/png')
 
 @notifications_bp.route('/receipt/analytics', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_read_receipt_analytics():
     """Get read receipt analytics and engagement metrics"""
     try:
@@ -1036,6 +1052,7 @@ def get_read_receipt_analytics():
         return jsonify({'error': str(e)}), 500
 
 @notifications_bp.route('/receipt/notification/<int:notification_id>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_notification_receipts(notification_id):
     """Get all read receipts for a specific notification"""
     try:
@@ -1092,3 +1109,67 @@ def _anonymize_ip(ip_address):
         return hashed[:16]  # Return first 16 chars of hash
     except:
         return "anonymous"
+
+@notifications_bp.route('/alert/<int:alert_id>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
+def get_alert_notification_status(alert_id):
+    """Get notification status and history for a specific alert"""
+    try:
+        # Import Alert model to avoid circular imports
+        from models import Alert
+        
+        # Verify alert exists
+        alert = Alert.query.get_or_404(alert_id)
+        
+        # Get notification history for this alert
+        notification_history = NotificationHistory.query.filter_by(alert_id=alert_id)\
+                                                        .order_by(NotificationHistory.sent_at.desc())\
+                                                        .all()
+        
+        # Calculate summary statistics
+        total_notifications = len(notification_history)
+        successful_notifications = sum(1 for n in notification_history if n.delivery_status == 'success')
+        failed_notifications = sum(1 for n in notification_history if n.delivery_status == 'failed')
+        pending_notifications = sum(1 for n in notification_history if n.delivery_status == 'pending')
+        
+        # Get delivery methods used
+        delivery_methods = list(set(n.notification_type for n in notification_history))
+        
+        # Get latest notification attempt
+        latest_notification = notification_history[0] if notification_history else None
+        
+        # Calculate retry information
+        retry_count = len([n for n in notification_history if 'retry' in (n.notification_metadata or '')])
+        
+        return jsonify({
+            'alert_id': alert_id,
+            'alert_type': alert.alert_type,
+            'alert_severity': alert.severity,
+            'alert_created_at': alert.created_at.isoformat() + 'Z',
+            'notification_status': alert.notification_status,
+            'notification_count': alert.notification_count,
+            'last_notification_at': alert.last_notification_at.isoformat() + 'Z' if alert.last_notification_at else None,
+            'summary': {
+                'total_notifications': total_notifications,
+                'successful_notifications': successful_notifications,
+                'failed_notifications': failed_notifications,
+                'pending_notifications': pending_notifications,
+                'success_rate': (successful_notifications / total_notifications * 100) if total_notifications > 0 else 0,
+                'retry_count': retry_count,
+                'delivery_methods': delivery_methods
+            },
+            'latest_notification': {
+                'id': latest_notification.id,
+                'notification_type': latest_notification.notification_type,
+                'title': latest_notification.title,
+                'message': latest_notification.message,
+                'delivery_status': latest_notification.delivery_status,
+                'sent_at': latest_notification.sent_at.isoformat() + 'Z',
+                'error_message': latest_notification.error_message
+            } if latest_notification else None,
+            'notification_history': [n.to_dict() for n in notification_history],
+            'can_retry': failed_notifications > 0 and alert.resolved == False
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500

@@ -1,11 +1,11 @@
 # HomeNetMon SaaS Administration API
 from flask import Blueprint, request, jsonify, abort, current_app
-from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_, or_, desc
 from typing import Dict, Any, List, Optional
 import logging
 from functools import wraps
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 from tenant_models import *
 from tenant_manager import tenant_manager, get_current_tenant
@@ -32,9 +32,6 @@ def require_admin_auth(f):
         if api_key and api_key == admin_api_key:
             return f(*args, **kwargs)
         
-        # Check for admin user session
-        if current_user.is_authenticated and getattr(current_user, 'is_admin', False):
-            return f(*args, **kwargs)
         
         abort(403, description="Admin access required")
     
@@ -48,9 +45,6 @@ def require_tenant_admin(f):
         if not tenant:
             abort(400, description="Tenant context required")
         
-        # Check if user is tenant admin
-        if hasattr(current_user, 'is_tenant_admin') and current_user.is_tenant_admin:
-            return f(*args, **kwargs)
         
         # Check for tenant admin API key
         api_key = request.headers.get('X-Tenant-API-Key')
@@ -68,6 +62,7 @@ def require_tenant_admin(f):
 # ============================================================================
 
 @saas_admin_api.route('/system/stats', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 @require_admin_auth
 def get_system_stats():
     """Get system-wide statistics"""
@@ -140,6 +135,7 @@ def get_system_stats():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @saas_admin_api.route('/tenants', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 @require_admin_auth
 def list_tenants():
     """List all tenants with filtering and pagination"""
@@ -226,6 +222,7 @@ def list_tenants():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @saas_admin_api.route('/tenants/<tenant_id>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 @require_admin_auth
 def get_tenant_details(tenant_id):
     """Get detailed tenant information"""
@@ -335,6 +332,7 @@ def get_tenant_details(tenant_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @saas_admin_api.route('/tenants/<tenant_id>/suspend', methods=['POST'])
+@create_endpoint_limiter('strict')
 @require_admin_auth
 def suspend_tenant(tenant_id):
     """Suspend a tenant"""
@@ -356,6 +354,7 @@ def suspend_tenant(tenant_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @saas_admin_api.route('/tenants/<tenant_id>/reactivate', methods=['POST'])
+@create_endpoint_limiter('strict')
 @require_admin_auth
 def reactivate_tenant(tenant_id):
     """Reactivate a suspended tenant"""
@@ -373,6 +372,7 @@ def reactivate_tenant(tenant_id):
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @saas_admin_api.route('/tenants/<tenant_id>', methods=['DELETE'])
+@create_endpoint_limiter('critical')
 @require_admin_auth
 def delete_tenant(tenant_id):
     """Delete a tenant"""
@@ -397,6 +397,7 @@ def delete_tenant(tenant_id):
 # ============================================================================
 
 @saas_admin_api.route('/plans', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 @require_admin_auth
 def list_subscription_plans():
     """List all subscription plans"""
@@ -432,6 +433,7 @@ def list_subscription_plans():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @saas_admin_api.route('/plans', methods=['POST'])
+@create_endpoint_limiter('strict')
 @require_admin_auth
 def create_subscription_plan():
     """Create a new subscription plan"""
@@ -469,6 +471,7 @@ def create_subscription_plan():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @saas_admin_api.route('/tenants/<tenant_id>/subscription', methods=['PUT'])
+@create_endpoint_limiter('strict')
 @require_admin_auth
 def update_tenant_subscription():
     """Update tenant subscription"""
@@ -499,6 +502,7 @@ def update_tenant_subscription():
 # ============================================================================
 
 @saas_admin_api.route('/analytics/usage', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 @require_admin_auth
 def get_usage_analytics():
     """Get system-wide usage analytics"""
@@ -553,6 +557,7 @@ def get_usage_analytics():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @saas_admin_api.route('/analytics/revenue', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 @require_admin_auth
 def get_revenue_analytics():
     """Get revenue analytics"""
@@ -626,6 +631,7 @@ def get_revenue_analytics():
 # ============================================================================
 
 @saas_admin_api.route('/tenant/profile', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 @require_tenant_admin
 def get_tenant_profile():
     """Get current tenant profile information"""
@@ -655,6 +661,7 @@ def get_tenant_profile():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @saas_admin_api.route('/tenant/profile', methods=['PUT'])
+@create_endpoint_limiter('strict')
 @require_tenant_admin
 def update_tenant_profile():
     """Update current tenant profile"""
@@ -687,6 +694,7 @@ def update_tenant_profile():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @saas_admin_api.route('/tenant/subscription', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 @require_tenant_admin
 def get_tenant_subscription():
     """Get current tenant subscription details"""
@@ -729,6 +737,7 @@ def get_tenant_subscription():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @saas_admin_api.route('/tenant/usage', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 @require_tenant_admin
 def get_tenant_usage():
     """Get current tenant usage statistics"""
@@ -793,6 +802,7 @@ def get_tenant_usage():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @saas_admin_api.route('/tenant/invoices', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 @require_tenant_admin
 def get_tenant_invoices():
     """Get tenant invoices"""
@@ -842,6 +852,7 @@ def get_tenant_invoices():
 # ============================================================================
 
 @saas_admin_api.route('/webhooks/stripe', methods=['POST'])
+@create_endpoint_limiter('strict')
 def stripe_webhook():
     """Handle Stripe webhooks"""
     try:

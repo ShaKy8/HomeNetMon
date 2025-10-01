@@ -1,6 +1,5 @@
 # HomeNetMon Analytics Routes
 from flask import Blueprint, render_template, request, redirect, url_for, flash
-from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 from tenant_manager import get_current_tenant, require_tenant
 from usage_analytics import usage_analytics
@@ -12,7 +11,6 @@ logger = logging.getLogger(__name__)
 analytics_routes = Blueprint('analytics_routes', __name__, url_prefix='/analytics')
 
 @analytics_routes.route('/', methods=['GET'])
-@login_required
 def analytics_dashboard():
     """Main analytics dashboard"""
     try:
@@ -36,7 +34,6 @@ def analytics_dashboard():
         return redirect(url_for('main.index'))
 
 @analytics_routes.route('/usage', methods=['GET'])
-@login_required
 def usage_analytics_page():
     """Usage analytics page"""
     try:
@@ -57,7 +54,6 @@ def usage_analytics_page():
         return redirect(url_for('main.index'))
 
 @analytics_routes.route('/quotas', methods=['GET'])
-@login_required
 def quota_management():
     """Quota management page"""
     try:
@@ -77,7 +73,6 @@ def quota_management():
         return redirect(url_for('analytics_routes.analytics_dashboard'))
 
 @analytics_routes.route('/reports', methods=['GET'])
-@login_required
 def usage_reports():
     """Usage reports page"""
     try:

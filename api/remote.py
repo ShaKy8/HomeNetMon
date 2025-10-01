@@ -5,7 +5,7 @@ import tempfile
 import logging
 from datetime import datetime
 from remote_access import get_tunnel_manager
-from remote_auth import get_auth_manager, require_auth, require_role
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ remote_ui_bp = Blueprint('remote_ui', __name__, url_prefix='/remote')
 # ============================================================================
 
 @remote_bp.route('/tunnels', methods=['GET'])
-@require_auth
+@create_endpoint_limiter('relaxed')
 def list_tunnels():
     """List all configured tunnels"""
     try:
@@ -36,7 +36,7 @@ def list_tunnels():
         return jsonify({'error': str(e)}), 500
 
 @remote_bp.route('/tunnels', methods=['POST'])
-@require_role('admin')
+@create_endpoint_limiter('strict')
 def create_tunnel():
     """Create a new secure tunnel"""
     try:
@@ -65,7 +65,7 @@ def create_tunnel():
         return jsonify({'error': str(e)}), 500
 
 @remote_bp.route('/tunnels/<tunnel_id>', methods=['GET'])
-@require_auth
+@create_endpoint_limiter('relaxed')
 def get_tunnel(tunnel_id):
     """Get tunnel details"""
     try:
@@ -88,7 +88,7 @@ def get_tunnel(tunnel_id):
         return jsonify({'error': str(e)}), 500
 
 @remote_bp.route('/tunnels/<tunnel_id>/start', methods=['POST'])
-@require_role('admin')
+@create_endpoint_limiter('strict')
 def start_tunnel(tunnel_id):
     """Start a tunnel"""
     try:
@@ -110,7 +110,7 @@ def start_tunnel(tunnel_id):
         return jsonify({'error': str(e)}), 500
 
 @remote_bp.route('/tunnels/<tunnel_id>/stop', methods=['POST'])
-@require_role('admin')
+@create_endpoint_limiter('strict')
 def stop_tunnel(tunnel_id):
     """Stop a tunnel"""
     try:
@@ -132,7 +132,7 @@ def stop_tunnel(tunnel_id):
         return jsonify({'error': str(e)}), 500
 
 @remote_bp.route('/tunnels/<tunnel_id>/clients', methods=['POST'])
-@require_role('admin')
+@create_endpoint_limiter('strict')
 def add_tunnel_client(tunnel_id):
     """Add a client to a tunnel"""
     try:
@@ -164,7 +164,7 @@ def add_tunnel_client(tunnel_id):
         return jsonify({'error': str(e)}), 500
 
 @remote_bp.route('/tunnels/<tunnel_id>/clients/<client_id>/config', methods=['GET'])
-@require_auth
+@create_endpoint_limiter('relaxed')
 def get_client_config(tunnel_id, client_id):
     """Get client configuration file"""
     try:
@@ -199,7 +199,7 @@ def get_client_config(tunnel_id, client_id):
         return jsonify({'error': str(e)}), 500
 
 @remote_bp.route('/tunnels/<tunnel_id>', methods=['DELETE'])
-@require_role('admin')
+@create_endpoint_limiter('critical')
 def delete_tunnel(tunnel_id):
     """Delete a tunnel"""
     try:
@@ -225,7 +225,7 @@ def delete_tunnel(tunnel_id):
 # ============================================================================
 
 @remote_bp.route('/certificates', methods=['GET'])
-@require_auth
+@create_endpoint_limiter('relaxed')
 def list_certificates():
     """List all certificates"""
     try:
@@ -242,7 +242,7 @@ def list_certificates():
         return jsonify({'error': str(e)}), 500
 
 @remote_bp.route('/certificates', methods=['POST'])
-@require_role('admin')
+@create_endpoint_limiter('strict')
 def create_certificate():
     """Create a new client certificate"""
     try:
@@ -273,7 +273,7 @@ def create_certificate():
         return jsonify({'error': str(e)}), 500
 
 @remote_bp.route('/certificates/<cert_id>/revoke', methods=['POST'])
-@require_role('admin')
+@create_endpoint_limiter('strict')
 def revoke_certificate(cert_id):
     """Revoke a certificate"""
     try:
@@ -295,6 +295,7 @@ def revoke_certificate(cert_id):
 # ============================================================================
 
 @remote_bp.route('/auth/login', methods=['POST'])
+@create_endpoint_limiter('strict')
 def login():
     """Authenticate user"""
     try:
@@ -340,7 +341,7 @@ def login():
         return jsonify({'error': str(e)}), 500
 
 @remote_bp.route('/auth/logout', methods=['POST'])
-@require_auth
+@create_endpoint_limiter('strict')
 def logout():
     """Logout user"""
     try:
@@ -359,7 +360,7 @@ def logout():
         return jsonify({'error': str(e)}), 500
 
 @remote_bp.route('/auth/user', methods=['GET'])
-@require_auth
+@create_endpoint_limiter('relaxed')
 def get_current_user():
     """Get current user information"""
     try:
@@ -386,7 +387,7 @@ def get_current_user():
         return jsonify({'error': str(e)}), 500
 
 @remote_bp.route('/auth/api-keys', methods=['POST'])
-@require_auth
+@create_endpoint_limiter('strict')
 def create_api_key():
     """Create a new API key"""
     try:
@@ -418,7 +419,7 @@ def create_api_key():
         return jsonify({'error': str(e)}), 500
 
 @remote_bp.route('/auth/api-keys/<key_id>', methods=['DELETE'])
-@require_auth
+@create_endpoint_limiter('critical')
 def revoke_api_key(key_id):
     """Revoke an API key"""
     try:
@@ -439,7 +440,7 @@ def revoke_api_key(key_id):
 # ============================================================================
 
 @remote_ui_bp.route('/')
-@require_auth
+@create_endpoint_limiter('relaxed')
 def remote_dashboard():
     """Remote access dashboard"""
     try:
@@ -458,7 +459,7 @@ def remote_dashboard():
         return redirect(url_for('dashboard'))
 
 @remote_ui_bp.route('/tunnels')
-@require_auth
+@create_endpoint_limiter('relaxed')
 def tunnel_management():
     """Tunnel management page"""
     try:
@@ -475,7 +476,7 @@ def tunnel_management():
         return redirect(url_for('remote_ui.remote_dashboard'))
 
 @remote_ui_bp.route('/certificates')
-@require_auth  
+@create_endpoint_limiter('relaxed')
 def certificate_management():
     """Certificate management page"""
     try:
@@ -492,6 +493,7 @@ def certificate_management():
         return redirect(url_for('remote_ui.remote_dashboard'))
 
 @remote_ui_bp.route('/auth/login')
+@create_endpoint_limiter('relaxed')
 def login_page():
     """Login page for remote access"""
     if 'session_token' in session:
@@ -503,7 +505,7 @@ def login_page():
     return render_template('remote/login.html')
 
 @remote_ui_bp.route('/auth/setup')
-@require_auth
+@create_endpoint_limiter('relaxed')
 def setup_page():
     """Setup page for MFA and security"""
     try:

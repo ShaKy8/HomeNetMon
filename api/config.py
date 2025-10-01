@@ -7,6 +7,7 @@ from core.error_handler import handle_errors, ResourceNotFoundError, DatabaseErr
 config_bp = Blueprint('config', __name__)
 
 @config_bp.route('', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 @handle_errors()
 def get_configuration():
     """Get all configuration settings"""
@@ -40,6 +41,7 @@ def get_configuration():
         raise DatabaseError("Failed to retrieve configuration", operation="get_configuration") from e
 
 @config_bp.route('/<string:key>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 @handle_errors()
 def get_config_value(key):
     """Get specific configuration value"""
@@ -55,6 +57,7 @@ def get_config_value(key):
         return jsonify({'error': str(e)}), 500
 
 @config_bp.route('/<string:key>', methods=['PUT'])
+@create_endpoint_limiter('strict')
 def update_config_value(key):
     """Update specific configuration value"""
     try:
@@ -121,6 +124,7 @@ def update_config_value(key):
         return jsonify({'error': str(e)}), 500
 
 @config_bp.route('/network', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_network_config():
     """Get network-related configuration"""
     try:
@@ -129,7 +133,8 @@ def get_network_config():
             'ping_interval': int(Configuration.get_value('ping_interval', str(Config.PING_INTERVAL))),
             'scan_interval': int(Configuration.get_value('scan_interval', str(Config.SCAN_INTERVAL))),
             'ping_timeout': float(Configuration.get_value('ping_timeout', str(Config.PING_TIMEOUT))),
-            'max_workers': int(Configuration.get_value('max_workers', str(Config.MAX_WORKERS)))
+            'max_workers': int(Configuration.get_value('max_workers', str(Config.MAX_WORKERS))),
+            'scan_excluded_ips': Configuration.get_value('scan_excluded_ips', '')
         }
         
         return jsonify(network_config)
@@ -138,6 +143,7 @@ def get_network_config():
         return jsonify({'error': str(e)}), 500
 
 @config_bp.route('/network', methods=['PUT'])
+@create_endpoint_limiter('strict')
 def update_network_config():
     """Update network configuration"""
     try:
@@ -203,6 +209,27 @@ def update_network_config():
             except ValueError:
                 return jsonify({'error': 'Max workers must be a number'}), 400
         
+        if 'scan_excluded_ips' in data:
+            # Basic validation for IP addresses
+            excluded_ips = data['scan_excluded_ips'].strip()
+            if excluded_ips:
+                # Parse and validate IP addresses
+                try:
+                    import ipaddress
+                    # Split by comma or newline and validate each IP
+                    ip_list = [ip.strip() for ip in excluded_ips.replace('\n', ',').split(',') if ip.strip()]
+                    for ip in ip_list:
+                        ipaddress.ip_address(ip)  # This will raise ValueError if invalid
+                    
+                    Configuration.set_value('scan_excluded_ips', excluded_ips, 'IP addresses to exclude from network discovery scans')
+                    updated_fields.append('scan_excluded_ips')
+                except ValueError as e:
+                    return jsonify({'error': f'Invalid IP address in exclusion list: {str(e)}'}), 400
+            else:
+                # Empty value is valid (clears exclusions)
+                Configuration.set_value('scan_excluded_ips', '', 'IP addresses to exclude from network discovery scans')
+                updated_fields.append('scan_excluded_ips')
+        
         return jsonify({
             'message': f'Updated {len(updated_fields)} network configuration field(s)',
             'updated_fields': updated_fields,
@@ -213,6 +240,7 @@ def update_network_config():
         return jsonify({'error': str(e)}), 500
 
 @config_bp.route('/alerts', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_alert_config():
     """Get alert-related configuration"""
     try:
@@ -235,6 +263,7 @@ def get_alert_config():
         return jsonify({'error': str(e)}), 500
 
 @config_bp.route('/alerts', methods=['PUT'])
+@create_endpoint_limiter('strict')
 def update_alert_config():
     """Update alert configuration"""
     try:
@@ -308,6 +337,7 @@ def update_alert_config():
         return jsonify({'error': str(e)}), 500
 
 @config_bp.route('/reset', methods=['POST'])
+@create_endpoint_limiter('critical')
 def reset_configuration():
     """Reset configuration to defaults"""
     try:
@@ -346,6 +376,7 @@ def reset_configuration():
         return jsonify({'error': str(e)}), 500
 
 @config_bp.route('/test/email', methods=['POST'])
+@create_endpoint_limiter('critical')
 def test_email_config():
     """Test email configuration by sending a test email"""
     try:
@@ -419,6 +450,7 @@ def test_email_config():
         return jsonify({'error': f'Email test failed: {str(e)}'}), 500
 
 @config_bp.route('/test/webhook', methods=['POST'])
+@create_endpoint_limiter('critical')
 def test_webhook_config():
     """Test webhook configuration by sending a test webhook"""
     try:
@@ -462,6 +494,7 @@ def test_webhook_config():
         return jsonify({'error': f'Webhook test failed: {str(e)}'}), 500
 
 @config_bp.route('/test/push', methods=['POST'])
+@create_endpoint_limiter('critical')
 def test_push_config():
     """Test push notification configuration by sending a test notification"""
     try:
@@ -522,6 +555,7 @@ def test_push_config():
         }), 500
 
 @config_bp.route('/restart-services', methods=['POST'])
+@create_endpoint_limiter('strict')
 def restart_services():
     """Restart monitoring services to apply configuration changes"""
     try:
@@ -567,6 +601,7 @@ def restart_services():
         }), 500
 
 @config_bp.route('/restart-system', methods=['POST'])
+@create_endpoint_limiter('strict')
 def restart_system():
     """Restart the entire HomeNetMon application"""
     try:
@@ -636,6 +671,7 @@ def restart_system():
         }), 500
 
 @config_bp.route('/reset-monitoring-data', methods=['POST'])
+@create_endpoint_limiter('critical')
 def reset_monitoring_data():
     """Reset all historical monitoring data"""
     try:
@@ -697,6 +733,7 @@ def reset_monitoring_data():
         }), 500
 
 @config_bp.route('/dashboard-title', methods=['PUT'])
+@create_endpoint_limiter('strict')
 def update_dashboard_title():
     """Update dashboard title configuration"""
     try:

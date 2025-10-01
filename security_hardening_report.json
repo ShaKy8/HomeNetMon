@@ -1,0 +1,248 @@
+{
+  "timestamp": "2025-09-21T08:37:37.643727",
+  "duration": 0.0005309581756591797,
+  "security_score": 102,
+  "max_security_score": 109,
+  "security_percentage": 93.57798165137615,
+  "categories": {
+    "configuration": {
+      "passed": 8,
+      "total": 9,
+      "points": 38,
+      "max_points": 45
+    },
+    "network": {
+      "passed": 2,
+      "total": 2,
+      "points": 14,
+      "max_points": 14
+    },
+    "ssl_tls": {
+      "passed": 2,
+      "total": 2,
+      "points": 12,
+      "max_points": 12
+    },
+    "authentication": {
+      "passed": 2,
+      "total": 2,
+      "points": 14,
+      "max_points": 14
+    },
+    "monitoring": {
+      "passed": 1,
+      "total": 1,
+      "points": 5,
+      "max_points": 5
+    },
+    "vulnerability": {
+      "passed": 1,
+      "total": 1,
+      "points": 5,
+      "max_points": 5
+    },
+    "system": {
+      "passed": 3,
+      "total": 3,
+      "points": 9,
+      "max_points": 9
+    },
+    "documentation": {
+      "passed": 1,
+      "total": 1,
+      "points": 5,
+      "max_points": 5
+    }
+  },
+  "security_results": [
+    {
+      "category": "configuration",
+      "check_name": "Security headers config",
+      "passed": true,
+      "severity": "medium",
+      "points": 5,
+      "details": "Created comprehensive security headers configuration",
+      "timestamp": "2025-09-21T08:37:37.643270"
+    },
+    {
+      "category": "network",
+      "check_name": "Firewall configuration",
+      "passed": true,
+      "severity": "high",
+      "points": 7,
+      "details": "Created UFW firewall configuration script",
+      "timestamp": "2025-09-21T08:37:37.643326"
+    },
+    {
+      "category": "network",
+      "check_name": "iptables configuration",
+      "passed": true,
+      "severity": "high",
+      "points": 7,
+      "details": "Created iptables firewall rules",
+      "timestamp": "2025-09-21T08:37:37.643362"
+    },
+    {
+      "category": "ssl_tls",
+      "check_name": "SSL configuration",
+      "passed": true,
+      "severity": "high",
+      "points": 7,
+      "details": "Created strong SSL/TLS configuration",
+      "timestamp": "2025-09-21T08:37:37.643385"
+    },
+    {
+      "category": "ssl_tls",
+      "check_name": "DH parameters script",
+      "passed": true,
+      "severity": "medium",
+      "points": 5,
+      "details": "Created DH parameter generation script",
+      "timestamp": "2025-09-21T08:37:37.643414"
+    },
+    {
+      "category": "authentication",
+      "check_name": "Password policy",
+      "passed": true,
+      "severity": "high",
+      "points": 7,
+      "details": "Created strong password policy documentation",
+      "timestamp": "2025-09-21T08:37:37.643434"
+    },
+    {
+      "category": "authentication",
+      "check_name": "Session security",
+      "passed": true,
+      "severity": "high",
+      "points": 7,
+      "details": "Created secure session configuration",
+      "timestamp": "2025-09-21T08:37:37.643454"
+    },
+    {
+      "category": "monitoring",
+      "check_name": "Security log monitoring",
+      "passed": true,
+      "severity": "medium",
+      "points": 5,
+      "details": "Created security event monitoring system",
+      "timestamp": "2025-09-21T08:37:37.643484"
+    },
+    {
+      "category": "vulnerability",
+      "check_name": "Vulnerability scanner",
+      "passed": true,
+      "severity": "medium",
+      "points": 5,
+      "details": "Created vulnerability scanning tool",
+      "timestamp": "2025-09-21T08:37:37.643518"
+    },
+    {
+      "category": "configuration",
+      "check_name": "Environment template exists",
+      "passed": true,
+      "severity": "low",
+      "points": 3,
+      "details": "File: .env.prod.template",
+      "timestamp": "2025-09-21T08:37:37.643533"
+    },
+    {
+      "category": "configuration",
+      "check_name": "Systemd service exists",
+      "passed": true,
+      "severity": "low",
+      "points": 3,
+      "details": "File: homenetmon.service",
+      "timestamp": "2025-09-21T08:37:37.643543"
+    },
+    {
+      "category": "configuration",
+      "check_name": "Nginx configuration exists",
+      "passed": true,
+      "severity": "low",
+      "points": 3,
+      "details": "File: docker/nginx.conf",
+      "timestamp": "2025-09-21T08:37:37.643553"
+    },
+    {
+      "category": "configuration",
+      "check_name": "Dependencies list exists",
+      "passed": true,
+      "severity": "low",
+      "points": 3,
+      "details": "File: requirements.txt",
+      "timestamp": "2025-09-21T08:37:37.643561"
+    },
+    {
+      "category": "configuration",
+      "check_name": "No sensitive file: .env",
+      "passed": false,
+      "severity": "high",
+      "points": 7,
+      "details": "Sensitive file check: .env",
+      "timestamp": "2025-09-21T08:37:37.643571"
+    },
+    {
+      "category": "configuration",
+      "check_name": "No sensitive file: .env.prod",
+      "passed": true,
+      "severity": "high",
+      "points": 7,
+      "details": "Sensitive file check: .env.prod",
+      "timestamp": "2025-09-21T08:37:37.643587"
+    },
+    {
+      "category": "configuration",
+      "check_name": "No sensitive file: config.secret",
+      "passed": true,
+      "severity": "high",
+      "points": 7,
+      "details": "Sensitive file check: config.secret",
+      "timestamp": "2025-09-21T08:37:37.643599"
+    },
+    {
+      "category": "configuration",
+      "check_name": "No sensitive file: private.key",
+      "passed": true,
+      "severity": "high",
+      "points": 7,
+      "details": "Sensitive file check: private.key",
+      "timestamp": "2025-09-21T08:37:37.643610"
+    },
+    {
+      "category": "system",
+      "check_name": "deploy.sh executable",
+      "passed": true,
+      "severity": "low",
+      "points": 3,
+      "details": "File permissions check",
+      "timestamp": "2025-09-21T08:37:37.643621"
+    },
+    {
+      "category": "system",
+      "check_name": "update.sh executable",
+      "passed": true,
+      "severity": "low",
+      "points": 3,
+      "details": "File permissions check",
+      "timestamp": "2025-09-21T08:37:37.643632"
+    },
+    {
+      "category": "system",
+      "check_name": "setup_ssl.sh executable",
+      "passed": true,
+      "severity": "low",
+      "points": 3,
+      "details": "File permissions check",
+      "timestamp": "2025-09-21T08:37:37.643642"
+    },
+    {
+      "category": "documentation",
+      "check_name": "Security guide",
+      "passed": true,
+      "severity": "medium",
+      "points": 5,
+      "details": "Created comprehensive security documentation",
+      "timestamp": "2025-09-21T08:37:37.643683"
+    }
+  ]
+}

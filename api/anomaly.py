@@ -3,10 +3,12 @@ from datetime import datetime, timedelta
 from services.anomaly_detection import anomaly_detection_service
 from models import db, Alert, Device
 import json
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 anomaly_bp = Blueprint('anomaly', __name__)
 
 @anomaly_bp.route('/statistics', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_anomaly_statistics():
     """Get anomaly detection statistics"""
     try:
@@ -28,6 +30,7 @@ def get_anomaly_statistics():
         return jsonify({'error': str(e)}), 500
 
 @anomaly_bp.route('/alerts', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_anomaly_alerts():
     """Get recent anomaly alerts"""
     try:
@@ -85,6 +88,7 @@ def get_anomaly_alerts():
         return jsonify({'error': str(e)}), 500
 
 @anomaly_bp.route('/status', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_anomaly_detection_status():
     """Get anomaly detection engine status"""
     try:
@@ -106,6 +110,7 @@ def get_anomaly_detection_status():
         return jsonify({'error': str(e)}), 500
 
 @anomaly_bp.route('/settings', methods=['GET', 'POST'])
+@create_endpoint_limiter('strict')
 def manage_anomaly_settings():
     """Get or update anomaly detection settings"""
     try:
@@ -154,6 +159,7 @@ def manage_anomaly_settings():
         return jsonify({'error': str(e)}), 500
 
 @anomaly_bp.route('/run-detection', methods=['POST'])
+@create_endpoint_limiter('critical')
 def run_manual_detection():
     """Manually trigger anomaly detection cycle"""
     try:
@@ -198,6 +204,7 @@ def run_manual_detection():
         return jsonify({'error': str(e)}), 500
 
 @anomaly_bp.route('/device/<int:device_id>/baseline', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_device_baseline(device_id):
     """Get baseline statistics for a specific device"""
     try:
@@ -275,6 +282,7 @@ def get_device_baseline(device_id):
         return jsonify({'error': str(e)}), 500
 
 @anomaly_bp.route('/configuration', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_anomaly_configuration():
     """Get current anomaly detection configuration"""
     try:
@@ -317,6 +325,7 @@ def get_anomaly_configuration():
         return jsonify({'error': str(e)}), 500
 
 @anomaly_bp.route('/configuration', methods=['PUT'])
+@create_endpoint_limiter('strict')
 def update_anomaly_configuration():
     """Update anomaly detection configuration"""
     try:
@@ -419,6 +428,7 @@ def update_anomaly_configuration():
         return jsonify({'error': str(e)}), 500
 
 @anomaly_bp.route('/test-thresholds', methods=['POST'])
+@create_endpoint_limiter('critical')
 def test_anomaly_thresholds():
     """Test anomaly detection with current thresholds on a specific device"""
     try:

@@ -18,7 +18,6 @@ from core.blueprint_registry import BlueprintRegistry
 from core.service_manager import ServiceManager
 from core.websocket_manager import WebSocketManager
 from core.thread_manager import ThreadManager
-from core.auth import AuthManager
 from core.security_middleware import SecurityMiddleware
 from core.db_config import DatabaseConfig, ConnectionPoolMonitor
 from core.db_optimizer import QueryOptimizer, OptimizedQueries, DatabaseIndexManager

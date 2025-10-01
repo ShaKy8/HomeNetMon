@@ -6,6 +6,7 @@ import logging
 import psutil
 import threading
 import time
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 health_bp = Blueprint('health', __name__)
 logger = logging.getLogger(__name__)
@@ -75,6 +76,7 @@ def start_bandwidth_monitoring():
 start_bandwidth_monitoring()
 
 @health_bp.route('/overview', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_health_overview():
     """Get comprehensive network health overview"""
     try:
@@ -186,6 +188,7 @@ def get_health_overview():
         }), 500
 
 @health_bp.route('/score', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_health_score():
     """Get just the network health score"""
     try:
@@ -234,6 +237,7 @@ def get_health_score():
         }), 500
 
 @health_bp.route('/topology', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_network_topology():
     """Get simplified network topology for mini-map"""
     try:
@@ -527,3 +531,29 @@ def calculate_historical_comparisons(last_24h, yesterday_start, yesterday_end, l
             'uptime': {'current_24h': 0, 'previous_24h': 0, 'change': 0, 'trend': 'stable'},
             'devices': {'total_monitored': 0, 'change_message': 'No data available'}
         }
+
+
+def get_time_ago(timestamp):
+    """Get human-readable time difference"""
+    from datetime import datetime, timezone
+    
+    if not timestamp:
+        return 'Unknown'
+    
+    # Ensure timezone-aware comparison
+    if timestamp.tzinfo is None:
+        timestamp = timestamp.replace(tzinfo=timezone.utc)
+    
+    now = datetime.now(timezone.utc)
+    diff = now - timestamp
+    
+    if diff.days > 0:
+        return f"{diff.days} day{'s' if diff.days > 1 else ''} ago"
+    elif diff.seconds >= 3600:
+        hours = diff.seconds // 3600
+        return f"{hours} hour{'s' if hours > 1 else ''} ago"
+    elif diff.seconds >= 60:
+        minutes = diff.seconds // 60
+        return f"{minutes} minute{'s' if minutes > 1 else ''} ago"
+    else:
+        return "Just now"

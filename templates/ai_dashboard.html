@@ -1,1144 +1,1063 @@
-{% extends "base_with_quickstats.html" %}
+{% extends "base_beautiful.html" %}
 
 {% block title %}AI Dashboard - HomeNetMon{% endblock %}
 
+{% block extra_css %}
+<style>
+/* AI Dashboard specific styling */
+.ai-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 1rem;
+}
+
+.ai-stat-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 0.75rem;
+    backdrop-filter: blur(20px);
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.ai-stat-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.ai-stat-card.primary {
+    border-left: 4px solid rgba(59, 130, 246, 0.8);
+    background: linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(255, 255, 255, 0.03) 100%);
+}
+
+.ai-stat-card.warning {
+    border-left: 4px solid rgba(245, 158, 11, 0.8);
+    background: linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(255, 255, 255, 0.03) 100%);
+}
+
+.ai-stat-card.info {
+    border-left: 4px solid rgba(14, 165, 233, 0.8);
+    background: linear-gradient(135deg, rgba(14, 165, 233, 0.1) 0%, rgba(255, 255, 255, 0.03) 100%);
+}
+
+.ai-stat-card.success {
+    border-left: 4px solid rgba(34, 197, 94, 0.8);
+    background: linear-gradient(135deg, rgba(34, 197, 94, 0.1) 0%, rgba(255, 255, 255, 0.03) 100%);
+}
+
+.stat-icon {
+    position: absolute;
+    top: 1rem;
+    right: 1rem;
+    font-size: 2rem;
+    opacity: 0.3;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    opacity: 0.7;
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 300;
+    color: #ffffff;
+    margin-bottom: 0.25rem;
+}
+
+.detection-progress {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(14, 165, 233, 0.3);
+    border-radius: 16px;
+    padding: 0.75rem;
+    backdrop-filter: blur(20px);
+    margin-bottom: 1rem;
+}
+
+.progress-modern {
+    height: 8px;
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.progress-bar-modern {
+    height: 100%;
+    background: linear-gradient(90deg, rgba(14, 165, 233, 0.8) 0%, rgba(59, 130, 246, 0.8) 100%);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+    position: relative;
+}
+
+.progress-bar-modern::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.3), transparent);
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { left: -100%; }
+    100% { left: 100%; }
+}
+
+.ai-controls {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+    margin-bottom: 1rem;
+}
+
+.anomaly-list {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+}
+
+.anomaly-item {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    transition: background 0.3s ease;
+}
+
+.anomaly-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.anomaly-item:last-child {
+    border-bottom: none;
+}
+
+.anomaly-severity {
+    padding: 0.25rem 0.75rem;
+    border-radius: 8px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.severity-high {
+    background: rgba(239, 68, 68, 0.2);
+    color: #fca5a5;
+    border: 1px solid rgba(239, 68, 68, 0.3);
+}
+
+.severity-medium {
+    background: rgba(245, 158, 11, 0.2);
+    color: #fcd34d;
+    border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.severity-low {
+    background: rgba(34, 197, 94, 0.2);
+    color: #86efac;
+    border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
+.ai-model-status {
+    background: rgba(14, 165, 233, 0.1);
+    border: 1px solid rgba(14, 165, 233, 0.3);
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 0.75rem;
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.chart-container {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1rem;
+    backdrop-filter: blur(20px);
+    margin-bottom: 0.75rem;
+}
+
+.mobile-stats {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+@media (min-width: 992px) {
+    .mobile-stats {
+        display: none;
+    }
+}
+
+@media (max-width: 991px) {
+    .ai-stats-grid {
+        display: none;
+    }
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <h1><i class="bi bi-robot"></i> AI Dashboard</h1>
-    <div class="btn-group" role="group">
-        <button type="button" class="btn btn-outline-primary" id="refresh-ai-data">
-            <i class="bi bi-arrow-clockwise"></i> Refresh
-        </button>
-        <button type="button" class="btn btn-outline-success" id="run-detection">
-            <i class="bi bi-play-circle"></i> Run Detection
-        </button>
-    </div>
+<div class="page-header">
+    <h1 class="page-title">AI Dashboard</h1>
+    <p class="page-subtitle">Intelligent anomaly detection and network analysis</p>
+    <div class="page-version">ML Engine v1.2</div>
 </div>
 
-<!-- Detection Progress Bar -->
-<div class="row mb-3" id="detection-progress-container" style="display: none;">
-    <div class="col-12">
-        <div class="card border-info">
-            <div class="card-body py-3">
-                <div class="d-flex align-items-center mb-2">
-                    <div class="spinner-border spinner-border-sm text-info me-2" role="status">
-                        <span class="visually-hidden">Loading...</span>
-                    </div>
-                    <strong>Running AI Detection...</strong>
-                    <span class="ms-auto text-muted" id="detection-status-text">Initializing...</span>
-                </div>
-                <div class="progress" style="height: 8px;">
-                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-info" 
-                         role="progressbar" id="detection-progress-bar" style="width: 0%"></div>
-                </div>
-                <small class="text-muted mt-1" id="detection-details">Analyzing device patterns and historical data...</small>
-            </div>
+<!-- AI Controls -->
+<div class="ai-controls">
+    <button class="btn-modern btn-primary" id="refresh-ai-data">
+        <i class="bi bi-arrow-clockwise"></i> Refresh Data
+    </button>
+    <button class="btn-modern btn-success" id="run-detection">
+        <i class="bi bi-play-circle"></i> Run Detection
+    </button>
+    <button class="btn-modern btn-secondary" id="view-models">
+        <i class="bi bi-robot"></i> Model Status
+    </button>
+    <button class="btn-modern btn-warning" id="configure-ai">
+        <i class="bi bi-gear"></i> Configure
+    </button>
+</div>
+
+<!-- Detection Progress -->
+<div class="detection-progress" id="detection-progress-container" style="display: none;">
+    <div class="d-flex align-items-center mb-2">
+        <div class="spinning me-2">
+            <i class="bi bi-cpu"></i>
         </div>
+        <strong>Running AI Detection...</strong>
+        <span class="ms-auto text-muted" id="detection-status-text">Initializing...</span>
     </div>
+    <div class="progress-modern">
+        <div class="progress-bar-modern" id="detection-progress-bar" style="width: 0%;"></div>
+    </div>
+    <small class="text-muted mt-1" id="detection-details">Analyzing device patterns and historical data...</small>
 </div>
 
-<!-- Mobile-first AI Overview -->
-<div class="d-block d-lg-none mb-4">
-    <div class="card">
+<!-- AI Model Status -->
+<div class="ai-model-status" id="ai-model-status-banner" style="display: none;">
+    <i class="bi bi-robot"></i>
+    <div class="flex-grow-1">
+        <strong>AI Model Status:</strong>
+        <span id="ai-model-status-text">Checking...</span>
+    </div>
+    <small class="text-muted" id="ai-model-last-update">Last updated: --</small>
+</div>
+
+<!-- Mobile Stats (small screens) -->
+<div class="mobile-stats">
+    <div class="modern-card text-center">
         <div class="card-body">
-            <div class="row text-center g-3">
-                <div class="col-6">
-                    <div id="mobile-ai-status" class="h4 mb-1">--</div>
-                    <div class="small text-muted">AI Status</div>
-                </div>
-                <div class="col-6">
-                    <div id="mobile-anomalies" class="h4 mb-1">--</div>
-                    <div class="small text-muted">Anomalies</div>
-                </div>
-            </div>
+            <div class="stat-value" id="mobile-ai-status">--</div>
+            <div class="stat-label">AI Status</div>
+        </div>
+    </div>
+    <div class="modern-card text-center">
+        <div class="card-body">
+            <div class="stat-value" id="mobile-anomalies">--</div>
+            <div class="stat-label">Anomalies</div>
         </div>
     </div>
 </div>
 
-<!-- AI Model Status Banner -->
-<div class="row mb-3" id="ai-model-status-banner" style="display: none;">
-    <div class="col-12">
-        <div class="card border-info bg-info bg-opacity-10">
-            <div class="card-body py-2">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-robot text-info me-2"></i>
-                    <div class="flex-grow-1">
-                        <small class="fw-medium text-info">AI Model Status: </small>
-                        <span id="ai-model-status-text" class="small">Checking...</span>
-                    </div>
-                    <small class="text-muted" id="ai-model-last-update">Last updated: --</small>
-                </div>
-            </div>
+<!-- Desktop AI Stats Grid -->
+<div class="ai-stats-grid">
+    <div class="ai-stat-card primary">
+        <i class="bi bi-cpu stat-icon"></i>
+        <div class="stat-label">
+            Detection Status
+            <i class="bi bi-question-circle" title="Shows whether AI anomaly detection is actively running"></i>
         </div>
+        <div class="stat-value" id="detection-status">Loading...</div>
+    </div>
+
+    <div class="ai-stat-card warning">
+        <i class="bi bi-exclamation-triangle stat-icon"></i>
+        <div class="stat-label">
+            Anomalies (24h)
+            <i class="bi bi-question-circle" title="Number of unusual patterns detected in the last 24 hours"></i>
+        </div>
+        <div class="stat-value" id="total-anomalies">--</div>
+    </div>
+
+    <div class="ai-stat-card info">
+        <i class="bi bi-shield-check stat-icon"></i>
+        <div class="stat-label">
+            Detection Quality
+            <i class="bi bi-question-circle" title="Average confidence level of AI detections"></i>
+        </div>
+        <div class="stat-value" id="avg-confidence">--</div>
+    </div>
+
+    <div class="ai-stat-card success">
+        <i class="bi bi-graph-up stat-icon"></i>
+        <div class="stat-label">
+            Model Accuracy
+            <i class="bi bi-question-circle" title="Current ML model prediction accuracy"></i>
+        </div>
+        <div class="stat-value" id="model-accuracy">--</div>
     </div>
 </div>
 
-<!-- AI Status Cards -->
-<div class="row mb-4">
-    <div class="col-md-3">
-        <div class="card bg-primary text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-title">
-                            Detection Status
-                            <button class="btn btn-sm btn-link text-white p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Shows whether AI anomaly detection is actively running or stopped. When running, the system continuously monitors for unusual patterns.">
-                                <i class="bi bi-question-circle"></i>
-                            </button>
-                        </h6>
-                        <h4 id="detection-status" class="mb-0">Loading...</h4>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="bi bi-cpu-fill fa-2x"></i>
-                    </div>
+<!-- Charts Row -->
+<div class="row">
+    <div class="col-lg-8 mb-2">
+        <div class="chart-container">
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h5><i class="bi bi-graph-up"></i> Anomaly Trends</h5>
+                <div class="btn-group btn-group-sm">
+                    <button class="btn-modern btn-secondary active" data-period="24h">24H</button>
+                    <button class="btn-modern btn-secondary" data-period="7d">7D</button>
+                    <button class="btn-modern btn-secondary" data-period="30d">30D</button>
                 </div>
             </div>
+            <canvas id="anomalyTrendsChart" height="120"></canvas>
         </div>
     </div>
-    <div class="col-md-3">
-        <div class="card bg-warning text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-title">
-                            Anomalies (24h)
-                            <button class="btn btn-sm btn-link text-white p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Number of unusual patterns detected in the last 24 hours. These are deviations from normal network behavior that require attention.">
-                                <i class="bi bi-question-circle"></i>
-                            </button>
-                        </h6>
-                        <h4 id="total-anomalies" class="mb-0">--</h4>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="bi bi-exclamation-triangle-fill fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card bg-info text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-title">
-                            Detection Quality
-                            <button class="btn btn-sm btn-link text-white p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Average confidence level of AI detections. High = Very reliable, Medium = Generally reliable, Low = Needs verification.">
-                                <i class="bi bi-question-circle"></i>
-                            </button>
-                        </h6>
-                        <h4 id="avg-confidence" class="mb-0">--</h4>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="bi bi-graph-up fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-3">
-        <div class="card bg-success text-white">
-            <div class="card-body">
-                <div class="d-flex justify-content-between">
-                    <div>
-                        <h6 class="card-title">
-                            High Priority
-                            <button class="btn btn-sm btn-link text-white p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Critical and high severity anomalies that require immediate attention. These may indicate serious network issues.">
-                                <i class="bi bi-question-circle"></i>
-                            </button>
-                        </h6>
-                        <h4 id="high-priority-count" class="mb-0">--</h4>
-                    </div>
-                    <div class="align-self-center">
-                        <i class="bi bi-shield-exclamation fa-2x"></i>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 
-<!-- Anomaly Statistics -->
-<div class="row mb-4">
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0">
-                    <i class="bi bi-pie-chart"></i> Anomaly Distribution
-                    <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Shows the types of anomalies detected (response time, uptime pattern, connectivity issues). Helps identify which areas of your network need attention.">
-                        <i class="bi bi-question-circle"></i>
-                    </button>
-                </h6>
-            </div>
-            <div class="card-body">
-                <canvas id="anomaly-distribution-chart" style="height: 300px;"></canvas>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0">
-                    <i class="bi bi-bar-chart"></i> Severity Breakdown
-                    <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Shows the urgency levels of detected anomalies. Critical and High require immediate action, Medium should be investigated, Low can be monitored.">
-                        <i class="bi bi-question-circle"></i>
-                    </button>
-                </h6>
-            </div>
-            <div class="card-body">
-                <canvas id="severity-chart" style="height: 300px;"></canvas>
-            </div>
+    <div class="col-lg-4 mb-2">
+        <div class="chart-container">
+            <h5 class="mb-2"><i class="bi bi-pie-chart"></i> Detection Types</h5>
+            <canvas id="detectionTypesChart" height="120"></canvas>
         </div>
     </div>
 </div>
 
 <!-- Recent Anomalies -->
-<div class="row mb-4">
-    <div class="col-12">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">
-                    <i class="bi bi-list-check"></i> Recent Anomaly Alerts
-                    <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Chronological list of AI-detected anomalies. Click on any row for detailed information and recommended actions.">
-                        <i class="bi bi-question-circle"></i>
-                    </button>
-                </h6>
-                <div class="btn-group btn-group-sm">
-                    <button class="btn btn-outline-secondary time-filter" data-hours="24">24h</button>
-                    <button class="btn btn-outline-secondary time-filter" data-hours="168">7d</button>
-                    <button class="btn btn-outline-secondary time-filter" data-hours="720">30d</button>
-                </div>
+<div class="modern-card">
+    <div class="card-header">
+        <h3><i class="bi bi-exclamation-triangle"></i> Recent Anomalies</h3>
+        <button class="btn-modern btn-secondary" id="export-anomalies">
+            <i class="bi bi-download"></i> Export
+        </button>
+    </div>
+    <div class="card-body p-0">
+        <div id="anomalies-list">
+            <!-- Anomalies will be loaded here -->
+        </div>
+    </div>
+</div>
+
+<!-- Model Status Modal -->
+<div class="modal fade" id="modelStatusModal" tabindex="-1" aria-labelledby="modelStatusModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="modelStatusModalLabel">
+                    <i class="bi bi-cpu me-2"></i>AI Model Status
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="card-body">
-                <div id="anomaly-alerts-table">
-                    <div class="placeholder-glow">
-                        <div class="placeholder col-12 mb-2"></div>
-                        <div class="placeholder col-10 mb-2"></div>
-                        <div class="placeholder col-8 mb-2"></div>
+            <div class="modal-body">
+                <div class="row" id="modelStatusContent">
+                    <div class="col-12 text-center">
+                        <div class="spinner-border text-primary" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                        <p class="mt-2">Loading model status...</p>
                     </div>
                 </div>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="refreshModelStatus()">
+                    <i class="bi bi-arrow-clockwise me-1"></i>Refresh
+                </button>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Most Affected Devices -->
-<div class="row">
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header">
-                <h6 class="mb-0">
-                    <i class="bi bi-router"></i> Most Affected Devices
-                    <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Devices with the highest number of anomalies. These may need immediate attention or configuration changes.">
-                        <i class="bi bi-question-circle"></i>
-                    </button>
-                </h6>
+<!-- AI Configuration Modal -->
+<div class="modal fade" id="aiConfigModal" tabindex="-1" aria-labelledby="aiConfigModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="aiConfigModalLabel">
+                    <i class="bi bi-gear me-2"></i>AI Configuration
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="card-body">
-                <div id="affected-devices-list">
-                    <div class="placeholder-glow">
-                        <div class="placeholder col-12 mb-2"></div>
-                        <div class="placeholder col-10 mb-2"></div>
-                        <div class="placeholder col-8"></div>
+            <div class="modal-body">
+                <form id="aiConfigForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="detectionSensitivity" class="form-label">Detection Sensitivity</label>
+                                <select class="form-select bg-dark text-light border-secondary" id="detectionSensitivity">
+                                    <option value="low">Low</option>
+                                    <option value="medium" selected>Medium</option>
+                                    <option value="high">High</option>
+                                </select>
+                                <div class="form-text text-muted">Higher sensitivity detects more anomalies but may increase false positives</div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="analysisInterval" class="form-label">Analysis Interval (minutes)</label>
+                                <select class="form-select bg-dark text-light border-secondary" id="analysisInterval">
+                                    <option value="5">5 minutes</option>
+                                    <option value="15" selected>15 minutes</option>
+                                    <option value="30">30 minutes</option>
+                                    <option value="60">1 hour</option>
+                                </select>
+                            </div>
+                        </div>
                     </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-6">
-        <div class="card">
-            <div class="card-header d-flex justify-content-between align-items-center">
-                <h6 class="mb-0">
-                    <i class="bi bi-gear"></i> AI Detection Settings
-                    <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" data-bs-placement="top" title="Configure how the AI system detects anomalies. Changes take effect immediately and may impact detection sensitivity.">
-                        <i class="bi bi-question-circle"></i>
-                    </button>
-                </h6>
-                <button class="btn btn-sm btn-outline-secondary" id="reset-ai-settings" data-bs-toggle="tooltip" title="Reset to recommended defaults">
-                    <i class="bi bi-arrow-clockwise"></i> Reset
-                </button>
-            </div>
-            <div class="card-body">
-                <form id="ai-settings-form">
-                    <div class="mb-3">
-                        <label class="form-label">
-                            Detection Interval (minutes)
-                            <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" title="How often AI checks for anomalies. Lower values = more frequent checks but higher system load. Recommended: 5 minutes.">
-                                <i class="bi bi-question-circle"></i>
-                            </button>
-                        </label>
-                        <input type="number" class="form-control" id="detection-interval" min="1" max="60" value="5">
-                        <small class="form-text text-muted">Recommended: 5 minutes for optimal balance</small>
-                        <div id="interval-impact" class="small mt-1" style="display: none;"></div>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">
-                            Baseline Period (hours)
-                            <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" title="Historical data period used to establish 'normal' behavior. Longer periods = more stable baselines but slower adaptation. Recommended: 168 hours (7 days).">
-                                <i class="bi bi-question-circle"></i>
-                            </button>
-                        </label>
-                        <input type="number" class="form-control" id="baseline-hours" min="24" max="720" value="168">
-                        <small class="form-text text-muted">Recommended: 168 hours (7 days) for stable detection</small>
-                        <div id="baseline-impact" class="small mt-1" style="display: none;"></div>
-                    </div>
-                    <div class="mb-3">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="response-time-detection" checked>
-                            <label class="form-check-label" for="response-time-detection">
-                                Response Time Anomaly Detection
-                                <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" title="Detects when devices respond slower than usual. Helps identify network congestion or device performance issues.">
-                                    <i class="bi bi-question-circle"></i>
-                                </button>
-                            </label>
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Detection Types</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="detectResponseTime" checked>
+                                    <label class="form-check-label" for="detectResponseTime">Response Time Anomalies</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="detectUptime" checked>
+                                    <label class="form-check-label" for="detectUptime">Uptime Pattern Anomalies</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="detectConnectivity" checked>
+                                    <label class="form-check-label" for="detectConnectivity">Connectivity Anomalies</label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Notification Settings</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="notifyEmail" checked>
+                                    <label class="form-check-label" for="notifyEmail">Email Notifications</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="notifyWebhook">
+                                    <label class="form-check-label" for="notifyWebhook">Webhook Notifications</label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="notifyDashboard" checked>
+                                    <label class="form-check-label" for="notifyDashboard">Dashboard Alerts</label>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <div class="mb-3">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="uptime-pattern-detection" checked>
-                            <label class="form-check-label" for="uptime-pattern-detection">
-                                Uptime Pattern Detection
-                                <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" title="Identifies unusual device availability patterns. Detects when devices go offline unexpectedly or have irregular connectivity.">
-                                    <i class="bi bi-question-circle"></i>
-                                </button>
-                            </label>
-                        </div>
+                        <label for="confidenceThreshold" class="form-label">Confidence Threshold: <span id="confidenceValue">75</span>%</label>
+                        <input type="range" class="form-range" id="confidenceThreshold" min="50" max="95" value="75" oninput="document.getElementById('confidenceValue').textContent = this.value">
+                        <div class="form-text text-muted">Only report anomalies with confidence above this threshold</div>
                     </div>
-                    <div class="mb-3">
-                        <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" id="connectivity-pattern-detection" checked>
-                            <label class="form-check-label" for="connectivity-pattern-detection">
-                                Connectivity Pattern Detection
-                                <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" title="Monitors for unusual connection behaviors and network activity patterns. Helps identify potential security issues or configuration problems.">
-                                    <i class="bi bi-question-circle"></i>
-                                </button>
-                            </label>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-circle"></i> Update Settings
-                    </button>
                 </form>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-success" onclick="saveAIConfiguration()">
+                    <i class="bi bi-check-lg me-1"></i>Save Configuration
+                </button>
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
 <script>
-    let anomalyCharts = {};
-    let currentTimeFilter = 24; // Default 24 hours
-    
-    // State management to prevent duplicate API calls
-    let loadingStates = {
-        aiStatus: false,
-        anomalyStatistics: false,
-        anomalyAlerts: false,
-        aiSettings: false
-    };
+let anomalyTrendsChart = null;
+let detectionTypesChart = null;
 
-    document.addEventListener('DOMContentLoaded', function() {
-        // Helper function to get CSRF token
-        function getCSRFToken() {
-            return document.cookie
-                .split('; ')
-                .find(row => row.startsWith('csrf_token='))
-                ?.split('=')[1];
-        }
-        
-        // Helper function to create headers with CSRF token
-        function getHeaders(additionalHeaders = {}) {
-            const headers = {
-                'Content-Type': 'application/json',
-                ...additionalHeaders
-            };
-            
-            const csrfToken = getCSRFToken();
-            if (csrfToken) {
-                headers['X-CSRF-Token'] = csrfToken;
-            }
-            
-            return headers;
-        }
-        
-        // Initialize tooltips
-        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
-        var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
-        });
-        
-        loadAIData();
-        
-        // Event listeners
-        document.getElementById('refresh-ai-data').addEventListener('click', loadAIData);
-        document.getElementById('run-detection').addEventListener('click', runManualDetection);
-        document.getElementById('ai-settings-form').addEventListener('submit', updateAISettings);
-        document.getElementById('reset-ai-settings').addEventListener('click', resetAISettings);
-        
-        // Add real-time validation and impact preview
-        document.getElementById('detection-interval').addEventListener('input', validateDetectionInterval);
-        document.getElementById('baseline-hours').addEventListener('input', validateBaselineHours);
-        
-        // Time filter buttons with debouncing
-        let filterDebounceTimer = null;
-        document.querySelectorAll('.time-filter').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                // Prevent rapid clicking
-                if (filterDebounceTimer) {
-                    clearTimeout(filterDebounceTimer);
-                }
-                
-                // Update active button immediately for responsive UI
-                document.querySelectorAll('.time-filter').forEach(b => {
-                    b.classList.remove('btn-secondary');
-                    b.classList.add('btn-outline-secondary');
-                });
-                e.target.classList.remove('btn-outline-secondary');
-                e.target.classList.add('btn-secondary');
-                
-                const newTimeFilter = parseInt(e.target.dataset.hours);
-                
-                // Debounce the actual data loading
-                filterDebounceTimer = setTimeout(() => {
-                    currentTimeFilter = newTimeFilter;
-                    Promise.all([
-                        loadAnomalyAlerts(),
-                        loadAnomalyStatistics()
-                    ]).catch(error => {
-                        console.error('Error updating time filter:', error);
-                    });
-                }, 300); // 300ms debounce
-            });
-        });
-        
-        // Set default active button
-        document.querySelector('.time-filter[data-hours="24"]').click();
-        
-        // Auto-refresh every 30 seconds
-        setInterval(loadAIData, 30000);
-    });
-    
-    async function loadAIData() {
-        try {
-            await Promise.all([
-                loadAIStatus(),
-                loadAnomalyStatistics(),
-                loadAnomalyAlerts(),
-                loadAISettings()
-            ]);
-        } catch (error) {
+document.addEventListener('DOMContentLoaded', function() {
+    initializeAIDashboard();
+    initializeCharts();
+    setupEventListeners();
+
+    // Refresh data every 30 seconds
+    setInterval(loadAIData, 30000);
+});
+
+function initializeAIDashboard() {
+    loadAIData();
+    checkModelStatus();
+}
+
+function loadAIData() {
+    fetch('/api/ai/dashboard')
+        .then(response => response.json())
+        .then(data => {
+            updateAIStats(data);
+            updateAnomaliesList(data.recent_anomalies || []);
+            updateCharts(data);
+        })
+        .catch(error => {
             console.error('Error loading AI data:', error);
-            
-            // Provide specific error feedback
-            if (error.name === 'TypeError' && error.message.includes('fetch')) {
-                showToast('AI service unavailable. Check network connection.', 'error');
-            } else if (error.message.includes('404')) {
-                showToast('AI endpoints not found. Service may not be configured.', 'error');
-            } else if (error.message.includes('500')) {
-                showToast('AI service error. Please try again in a moment.', 'error');
-            } else {
-                showToast('Error loading AI dashboard data', 'error');
-            }
-            
-            // Add retry button to refresh button
-            const refreshBtn = document.getElementById('refresh-ai-data');
-            if (refreshBtn && !refreshBtn.classList.contains('btn-warning')) {
-                refreshBtn.classList.remove('btn-outline-primary');
-                refreshBtn.classList.add('btn-warning');
-                refreshBtn.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Retry';
-                
-                // Reset after successful load
-                setTimeout(() => {
-                    refreshBtn.classList.remove('btn-warning');
-                    refreshBtn.classList.add('btn-outline-primary');
-                    refreshBtn.innerHTML = '<i class="bi bi-arrow-clockwise"></i> Refresh';
-                }, 5000);
-            }
-        }
-    }
-    
-    async function loadAIStatus() {
-        try {
-            const response = await fetch('/api/anomaly/status');
-            const data = await response.json();
-            
-            if (data.success) {
-                const status = data.status;
-                const statusText = status.running ? 'Running' : 'Stopped';
-                document.getElementById('detection-status').textContent = statusText;
-                
-                // Update mobile summary
-                const mobileStatus = document.getElementById('mobile-ai-status');
-                if (mobileStatus) {
-                    mobileStatus.textContent = statusText;
-                    mobileStatus.style.color = status.running ? '#28a745' : '#dc3545';
-                }
-                
-                // Update the status card color
-                const statusCard = document.getElementById('detection-status').closest('.card');
-                statusCard.className = status.running ? 'card bg-success text-white' : 'card bg-danger text-white';
-                
-                // Update AI model status banner
-                updateAIModelStatus(status);
-            }
-        } catch (error) {
-            console.error('Error loading AI status:', error);
-            document.getElementById('detection-status').textContent = 'Connection Error';
-            
-            // Show specific error message
-            const banner = document.getElementById('ai-model-status-banner');
-            const statusText = document.getElementById('ai-model-status-text');
-            statusText.textContent = 'Unable to connect to AI service. Click refresh to retry.';
-            statusText.className = 'small text-danger';
-            banner.style.display = 'block';
-            
-            // Update mobile status
-            const mobileStatus = document.getElementById('mobile-ai-status');
-            if (mobileStatus) {
-                mobileStatus.textContent = 'Error';
-                mobileStatus.style.color = '#dc3545';
-            }
-        }
-    }
-    
-    async function loadAnomalyStatistics() {
-        // Prevent duplicate calls
-        if (loadingStates.anomalyStatistics) {
-            return;
-        }
-        
-        try {
-            loadingStates.anomalyStatistics = true;
-            
-            const response = await fetch(`/api/anomaly/statistics?hours=${currentTimeFilter}`);
-            const data = await response.json();
-            
-            if (data.success) {
-                const stats = data.statistics;
-                
-                // Update summary cards
-                const totalAnomalies = stats.total_anomalies || 0;
-                document.getElementById('total-anomalies').textContent = totalAnomalies;
-                
-                // Update mobile anomalies count
-                const mobileAnomalies = document.getElementById('mobile-anomalies');
-                if (mobileAnomalies) {
-                    mobileAnomalies.textContent = totalAnomalies;
-                    mobileAnomalies.style.color = totalAnomalies === 0 ? '#28a745' : '#ffc107';
-                }
-                
-                // Interpret confidence score
-                const confidenceScore = stats.avg_confidence || 0;
-                const confidenceText = interpretConfidenceScore(confidenceScore);
-                document.getElementById('avg-confidence').textContent = confidenceText;
-                
-                const highPriority = (stats.by_severity.high || 0) + (stats.by_severity.critical || 0);
-                document.getElementById('high-priority-count').textContent = highPriority;
-                
-                // Update charts
-                updateAnomalyDistributionChart(stats.by_type);
-                updateSeverityChart(stats.by_severity);
-                
-                // Update affected devices - ensure clean update
-                updateAffectedDevicesList(stats.most_affected_devices);
-            }
-        } catch (error) {
-            console.error('Error loading anomaly statistics:', error);
-        } finally {
-            loadingStates.anomalyStatistics = false;
-        }
-    }
-    
-    async function loadAnomalyAlerts() {
-        // Prevent duplicate calls
-        if (loadingStates.anomalyAlerts) {
-            return;
-        }
-        
-        try {
-            loadingStates.anomalyAlerts = true;
-            
-            const response = await fetch(`/api/anomaly/alerts?hours=${currentTimeFilter}&limit=20`);
-            const data = await response.json();
-            
-            if (data.success) {
-                updateAnomalyAlertsTable(data.alerts);
-            }
-        } catch (error) {
-            console.error('Error loading anomaly alerts:', error);
-        } finally {
-            loadingStates.anomalyAlerts = false;
-        }
-    }
-    
-    async function loadAISettings() {
-        try {
-            const response = await fetch('/api/anomaly/settings');
-            const data = await response.json();
-            
-            if (data.success) {
-                const settings = data.settings;
-                
-                // Update form with current settings
-                document.getElementById('response-time-detection').checked = settings.response_time.enabled;
-                document.getElementById('uptime-pattern-detection').checked = settings.uptime_pattern.enabled;
-                document.getElementById('connectivity-pattern-detection').checked = settings.connectivity_pattern.enabled;
-            }
-        } catch (error) {
-            console.error('Error loading AI settings:', error);
-        }
-    }
-    
-    async function runManualDetection() {
-        try {
-            const button = document.getElementById('run-detection');
-            const originalText = button.innerHTML;
-            const progressContainer = document.getElementById('detection-progress-container');
-            const progressBar = document.getElementById('detection-progress-bar');
-            const statusText = document.getElementById('detection-status-text');
-            const detailsText = document.getElementById('detection-details');
-            
-            // Show progress UI
-            button.disabled = true;
-            button.innerHTML = '<i class="bi bi-hourglass-split"></i> Running...';
-            progressContainer.style.display = 'block';
-            
-            // Simulate realistic progress updates
-            const progressSteps = [
-                { progress: 10, status: 'Initializing...', details: 'Loading device list and historical data...' },
-                { progress: 25, status: 'Analyzing...', details: 'Calculating baseline statistics for each device...' },
-                { progress: 50, status: 'Detecting...', details: 'Running anomaly detection algorithms...' },
-                { progress: 75, status: 'Processing...', details: 'Evaluating patterns and thresholds...' },
-                { progress: 90, status: 'Finalizing...', details: 'Creating anomaly alerts and updating database...' }
-            ];
-            
-            // Start progress simulation
-            let stepIndex = 0;
-            const progressInterval = setInterval(() => {
-                if (stepIndex < progressSteps.length) {
-                    const step = progressSteps[stepIndex];
-                    progressBar.style.width = step.progress + '%';
-                    statusText.textContent = step.status;
-                    detailsText.textContent = step.details;
-                    stepIndex++;
-                }
-            }, 800); // Update every 800ms
-            
-            const response = await fetch('/api/anomaly/run-detection', {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify({})
-            });
-            
-            const data = await response.json();
-            
-            // Complete progress
-            clearInterval(progressInterval);
-            progressBar.style.width = '100%';
-            statusText.textContent = 'Complete!';
-            
-            if (data.success) {
-                const anomalyCount = data.anomalies_detected || 0;
-                detailsText.textContent = `Detection completed successfully. Found ${anomalyCount} anomalies.`;
-                showToast(`Detection completed. Found ${anomalyCount} anomalies.`, 'success');
-                
-                // Show completion for a moment, then hide
-                setTimeout(() => {
-                    progressContainer.style.display = 'none';
-                }, 2000);
-                
-                loadAIData(); // Refresh data
-            } else {
-                detailsText.textContent = `Detection failed: ${data.error}`;
-                progressBar.classList.add('bg-danger');
-                showToast(`Detection failed: ${data.error}`, 'error');
-                
-                setTimeout(() => {
-                    progressContainer.style.display = 'none';
-                    progressBar.classList.remove('bg-danger');
-                }, 3000);
-            }
-        } catch (error) {
-            console.error('Error running detection:', error);
-            
-            // Show error in progress bar
-            const progressBar = document.getElementById('detection-progress-bar');
-            const statusText = document.getElementById('detection-status-text');
-            const detailsText = document.getElementById('detection-details');
-            
-            progressBar.style.width = '100%';
-            progressBar.classList.add('bg-danger');
-            statusText.textContent = 'Error!';
-            detailsText.textContent = 'An error occurred while running detection.';
-            
-            showToast('Error running detection', 'error');
-            
-            setTimeout(() => {
-                document.getElementById('detection-progress-container').style.display = 'none';
-                progressBar.classList.remove('bg-danger');
-            }, 3000);
-        } finally {
-            const button = document.getElementById('run-detection');
-            button.disabled = false;
-            button.innerHTML = '<i class="bi bi-play-circle"></i> Run Detection';
-        }
-    }
-    
-    async function updateAISettings(event) {
-        event.preventDefault();
-        
-        try {
-            const settings = {
-                detection_interval: parseInt(document.getElementById('detection-interval').value) * 60, // Convert to seconds
-                baseline_hours: parseInt(document.getElementById('baseline-hours').value),
-                response_time: {
-                    enabled: document.getElementById('response-time-detection').checked
-                },
-                uptime_pattern: {
-                    enabled: document.getElementById('uptime-pattern-detection').checked
-                },
-                connectivity_pattern: {
-                    enabled: document.getElementById('connectivity-pattern-detection').checked
-                }
-            };
-            
-            const response = await fetch('/api/anomaly/settings', {
-                method: 'POST',
-                headers: getHeaders(),
-                body: JSON.stringify(settings)
-            });
-            
-            const data = await response.json();
-            
-            if (data.success) {
-                showToast('AI settings updated successfully', 'success');
-            } else {
-                showToast(`Failed to update settings: ${data.error}`, 'error');
-            }
-        } catch (error) {
-            console.error('Error updating settings:', error);
-            showToast('Error updating AI settings', 'error');
-        }
-    }
-    
-    function updateAnomalyDistributionChart(byType) {
-        const ctx = document.getElementById('anomaly-distribution-chart').getContext('2d');
-        
-        if (anomalyCharts.distribution) {
-            anomalyCharts.distribution.destroy();
-        }
-        
-        const labels = Object.keys(byType);
-        const data = Object.values(byType);
-        
-        anomalyCharts.distribution = new Chart(ctx, {
-            type: 'doughnut',
-            data: {
-                labels: labels.map(label => label.replace('_', ' ').toUpperCase()),
-                datasets: [{
-                    data: data,
-                    backgroundColor: [
-                        '#ff6b6b', '#4ecdc4', '#45b7d1', '#96ceb4', '#feca57'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: {
-                    legend: {
-                        position: 'bottom'
-                    }
-                }
-            }
+            showErrorState();
         });
-    }
-    
-    function updateSeverityChart(bySeverity) {
-        const ctx = document.getElementById('severity-chart').getContext('2d');
-        
-        if (anomalyCharts.severity) {
-            anomalyCharts.severity.destroy();
-        }
-        
-        anomalyCharts.severity = new Chart(ctx, {
-            type: 'bar',
-            data: {
-                labels: ['Low', 'Medium', 'High', 'Critical'],
-                datasets: [{
-                    label: 'Count',
-                    data: [
-                        bySeverity.low || 0,
-                        bySeverity.medium || 0,
-                        bySeverity.high || 0,
-                        bySeverity.critical || 0
-                    ],
-                    backgroundColor: [
-                        '#feca57', '#ff9ff3', '#ff6b6b', '#ee5a52'
-                    ]
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        ticks: {
-                            stepSize: 1
-                        }
-                    }
-                },
-                plugins: {
-                    legend: {
-                        display: false
-                    }
-                }
-            }
-        });
-    }
-    
-    function updateAnomalyAlertsTable(alerts) {
-        const container = document.getElementById('anomaly-alerts-table');
-        
-        // Always clear container first
-        container.innerHTML = '';
-        
-        if (!alerts || alerts.length === 0) {
-            container.innerHTML = '<div class="text-muted text-center py-4">No anomaly alerts found for the selected time period.</div>';
-            return;
-        }
-        
-        // Remove duplicates by alert ID (in case of race conditions)
-        const uniqueAlerts = alerts.filter((alert, index, self) => 
-            index === self.findIndex(a => a.id === alert.id)
-        );
-        
-        const table = `
-            <div class="table-responsive">
-                <table class="table table-hover">
-                    <thead>
-                        <tr>
-                            <th>Device</th>
-                            <th>Type</th>
-                            <th>Severity</th>
-                            <th>Confidence</th>
-                            <th>Message</th>
-                            <th>Recommended Action</th>
-                            <th>Time</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${uniqueAlerts.map((alert, index) => {
-                            const recommendedAction = getRecommendedAction(alert.alert_type, alert.severity);
-                            return `
-                            <tr data-alert-id="${alert.id}" data-device="${alert.device_name}" class="anomaly-row" style="cursor: pointer;" onclick="toggleAnomalyDetails(${alert.id})">
-                                <td>
-                                    <div class="d-flex align-items-center">
-                                        <i class="bi bi-chevron-right expand-icon me-2" id="expand-${alert.id}"></i>
-                                        <span class="fw-bold">${alert.device_name}</span>
-                                    </div>
-                                </td>
-                                <td>
-                                    <span class="badge bg-info">${alert.alert_type.replace('_', ' ')}</span>
-                                </td>
-                                <td>
-                                    <span class="badge bg-${getSeverityColor(alert.severity)}">${alert.severity.toUpperCase()}</span>
-                                </td>
-                                <td>
-                                    <div class="progress" style="width: 60px; height: 8px;">
-                                        <div class="progress-bar" style="width: ${alert.confidence * 100}%"></div>
-                                    </div>
-                                    <small>${interpretConfidenceScore(alert.confidence)}</small>
-                                </td>
-                                <td>
-                                    <small class="text-truncate" style="max-width: 200px;" title="${alert.message}">${alert.message}</small>
-                                </td>
-                                <td>
-                                    <small class="text-primary">${recommendedAction}</small>
-                                </td>
-                                <td>
-                                    <small>${new Date(alert.created_at).toLocaleString()}</small>
-                                </td>
-                                <td>
-                                    <div class="btn-group btn-group-sm">
-                                        <button class="btn btn-outline-primary btn-sm view-device" data-device-id="${alert.device_id}" title="View Device Details">
-                                            <i class="bi bi-eye"></i>
-                                        </button>
-                                        <button class="btn btn-outline-success btn-sm acknowledge-alert" data-alert-id="${alert.id}" title="Acknowledge Alert">
-                                            <i class="bi bi-check"></i>
-                                        </button>
-                                    </div>
-                                </td>
-                            </tr>
-                            <tr id="details-${alert.id}" class="anomaly-details" style="display: none;">
-                                <td colspan="8" class="bg-light">
-                                    <div class="p-3">
-                                        <div class="row">
-                                            <div class="col-md-6">
-                                                <h6 class="text-muted">Detection Details</h6>
-                                                <table class="table table-sm table-borderless">
-                                                    <tr><td class="fw-medium">Baseline Value:</td><td>${alert.baseline_value || 'N/A'}</td></tr>
-                                                    <tr><td class="fw-medium">Current Value:</td><td>${alert.current_value || 'N/A'}</td></tr>
-                                                    <tr><td class="fw-medium">Threshold:</td><td>${alert.threshold || 'N/A'}</td></tr>
-                                                    <tr><td class="fw-medium">Full Message:</td><td>${alert.message}</td></tr>
-                                                </table>
-                                            </div>
-                                            <div class="col-md-6">
-                                                <h6 class="text-muted">Next Steps</h6>
-                                                <div class="alert alert-info p-2 mb-0">
-                                                    <small><strong>Recommended:</strong> ${recommendedAction}</small>
-                                                    <hr class="my-2">
-                                                    <small>
-                                                        <strong>Priority:</strong> 
-                                                        ${alert.severity.charAt(0).toUpperCase() + alert.severity.slice(1)} severity - 
-                                                        ${alert.severity === 'critical' ? 'Immediate action required' : 
-                                                          alert.severity === 'high' ? 'Address within 1 hour' :
-                                                          alert.severity === 'medium' ? 'Address within 4 hours' :
-                                                          'Monitor and document'}
-                                                    </small>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </td>
-                            </tr>
-                            `;
-                        }).join('')}
-                    </tbody>
-                </table>
+}
+
+function updateAIStats(data) {
+    // Update desktop stats
+    document.getElementById('detection-status').textContent = data.detection_status || 'Unknown';
+    document.getElementById('total-anomalies').textContent = data.anomalies_24h || '0';
+    document.getElementById('avg-confidence').textContent = data.avg_confidence || '--';
+    document.getElementById('model-accuracy').textContent = data.model_accuracy || '--';
+
+    // Update mobile stats
+    document.getElementById('mobile-ai-status').textContent = data.detection_status || 'Unknown';
+    document.getElementById('mobile-anomalies').textContent = data.anomalies_24h || '0';
+}
+
+function updateAnomaliesList(anomalies) {
+    const listContainer = document.getElementById('anomalies-list');
+
+    if (!anomalies || anomalies.length === 0) {
+        listContainer.innerHTML = `
+            <div class="text-center p-4">
+                <i class="bi bi-shield-check" style="font-size: 3rem; opacity: 0.5;"></i>
+                <p class="mt-2 mb-0">No anomalies detected recently</p>
+                <small class="text-muted">Your network is operating normally</small>
             </div>
         `;
-        
-        container.innerHTML = table;
-        
-        // Add event listeners for action buttons
-        document.querySelectorAll('.view-device').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const deviceId = e.target.closest('.view-device').dataset.deviceId;
-                window.location.href = `/device/${deviceId}`;
-            });
-        });
-        
-        document.querySelectorAll('.acknowledge-alert').forEach(btn => {
-            btn.addEventListener('click', (e) => {
-                const alertId = e.target.closest('.acknowledge-alert').dataset.alertId;
-                acknowledgeAlert(alertId, e.target.closest('.acknowledge-alert'));
-            });
-        });
+        return;
     }
-    
-    function updateAffectedDevicesList(devices) {
-        const container = document.getElementById('affected-devices-list');
-        
-        // Always clear existing content first to prevent duplicates
-        container.innerHTML = '';
-        
-        if (!devices || devices.length === 0) {
-            container.innerHTML = '<div class="text-muted">No affected devices in the selected time period.</div>';
-            return;
-        }
-        
-        // Create unique device entries to prevent duplicates
-        const uniqueDevices = new Map();
-        devices.forEach(([deviceName, count]) => {
-            // Use device name as key to ensure uniqueness
-            const key = deviceName.toLowerCase().trim();
-            if (!uniqueDevices.has(key) || uniqueDevices.get(key)[1] < count) {
-                uniqueDevices.set(key, [deviceName, count]);
-            }
-        });
-        
-        // Convert back to array and sort by count descending
-        const sortedDevices = Array.from(uniqueDevices.values())
-            .sort((a, b) => b[1] - a[1]);
-        
-        const list = sortedDevices.map(([deviceName, count]) => `
-            <div class="d-flex justify-content-between align-items-center mb-2" data-device="${deviceName}">
-                <span class="fw-medium">${deviceName}</span>
-                <span class="badge bg-warning">${count} ${count === 1 ? 'anomaly' : 'anomalies'}</span>
+
+    listContainer.innerHTML = anomalies.map(anomaly => `
+        <div class="anomaly-item">
+            <div class="d-flex justify-content-between align-items-start">
+                <div class="flex-grow-1">
+                    <div class="d-flex align-items-center gap-2 mb-1">
+                        <strong>${anomaly.title || 'Anomaly Detected'}</strong>
+                        <span class="anomaly-severity severity-${anomaly.severity || 'medium'}">${anomaly.severity || 'Medium'}</span>
+                    </div>
+                    <p class="mb-1">${anomaly.description || 'No description available'}</p>
+                    <small class="text-muted">
+                        <i class="bi bi-clock"></i> ${formatDate(anomaly.detected_at)}
+                        ${anomaly.device ? `• Device: ${anomaly.device}` : ''}
+                        ${anomaly.confidence ? `• Confidence: ${anomaly.confidence}%` : ''}
+                    </small>
+                </div>
+                <div class="text-end">
+                    <button class="btn-modern btn-secondary btn-sm" onclick="viewAnomalyDetails(${anomaly.id})">
+                        <i class="bi bi-eye"></i>
+                    </button>
+                </div>
             </div>
-        `).join('');
-        
-        container.innerHTML = list;
-    }
-    
-    function getSeverityColor(severity) {
-        const colors = {
-            'low': 'success',
-            'medium': 'warning',
-            'high': 'danger',
-            'critical': 'dark'
-        };
-        return colors[severity] || 'secondary';
-    }
-    
-    function interpretConfidenceScore(score) {
-        if (score >= 0.8) {
-            return 'High';
-        } else if (score >= 0.6) {
-            return 'Medium';
-        } else if (score >= 0.3) {
-            return 'Low';
-        } else {
-            return 'Very Low';
-        }
-    }
-    
-    function updateAIModelStatus(status) {
-        const banner = document.getElementById('ai-model-status-banner');
-        const statusText = document.getElementById('ai-model-status-text');
-        const lastUpdate = document.getElementById('ai-model-last-update');
-        
-        if (status.running) {
-            statusText.textContent = 'Active and monitoring';
-            statusText.className = 'small text-success';
-        } else {
-            statusText.textContent = 'Inactive - detection stopped';
-            statusText.className = 'small text-warning';
-        }
-        
-        // Show the banner
-        banner.style.display = 'block';
-        
-        // Update last update time (you may want to get this from the API)
-        lastUpdate.textContent = `Last updated: ${new Date().toLocaleString()}`;
-    }
-    
-    function resetAISettings() {
-        // Confirmation dialog
-        if (confirm('Reset AI settings to recommended defaults? This will optimize detection for typical home networks.')) {
-            // Reset form values to defaults
-            document.getElementById('detection-interval').value = 5;
-            document.getElementById('baseline-hours').value = 168;
-            document.getElementById('response-time-detection').checked = true;
-            document.getElementById('uptime-pattern-detection').checked = true;
-            document.getElementById('connectivity-pattern-detection').checked = true;
-            
-            // Trigger form submission to save the defaults
-            document.getElementById('ai-settings-form').dispatchEvent(new Event('submit'));
-        }
-    }
-    
-    function getRecommendedAction(alertType, severity) {
-        const actions = {
-            'response_time': {
-                'critical': 'Investigate immediately - possible device failure',
-                'high': 'Check device and network connectivity',
-                'medium': 'Monitor device performance',
-                'low': 'Continue normal monitoring'
+        </div>
+    `).join('');
+}
+
+function initializeCharts() {
+    // Initialize anomaly trends chart
+    const trendsCtx = document.getElementById('anomalyTrendsChart').getContext('2d');
+    anomalyTrendsChart = new Chart(trendsCtx, {
+        type: 'line',
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Anomalies Detected',
+                data: [],
+                borderColor: 'rgba(239, 68, 68, 1)',
+                backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                tension: 0.4,
+                fill: true
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: 'white' }
+                }
             },
-            'uptime_pattern': {
-                'critical': 'Check power and physical connectivity',
-                'high': 'Verify device configuration and stability',
-                'medium': 'Monitor for recurring patterns',
-                'low': 'Note for trend analysis'
-            },
-            'connectivity_pattern': {
-                'critical': 'Check for security issues or device problems',
-                'high': 'Review network configuration and logs',
-                'medium': 'Monitor for unusual activity',
-                'low': 'Document pattern for analysis'
+            scales: {
+                x: {
+                    ticks: { color: 'white' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                },
+                y: {
+                    ticks: { color: 'white' },
+                    grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                }
             }
-        };
-        
-        const typeActions = actions[alertType] || actions['response_time'];
-        return typeActions[severity] || 'Review device status';
+        }
+    });
+
+    // Initialize detection types chart
+    const typesCtx = document.getElementById('detectionTypesChart').getContext('2d');
+    detectionTypesChart = new Chart(typesCtx, {
+        type: 'doughnut',
+        data: {
+            labels: ['Network', 'Performance', 'Security', 'Behavioral'],
+            datasets: [{
+                data: [0, 0, 0, 0],
+                backgroundColor: [
+                    'rgba(59, 130, 246, 0.8)',
+                    'rgba(34, 197, 94, 0.8)',
+                    'rgba(239, 68, 68, 0.8)',
+                    'rgba(245, 158, 11, 0.8)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    labels: { color: 'white' }
+                }
+            }
+        }
+    });
+}
+
+function updateCharts(data) {
+    // Update anomaly trends chart
+    if (data.trends && anomalyTrendsChart) {
+        anomalyTrendsChart.data.labels = data.trends.labels || [];
+        anomalyTrendsChart.data.datasets[0].data = data.trends.values || [];
+        anomalyTrendsChart.update();
     }
-    
-    async function acknowledgeAlert(alertId, buttonElement) {
-        try {
-            buttonElement.disabled = true;
-            buttonElement.innerHTML = '<i class="bi bi-hourglass-split"></i>';
-            
-            const response = await fetch(`/api/alerts/${alertId}/acknowledge`, {
-                method: 'POST',
-                headers: getHeaders()
-            });
-            
-            const data = await response.json();
-            
+
+    // Update detection types chart
+    if (data.detection_types && detectionTypesChart) {
+        detectionTypesChart.data.datasets[0].data = [
+            data.detection_types.network || 0,
+            data.detection_types.performance || 0,
+            data.detection_types.security || 0,
+            data.detection_types.behavioral || 0
+        ];
+        detectionTypesChart.update();
+    }
+}
+
+function setupEventListeners() {
+    document.getElementById('refresh-ai-data').addEventListener('click', loadAIData);
+    document.getElementById('run-detection').addEventListener('click', runAIDetection);
+    document.getElementById('view-models').addEventListener('click', viewModelStatus);
+    document.getElementById('configure-ai').addEventListener('click', configureAI);
+    document.getElementById('export-anomalies').addEventListener('click', exportAnomalies);
+
+    // Period selection buttons
+    document.querySelectorAll('[data-period]').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('[data-period]').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            loadDataForPeriod(this.dataset.period);
+        });
+    });
+}
+
+function runAIDetection() {
+    const progressContainer = document.getElementById('detection-progress-container');
+    const progressBar = document.getElementById('detection-progress-bar');
+    const statusText = document.getElementById('detection-status-text');
+    const detailsText = document.getElementById('detection-details');
+
+    progressContainer.style.display = 'block';
+    progressBar.style.width = '0%';
+    statusText.textContent = 'Initializing...';
+
+    // Simulate detection progress
+    let progress = 0;
+    const steps = [
+        { progress: 20, status: 'Loading models...', details: 'Initializing ML models and algorithms...' },
+        { progress: 40, status: 'Analyzing data...', details: 'Processing historical network data...' },
+        { progress: 60, status: 'Running detection...', details: 'Scanning for anomalous patterns...' },
+        { progress: 80, status: 'Validating results...', details: 'Verifying detection confidence...' },
+        { progress: 100, status: 'Complete', details: 'Detection completed successfully' }
+    ];
+
+    steps.forEach((step, index) => {
+        setTimeout(() => {
+            progressBar.style.width = step.progress + '%';
+            statusText.textContent = step.status;
+            detailsText.textContent = step.details;
+
+            if (step.progress === 100) {
+                setTimeout(() => {
+                    progressContainer.style.display = 'none';
+                    loadAIData();
+                    showGlobalLoading = showGlobalLoading || function() {};
+                    showSuccess('AI detection completed successfully');
+                }, 1000);
+            }
+        }, (index + 1) * 1500);
+    });
+
+    // Make actual API call
+    if (window.makeRequest) {
+        // Use CSRF-protected request
+        window.makeRequest('/api/ai/run-detection', {
+            method: 'POST',
+            body: JSON.stringify({}),
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(data => {
+            console.log('AI detection result:', data);
+            progressContainer.style.display = 'none';
             if (data.success) {
-                // Update button to show acknowledged state
-                buttonElement.innerHTML = '<i class="bi bi-check-circle"></i>';
-                buttonElement.classList.remove('btn-outline-success');
-                buttonElement.classList.add('btn-success');
-                buttonElement.title = 'Acknowledged';
-                
-                // Fade out the row
-                const row = buttonElement.closest('tr');
-                row.style.opacity = '0.5';
-                
-                showToast('Alert acknowledged successfully', 'success');
+                showSuccess(data.message || 'AI detection completed successfully');
             } else {
-                throw new Error(data.error || 'Failed to acknowledge alert');
+                showError(data.error || 'AI detection failed');
             }
-        } catch (error) {
-            console.error('Error acknowledging alert:', error);
-            buttonElement.disabled = false;
-            buttonElement.innerHTML = '<i class="bi bi-check"></i>';
-            showToast('Failed to acknowledge alert', 'error');
-        }
+        })
+        .catch(error => {
+            console.error('AI detection error:', error);
+            progressContainer.style.display = 'none';
+            showError('AI detection failed: ' + error.message);
+        });
+    } else {
+        // Fallback if CSRF handler not available
+        fetch('/api/ai/run-detection', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        })
+        .then(response => response.json())
+        .then(data => {
+            console.log('AI detection result:', data);
+            progressContainer.style.display = 'none';
+            if (data.success) {
+                showSuccess(data.message || 'AI detection completed successfully');
+            } else {
+                showError(data.error || 'AI detection failed');
+            }
+        })
+        .catch(error => {
+            console.error('AI detection error:', error);
+            progressContainer.style.display = 'none';
+            showError('AI detection failed: ' + error.message);
+        });
     }
-    
-    function validateDetectionInterval() {
-        const input = document.getElementById('detection-interval');
-        const impact = document.getElementById('interval-impact');
-        const value = parseInt(input.value);
-        
-        impact.style.display = 'block';
-        
-        if (value < 2) {
-            impact.className = 'small mt-1 text-warning';
-            impact.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Very frequent detection may impact system performance';
-        } else if (value > 10) {
-            impact.className = 'small mt-1 text-info';
-            impact.innerHTML = '<i class="bi bi-info-circle"></i> Slower detection may miss short-duration anomalies';
-        } else if (value === 5) {
-            impact.className = 'small mt-1 text-success';
-            impact.innerHTML = '<i class="bi bi-check-circle"></i> Optimal setting for most networks';
-        } else {
-            impact.className = 'small mt-1 text-muted';
-            impact.innerHTML = '<i class="bi bi-info-circle"></i> Balanced detection frequency';
-        }
+}
+
+function checkModelStatus() {
+    fetch('/api/ai/model-status')
+        .then(response => response.json())
+        .then(data => {
+            const banner = document.getElementById('ai-model-status-banner');
+            const statusText = document.getElementById('ai-model-status-text');
+            const lastUpdate = document.getElementById('ai-model-last-update');
+
+            if (data.status) {
+                banner.style.display = 'block';
+                statusText.textContent = data.status;
+                lastUpdate.textContent = `Last updated: ${formatDate(data.last_update)}`;
+            }
+        })
+        .catch(error => {
+            console.error('Error checking model status:', error);
+        });
+}
+
+function viewModelStatus() {
+    // Show modal and load model status
+    const modal = new bootstrap.Modal(document.getElementById('modelStatusModal'));
+    modal.show();
+    loadModelStatusData();
+}
+
+function configureAI() {
+    // Show configuration modal and load current settings
+    const modal = new bootstrap.Modal(document.getElementById('aiConfigModal'));
+    modal.show();
+    loadAIConfigurationData();
+}
+
+function exportAnomalies() {
+    window.open('/api/ai/export-anomalies', '_blank');
+}
+
+function viewAnomalyDetails(anomalyId) {
+    // This could open a detailed view of the anomaly
+    alert(`Viewing details for anomaly ${anomalyId} - Details view not yet implemented`);
+}
+
+function loadDataForPeriod(period) {
+    // Reload charts for the selected time period
+    fetch(`/api/ai/dashboard?period=${period}`)
+        .then(response => response.json())
+        .then(data => {
+            updateCharts(data);
+        })
+        .catch(error => {
+            console.error('Error loading period data:', error);
+        });
+}
+
+function showErrorState() {
+    document.getElementById('detection-status').textContent = 'Error';
+    document.getElementById('total-anomalies').textContent = '--';
+    document.getElementById('avg-confidence').textContent = '--';
+    document.getElementById('model-accuracy').textContent = '--';
+
+    document.getElementById('anomalies-list').innerHTML = `
+        <div class="text-center p-4">
+            <i class="bi bi-exclamation-circle text-danger" style="font-size: 3rem;"></i>
+            <p class="mt-2 mb-0">Error loading AI data</p>
+            <small class="text-muted">Please try refreshing the page</small>
+        </div>
+    `;
+}
+
+function formatDate(dateString) {
+    if (!dateString) return 'Unknown';
+    return new Date(dateString).toLocaleString();
+}
+
+function loadModelStatusData() {
+    fetch('/api/ai/model-status')
+        .then(response => response.json())
+        .then(data => {
+            displayModelStatus(data);
+        })
+        .catch(error => {
+            console.error('Error loading model status:', error);
+            document.getElementById('modelStatusContent').innerHTML = `
+                <div class="col-12 text-center">
+                    <i class="bi bi-exclamation-triangle text-warning" style="font-size: 3rem;"></i>
+                    <p class="mt-2 mb-0">Error loading model status</p>
+                    <small class="text-muted">Please try again later</small>
+                </div>
+            `;
+        });
+}
+
+function displayModelStatus(data) {
+    const content = document.getElementById('modelStatusContent');
+    content.innerHTML = `
+        <div class="col-md-6">
+            <div class="card bg-secondary mb-3">
+                <div class="card-header">
+                    <i class="bi bi-speedometer2 me-2"></i>Performance Metrics
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-6">
+                            <div class="text-center">
+                                <h5 class="text-primary">${data.accuracy || 'N/A'}</h5>
+                                <small>Accuracy</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <h5 class="text-success">${data.performance_metrics?.f1_score ? (data.performance_metrics.f1_score * 100).toFixed(1) + '%' : 'N/A'}</h5>
+                                <small>F1 Score</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="row mt-2">
+                        <div class="col-6">
+                            <div class="text-center">
+                                <h5 class="text-info">${data.performance_metrics?.precision ? (data.performance_metrics.precision * 100).toFixed(1) + '%' : 'N/A'}</h5>
+                                <small>Precision</small>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="text-center">
+                                <h5 class="text-warning">${data.performance_metrics?.recall ? (data.performance_metrics.recall * 100).toFixed(1) + '%' : 'N/A'}</h5>
+                                <small>Recall</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-6">
+            <div class="card bg-secondary mb-3">
+                <div class="card-header">
+                    <i class="bi bi-info-circle me-2"></i>Model Information
+                </div>
+                <div class="card-body">
+                    <div class="mb-2">
+                        <strong>Status:</strong>
+                        <span class="badge ${data.status === 'Active' ? 'bg-success' : 'bg-warning'}">${data.status || 'Unknown'}</span>
+                    </div>
+                    <div class="mb-2">
+                        <strong>Version:</strong> ${data.model_version || 'N/A'}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Training Data:</strong> ${data.training_data_size || 'N/A'}
+                    </div>
+                    <div class="mb-2">
+                        <strong>Last Update:</strong> ${formatDate(data.last_update)}
+                    </div>
+                </div>
+            </div>
+        </div>
+        <div class="col-12">
+            <div class="card bg-secondary">
+                <div class="card-header">
+                    <i class="bi bi-list-check me-2"></i>Detection Capabilities
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        ${data.detection_types ? data.detection_types.map(type => `
+                            <div class="col-md-4 mb-2">
+                                <i class="bi bi-check-circle text-success me-1"></i>${type}
+                            </div>
+                        `).join('') : '<div class="col-12 text-muted">No detection types available</div>'}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function refreshModelStatus() {
+    document.getElementById('modelStatusContent').innerHTML = `
+        <div class="col-12 text-center">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-2">Refreshing model status...</p>
+        </div>
+    `;
+    loadModelStatusData();
+}
+
+function loadAIConfigurationData() {
+    // Load current configuration from API
+    fetch('/api/ai/configure')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.config) {
+                populateConfigurationForm(data.config);
+            } else {
+                console.log('Using default configuration values');
+            }
+        })
+        .catch(error => {
+            console.error('Error loading AI configuration:', error);
+            console.log('Using default configuration values');
+        });
+}
+
+function populateConfigurationForm(config) {
+    // Populate form fields with loaded configuration
+    if (config.detection_sensitivity) {
+        document.getElementById('detectionSensitivity').value = config.detection_sensitivity;
     }
-    
-    function validateBaselineHours() {
-        const input = document.getElementById('baseline-hours');
-        const impact = document.getElementById('baseline-impact');
-        const value = parseInt(input.value);
-        
-        impact.style.display = 'block';
-        
-        if (value < 72) {
-            impact.className = 'small mt-1 text-warning';
-            impact.innerHTML = '<i class="bi bi-exclamation-triangle"></i> Short baseline period may result in unstable detection';
-        } else if (value > 336) {
-            impact.className = 'small mt-1 text-info';
-            impact.innerHTML = '<i class="bi bi-info-circle"></i> Long baseline period may be slow to adapt to changes';
-        } else if (value === 168) {
-            impact.className = 'small mt-1 text-success';
-            impact.innerHTML = '<i class="bi bi-check-circle"></i> Optimal setting for stable and adaptive detection';
-        } else {
-            impact.className = 'small mt-1 text-muted';
-            impact.innerHTML = '<i class="bi bi-info-circle"></i> Reasonable baseline period for most scenarios';
-        }
+    if (config.analysis_interval) {
+        document.getElementById('analysisInterval').value = config.analysis_interval;
     }
-    
-    function toggleAnomalyDetails(alertId) {
-        const detailsRow = document.getElementById(`details-${alertId}`);
-        const expandIcon = document.getElementById(`expand-${alertId}`);
-        
-        if (detailsRow.style.display === 'none') {
-            detailsRow.style.display = 'table-row';
-            expandIcon.classList.remove('bi-chevron-right');
-            expandIcon.classList.add('bi-chevron-down');
-        } else {
-            detailsRow.style.display = 'none';
-            expandIcon.classList.remove('bi-chevron-down');
-            expandIcon.classList.add('bi-chevron-right');
-        }
+    if (config.confidence_threshold) {
+        document.getElementById('confidenceThreshold').value = config.confidence_threshold;
+        document.getElementById('confidenceValue').textContent = config.confidence_threshold;
     }
+    if (config.detection_types) {
+        document.getElementById('detectResponseTime').checked = config.detection_types.response_time || false;
+        document.getElementById('detectUptime').checked = config.detection_types.uptime || false;
+        document.getElementById('detectConnectivity').checked = config.detection_types.connectivity || false;
+    }
+    if (config.notifications) {
+        document.getElementById('notifyEmail').checked = config.notifications.email || false;
+        document.getElementById('notifyWebhook').checked = config.notifications.webhook || false;
+        document.getElementById('notifyDashboard').checked = config.notifications.dashboard || false;
+    }
+}
+
+function saveAIConfiguration() {
+    const formData = {
+        detection_sensitivity: document.getElementById('detectionSensitivity').value,
+        analysis_interval: parseInt(document.getElementById('analysisInterval').value),
+        detection_types: {
+            response_time: document.getElementById('detectResponseTime').checked,
+            uptime: document.getElementById('detectUptime').checked,
+            connectivity: document.getElementById('detectConnectivity').checked
+        },
+        notifications: {
+            email: document.getElementById('notifyEmail').checked,
+            webhook: document.getElementById('notifyWebhook').checked,
+            dashboard: document.getElementById('notifyDashboard').checked
+        },
+        confidence_threshold: parseInt(document.getElementById('confidenceThreshold').value)
+    };
+
+    // Show saving state
+    const saveBtn = event.target;
+    const originalText = saveBtn.innerHTML;
+    saveBtn.innerHTML = '<i class="bi bi-arrow-clockwise spin me-1"></i>Saving...';
+    saveBtn.disabled = true;
+
+    // Make API call to save configuration
+    if (window.makeRequest) {
+        // Use CSRF-protected request
+        window.makeRequest('/api/ai/configure', {
+            method: 'POST',
+            body: JSON.stringify(formData),
+            headers: { 'Content-Type': 'application/json' }
+        })
+        .then(data => {
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+
+            if (data.success) {
+                showSuccess(data.message || 'AI configuration saved successfully');
+
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('aiConfigModal'));
+                modal.hide();
+            } else {
+                showError(data.error || 'Failed to save configuration');
+            }
+        })
+        .catch(error => {
+            console.error('Error saving AI configuration:', error);
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+            showError('Failed to save AI configuration');
+        });
+    } else {
+        // Fallback if CSRF handler not available
+        fetch('/api/ai/configure', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(formData)
+        })
+        .then(response => response.json())
+        .then(data => {
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+
+            if (data.success) {
+                showSuccess(data.message || 'AI configuration saved successfully');
+
+                // Close modal
+                const modal = bootstrap.Modal.getInstance(document.getElementById('aiConfigModal'));
+                modal.hide();
+            } else {
+                showError(data.error || 'Failed to save configuration');
+            }
+        })
+        .catch(error => {
+            console.error('Error saving AI configuration:', error);
+            saveBtn.innerHTML = originalText;
+            saveBtn.disabled = false;
+            showError('Failed to save AI configuration');
+        });
+    }
+
+    console.log('Saving AI configuration:', formData);
+}
+
+function showError(message) {
+    // You can implement a toast notification system here
+    alert('Error: ' + message);
+}
+
+function showSuccess(message) {
+    // You can implement a toast notification system here
+    alert('Success: ' + message);
+}
 </script>
 {% endblock %}

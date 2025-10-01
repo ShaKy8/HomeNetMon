@@ -4,10 +4,12 @@ from models import db, AutomationRule, RuleExecution, Device
 from services.rule_engine import rule_engine_service, TriggerContext
 from sqlalchemy import desc
 import json
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 automation_bp = Blueprint('automation', __name__)
 
 @automation_bp.route('/rules', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_rules():
     """Get all automation rules"""
     try:
@@ -55,6 +57,7 @@ def get_rules():
         return jsonify({'error': str(e)}), 500
 
 @automation_bp.route('/rules', methods=['POST'])
+@create_endpoint_limiter('strict')
 def create_rule():
     """Create a new automation rule"""
     try:
@@ -101,6 +104,7 @@ def create_rule():
         return jsonify({'error': str(e)}), 500
 
 @automation_bp.route('/rules/<int:rule_id>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_rule(rule_id):
     """Get a specific rule"""
     try:
@@ -114,6 +118,7 @@ def get_rule(rule_id):
         return jsonify({'error': str(e)}), 500
 
 @automation_bp.route('/rules/<int:rule_id>', methods=['PUT'])
+@create_endpoint_limiter('strict')
 def update_rule(rule_id):
     """Update an automation rule"""
     try:
@@ -158,6 +163,7 @@ def update_rule(rule_id):
         return jsonify({'error': str(e)}), 500
 
 @automation_bp.route('/rules/<int:rule_id>', methods=['DELETE'])
+@create_endpoint_limiter('critical')
 def delete_rule(rule_id):
     """Delete an automation rule"""
     try:
@@ -178,6 +184,7 @@ def delete_rule(rule_id):
         return jsonify({'error': str(e)}), 500
 
 @automation_bp.route('/rules/<int:rule_id>/toggle', methods=['POST'])
+@create_endpoint_limiter('strict')
 def toggle_rule(rule_id):
     """Toggle rule enabled/disabled status"""
     try:
@@ -200,6 +207,7 @@ def toggle_rule(rule_id):
         return jsonify({'error': str(e)}), 500
 
 @automation_bp.route('/rules/<int:rule_id>/test', methods=['POST'])
+@create_endpoint_limiter('critical')
 def test_rule(rule_id):
     """Test a rule with sample data"""
     try:
@@ -232,6 +240,7 @@ def test_rule(rule_id):
         return jsonify({'error': str(e)}), 500
 
 @automation_bp.route('/executions', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_executions():
     """Get rule execution history"""
     try:
@@ -285,6 +294,7 @@ def get_executions():
         return jsonify({'error': str(e)}), 500
 
 @automation_bp.route('/stats', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_automation_stats():
     """Get automation statistics"""
     try:
@@ -354,6 +364,7 @@ def get_automation_stats():
         return jsonify({'error': str(e)}), 500
 
 @automation_bp.route('/templates', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_rule_templates():
     """Get pre-built rule templates"""
     templates = [
@@ -487,6 +498,7 @@ def get_rule_templates():
     return jsonify({'templates': templates})
 
 @automation_bp.route('/templates/<template_id>', methods=['POST'])
+@create_endpoint_limiter('strict')
 def create_rule_from_template(template_id):
     """Create a rule from a template"""
     try:

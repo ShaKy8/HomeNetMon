@@ -7,6 +7,7 @@ import threading
 speedtest_bp = Blueprint('speedtest', __name__)
 
 @speedtest_bp.route('/status', methods=['GET'])
+@create_endpoint_limiter('critical')
 def get_speedtest_status():
     """Get speed test service status"""
     try:
@@ -55,6 +56,7 @@ def run_speedtest():
         return jsonify({'error': str(e)}), 500
 
 @speedtest_bp.route('/run-sync', methods=['POST'])
+@create_endpoint_limiter('critical')
 def run_speedtest_sync():
     """Run a speed test synchronously (may timeout for comprehensive tests)"""
     try:
@@ -72,6 +74,7 @@ def run_speedtest_sync():
         return jsonify({'error': str(e)}), 500
 
 @speedtest_bp.route('/results', methods=['GET'])
+@create_endpoint_limiter('critical')
 def get_speedtest_results():
     """Get recent speed test results"""
     try:
@@ -98,6 +101,7 @@ def get_speedtest_results():
         return jsonify({'error': str(e)}), 500
 
 @speedtest_bp.route('/latest', methods=['GET'])
+@create_endpoint_limiter('critical')
 def get_latest_result():
     """Get the most recent speed test result"""
     try:
@@ -126,6 +130,7 @@ def get_latest_result():
         return jsonify({'error': str(e)}), 500
 
 @speedtest_bp.route('/statistics', methods=['GET'])
+@create_endpoint_limiter('critical')
 def get_speedtest_statistics():
     """Get speed test statistics"""
     try:
@@ -143,6 +148,7 @@ def get_speedtest_statistics():
         return jsonify({'error': str(e)}), 500
 
 @speedtest_bp.route('/benchmark', methods=['GET'])
+@create_endpoint_limiter('critical')
 def get_speed_benchmark():
     """Get speed benchmarks and ratings"""
     try:
@@ -244,6 +250,7 @@ def get_speed_benchmark():
         return jsonify({'error': str(e)}), 500
 
 @speedtest_bp.route('/install', methods=['POST'])
+@create_endpoint_limiter('critical')
 def install_speedtest_cli():
     """Install speedtest-cli if not available"""
     try:
@@ -271,6 +278,7 @@ def install_speedtest_cli():
         return jsonify({'error': str(e)}), 500
 
 @speedtest_bp.route('/debug', methods=['POST'])
+@create_endpoint_limiter('critical')
 def debug_speedtest():
     """Debug endpoint to test speedtest execution directly"""
     try:

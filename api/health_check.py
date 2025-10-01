@@ -10,17 +10,18 @@ from datetime import datetime, timedelta
 from typing import Dict, Any, List
 from flask import Blueprint, jsonify, current_app
 from sqlalchemy import text
-from core.auth import auth_required, admin_required
 from models import db, Device, Alert, MonitoringData
 from core.cache_layer import get_cache_health, global_cache
 from core.query_profiler import global_profiler
 from core.db_config import ConnectionPoolMonitor
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 logger = logging.getLogger(__name__)
 
 health_check_bp = Blueprint('health_check', __name__)
 
 @health_check_bp.route('/health', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def basic_health_check():
     """Basic health check endpoint."""
     try:
@@ -43,7 +44,7 @@ def basic_health_check():
         }), 503
 
 @health_check_bp.route('/health/detailed', methods=['GET'])
-@auth_required
+@create_endpoint_limiter('relaxed')
 def detailed_health_check():
     """Detailed health check with component status."""
     try:
@@ -99,24 +100,25 @@ def detailed_health_check():
         }), 503
 
 @health_check_bp.route('/health/database', methods=['GET'])
-@auth_required
+@create_endpoint_limiter('relaxed')
 def database_health_check():
     """Database-specific health check."""
     return jsonify(_check_database_health())
 
 @health_check_bp.route('/health/system', methods=['GET'])
-@auth_required
+@create_endpoint_limiter('relaxed')
 def system_health_check():
     """System resources health check."""
     return jsonify(_check_system_health())
 
 @health_check_bp.route('/health/monitoring', methods=['GET'])
-@auth_required
+@create_endpoint_limiter('relaxed')
 def monitoring_health_check():
     """Monitoring services health check."""
     return jsonify(_check_monitoring_health())
 
 @health_check_bp.route('/readiness', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def readiness_probe():
     """Kubernetes readiness probe endpoint."""
     try:
@@ -148,6 +150,7 @@ def readiness_probe():
         }), 503
 
 @health_check_bp.route('/liveness', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def liveness_probe():
     """Kubernetes liveness probe endpoint."""
     try:
@@ -174,7 +177,7 @@ def liveness_probe():
         }), 503
 
 @health_check_bp.route('/health/dependencies', methods=['GET'])
-@admin_required
+@create_endpoint_limiter('relaxed')
 def dependencies_health_check():
     """Check health of external dependencies."""
     dependencies = {
@@ -207,7 +210,7 @@ def dependencies_health_check():
     return jsonify(dependencies), 200 if all_healthy else 503
 
 @health_check_bp.route('/metrics', methods=['GET'])
-@auth_required
+@create_endpoint_limiter('relaxed')
 def application_metrics():
     """Application metrics endpoint."""
     try:

@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Select All Debug Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .debug { background: #f0f0f0; padding: 10px; margin: 10px 0; border-radius: 5px; }
+        button { padding: 10px 15px; margin: 5px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+    </style>
+</head>
+<body>
+    <h1>Select All Debug Test</h1>
+
+    <div class="debug">
+        <h3>Debug Information</h3>
+        <div id="debug-info"></div>
+    </div>
+
+    <button onclick="testSelectAll()">Test Select All Logic</button>
+    <button onclick="clearDebug()">Clear Debug</button>
+
+    <script>
+        // Mock alert data based on the API response
+        const mockAlerts = [
+            // Unresolved alert
+            {
+                id: 1976,
+                alert_type: "device_recovery",
+                device_name: "iphone.lan",
+                message: "Device iphone.lan is back online",
+                resolved: false,
+                resolved_at: null,
+                severity: "info"
+            },
+            // Resolved alerts (first few examples)
+            {
+                id: 2057,
+                alert_type: "performance",
+                device_name: "watch.lan",
+                message: "Device reliability is extremely poor: 25.0% score",
+                resolved: true,
+                resolved_at: "2025-09-20T14:36:54.789257Z",
+                severity: "warning"
+            },
+            {
+                id: 2053,
+                alert_type: "performance",
+                device_name: "watch.lan",
+                message: "Device reliability is extremely poor: 0.0% score",
+                resolved: true,
+                resolved_at: "2025-09-20T10:11:29.645968Z",
+                severity: "warning"
+            }
+        ];
+
+        // Mock the AlertsManager's selectAllAlerts logic
+        class MockAlertsManager {
+            constructor() {
+                this.alerts = mockAlerts;
+                this.filteredAlerts = mockAlerts; // Assume no filters initially
+                this.selectedAlerts = new Set();
+            }
+
+            selectAllAlerts() {
+                debug(`Starting selectAllAlerts...`);
+                debug(`Total alerts: ${this.alerts.length}`);
+                debug(`Filtered alerts: ${this.filteredAlerts.length}`);
+
+                const visibleAlerts = this.filteredAlerts.filter(alert => !alert.resolved_at);
+                debug(`Visible unresolved alerts: ${visibleAlerts.length}`);
+                debug(`Visible alert IDs: [${visibleAlerts.map(a => a.id).join(', ')}]`);
+                debug(`Currently selected: ${this.selectedAlerts.size}`);
+
+                if (this.selectedAlerts.size === visibleAlerts.length) {
+                    debug(`Deselecting all (${this.selectedAlerts.size} selected === ${visibleAlerts.length} visible)`);
+                    this.selectedAlerts.clear();
+                } else {
+                    debug(`Selecting all visible alerts (${this.selectedAlerts.size} selected !== ${visibleAlerts.length} visible)`);
+                    visibleAlerts.forEach(alert => {
+                        debug(`  Adding alert ${alert.id} to selection`);
+                        this.selectedAlerts.add(alert.id);
+                    });
+                }
+
+                debug(`Final selection count: ${this.selectedAlerts.size}`);
+                debug(`Final selected IDs: [${Array.from(this.selectedAlerts).join(', ')}]`);
+            }
+
+            // Test with different filter scenarios
+            testWithStatusFilter(statusFilter) {
+                debug(`\n=== Testing with status filter: "${statusFilter}" ===`);
+
+                if (statusFilter === 'active') {
+                    this.filteredAlerts = this.alerts.filter(alert => !alert.resolved_at);
+                } else if (statusFilter === 'resolved') {
+                    this.filteredAlerts = this.alerts.filter(alert => alert.resolved_at !== null);
+                } else {
+                    this.filteredAlerts = this.alerts; // All alerts
+                }
+
+                this.selectedAlerts.clear();
+                this.selectAllAlerts();
+            }
+        }
+
+        const alertsManager = new MockAlertsManager();
+
+        function debug(message) {
+            const debugDiv = document.getElementById('debug-info');
+            debugDiv.innerHTML += `<div>${message}</div>`;
+            console.log(message);
+        }
+
+        function clearDebug() {
+            document.getElementById('debug-info').innerHTML = '';
+        }
+
+        function testSelectAll() {
+            clearDebug();
+            debug('=== Testing Select All Logic ===');
+
+            // Test different scenarios
+            alertsManager.testWithStatusFilter(''); // All alerts
+            alertsManager.testWithStatusFilter('active'); // Only unresolved
+            alertsManager.testWithStatusFilter('resolved'); // Only resolved
+
+            debug('\n=== Testing toggle behavior ===');
+            alertsManager.testWithStatusFilter('active');
+            debug('Running selectAllAlerts again (should deselect):');
+            alertsManager.selectAllAlerts();
+        }
+    </script>
+</body>
+</html>

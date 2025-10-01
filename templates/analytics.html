@@ -1,10 +1,491 @@
-{% extends "base_with_quickstats.html" %}
+{% extends "base_beautiful.html" %}
 
 {% block title %}Analytics - HomeNetMon{% endblock %}
 
+{% block extra_css %}
+<style>
+/* Analytics-specific dark theme styles */
+
+/* Page Header */
+.page-header {
+    text-align: center;
+    margin-bottom: 2rem;
+    padding: 2rem 0;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(20px);
+}
+
+/* Controls Section */
+.controls-section {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 2rem;
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
+}
+
+.analytics-controls-left h1 {
+    color: #e0e0e0;
+    margin-bottom: 0.5rem;
+}
+
+.analytics-controls-left i {
+    color: rgba(59, 130, 246, 0.8);
+}
+
+/* Active Filters */
+#active-filters {
+    background: rgba(59, 130, 246, 0.1);
+    border: 1px solid rgba(59, 130, 246, 0.3);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-top: 1rem;
+}
+
+#active-filters .text-muted {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+#filter-badges .badge {
+    background: rgba(59, 130, 246, 0.3) !important;
+    color: #e0e0e0;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+.btn-link {
+    color: rgba(255, 255, 255, 0.7);
+    text-decoration: none;
+}
+
+.btn-link:hover {
+    color: rgba(255, 255, 255, 0.9);
+}
+
+/* Mobile Analytics Overview */
+.mobile-analytics-overview {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    padding: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.mobile-analytics-overview .text-center {
+    color: #e0e0e0;
+}
+
+.mobile-analytics-overview .text-muted {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Navigation Tabs */
+.analytics-navigation {
+    margin-bottom: 2rem;
+}
+
+.nav-pills .nav-link {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    margin: 0 0.25rem;
+    border-radius: 12px;
+    padding: 0.75rem 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.nav-pills .nav-link:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: rgba(255, 255, 255, 0.9);
+    transform: translateY(-2px);
+}
+
+.nav-pills .nav-link.active {
+    background: rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.5);
+    color: #ffffff;
+}
+
+.nav-pills .nav-link i {
+    opacity: 0.8;
+}
+
+/* Modern Cards */
+.modern-analytics-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
+    margin-bottom: 1.5rem;
+    transition: all 0.3s ease;
+}
+
+.modern-analytics-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.modern-analytics-card .card-header {
+    background: transparent;
+    border: none;
+    padding: 0 0 1rem 0;
+    color: #e0e0e0;
+}
+
+.modern-analytics-card .card-body {
+    padding: 0;
+    color: #b0b0b0;
+}
+
+/* Health Score Circle */
+#health-score-circle {
+    background: rgba(255, 255, 255, 0.05);
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+#health-score-value {
+    color: #ffffff;
+    font-weight: 300;
+}
+
+/* Metrics Grid */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.metric-item {
+    text-align: center;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+}
+
+.metric-item .text-muted {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.metric-item .fw-bold {
+    color: #e0e0e0;
+}
+
+/* Insights Cards */
+.insights-card {
+    background: rgba(245, 158, 11, 0.1);
+    border: 1px solid rgba(245, 158, 11, 0.3);
+    border-radius: 16px;
+    margin-bottom: 1.5rem;
+}
+
+.insights-card .card-header {
+    background: rgba(245, 158, 11, 0.2);
+    border-bottom: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.insights-card .text-warning {
+    color: #fbbf24 !important;
+}
+
+/* Speed Test Card */
+.speedtest-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    margin-bottom: 1.5rem;
+}
+
+.speedtest-results .border {
+    border-color: rgba(255, 255, 255, 0.1) !important;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+}
+
+.speedtest-results .h5 {
+    color: #e0e0e0;
+}
+
+.speedtest-results .text-muted {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Progress Bars */
+.progress {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.progress-bar {
+    background: linear-gradient(45deg, rgba(59, 130, 246, 0.8), rgba(99, 102, 241, 0.8));
+}
+
+/* Fun Facts Grid */
+.fun-facts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.fun-fact-item {
+    text-align: center;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    backdrop-filter: blur(10px);
+    transition: all 0.3s ease;
+}
+
+.fun-fact-item:hover {
+    transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.fun-fact-item .h4 {
+    margin-bottom: 0.5rem;
+}
+
+.fun-fact-item .text-muted {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+.fun-fact-item .fw-bold {
+    color: #e0e0e0;
+}
+
+/* Device Insights */
+.device-insights-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 2rem;
+    margin: 1rem 0;
+}
+
+.device-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.device-list-item:last-child {
+    border-bottom: none;
+}
+
+.device-list-item span {
+    color: #b0b0b0;
+}
+
+.badge {
+    background: rgba(59, 130, 246, 0.3) !important;
+    color: #e0e0e0;
+    border: 1px solid rgba(59, 130, 246, 0.4);
+}
+
+.bg-success {
+    background: rgba(34, 197, 94, 0.3) !important;
+    border-color: rgba(34, 197, 94, 0.4);
+    color: #86efac !important;
+}
+
+.bg-info {
+    background: rgba(59, 130, 246, 0.3) !important;
+    border-color: rgba(59, 130, 246, 0.4);
+    color: #93c5fd !important;
+}
+
+/* Chart Containers */
+.chart-container {
+    position: relative;
+    height: 300px;
+    margin: 1rem 0;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 12px;
+    padding: 1rem;
+}
+
+.chart-container canvas {
+    filter: brightness(1.1);
+}
+
+/* Loading States */
+.placeholder-glow .placeholder {
+    background: linear-gradient(90deg, rgba(255, 255, 255, 0.1) 25%, rgba(255, 255, 255, 0.2) 50%, rgba(255, 255, 255, 0.1) 75%);
+    animation: placeholder-glow 2s ease-in-out infinite;
+}
+
+@keyframes placeholder-glow {
+    0% { opacity: 0.5; }
+    50% { opacity: 1; }
+    100% { opacity: 0.5; }
+}
+
+/* Status Indicators */
+.status-connected {
+    background: rgba(34, 197, 94, 0.2);
+    border: 1px solid rgba(34, 197, 94, 0.3);
+    color: #86efac;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+}
+
+.status-disconnected {
+    background: rgba(239, 68, 68, 0.2);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    color: #fca5a5;
+    border-radius: 8px;
+    padding: 0.5rem 1rem;
+}
+
+/* Bandwidth Consumers */
+.bandwidth-consumer-item {
+    padding: 1rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    transition: all 0.3s ease;
+}
+
+.bandwidth-consumer-item:hover {
+    background: rgba(255, 255, 255, 0.02);
+}
+
+.bandwidth-consumer-item:last-child {
+    border-bottom: none;
+}
+
+.bandwidth-consumer-item .fw-bold {
+    color: #e0e0e0;
+}
+
+.bandwidth-consumer-item .text-muted {
+    color: rgba(255, 255, 255, 0.6) !important;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .controls-section {
+        flex-direction: column;
+        gap: 1rem;
+        align-items: stretch;
+    }
+
+    .device-insights-grid {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+
+    .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .fun-facts-grid {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .nav-pills {
+        flex-wrap: wrap;
+        justify-content: center;
+    }
+
+    .nav-pills .nav-link {
+        margin: 0.25rem;
+        font-size: 0.875rem;
+        padding: 0.5rem 1rem;
+    }
+}
+
+/* Collapsible Sections */
+.collapse.show {
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Button Groups */
+.btn-group .btn-check:checked + .btn-outline-primary {
+    background: rgba(59, 130, 246, 0.3);
+    border-color: rgba(59, 130, 246, 0.5);
+    color: #ffffff;
+}
+
+.btn-outline-primary {
+    color: rgba(255, 255, 255, 0.7);
+    border-color: rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.btn-outline-primary:hover {
+    color: #ffffff;
+    background: rgba(59, 130, 246, 0.2);
+    border-color: rgba(59, 130, 246, 0.4);
+}
+
+/* Spinner */
+.spinner-border {
+    border-color: rgba(255, 255, 255, 0.3);
+    border-top-color: rgba(59, 130, 246, 0.8);
+}
+
+.loading {
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+/* Toast Notifications */
+.toast {
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    color: white;
+}
+
+/* Tooltips */
+.btn[data-bs-toggle="tooltip"] {
+    color: rgba(255, 255, 255, 0.6);
+}
+
+.btn[data-bs-toggle="tooltip"]:hover {
+    color: rgba(255, 255, 255, 0.9);
+}
+</style>
+{% endblock %}
+
 {% block content %}
-<div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
+<!-- Page Header -->
+<div class="page-header">
+    <h1 class="page-title">📊 Network Analytics</h1>
+    <p class="page-subtitle">Comprehensive insights into your network performance and usage patterns</p>
+    <div class="page-version">v1.0.0</div>
+</div>
+
+<!-- Controls Section -->
+<div class="controls-section">
+    <div class="analytics-controls-left">
         <h1><i class="bi bi-graph-up"></i> Network Analytics</h1>
         <!-- Active Filters Display -->
         <div id="active-filters" class="mt-2" style="display: none;">
@@ -15,7 +496,7 @@
             </button>
         </div>
     </div>
-    
+
     <div class="btn-group" role="group">
         <button type="button" class="btn btn-outline-primary" id="refresh-analytics">
             <i class="bi bi-arrow-clockwise"></i> Refresh
@@ -23,10 +504,10 @@
         <div class="btn-group" role="group">
             <input type="radio" class="btn-check" name="global-time-range" id="time-24h" value="24h" checked>
             <label class="btn btn-outline-primary" for="time-24h">24h</label>
-            
+
             <input type="radio" class="btn-check" name="global-time-range" id="time-7d" value="7d">
             <label class="btn btn-outline-primary" for="time-7d">7d</label>
-            
+
             <input type="radio" class="btn-check" name="global-time-range" id="time-30d" value="30d">
             <label class="btn btn-outline-primary" for="time-30d">30d</label>
         </div>
@@ -35,21 +516,19 @@
 
 <!-- Mobile-first Analytics Overview -->
 <div class="d-block d-lg-none mb-4">
-    <div class="card">
-        <div class="card-body">
-            <div class="row text-center g-3">
-                <div class="col-4">
-                    <div class="h3 mb-1" id="mobile-health-score">--</div>
-                    <div class="small text-muted">Health</div>
-                </div>
-                <div class="col-4">
-                    <div class="h3 mb-1" id="mobile-devices-up">--</div>
-                    <div class="small text-muted">Online</div>
-                </div>
-                <div class="col-4">
-                    <div class="h3 mb-1" id="mobile-alerts">--</div>
-                    <div class="small text-muted">Alerts</div>
-                </div>
+    <div class="mobile-analytics-overview">
+        <div class="row text-center g-3">
+            <div class="col-4">
+                <div class="h3 mb-1" id="mobile-health-score">--</div>
+                <div class="small text-muted">Health</div>
+            </div>
+            <div class="col-4">
+                <div class="h3 mb-1" id="mobile-devices-up">--</div>
+                <div class="small text-muted">Online</div>
+            </div>
+            <div class="col-4">
+                <div class="h3 mb-1" id="mobile-alerts">--</div>
+                <div class="small text-muted">Alerts</div>
             </div>
         </div>
     </div>
@@ -84,53 +563,51 @@
 <!-- Network Health Score Card -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card border-0 shadow-sm">
-            <div class="card-body">
-                <div class="row align-items-center">
-                    <div class="col-md-3 text-center">
-                        <div class="position-relative d-inline-block">
-                            <div id="health-score-circle" class="rounded-circle d-flex align-items-center justify-content-center" 
-                                 style="width: 120px; height: 120px; border: 8px solid #e9ecef;"
-                                 role="img" 
-                                 aria-label="Network health score indicator"
-                                 aria-describedby="health-score-description">
-                                <div class="text-center">
-                                    <div id="health-score-value" class="h2 fw-bold mb-0" aria-live="polite">--</div>
-                                    <small class="text-muted">Health Score</small>
-                                </div>
-                            </div>
-                            <div id="health-score-description" class="visually-hidden">Network health score out of 100, calculated from device uptime, response times, and network stability</div>
-                        </div>
-                    </div>
-                    <div class="col-md-6">
-                        <h5 id="health-status" class="mb-3">Network Status</h5>
-                        <div class="row g-3">
-                            <div class="col-6">
-                                <div class="text-muted small">Devices Up</div>
-                                <div id="devices-up-count" class="fw-bold">--</div>
-                            </div>
-                            <div class="col-6">
-                                <div class="text-muted small">Avg Response</div>
-                                <div id="avg-response-time" class="fw-bold">--</div>
-                            </div>
-                            <div class="col-6">
-                                <div class="text-muted small">Success Rate</div>
-                                <div id="success-rate" class="fw-bold">--%</div>
-                            </div>
-                            <div class="col-6">
-                                <div class="text-muted small">Total Devices</div>
-                                <div id="total-devices-count" class="fw-bold">--</div>
+        <div class="modern-analytics-card">
+            <div class="row align-items-center">
+                <div class="col-md-3 text-center">
+                    <div class="position-relative d-inline-block">
+                        <div id="health-score-circle" class="rounded-circle d-flex align-items-center justify-content-center"
+                             style="width: 120px; height: 120px; border: 8px solid #e9ecef;"
+                             role="img"
+                             aria-label="Network health score indicator"
+                             aria-describedby="health-score-description">
+                            <div class="text-center">
+                                <div id="health-score-value" class="h2 fw-bold mb-0" aria-live="polite">--</div>
+                                <small class="text-muted">Health Score</small>
                             </div>
                         </div>
+                        <div id="health-score-description" class="visually-hidden">Network health score out of 100, calculated from device uptime, response times, and network stability</div>
                     </div>
-                    <div class="col-md-3">
-                        <h6 class="text-muted mb-2">Recommendations</h6>
-                        <div id="health-recommendations">
-                            <div class="placeholder-glow">
-                                <span class="placeholder col-12 mb-1"></span>
-                                <span class="placeholder col-8 mb-1"></span>
-                                <span class="placeholder col-10"></span>
-                            </div>
+                </div>
+                <div class="col-md-6">
+                    <h5 id="health-status" class="mb-3">Network Status</h5>
+                    <div class="metrics-grid">
+                        <div class="metric-item">
+                            <div class="text-muted small">Devices Up</div>
+                            <div id="devices-up-count" class="fw-bold">--</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="text-muted small">Avg Response</div>
+                            <div id="avg-response-time" class="fw-bold">--</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="text-muted small">Success Rate</div>
+                            <div id="success-rate" class="fw-bold">--%</div>
+                        </div>
+                        <div class="metric-item">
+                            <div class="text-muted small">Total Devices</div>
+                            <div id="total-devices-count" class="fw-bold">--</div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <h6 class="text-muted mb-2">Recommendations</h6>
+                    <div id="health-recommendations">
+                        <div class="placeholder-glow">
+                            <span class="placeholder col-12 mb-1"></span>
+                            <span class="placeholder col-8 mb-1"></span>
+                            <span class="placeholder col-10"></span>
                         </div>
                     </div>
                 </div>
@@ -142,8 +619,8 @@
 <!-- Actionable Insights Section -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card border-warning" id="insights-card" style="display: none;">
-            <div class="card-header bg-warning bg-opacity-10">
+        <div class="insights-card" id="insights-card" style="display: none;">
+            <div class="card-header">
                 <h6 class="mb-0">
                     <i class="bi bi-lightbulb text-warning"></i> Actionable Insights
                     <button class="btn btn-sm btn-link p-0 ms-1" data-bs-toggle="tooltip" title="AI-powered recommendations based on your network performance data">
@@ -169,7 +646,7 @@
 <!-- Internet Speed Test Card -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card">
+        <div class="speedtest-card modern-analytics-card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0">
                     <i class="bi bi-speedometer"></i> Internet Speed Test
@@ -178,10 +655,10 @@
                     </button>
                 </h6>
                 <div class="btn-group">
-                    <button class="btn btn-primary" id="speedtest-btn" title="Test download and upload speeds">
+                    <button class="btn-modern" id="speedtest-btn" title="Test download and upload speeds">
                         <i class="bi bi-speedometer2"></i> Run Speed Test
                     </button>
-                    <button class="btn btn-outline-danger" id="cancel-speedtest-btn" style="display: none;" title="Cancel speed test">
+                    <button class="btn-modern btn-danger" id="cancel-speedtest-btn" style="display: none;" title="Cancel speed test">
                         <i class="bi bi-x-circle"></i> Cancel
                     </button>
                 </div>
@@ -189,7 +666,7 @@
             <div class="card-body">
                 <div class="row">
                     <div class="col-md-8">
-                        <div id="speedtest-results" class="row text-center">
+                        <div id="speedtest-results" class="speedtest-results row text-center">
                             <div class="col-md-4">
                                 <div class="p-3 border rounded">
                                     <div class="h5 mb-1" id="download-speed">--</div>
@@ -212,24 +689,24 @@
                                 </div>
                             </div>
                         </div>
-                        
+
                         <div id="speedtest-status" class="mt-3 text-center" style="display: none;">
                             <div class="spinner-border spinner-border-sm me-2" role="status"></div>
                             <span>Running speed test...</span>
                         </div>
-                        
+
                         <div id="speedtest-progress" class="mt-3" style="display: none;">
                             <div class="progress">
                                 <div class="progress-bar progress-bar-striped progress-bar-animated" style="width: 0%"></div>
                             </div>
                         </div>
                     </div>
-                    
+
                     <div class="col-md-4">
                         <div id="speedtest-info">
                             <h6 class="text-muted mb-2">Last Test</h6>
                             <div id="last-test-time" class="small mb-2">Never</div>
-                            
+
                             <div class="d-flex justify-content-between align-items-center mb-2">
                                 <h6 class="text-muted mb-0">Overall Rating</h6>
                                 <button class="btn btn-sm btn-outline-secondary" id="refresh-rating-btn" title="Refresh overall rating">
@@ -239,7 +716,7 @@
                             <div id="overall-speed-rating" class="d-flex align-items-center mb-2">
                                 <span class="badge" id="overall-rating-badge">Unknown</span>
                             </div>
-                            
+
                             <div id="speed-recommendations" class="small">
                                 <div class="placeholder-glow">
                                     <span class="placeholder col-12 mb-1"></span>
@@ -257,39 +734,31 @@
 <!-- Fun Network Statistics -->
 <div class="row">
     <div class="col-12">
-        <div class="card h-100">
+        <div class="modern-analytics-card">
             <div class="card-header">
                 <h6 class="mb-0"><i class="bi bi-emoji-smile"></i> Fun Network Facts</h6>
             </div>
             <div class="card-body">
-                <div class="row g-3" id="network-facts">
-                    <div class="col-md-3 col-6">
-                        <div class="text-center p-3 border rounded">
-                            <div class="h4 mb-1">🏆</div>
-                            <div class="small text-muted">Network Champion</div>
-                            <div id="network-champion" class="fw-bold small">Loading...</div>
-                        </div>
+                <div class="fun-facts-grid" id="network-facts">
+                    <div class="fun-fact-item">
+                        <div class="h4 mb-1">🏆</div>
+                        <div class="small text-muted">Network Champion</div>
+                        <div id="network-champion" class="fw-bold small">Loading...</div>
                     </div>
-                    <div class="col-md-3 col-6">
-                        <div class="text-center p-3 border rounded">
-                            <div class="h4 mb-1">⚡</div>
-                            <div class="small text-muted">Speed Demon</div>
-                            <div id="speed-demon" class="fw-bold small">Loading...</div>
-                        </div>
+                    <div class="fun-fact-item">
+                        <div class="h4 mb-1">⚡</div>
+                        <div class="small text-muted">Speed Demon</div>
+                        <div id="speed-demon" class="fw-bold small">Loading...</div>
                     </div>
-                    <div class="col-md-3 col-6">
-                        <div class="text-center p-3 border rounded">
-                            <div class="h4 mb-1">📊</div>
-                            <div class="small text-muted">Data Collected</div>
-                            <div id="total-pings" class="fw-bold small">Loading...</div>
-                        </div>
+                    <div class="fun-fact-item">
+                        <div class="h4 mb-1">📊</div>
+                        <div class="small text-muted">Data Collected</div>
+                        <div id="total-pings" class="fw-bold small">Loading...</div>
                     </div>
-                    <div class="col-md-3 col-6">
-                        <div class="text-center p-3 border rounded">
-                            <div class="h4 mb-1">🕒</div>
-                            <div class="small text-muted">Peak Activity</div>
-                            <div id="peak-activity-time" class="fw-bold small">Loading...</div>
-                        </div>
+                    <div class="fun-fact-item">
+                        <div class="h4 mb-1">🕒</div>
+                        <div class="small text-muted">Peak Activity</div>
+                        <div id="peak-activity-time" class="fw-bold small">Loading...</div>
                     </div>
                 </div>
             </div>
@@ -306,7 +775,7 @@
 <div class="row mb-4">
     <!-- Device Insights -->
     <div class="col-lg-6 mb-4">
-        <div class="card h-100">
+        <div class="modern-analytics-card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0">
                     <i class="bi bi-award"></i> Device Champions
@@ -319,8 +788,8 @@
                 </button>
             </div>
             <div class="card-body collapse show" id="device-insights">
-                <div class="row">
-                    <div class="col-md-6">
+                <div class="device-insights-grid">
+                    <div>
                         <h6 class="text-success">🏆 Most Reliable</h6>
                         <div id="most-reliable-devices">
                             <div class="placeholder-glow">
@@ -330,7 +799,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="col-md-6">
+                    <div>
                         <h6 class="text-warning">⚡ Fastest Response</h6>
                         <div id="fastest-devices">
                             <div class="placeholder-glow">
@@ -341,20 +810,20 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <hr class="my-3">
-                
+
                 <h6 class="mb-3">📊 Device Types Performance</h6>
-                <div id="device-types-chart">
+                <div id="device-types-chart" class="chart-container">
                     <canvas id="device-types-canvas" width="400" height="200"></canvas>
                 </div>
             </div>
         </div>
     </div>
-    
+
     <!-- Usage Patterns -->
     <div class="col-lg-6 mb-4">
-        <div class="card h-100">
+        <div class="modern-analytics-card h-100">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0">
                     <i class="bi bi-clock-history"></i> Usage Patterns
@@ -369,23 +838,23 @@
             <div class="card-body collapse show" id="usage-patterns">
                 <div class="mb-3">
                     <h6>📈 24-Hour Activity Pattern</h6>
-                    <div style="height: 250px; position: relative;">
+                    <div class="chart-container">
                         <canvas id="hourly-pattern-chart"></canvas>
                     </div>
                 </div>
-                
+
                 <hr class="my-3">
-                
-                <div class="row text-center">
-                    <div class="col-4">
+
+                <div class="metrics-grid text-center">
+                    <div class="metric-item">
                         <div class="text-muted small">Peak Hour</div>
                         <div id="peak-hour" class="fw-bold text-primary">--:--</div>
                     </div>
-                    <div class="col-4">
+                    <div class="metric-item">
                         <div class="text-muted small">Quiet Hour</div>
                         <div id="quiet-hour" class="fw-bold text-secondary">--:--</div>
                     </div>
-                    <div class="col-4">
+                    <div class="metric-item">
                         <div class="text-muted small">Data Points</div>
                         <div id="total-data-points" class="fw-bold">--</div>
                     </div>
@@ -403,16 +872,16 @@
 <!-- Network Trends -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card">
+        <div class="modern-analytics-card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0"><i class="bi bi-graph-up-arrow"></i> Network Performance Trends</h6>
                 <div class="btn-group btn-group-sm" role="group">
                     <input type="radio" class="btn-check" name="trend-period" id="trend-7d" value="7" checked>
                     <label class="btn btn-outline-primary" for="trend-7d">7 Days</label>
-                    
+
                     <input type="radio" class="btn-check" name="trend-period" id="trend-30d" value="30">
                     <label class="btn btn-outline-primary" for="trend-30d">30 Days</label>
-                    
+
                     <input type="radio" class="btn-check" name="trend-period" id="trend-90d" value="90">
                     <label class="btn btn-outline-primary" for="trend-90d">90 Days</label>
                 </div>
@@ -438,8 +907,8 @@
                         </div>
                     </div>
                 </div>
-                
-                <div style="height: 400px;">
+
+                <div class="chart-container" style="height: 400px;">
                     <canvas id="trends-chart" aria-label="Network performance trends chart showing response time and success rate over time"></canvas>
                 </div>
             </div>
@@ -455,7 +924,7 @@
 <!-- Bandwidth Analytics -->
 <div class="row mb-4">
     <div class="col-12">
-        <div class="card">
+        <div class="modern-analytics-card">
             <div class="card-header d-flex justify-content-between align-items-center">
                 <h6 class="mb-0">
                     <i class="bi bi-speedometer"></i> Bandwidth Usage Analytics
@@ -466,45 +935,37 @@
                 <div class="btn-group btn-group-sm" role="group">
                     <input type="radio" class="btn-check" name="bandwidth-period" id="bw-24h" value="24" checked>
                     <label class="btn btn-outline-primary" for="bw-24h">24 Hours</label>
-                    
+
                     <input type="radio" class="btn-check" name="bandwidth-period" id="bw-7d" value="168">
                     <label class="btn btn-outline-primary" for="bw-7d">7 Days</label>
                 </div>
             </div>
             <div class="card-body">
                 <!-- Network-wide bandwidth summary -->
-                <div class="row mb-4">
-                    <div class="col-md-3">
-                        <div class="text-center">
-                            <div class="h4 mb-1" id="total-bandwidth">--</div>
-                            <div class="text-muted small">Current Total</div>
-                        </div>
+                <div class="metrics-grid mb-4">
+                    <div class="metric-item">
+                        <div class="h4 mb-1" id="total-bandwidth">--</div>
+                        <div class="text-muted small">Current Total</div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="text-center">
-                            <div class="h4 mb-1" id="peak-bandwidth">--</div>
-                            <div class="text-muted small">Peak Usage</div>
-                        </div>
+                    <div class="metric-item">
+                        <div class="h4 mb-1" id="peak-bandwidth">--</div>
+                        <div class="text-muted small">Peak Usage</div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="text-center">
-                            <div class="h4 mb-1" id="avg-bandwidth">--</div>
-                            <div class="text-muted small">Average Usage</div>
-                        </div>
+                    <div class="metric-item">
+                        <div class="h4 mb-1" id="avg-bandwidth">--</div>
+                        <div class="text-muted small">Average Usage</div>
                     </div>
-                    <div class="col-md-3">
-                        <div class="text-center">
-                            <div class="h4 mb-1" id="total-data">--</div>
-                            <div class="text-muted small">Total Data</div>
-                        </div>
+                    <div class="metric-item">
+                        <div class="h4 mb-1" id="total-data">--</div>
+                        <div class="text-muted small">Total Data</div>
                     </div>
                 </div>
-                
+
                 <!-- Bandwidth timeline chart -->
-                <div style="height: 300px; margin-bottom: 20px;">
+                <div class="chart-container" style="height: 300px; margin-bottom: 20px;">
                     <canvas id="bandwidth-chart"></canvas>
                 </div>
-                
+
                 <!-- Top bandwidth consumers -->
                 <div class="row">
                     <div class="col-12">
@@ -527,39 +988,31 @@
 <!-- Fun Network Statistics -->
 <div class="row">
     <div class="col-12">
-        <div class="card">
+        <div class="modern-analytics-card">
             <div class="card-header">
                 <h6 class="mb-0"><i class="bi bi-emoji-smile"></i> Fun Network Facts</h6>
             </div>
             <div class="card-body">
-                <div class="row g-3" id="network-facts">
-                    <div class="col-md-3 col-6">
-                        <div class="text-center p-3 border rounded">
-                            <div class="h4 mb-1">🏆</div>
-                            <div class="small text-muted">Network Champion</div>
-                            <div id="network-champion" class="fw-bold small">Loading...</div>
-                        </div>
+                <div class="fun-facts-grid" id="network-facts">
+                    <div class="fun-fact-item">
+                        <div class="h4 mb-1">🏆</div>
+                        <div class="small text-muted">Network Champion</div>
+                        <div id="network-champion" class="fw-bold small">Loading...</div>
                     </div>
-                    <div class="col-md-3 col-6">
-                        <div class="text-center p-3 border rounded">
-                            <div class="h4 mb-1">⚡</div>
-                            <div class="small text-muted">Speed Demon</div>
-                            <div id="speed-demon" class="fw-bold small">Loading...</div>
-                        </div>
+                    <div class="fun-fact-item">
+                        <div class="h4 mb-1">⚡</div>
+                        <div class="small text-muted">Speed Demon</div>
+                        <div id="speed-demon" class="fw-bold small">Loading...</div>
                     </div>
-                    <div class="col-md-3 col-6">
-                        <div class="text-center p-3 border rounded">
-                            <div class="h4 mb-1">📊</div>
-                            <div class="small text-muted">Data Collected</div>
-                            <div id="total-pings" class="fw-bold small">Loading...</div>
-                        </div>
+                    <div class="fun-fact-item">
+                        <div class="h4 mb-1">📊</div>
+                        <div class="small text-muted">Data Collected</div>
+                        <div id="total-pings" class="fw-bold small">Loading...</div>
                     </div>
-                    <div class="col-md-3 col-6">
-                        <div class="text-center p-3 border rounded">
-                            <div class="h4 mb-1">🕒</div>
-                            <div class="small text-muted">Peak Activity</div>
-                            <div id="peak-activity-time" class="fw-bold small">Loading...</div>
-                        </div>
+                    <div class="fun-fact-item">
+                        <div class="h4 mb-1">🕒</div>
+                        <div class="small text-muted">Peak Activity</div>
+                        <div id="peak-activity-time" class="fw-bold small">Loading...</div>
                     </div>
                 </div>
             </div>
@@ -573,7 +1026,7 @@
 
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
 <script>
     let healthChart, deviceTypesChart, hourlyChart, trendsChart;
     let currentTimeRange = { hours: 24 };
@@ -582,21 +1035,21 @@
     document.addEventListener('DOMContentLoaded', function() {
         loadAllAnalytics();
         loadSpeedTestData();
-        
+
         // Load benchmark data after initial page load
         setTimeout(loadSpeedTestBenchmark, 1000);
-        
+
         // Initialize tooltips
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         var tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
             return new bootstrap.Tooltip(tooltipTriggerEl);
         });
-        
+
         // Handle tab switching to load appropriate data
         document.querySelectorAll('#analytics-tabs button[data-bs-toggle="pill"]').forEach(button => {
             button.addEventListener('shown.bs.tab', function(event) {
                 const targetId = event.target.getAttribute('data-bs-target');
-                
+
                 // Load specific tab content based on which tab is active
                 switch(targetId) {
                     case '#overview-panel':
@@ -616,21 +1069,21 @@
                 }
             });
         });
-        
+
         // Event listeners
         document.getElementById('refresh-analytics').addEventListener('click', loadAllAnalytics);
-        
+
         // Speed test event listeners
         document.getElementById('speedtest-btn').addEventListener('click', () => runSpeedTest('comprehensive'));
         document.getElementById('cancel-speedtest-btn').addEventListener('click', cancelSpeedTest);
         document.getElementById('refresh-rating-btn').addEventListener('click', async () => {
             const btn = document.getElementById('refresh-rating-btn');
             const icon = btn.querySelector('i');
-            
+
             // Show loading state
             btn.disabled = true;
             icon.className = 'bi bi-arrow-clockwise loading';
-            
+
             try {
                 await loadSpeedTestBenchmark();
                 showToast('Overall rating refreshed', 'success');
@@ -642,12 +1095,12 @@
                 icon.className = 'bi bi-arrow-clockwise';
             }
         });
-        
+
         // Global time range controls
         document.querySelectorAll('input[name="global-time-range"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
                 const value = e.target.value;
-                
+
                 switch(value) {
                     case '24h':
                         currentTimeRange = { hours: 24 };
@@ -659,7 +1112,7 @@
                         currentTimeRange = { days: 30 };
                         break;
                 }
-                
+
                 // Reload data for the current active tab
                 const activeTab = document.querySelector('#analytics-tabs .nav-link.active');
                 if (activeTab) {
@@ -684,14 +1137,14 @@
                 }
             });
         });
-        
+
         // Trend period radio buttons
         document.querySelectorAll('input[name="trend-period"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
                 loadNetworkTrends(parseInt(e.target.value));
             });
         });
-        
+
         // Bandwidth period radio buttons
         document.querySelectorAll('input[name="bandwidth-period"]').forEach(radio => {
             radio.addEventListener('change', (e) => {
@@ -702,7 +1155,7 @@
 
     async function loadAllAnalytics() {
         showLoadingState();
-        
+
         try {
             await Promise.all([
                 loadNetworkHealth(),
@@ -722,11 +1175,11 @@
             const params = new URLSearchParams(currentTimeRange);
             const response = await fetch(`/api/analytics/network-health-score?${params}`);
             const data = await response.json();
-            
+
             if (data.error) {
                 throw new Error(data.error);
             }
-            
+
             updateHealthScoreDisplay(data);
             updateMobileSummary(data);
             updateActionableInsights(data);
@@ -741,11 +1194,11 @@
             const params = new URLSearchParams({ hours: 168 }); // Always use 1 week for insights
             const response = await fetch(`/api/analytics/device-insights?${params}`);
             const data = await response.json();
-            
+
             if (data.error) {
                 throw new Error(data.error);
             }
-            
+
             updateDeviceInsights(data);
         } catch (error) {
             console.error('Error loading device insights:', error);
@@ -756,11 +1209,11 @@
         try {
             const response = await fetch('/api/analytics/usage-patterns?days=7');
             const data = await response.json();
-            
+
             if (data.error) {
                 throw new Error(data.error);
             }
-            
+
             updateUsagePatterns(data);
         } catch (error) {
             console.error('Error loading usage patterns:', error);
@@ -771,11 +1224,11 @@
         try {
             const response = await fetch(`/api/analytics/network-trends?days=${days}`);
             const data = await response.json();
-            
+
             if (data.error) {
                 throw new Error(data.error);
             }
-            
+
             updateNetworkTrends(data);
         } catch (error) {
             console.error('Error loading network trends:', error);
@@ -786,30 +1239,30 @@
         const scoreElement = document.getElementById('health-score-value');
         const circleElement = document.getElementById('health-score-circle');
         const statusElement = document.getElementById('health-status');
-        
+
         // Animate score counting up
         animateNumber(scoreElement, 0, data.health_score, 1000);
-        
+
         // Update circle color
         circleElement.style.borderColor = data.status_color;
         scoreElement.style.color = data.status_color;
-        
+
         // Update status
         statusElement.innerHTML = `
             <i class="bi bi-circle-fill me-2" style="color: ${data.status_color}"></i>
             Network Status: ${data.status.charAt(0).toUpperCase() + data.status.slice(1)}
         `;
-        
+
         // Update metrics
-        document.getElementById('devices-up-count').textContent = 
+        document.getElementById('devices-up-count').textContent =
             `${data.metrics.devices_up}/${data.metrics.total_devices}`;
-        document.getElementById('avg-response-time').textContent = 
+        document.getElementById('avg-response-time').textContent =
             `${data.metrics.avg_response_time}ms`;
-        document.getElementById('success-rate').textContent = 
+        document.getElementById('success-rate').textContent =
             `${data.metrics.success_rate}%`;
-        document.getElementById('total-devices-count').textContent = 
+        document.getElementById('total-devices-count').textContent =
             data.metrics.total_devices;
-        
+
         // Update recommendations
         const recommendationsElement = document.getElementById('health-recommendations');
         if (data.recommendations && data.recommendations.length > 0) {
@@ -826,17 +1279,17 @@
         const mobileHealthScore = document.getElementById('mobile-health-score');
         const mobileDevicesUp = document.getElementById('mobile-devices-up');
         const mobileAlerts = document.getElementById('mobile-alerts');
-        
+
         if (mobileHealthScore) {
             mobileHealthScore.textContent = Math.round(data.health_score || 0);
             mobileHealthScore.style.color = data.status_color || '#6c757d';
         }
-        
+
         if (mobileDevicesUp) {
             mobileDevicesUp.textContent = data.metrics.devices_up || '--';
             mobileDevicesUp.style.color = data.metrics.devices_up > 0 ? '#28a745' : '#dc3545';
         }
-        
+
         if (mobileAlerts) {
             const alertCount = data.metrics.active_alerts || 0;
             mobileAlerts.textContent = alertCount;
@@ -847,13 +1300,13 @@
     function updateActionableInsights(data) {
         const insightsCard = document.getElementById('insights-card');
         const insightsContainer = document.getElementById('actionable-insights');
-        
+
         if (!data || !data.metrics) return;
-        
+
         let insights = [];
         const metrics = data.metrics;
         const healthScore = data.health_score || 0;
-        
+
         // Generate contextual insights based on data
         if (healthScore < 70) {
             insights.push({
@@ -864,7 +1317,7 @@
                 action: 'View device details to identify problematic devices'
             });
         }
-        
+
         if (metrics.success_rate < 95) {
             insights.push({
                 type: 'info',
@@ -874,7 +1327,7 @@
                 action: 'Check the Performance tab for trends and patterns'
             });
         }
-        
+
         if (metrics.avg_response_time > 100) {
             insights.push({
                 type: 'tip',
@@ -884,7 +1337,7 @@
                 action: 'Check bandwidth usage or consider QoS settings'
             });
         }
-        
+
         if (metrics.active_alerts > 0) {
             insights.push({
                 type: 'urgent',
@@ -894,7 +1347,7 @@
                 action: 'Visit the Alerts page to review and resolve issues'
             });
         }
-        
+
         // Good performance insights
         if (healthScore >= 90 && metrics.active_alerts === 0) {
             insights.push({
@@ -905,7 +1358,7 @@
                 action: 'Continue regular monitoring to maintain this performance'
             });
         }
-        
+
         if (insights.length > 0) {
             const insightsHTML = insights.map(insight => `
                 <div class="col-md-6 mb-3">
@@ -917,14 +1370,14 @@
                             <h6 class="mb-1">${insight.title}</h6>
                             <p class="small text-muted mb-1">${insight.description}</p>
                             <div class="small">
-                                <i class="bi bi-arrow-right text-primary"></i> 
+                                <i class="bi bi-arrow-right text-primary"></i>
                                 <span class="text-primary">${insight.action}</span>
                             </div>
                         </div>
                     </div>
                 </div>
             `).join('');
-            
+
             insightsContainer.innerHTML = insightsHTML;
             insightsCard.style.display = 'block';
         } else {
@@ -937,7 +1390,7 @@
         const reliableElement = document.getElementById('most-reliable-devices');
         if (data.most_reliable && data.most_reliable.length > 0) {
             reliableElement.innerHTML = data.most_reliable.slice(0, 3).map((device, index) => `
-                <div class="d-flex justify-content-between align-items-center small mb-1">
+                <div class="device-list-item">
                     <span>${index + 1}. ${device.name}</span>
                     <span class="badge bg-success">${device.uptime}%</span>
                 </div>
@@ -945,12 +1398,12 @@
         } else {
             reliableElement.innerHTML = '<div class="small text-muted">No data available</div>';
         }
-        
+
         // Fastest devices
         const fastestElement = document.getElementById('fastest-devices');
         if (data.fastest_devices && data.fastest_devices.length > 0) {
             fastestElement.innerHTML = data.fastest_devices.slice(0, 3).map((device, index) => `
-                <div class="d-flex justify-content-between align-items-center small mb-1">
+                <div class="device-list-item">
                     <span>${index + 1}. ${device.name}</span>
                     <span class="badge bg-info">${device.response_time}ms</span>
                 </div>
@@ -958,16 +1411,16 @@
         } else {
             fastestElement.innerHTML = '<div class="small text-muted">No data available</div>';
         }
-        
+
         // Update fun facts
         if (data.most_reliable && data.most_reliable.length > 0) {
             document.getElementById('network-champion').textContent = data.most_reliable[0].name;
         }
-        
+
         if (data.fastest_devices && data.fastest_devices.length > 0) {
             document.getElementById('speed-demon').textContent = data.fastest_devices[0].name;
         }
-        
+
         // Device types chart
         if (data.device_types && data.device_types.length > 0) {
             updateDeviceTypesChart(data.device_types);
@@ -979,15 +1432,15 @@
         if (data.hourly_patterns && data.hourly_patterns.length > 0) {
             updateHourlyPatternChart(data.hourly_patterns);
         }
-        
+
         // Update insights
         if (data.insights) {
             document.getElementById('peak-hour').textContent = data.insights.peak_hour;
             document.getElementById('quiet-hour').textContent = data.insights.quiet_hour;
-            document.getElementById('total-data-points').textContent = 
+            document.getElementById('total-data-points').textContent =
                 data.insights.total_data_points.toLocaleString();
             document.getElementById('peak-activity-time').textContent = data.insights.peak_hour;
-            document.getElementById('total-pings').textContent = 
+            document.getElementById('total-pings').textContent =
                 data.insights.total_data_points.toLocaleString() + ' pings';
         }
     }
@@ -996,29 +1449,29 @@
         // Update trend indicators
         const responseTrend = document.getElementById('response-trend');
         const reliabilityTrend = document.getElementById('reliability-trend');
-        
+
         const trendIcons = {
             'improving': '📈 Improving',
-            'degrading': '📉 Degrading', 
+            'degrading': '📉 Degrading',
             'stable': '➡️ Stable',
             'insufficient_data': '❓ Insufficient Data'
         };
-        
+
         const trendColors = {
             'improving': 'text-success',
             'degrading': 'text-danger',
             'stable': 'text-info',
             'insufficient_data': 'text-muted'
         };
-        
+
         if (data.analysis) {
             responseTrend.textContent = trendIcons[data.analysis.response_trend] || data.analysis.response_trend;
             responseTrend.className = `fw-bold ${trendColors[data.analysis.response_trend] || ''}`;
-            
+
             reliabilityTrend.textContent = trendIcons[data.analysis.reliability_trend] || data.analysis.reliability_trend;
             reliabilityTrend.className = `fw-bold ${trendColors[data.analysis.reliability_trend] || ''}`;
         }
-        
+
         // Update trends chart
         if (data.trend_data && data.trend_data.length > 0) {
             updateTrendsChart(data.trend_data);
@@ -1026,69 +1479,51 @@
     }
 
     function updateDeviceTypesChart(deviceTypes) {
-        // Show loading state while creating chart
-        showChartLoading('device-types-canvas');
-        
-        // Short delay to show loading state
-        setTimeout(() => {
-            const ctx = document.getElementById('device-types-canvas').getContext('2d');
-            
-            if (deviceTypesChart) {
-                ChartUpdateManager.unregisterChart('deviceTypesChart');
-                deviceTypesChart.destroy();
-            }
-        
-        // Create interactive device types chart with filtering capability
-        const deviceTypesConfig = ChartConfigFactory.createDoughnutConfig({
-            interactionType: 'filter', // Enable device type filtering
+        const ctx = document.getElementById('device-types-canvas').getContext('2d');
+
+        if (deviceTypesChart) {
+            deviceTypesChart.destroy();
+        }
+
+        deviceTypesChart = new Chart(ctx, {
+            type: 'doughnut',
             data: {
                 labels: deviceTypes.map(d => d.type),
                 datasets: [{
                     data: deviceTypes.map(d => d.count),
-                    backgroundColor: generateChartPalette(deviceTypes.length),
-                    // Add metadata for filtering
-                    filterType: 'deviceType',
-                    deviceTypes: deviceTypes.map(d => d.type),
-                    deviceCounts: deviceTypes.map(d => d.count)
+                    backgroundColor: [
+                        'rgba(59, 130, 246, 0.8)',
+                        'rgba(34, 197, 94, 0.8)',
+                        'rgba(245, 158, 11, 0.8)',
+                        'rgba(239, 68, 68, 0.8)',
+                        'rgba(168, 85, 247, 0.8)',
+                        'rgba(236, 72, 153, 0.8)'
+                    ]
                 }]
             },
             options: {
+                responsive: true,
+                maintainAspectRatio: false,
                 plugins: {
-                    tooltip: {
-                        callbacks: {
-                            afterLabel: function(context) {
-                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                                const percentage = ((context.parsed * 100) / total).toFixed(1);
-                                return `${percentage}% of all devices`;
-                            },
-                            footer: function(tooltipItems) {
-                                return 'Click to filter by device type';
-                            }
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#e0e0e0',
+                            usePointStyle: true
                         }
                     }
                 }
             }
         });
-
-        deviceTypesChart = new Chart(ctx, deviceTypesConfig);
-        
-        // Register for real-time updates 
-        ChartUpdateManager.registerChart('deviceTypesChart', deviceTypesChart, 'performance', {
-            dataType: 'deviceTypes'
-        });
-        
-        // Add accessibility
-        enhanceChartAccessibility(deviceTypesChart, `Device types distribution chart showing ${deviceTypes.length} different device types`);
-        }, 100); // End setTimeout
     }
 
     function updateHourlyPatternChart(hourlyData) {
         const ctx = document.getElementById('hourly-pattern-chart').getContext('2d');
-        
+
         if (hourlyChart) {
             hourlyChart.destroy();
         }
-        
+
         hourlyChart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -1096,8 +1531,8 @@
                 datasets: [{
                     label: 'Activity Level',
                     data: hourlyData.map(d => d.total_pings),
-                    borderColor: '#0d6efd',
-                    backgroundColor: 'rgba(13, 110, 253, 0.1)',
+                    borderColor: 'rgba(59, 130, 246, 0.8)',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
                     fill: true,
                     tension: 0.4
                 }]
@@ -1110,25 +1545,25 @@
                         beginAtZero: true,
                         title: {
                             display: true,
-                            text: 'Ping Count'
-                        }
+                            text: 'Ping Count',
+                            color: '#e0e0e0'
+                        },
+                        ticks: { color: '#b0b0b0' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
                     },
                     x: {
                         title: {
                             display: true,
-                            text: 'Hour of Day'
-                        }
+                            text: 'Hour of Day',
+                            color: '#e0e0e0'
+                        },
+                        ticks: { color: '#b0b0b0' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
                     }
                 },
                 plugins: {
                     legend: {
                         display: false
-                    }
-                },
-                layout: {
-                    padding: {
-                        top: 10,
-                        bottom: 10
                     }
                 }
             }
@@ -1137,11 +1572,11 @@
 
     function updateTrendsChart(trendData) {
         const ctx = document.getElementById('trends-chart').getContext('2d');
-        
+
         if (trendsChart) {
             trendsChart.destroy();
         }
-        
+
         trendsChart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -1150,16 +1585,16 @@
                     {
                         label: 'Avg Response Time (ms)',
                         data: trendData.map(d => d.avg_response_time),
-                        borderColor: '#dc3545',
-                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        borderColor: 'rgba(239, 68, 68, 0.8)',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
                         yAxisID: 'y',
                         tension: 0.4
                     },
                     {
                         label: 'Success Rate (%)',
                         data: trendData.map(d => d.success_rate),
-                        borderColor: '#198754',
-                        backgroundColor: 'rgba(25, 135, 84, 0.1)',
+                        borderColor: 'rgba(34, 197, 94, 0.8)',
+                        backgroundColor: 'rgba(34, 197, 94, 0.1)',
                         yAxisID: 'y1',
                         tension: 0.4
                     }
@@ -1177,8 +1612,11 @@
                         display: true,
                         title: {
                             display: true,
-                            text: 'Date'
-                        }
+                            text: 'Date',
+                            color: '#e0e0e0'
+                        },
+                        ticks: { color: '#b0b0b0' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
                     },
                     y: {
                         type: 'linear',
@@ -1186,8 +1624,11 @@
                         position: 'left',
                         title: {
                             display: true,
-                            text: 'Response Time (ms)'
-                        }
+                            text: 'Response Time (ms)',
+                            color: '#e0e0e0'
+                        },
+                        ticks: { color: '#b0b0b0' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
                     },
                     y1: {
                         type: 'linear',
@@ -1195,11 +1636,20 @@
                         position: 'right',
                         title: {
                             display: true,
-                            text: 'Success Rate (%)'
+                            text: 'Success Rate (%)',
+                            color: '#e0e0e0'
                         },
+                        ticks: { color: '#b0b0b0' },
                         grid: {
                             drawOnChartArea: false,
                         },
+                    }
+                },
+                plugins: {
+                    legend: {
+                        labels: {
+                            color: '#e0e0e0'
+                        }
                     }
                 }
             }
@@ -1208,19 +1658,19 @@
 
     function animateNumber(element, start, end, duration) {
         const startTime = performance.now();
-        
+
         function update(currentTime) {
             const elapsed = currentTime - startTime;
             const progress = Math.min(elapsed / duration, 1);
-            
+
             const current = start + (end - start) * progress;
             element.textContent = Math.round(current);
-            
+
             if (progress < 1) {
                 requestAnimationFrame(update);
             }
         }
-        
+
         requestAnimationFrame(update);
     }
 
@@ -1235,7 +1685,7 @@
         try {
             // Load latest speed test result
             const response = await fetch('/api/speedtest/latest');
-            
+
             if (response.ok) {
                 const data = await response.json();
                 updateSpeedTestDisplay(data);
@@ -1243,7 +1693,7 @@
                 // No previous results
                 updateSpeedTestDisplay(null);
             }
-            
+
             // Load speed test benchmark
             await loadSpeedTestBenchmark();
         } catch (error) {
@@ -1254,23 +1704,17 @@
 
     async function loadSpeedTestBenchmark() {
         try {
-            console.log('Loading speed test benchmark...');
             const response = await fetch('/api/speedtest/benchmark');
-            console.log('Benchmark response status:', response.status);
-            
+
             if (response.ok) {
                 const data = await response.json();
-                console.log('Benchmark data received:', data);
                 if (data.benchmark) {
                     updateSpeedTestBenchmark(data.benchmark);
-                    console.log('Benchmark updated successfully');
                 } else {
-                    console.warn('No benchmark data in response');
                     showBenchmarkUnavailable('No benchmark data available');
                 }
             } else {
                 const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
-                console.warn('Benchmark API error:', errorData);
                 showBenchmarkUnavailable(errorData.error || 'Failed to load benchmark');
             }
         } catch (error) {
@@ -1280,7 +1724,6 @@
     }
 
     function showBenchmarkUnavailable(message) {
-        console.log('Showing benchmark unavailable:', message);
         const ratingBadge = document.getElementById('overall-rating-badge');
         if (ratingBadge) {
             ratingBadge.textContent = 'Unavailable';
@@ -1288,13 +1731,13 @@
             ratingBadge.className = 'badge';
             ratingBadge.title = message;
         }
-        
+
         // Clear placeholders and show unavailable state
         const speedRecommendations = document.getElementById('speed-recommendations');
         if (speedRecommendations) {
             speedRecommendations.innerHTML = '<div class="small text-muted">Run a speed test to see recommendations</div>';
         }
-        
+
         // Clear individual ratings
         ['download-rating', 'upload-rating', 'ping-rating'].forEach(id => {
             const element = document.getElementById(id);
@@ -1313,19 +1756,19 @@
             const cancelBtn = document.getElementById('cancel-speedtest-btn');
             const statusDiv = document.getElementById('speedtest-status');
             const progressDiv = document.getElementById('speedtest-progress');
-            
+
             speedBtn.disabled = true;
             cancelBtn.style.display = 'inline-block';
             statusDiv.style.display = 'block';
             progressDiv.style.display = 'block';
-            
+
             // Update status text
             const statusText = 'Running speed test (download + upload)...';
             statusDiv.querySelector('span').textContent = statusText;
-            
+
             // Create abort controller for cancellation
             currentSpeedTestController = new AbortController();
-            
+
             // Start the test
             const response = await fetch('/api/speedtest/run', {
                 method: 'POST',
@@ -1333,21 +1776,21 @@
                 body: JSON.stringify({ type: testType }),
                 signal: currentSpeedTestController.signal
             });
-            
+
             const startData = await response.json();
-            
+
             if (startData.error) {
                 throw new Error(startData.error);
             }
-            
+
             showToast('Speed test started', 'info');
-            
+
             // Simulate progress animation (30 seconds for comprehensive test)
             animateProgress(30);
-            
+
             // Poll for results
             await pollForSpeedTestResults();
-            
+
         } catch (error) {
             if (error.name === 'AbortError') {
                 showToast('Speed test cancelled', 'warning');
@@ -1372,12 +1815,11 @@
         }
     }
 
-
     function animateProgress(estimatedSeconds) {
         const progressBar = document.querySelector('#speedtest-progress .progress-bar');
         let progress = 0;
         const increment = 100 / estimatedSeconds;
-        
+
         const interval = setInterval(() => {
             progress += increment;
             if (progress >= 100) {
@@ -1386,7 +1828,7 @@
             }
             progressBar.style.width = `${progress}%`;
         }, 1000);
-        
+
         return interval;
     }
 
@@ -1394,38 +1836,38 @@
         let attempts = 0;
         const maxAttempts = 36; // 6 minutes max (36 * 10 seconds)
         const testStartTime = Date.now();
-        
+
         while (attempts < maxAttempts) {
             try {
                 await new Promise(resolve => setTimeout(resolve, 10000)); // Wait 10 seconds
                 attempts++;
-                
+
                 const response = await fetch('/api/speedtest/latest');
                 if (response.ok) {
                     const data = await response.json();
-                    
+
                     // Check if this is a new result since we started the test
                     const resultTime = new Date(data.timestamp).getTime();
                     if (data.success && resultTime > testStartTime) {
                         updateSpeedTestDisplay(data);
-                        await loadSpeedTestBenchmark(); // Refresh benchmark  
+                        await loadSpeedTestBenchmark(); // Refresh benchmark
                         showToast('Speed test completed!', 'success');
                         return;
                     }
                 }
-                
+
                 // Update progress text
                 const statusSpan = document.querySelector('#speedtest-status span');
                 if (statusSpan) {
                     statusSpan.textContent = `Running speed test... (${attempts * 10}s elapsed)`;
                 }
-                
+
             } catch (error) {
                 attempts++;
                 console.error('Error polling for results:', error);
             }
         }
-        
+
         showToast('Speed test timed out. It may still be running in the background.', 'warning');
     }
 
@@ -1434,58 +1876,54 @@
         const uploadEl = document.getElementById('upload-speed');
         const pingEl = document.getElementById('ping-latency');
         const lastTestEl = document.getElementById('last-test-time');
-        
+
         if (!data || !data.success) {
             downloadEl.textContent = '--';
             uploadEl.textContent = '--';
             pingEl.textContent = '--';
             lastTestEl.textContent = 'Never';
-            
+
             // Clear ratings
             document.getElementById('download-rating').textContent = '';
             document.getElementById('upload-rating').textContent = '';
             document.getElementById('ping-rating').textContent = '';
             return;
         }
-        
+
         // Update speed values
         downloadEl.textContent = data.download_mbps || '--';
         uploadEl.textContent = data.upload_mbps || '--';
         pingEl.textContent = data.ping_ms || '--';
-        
+
         // Update timestamp
         const testTime = new Date(data.timestamp);
         lastTestEl.textContent = testTime.toLocaleString();
-        
+
         // Update basic ratings
         updateSpeedRatings(data);
     }
 
     function updateSpeedTestBenchmark(benchmark) {
-        console.log('Updating speed test benchmark:', benchmark);
         if (!benchmark) {
-            console.warn('No benchmark data provided to updateSpeedTestBenchmark');
             return;
         }
-        
+
         // Update overall rating
         const ratingBadge = document.getElementById('overall-rating-badge');
         if (!ratingBadge) {
-            console.error('overall-rating-badge element not found');
             return;
         }
-        
-        console.log('Setting overall rating to:', benchmark.overall.rating);
+
         ratingBadge.textContent = benchmark.overall.rating.replace('_', ' ').toUpperCase();
         ratingBadge.style.backgroundColor = benchmark.overall.color;
         ratingBadge.className = 'badge';
         ratingBadge.title = `Score: ${benchmark.overall.score}/5.0`;
-        
+
         // Update individual ratings
         updateRatingElement('download-rating', benchmark.download);
         updateRatingElement('upload-rating', benchmark.upload);
         updateRatingElement('ping-rating', benchmark.ping);
-        
+
         // Update recommendations
         const recommendationsEl = document.getElementById('speed-recommendations');
         const recommendations = [
@@ -1493,7 +1931,7 @@
             benchmark.upload.description,
             benchmark.ping.description
         ].filter(Boolean);
-        
+
         if (recommendations.length > 0) {
             recommendationsEl.innerHTML = recommendations
                 .map(rec => `<div class="mb-1">${rec}</div>`)
@@ -1513,7 +1951,7 @@
         const downloadRating = getSimpleSpeedRating(data.download_mbps, false);
         const uploadRating = getSimpleSpeedRating(data.upload_mbps, true);
         const pingRating = getSimplePingRating(data.ping_ms);
-        
+
         updateRatingElement('download-rating', downloadRating);
         updateRatingElement('upload-rating', uploadRating);
         updateRatingElement('ping-rating', pingRating);
@@ -1539,33 +1977,31 @@
         if (ping <= 100) return { rating: 'fair', color: '#ffc107' };
         return { rating: 'poor', color: '#dc3545' };
     }
-    
+
     // Bandwidth Analytics Functions
     let bandwidthChart = null;
-    
+
     async function loadBandwidthAnalytics(hours = 24) {
         try {
-            console.log(`Loading bandwidth analytics for ${hours} hours`);
-            
             // Load bandwidth summary and timeline data
             const [summaryResponse, timelineResponse, devicesResponse] = await Promise.all([
                 fetch(`/api/monitoring/bandwidth/summary?hours=${hours}`),
                 fetch(`/api/monitoring/bandwidth/timeline?hours=${hours}&interval=hour`),
                 fetch(`/api/monitoring/bandwidth/devices?hours=${hours}&limit=10`)
             ]);
-            
+
             const summaryData = await summaryResponse.json();
             const timelineData = await timelineResponse.json();
             const devicesData = await devicesResponse.json();
-            
+
             if (summaryData.error || timelineData.error || devicesData.error) {
                 throw new Error(summaryData.error || timelineData.error || devicesData.error);
             }
-            
+
             updateBandwidthSummary(summaryData);
             updateBandwidthChart(timelineData);
             updateBandwidthConsumers(devicesData);
-            
+
         } catch (error) {
             console.error('Error loading bandwidth analytics:', error);
             // Show fallback UI with dummy data or no data message
@@ -1573,37 +2009,37 @@
             updateBandwidthConsumersFallback();
         }
     }
-    
+
     function updateBandwidthSummary(data) {
-        document.getElementById('total-bandwidth').textContent = 
+        document.getElementById('total-bandwidth').textContent =
             formatBandwidthValue(data.current_bandwidth?.current_total_mbps || 0);
-        document.getElementById('peak-bandwidth').textContent = 
+        document.getElementById('peak-bandwidth').textContent =
             formatBandwidthValue(data.peak_bandwidth?.peak_total_mbps || 0);
-        document.getElementById('avg-bandwidth').textContent = 
+        document.getElementById('avg-bandwidth').textContent =
             formatBandwidthValue(data.average_bandwidth?.avg_total_mbps || 0);
-        document.getElementById('total-data').textContent = 
+        document.getElementById('total-data').textContent =
             formatDataUsage(data.total_data?.total_gb || 0);
     }
-    
+
     function updateBandwidthSummaryFallback() {
         document.getElementById('total-bandwidth').textContent = 'N/A';
         document.getElementById('peak-bandwidth').textContent = 'N/A';
         document.getElementById('avg-bandwidth').textContent = 'N/A';
         document.getElementById('total-data').textContent = 'N/A';
     }
-    
+
     function updateBandwidthChart(data) {
         const ctx = document.getElementById('bandwidth-chart').getContext('2d');
-        
+
         if (bandwidthChart) {
             bandwidthChart.destroy();
         }
-        
+
         const timeline = data.timeline || [];
         const labels = timeline.map(item => new Date(item.timestamp).toLocaleString());
         const inData = timeline.map(item => item.avg_bandwidth_in_mbps || 0);
         const outData = timeline.map(item => item.avg_bandwidth_out_mbps || 0);
-        
+
         bandwidthChart = new Chart(ctx, {
             type: 'line',
             data: {
@@ -1611,15 +2047,15 @@
                 datasets: [{
                     label: 'Download (Mbps)',
                     data: inData,
-                    borderColor: '#28a745',
-                    backgroundColor: 'rgba(40, 167, 69, 0.1)',
+                    borderColor: 'rgba(34, 197, 94, 0.8)',
+                    backgroundColor: 'rgba(34, 197, 94, 0.1)',
                     tension: 0.4,
                     fill: true
                 }, {
                     label: 'Upload (Mbps)',
                     data: outData,
-                    borderColor: '#dc3545',
-                    backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                    borderColor: 'rgba(239, 68, 68, 0.8)',
+                    backgroundColor: 'rgba(239, 68, 68, 0.1)',
                     tension: 0.4,
                     fill: true
                 }]
@@ -1632,86 +2068,98 @@
                         beginAtZero: true,
                         title: {
                             display: true,
-                            text: 'Bandwidth (Mbps)'
-                        }
+                            text: 'Bandwidth (Mbps)',
+                            color: '#e0e0e0'
+                        },
+                        ticks: { color: '#b0b0b0' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
                     },
                     x: {
                         title: {
                             display: true,
-                            text: 'Time'
-                        }
+                            text: 'Time',
+                            color: '#e0e0e0'
+                        },
+                        ticks: { color: '#b0b0b0' },
+                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
                     }
                 },
                 plugins: {
                     legend: {
-                        position: 'top'
+                        position: 'top',
+                        labels: {
+                            color: '#e0e0e0'
+                        }
                     },
                     title: {
                         display: true,
-                        text: 'Network Bandwidth Usage Over Time'
+                        text: 'Network Bandwidth Usage Over Time',
+                        color: '#e0e0e0'
                     }
                 }
             }
         });
     }
-    
+
     function updateBandwidthConsumers(data) {
         const container = document.getElementById('bandwidth-consumers');
         const devices = data.devices || [];
-        
+
         if (devices.length === 0) {
             container.innerHTML = '<div class="text-center py-3 text-muted">No bandwidth data available</div>';
             return;
         }
-        
+
         const html = devices.map((device, index) => {
             const totalGB = device.bandwidth_stats?.total_gb || 0;
             const avgMbps = device.bandwidth_stats?.avg_total_mbps || 0;
             const peakMbps = device.bandwidth_stats?.peak_total_mbps || 0;
-            
+
             return `
-                <div class="row align-items-center py-2 ${index < devices.length - 1 ? 'border-bottom' : ''}">
-                    <div class="col-md-4">
-                        <div class="d-flex align-items-center">
-                            <div class="me-3">
-                                <span class="badge bg-primary">${index + 1}</span>
+                <div class="bandwidth-consumer-item ${index < devices.length - 1 ? 'border-bottom' : ''}">
+                    <div class="row align-items-center">
+                        <div class="col-md-4">
+                            <div class="d-flex align-items-center">
+                                <div class="me-3">
+                                    <span class="badge bg-primary">${index + 1}</span>
+                                </div>
+                                <div>
+                                    <div class="fw-bold">${device.device_name}</div>
+                                    <div class="small text-muted">${device.ip_address}</div>
+                                </div>
                             </div>
-                            <div>
-                                <div class="fw-bold">${device.device_name}</div>
-                                <div class="small text-muted">${device.ip_address}</div>
+                        </div>
+                        <div class="col-md-2">
+                            <div class="text-center">
+                                <div class="fw-bold">${totalGB.toFixed(2)} GB</div>
+                                <div class="small text-muted">Total Data</div>
                             </div>
                         </div>
-                    </div>
-                    <div class="col-md-2">
-                        <div class="text-center">
-                            <div class="fw-bold">${totalGB.toFixed(2)} GB</div>
-                            <div class="small text-muted">Total Data</div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="fw-bold">${formatBandwidthValue(avgMbps)}</div>
+                                <div class="small text-muted">Avg Bandwidth</div>
+                            </div>
                         </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="text-center">
-                            <div class="fw-bold">${formatBandwidthValue(avgMbps)}</div>
-                            <div class="small text-muted">Avg Bandwidth</div>
-                        </div>
-                    </div>
-                    <div class="col-md-3">
-                        <div class="text-center">
-                            <div class="fw-bold">${formatBandwidthValue(peakMbps)}</div>
-                            <div class="small text-muted">Peak Bandwidth</div>
+                        <div class="col-md-3">
+                            <div class="text-center">
+                                <div class="fw-bold">${formatBandwidthValue(peakMbps)}</div>
+                                <div class="small text-muted">Peak Bandwidth</div>
+                            </div>
                         </div>
                     </div>
                 </div>
             `;
         }).join('');
-        
+
         container.innerHTML = html;
     }
-    
+
     function updateBandwidthConsumersFallback() {
         const container = document.getElementById('bandwidth-consumers');
         container.innerHTML = '<div class="text-center py-3 text-muted">Bandwidth monitoring data will appear here once available</div>';
     }
-    
+
     function formatBandwidthValue(mbps) {
         if (!mbps || mbps === 0) return '0 Mbps';
         if (mbps < 0.1) return '<0.1 Mbps';
@@ -1719,90 +2167,18 @@
         if (mbps < 10) return mbps.toFixed(1) + ' Mbps';
         return mbps.toFixed(0) + ' Mbps';
     }
-    
+
     function formatDataUsage(gb) {
         if (!gb || gb === 0) return '0 GB';
         if (gb < 0.01) return '<0.01 GB';
         if (gb < 1) return (gb * 1024).toFixed(0) + ' MB';
         return gb.toFixed(2) + ' GB';
     }
-    
-    // Global filter handling for interactive charts
-    document.addEventListener('globalFiltersChanged', function(event) {
-        const filters = event.detail.filters;
-        updateActiveFiltersDisplay(filters);
-        
-        // Apply filters to current data
-        if (filters.deviceType) {
-            console.log('Analytics: Filtering by device type:', filters.deviceType);
-            // Could reload data here with device type filter
-        }
-        
-        if (filters.timeRange && filters.timeRange !== globalTimeRange) {
-            // Update time range and reload data
-            globalTimeRange = filters.timeRange;
-            updateTimeRangeButtons();
-            refreshAllData();
-        }
-    });
-    
-    // Update active filters display
-    function updateActiveFiltersDisplay(filters) {
-        const activeFiltersDiv = document.getElementById('active-filters');
-        const filterBadges = document.getElementById('filter-badges');
-        
-        let badges = '';
-        let hasActiveFilters = false;
-        
-        if (filters.deviceType) {
-            badges += `<span class="badge bg-primary me-1">Type: ${filters.deviceType}</span>`;
-            hasActiveFilters = true;
-        }
-        
-        if (filters.severity) {
-            badges += `<span class="badge bg-warning me-1">Severity: ${filters.severity}</span>`;
-            hasActiveFilters = true;
-        }
-        
-        if (filters.timeRange && filters.timeRange !== '24h') {
-            badges += `<span class="badge bg-info me-1">Time: ${filters.timeRange}</span>`;
-            hasActiveFilters = true;
-        }
-        
-        filterBadges.innerHTML = badges;
-        activeFiltersDiv.style.display = hasActiveFilters ? 'block' : 'none';
+
+    // Utility functions
+    function showToast(message, type = 'info', duration = 3000) {
+        // This function would show toast notifications - implementation depends on your toast system
+        console.log(`Toast (${type}): ${message}`);
     }
-    
-    // Update time range buttons to match global filter
-    function updateTimeRangeButtons() {
-        document.querySelectorAll('input[name="global-time-range"]').forEach(input => {
-            input.checked = input.value === globalTimeRange;
-        });
-    }
-    
-    // Initialize filter display on page load
-    document.addEventListener('DOMContentLoaded', function() {
-        // Set initial filters from URL
-        if (GlobalFilters.timeRange !== '24h') {
-            globalTimeRange = GlobalFilters.timeRange;
-            updateTimeRangeButtons();
-        }
-        
-        updateActiveFiltersDisplay(GlobalFilters);
-        
-        // Demo: Log chart interaction capabilities
-        console.log('🎮 Interactive Chart Features Enabled:');
-        console.log('📊 Click device types chart → Filter by device type');
-        console.log('🔄 Real-time updates → Charts update automatically');
-        console.log('🎯 Global filters → Sync across all dashboards');
-        console.log('📱 Mobile responsive → Touch-friendly interactions');
-        console.log('♿ Accessibility → Screen reader and keyboard support');
-        
-        // Demo: Show chart manager stats after 5 seconds
-        setTimeout(() => {
-            const stats = ChartUpdateManager.getStats();
-            console.log('📈 Chart Update Manager Stats:', stats);
-        }, 5000);
-    });
 </script>
 {% endblock %}

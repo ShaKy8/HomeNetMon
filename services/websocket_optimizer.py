@@ -25,7 +25,27 @@ class WebSocketDataOptimizer:
         self._cache_ttl = 30  # 30 seconds
         
     def get_optimized_device_data(self) -> List[Dict[str, Any]]:
-        """Get device data with optimized queries to prevent N+1 patterns"""
+        """Get device data with cached optimization - MUCH FASTER"""
+        try:
+            # PERFORMANCE OPTIMIZATION: Use cached device data instead of expensive queries
+            from services.query_cache import get_cached_device_list
+            
+            # Get app context from Flask
+            from flask import current_app
+            if current_app:
+                device_list = get_cached_device_list(current_app.app_context)
+                logger.debug(f"WebSocket optimizer using cached data for {len(device_list)} devices")
+                return device_list
+            else:
+                logger.warning("No Flask app context available for cached data, falling back to database")
+                return self._get_device_data_fallback_optimized()
+                
+        except Exception as e:
+            logger.error(f"Error getting cached device data for WebSocket: {e}")
+            return self._get_device_data_fallback_optimized()
+    
+    def _get_device_data_fallback_optimized(self) -> List[Dict[str, Any]]:
+        """Fallback method with optimized queries"""
         from models import Device, MonitoringData, Alert, PerformanceMetrics
         
         try:

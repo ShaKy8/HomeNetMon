@@ -1,6 +1,5 @@
 # HomeNetMon Usage Analytics API
 from flask import Blueprint, request, jsonify, abort, current_app
-from flask_login import login_required, current_user
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_, or_, desc
 from typing import Dict, Any, List, Optional
@@ -9,6 +8,7 @@ import json
 import csv
 import io
 from functools import wraps
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 from tenant_models import *
 from tenant_manager import get_current_tenant, require_tenant, enforce_quota, track_usage
@@ -40,7 +40,7 @@ def require_analytics_access(f):
 # ============================================================================
 
 @usage_analytics_api.route('/usage', methods=['GET'])
-@login_required
+@create_endpoint_limiter('relaxed')
 @require_analytics_access
 @enforce_quota(UsageMetricType.API_CALLS)
 def get_usage_analytics():
@@ -103,7 +103,7 @@ def get_usage_analytics():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @usage_analytics_api.route('/quota-status', methods=['GET'])
-@login_required
+@create_endpoint_limiter('relaxed')
 @enforce_quota(UsageMetricType.API_CALLS)
 def get_quota_status():
     """Get current quota status for tenant"""
@@ -123,7 +123,7 @@ def get_quota_status():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @usage_analytics_api.route('/metrics', methods=['GET'])
-@login_required
+@create_endpoint_limiter('relaxed')
 @enforce_quota(UsageMetricType.API_CALLS)
 def get_available_metrics():
     """Get list of available usage metrics"""
@@ -147,7 +147,7 @@ def get_available_metrics():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @usage_analytics_api.route('/trends', methods=['GET'])
-@login_required
+@create_endpoint_limiter('relaxed')
 @require_analytics_access
 @enforce_quota(UsageMetricType.API_CALLS)
 def get_usage_trends():
@@ -194,7 +194,7 @@ def get_usage_trends():
         return jsonify({'success': False, 'error': str(e)}), 500
 
 @usage_analytics_api.route('/summary', methods=['GET'])
-@login_required
+@create_endpoint_limiter('relaxed')
 @enforce_quota(UsageMetricType.API_CALLS)
 def get_usage_summary():
     """Get usage summary for tenant dashboard"""
@@ -272,7 +272,7 @@ def get_usage_summary():
 # ============================================================================
 
 @usage_analytics_api.route('/record-usage', methods=['POST'])
-@login_required
+@create_endpoint_limiter('strict')
 @enforce_quota(UsageMetricType.API_CALLS)
 def record_usage_endpoint():
     """Record usage for current tenant"""

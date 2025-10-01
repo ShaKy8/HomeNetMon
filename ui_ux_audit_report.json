@@ -1,0 +1,6852 @@
+{
+  "audit_info": {
+    "timestamp": "2025-09-21T07:50:47.211674",
+    "base_url": "http://geekom1:5000",
+    "pages_tested": 17,
+    "total_checks": 748
+  },
+  "summary": {
+    "pass": 632,
+    "fail": 17,
+    "warning": 42,
+    "info": 57
+  },
+  "detailed_results": [
+    {
+      "timestamp": "2025-09-21T07:50:47.543533",
+      "test_type": "accessibility",
+      "page": "Main Dashboard",
+      "check": "Page Load",
+      "status": "PASS",
+      "message": "Loaded in 0.16s (HTTP 200)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.543667",
+      "test_type": "performance",
+      "page": "Main Dashboard",
+      "check": "Load Time",
+      "status": "PASS",
+      "message": "Fast load (0.16s)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.543799",
+      "test_type": "responsive",
+      "page": "Main Dashboard",
+      "check": "viewport_meta",
+      "status": "PASS",
+      "message": "Viewport meta tag present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.543972",
+      "test_type": "responsive",
+      "page": "Main Dashboard",
+      "check": "responsive_grid",
+      "status": "PASS",
+      "message": "Bootstrap grid classes found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.544112",
+      "test_type": "responsive",
+      "page": "Main Dashboard",
+      "check": "media_queries",
+      "status": "PASS",
+      "message": "Responsive CSS classes",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.544811",
+      "test_type": "responsive",
+      "page": "Main Dashboard",
+      "check": "mobile_nav",
+      "status": "PASS",
+      "message": "Mobile navigation elements",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.544883",
+      "test_type": "ui_framework",
+      "page": "Main Dashboard",
+      "check": "bootstrap_css",
+      "status": "PASS",
+      "message": "Bootstrap CSS loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.544942",
+      "test_type": "ui_framework",
+      "page": "Main Dashboard",
+      "check": "bootstrap_js",
+      "status": "PASS",
+      "message": "Bootstrap JavaScript loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.545032",
+      "test_type": "ui_framework",
+      "page": "Main Dashboard",
+      "check": "chartjs",
+      "status": "PASS",
+      "message": "Chart.js library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.545083",
+      "test_type": "ui_framework",
+      "page": "Main Dashboard",
+      "check": "socketio",
+      "status": "PASS",
+      "message": "Socket.IO library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.545145",
+      "test_type": "ui_framework",
+      "page": "Main Dashboard",
+      "check": "favicon",
+      "status": "PASS",
+      "message": "Favicon present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.545196",
+      "test_type": "ui_framework",
+      "page": "Main Dashboard",
+      "check": "page_title",
+      "status": "PASS",
+      "message": "Page title present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.545279",
+      "test_type": "navigation",
+      "page": "Main Dashboard",
+      "check": "main_nav",
+      "status": "PASS",
+      "message": "Main navigation present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.545516",
+      "test_type": "navigation",
+      "page": "Main Dashboard",
+      "check": "nav_links",
+      "status": "PASS",
+      "message": "Core nav links present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.546092",
+      "test_type": "navigation",
+      "page": "Main Dashboard",
+      "check": "brand_logo",
+      "status": "PASS",
+      "message": "Brand/logo present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.549011",
+      "test_type": "navigation",
+      "page": "Main Dashboard",
+      "check": "user_menu",
+      "status": "FAIL",
+      "message": "Missing: User menu present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.549329",
+      "test_type": "navigation",
+      "page": "Main Dashboard",
+      "check": "search",
+      "status": "PASS",
+      "message": "Search functionality",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.551672",
+      "test_type": "navigation",
+      "page": "Main Dashboard",
+      "check": "breadcrumbs",
+      "status": "WARNING",
+      "message": "Missing: Breadcrumb navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.553281",
+      "test_type": "interactive",
+      "page": "Main Dashboard",
+      "check": "buttons",
+      "status": "PASS",
+      "message": "Buttons present (62 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.553367",
+      "test_type": "interactive",
+      "page": "Main Dashboard",
+      "check": "forms",
+      "status": "PASS",
+      "message": "Forms present (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.554940",
+      "test_type": "interactive",
+      "page": "Main Dashboard",
+      "check": "modals",
+      "status": "PASS",
+      "message": "Modal dialogs (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.555444",
+      "test_type": "interactive",
+      "page": "Main Dashboard",
+      "check": "dropdowns",
+      "status": "INFO",
+      "message": "No dropdown menus",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.557226",
+      "test_type": "interactive",
+      "page": "Main Dashboard",
+      "check": "tabs",
+      "status": "INFO",
+      "message": "No tab navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.558413",
+      "test_type": "interactive",
+      "page": "Main Dashboard",
+      "check": "tooltips",
+      "status": "PASS",
+      "message": "Tooltips/help text (10 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.559557",
+      "test_type": "interactive",
+      "page": "Main Dashboard",
+      "check": "alerts",
+      "status": "PASS",
+      "message": "Alert/notification components (17 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.561433",
+      "test_type": "interactive",
+      "page": "Main Dashboard",
+      "check": "loading",
+      "status": "PASS",
+      "message": "Loading indicators (131 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.561806",
+      "test_type": "accessibility",
+      "page": "Main Dashboard",
+      "check": "alt_text",
+      "status": "PASS",
+      "message": "Images with alt text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.562228",
+      "test_type": "accessibility",
+      "page": "Main Dashboard",
+      "check": "aria_labels",
+      "status": "PASS",
+      "message": "ARIA labels (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.562347",
+      "test_type": "accessibility",
+      "page": "Main Dashboard",
+      "check": "semantic_html",
+      "status": "PASS",
+      "message": "Semantic HTML5 (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.562904",
+      "test_type": "accessibility",
+      "page": "Main Dashboard",
+      "check": "skip_links",
+      "status": "WARNING",
+      "message": "Missing: Skip navigation links",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.563716",
+      "test_type": "accessibility",
+      "page": "Main Dashboard",
+      "check": "focus_indicators",
+      "status": "PASS",
+      "message": "Focus indicators (4 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.565244",
+      "test_type": "accessibility",
+      "page": "Main Dashboard",
+      "check": "color_only",
+      "status": "WARNING",
+      "message": "Missing: Screen reader text",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.565309",
+      "test_type": "performance",
+      "page": "Main Dashboard",
+      "check": "minified_css",
+      "status": "PASS",
+      "message": "Minified CSS (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.565369",
+      "test_type": "performance",
+      "page": "Main Dashboard",
+      "check": "minified_js",
+      "status": "PASS",
+      "message": "Minified JavaScript (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.565446",
+      "test_type": "performance",
+      "page": "Main Dashboard",
+      "check": "compressed_assets",
+      "status": "INFO",
+      "message": "No compressed assets",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.565789",
+      "test_type": "performance",
+      "page": "Main Dashboard",
+      "check": "cdn_usage",
+      "status": "PASS",
+      "message": "CDN usage (5 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.566961",
+      "test_type": "performance",
+      "page": "Main Dashboard",
+      "check": "async_scripts",
+      "status": "PASS",
+      "message": "Async/defer scripts (9 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.567312",
+      "test_type": "performance",
+      "page": "Main Dashboard",
+      "check": "preload",
+      "status": "INFO",
+      "message": "No resource preloading",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.714757",
+      "test_type": "security",
+      "page": "Main Dashboard",
+      "check": "content_type",
+      "status": "PASS",
+      "message": "Content-Type: text/html; charset=utf-8...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.714798",
+      "test_type": "security",
+      "page": "Main Dashboard",
+      "check": "xss_protection",
+      "status": "PASS",
+      "message": "X-XSS-Protection: 1; mode=block...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.714811",
+      "test_type": "security",
+      "page": "Main Dashboard",
+      "check": "content_type_options",
+      "status": "PASS",
+      "message": "X-Content-Type-Options: nosniff...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.714821",
+      "test_type": "security",
+      "page": "Main Dashboard",
+      "check": "frame_options",
+      "status": "PASS",
+      "message": "X-Frame-Options: SAMEORIGIN...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.714831",
+      "test_type": "security",
+      "page": "Main Dashboard",
+      "check": "csp",
+      "status": "PASS",
+      "message": "Content-Security-Policy: default-src 'self' https:; script-src 'self' 'unsa...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:47.714840",
+      "test_type": "security",
+      "page": "Main Dashboard",
+      "check": "hsts",
+      "status": "PASS",
+      "message": "Strict-Transport-Security: max-age=31536000; includeSubDomains...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.381925",
+      "test_type": "accessibility",
+      "page": "Full Dashboard",
+      "check": "Page Load",
+      "status": "PASS",
+      "message": "Loaded in 0.17s (HTTP 200)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.382226",
+      "test_type": "performance",
+      "page": "Full Dashboard",
+      "check": "Load Time",
+      "status": "PASS",
+      "message": "Fast load (0.17s)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.382285",
+      "test_type": "responsive",
+      "page": "Full Dashboard",
+      "check": "viewport_meta",
+      "status": "PASS",
+      "message": "Viewport meta tag present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.382478",
+      "test_type": "responsive",
+      "page": "Full Dashboard",
+      "check": "responsive_grid",
+      "status": "PASS",
+      "message": "Bootstrap grid classes found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.382597",
+      "test_type": "responsive",
+      "page": "Full Dashboard",
+      "check": "media_queries",
+      "status": "PASS",
+      "message": "Responsive CSS classes",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.383814",
+      "test_type": "responsive",
+      "page": "Full Dashboard",
+      "check": "mobile_nav",
+      "status": "PASS",
+      "message": "Mobile navigation elements",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.383834",
+      "test_type": "ui_framework",
+      "page": "Full Dashboard",
+      "check": "bootstrap_css",
+      "status": "PASS",
+      "message": "Bootstrap CSS loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.383866",
+      "test_type": "ui_framework",
+      "page": "Full Dashboard",
+      "check": "bootstrap_js",
+      "status": "PASS",
+      "message": "Bootstrap JavaScript loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.383926",
+      "test_type": "ui_framework",
+      "page": "Full Dashboard",
+      "check": "chartjs",
+      "status": "PASS",
+      "message": "Chart.js library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.383957",
+      "test_type": "ui_framework",
+      "page": "Full Dashboard",
+      "check": "socketio",
+      "status": "PASS",
+      "message": "Socket.IO library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.383972",
+      "test_type": "ui_framework",
+      "page": "Full Dashboard",
+      "check": "favicon",
+      "status": "PASS",
+      "message": "Favicon present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.383979",
+      "test_type": "ui_framework",
+      "page": "Full Dashboard",
+      "check": "page_title",
+      "status": "PASS",
+      "message": "Page title present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.384053",
+      "test_type": "navigation",
+      "page": "Full Dashboard",
+      "check": "main_nav",
+      "status": "PASS",
+      "message": "Main navigation present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.384306",
+      "test_type": "navigation",
+      "page": "Full Dashboard",
+      "check": "nav_links",
+      "status": "PASS",
+      "message": "Core nav links present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.385114",
+      "test_type": "navigation",
+      "page": "Full Dashboard",
+      "check": "brand_logo",
+      "status": "PASS",
+      "message": "Brand/logo present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.389029",
+      "test_type": "navigation",
+      "page": "Full Dashboard",
+      "check": "user_menu",
+      "status": "FAIL",
+      "message": "Missing: User menu present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.389296",
+      "test_type": "navigation",
+      "page": "Full Dashboard",
+      "check": "search",
+      "status": "PASS",
+      "message": "Search functionality",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.392190",
+      "test_type": "navigation",
+      "page": "Full Dashboard",
+      "check": "breadcrumbs",
+      "status": "WARNING",
+      "message": "Missing: Breadcrumb navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.394052",
+      "test_type": "interactive",
+      "page": "Full Dashboard",
+      "check": "buttons",
+      "status": "PASS",
+      "message": "Buttons present (62 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.394117",
+      "test_type": "interactive",
+      "page": "Full Dashboard",
+      "check": "forms",
+      "status": "PASS",
+      "message": "Forms present (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.395928",
+      "test_type": "interactive",
+      "page": "Full Dashboard",
+      "check": "modals",
+      "status": "PASS",
+      "message": "Modal dialogs (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.396475",
+      "test_type": "interactive",
+      "page": "Full Dashboard",
+      "check": "dropdowns",
+      "status": "INFO",
+      "message": "No dropdown menus",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.398477",
+      "test_type": "interactive",
+      "page": "Full Dashboard",
+      "check": "tabs",
+      "status": "INFO",
+      "message": "No tab navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.399679",
+      "test_type": "interactive",
+      "page": "Full Dashboard",
+      "check": "tooltips",
+      "status": "PASS",
+      "message": "Tooltips/help text (10 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.400822",
+      "test_type": "interactive",
+      "page": "Full Dashboard",
+      "check": "alerts",
+      "status": "PASS",
+      "message": "Alert/notification components (17 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.403048",
+      "test_type": "interactive",
+      "page": "Full Dashboard",
+      "check": "loading",
+      "status": "PASS",
+      "message": "Loading indicators (131 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.403497",
+      "test_type": "accessibility",
+      "page": "Full Dashboard",
+      "check": "alt_text",
+      "status": "PASS",
+      "message": "Images with alt text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.403873",
+      "test_type": "accessibility",
+      "page": "Full Dashboard",
+      "check": "aria_labels",
+      "status": "PASS",
+      "message": "ARIA labels (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.403933",
+      "test_type": "accessibility",
+      "page": "Full Dashboard",
+      "check": "semantic_html",
+      "status": "PASS",
+      "message": "Semantic HTML5 (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.404460",
+      "test_type": "accessibility",
+      "page": "Full Dashboard",
+      "check": "skip_links",
+      "status": "WARNING",
+      "message": "Missing: Skip navigation links",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.405246",
+      "test_type": "accessibility",
+      "page": "Full Dashboard",
+      "check": "focus_indicators",
+      "status": "PASS",
+      "message": "Focus indicators (4 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.406752",
+      "test_type": "accessibility",
+      "page": "Full Dashboard",
+      "check": "color_only",
+      "status": "WARNING",
+      "message": "Missing: Screen reader text",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.406802",
+      "test_type": "performance",
+      "page": "Full Dashboard",
+      "check": "minified_css",
+      "status": "PASS",
+      "message": "Minified CSS (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.406846",
+      "test_type": "performance",
+      "page": "Full Dashboard",
+      "check": "minified_js",
+      "status": "PASS",
+      "message": "Minified JavaScript (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.406907",
+      "test_type": "performance",
+      "page": "Full Dashboard",
+      "check": "compressed_assets",
+      "status": "INFO",
+      "message": "No compressed assets",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.407244",
+      "test_type": "performance",
+      "page": "Full Dashboard",
+      "check": "cdn_usage",
+      "status": "PASS",
+      "message": "CDN usage (5 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.408381",
+      "test_type": "performance",
+      "page": "Full Dashboard",
+      "check": "async_scripts",
+      "status": "PASS",
+      "message": "Async/defer scripts (9 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.408700",
+      "test_type": "performance",
+      "page": "Full Dashboard",
+      "check": "preload",
+      "status": "INFO",
+      "message": "No resource preloading",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.560732",
+      "test_type": "security",
+      "page": "Full Dashboard",
+      "check": "content_type",
+      "status": "PASS",
+      "message": "Content-Type: text/html; charset=utf-8...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.560767",
+      "test_type": "security",
+      "page": "Full Dashboard",
+      "check": "xss_protection",
+      "status": "PASS",
+      "message": "X-XSS-Protection: 1; mode=block...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.560780",
+      "test_type": "security",
+      "page": "Full Dashboard",
+      "check": "content_type_options",
+      "status": "PASS",
+      "message": "X-Content-Type-Options: nosniff...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.560790",
+      "test_type": "security",
+      "page": "Full Dashboard",
+      "check": "frame_options",
+      "status": "PASS",
+      "message": "X-Frame-Options: SAMEORIGIN...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.560799",
+      "test_type": "security",
+      "page": "Full Dashboard",
+      "check": "csp",
+      "status": "PASS",
+      "message": "Content-Security-Policy: default-src 'self' https:; script-src 'self' 'unsa...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:48.560809",
+      "test_type": "security",
+      "page": "Full Dashboard",
+      "check": "hsts",
+      "status": "PASS",
+      "message": "Strict-Transport-Security: max-age=31536000; includeSubDomains...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.210274",
+      "test_type": "accessibility",
+      "page": "Analytics Dashboard",
+      "check": "Page Load",
+      "status": "PASS",
+      "message": "Loaded in 0.15s (HTTP 200)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.210447",
+      "test_type": "performance",
+      "page": "Analytics Dashboard",
+      "check": "Load Time",
+      "status": "PASS",
+      "message": "Fast load (0.15s)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.210476",
+      "test_type": "responsive",
+      "page": "Analytics Dashboard",
+      "check": "viewport_meta",
+      "status": "PASS",
+      "message": "Viewport meta tag present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.210548",
+      "test_type": "responsive",
+      "page": "Analytics Dashboard",
+      "check": "responsive_grid",
+      "status": "PASS",
+      "message": "Bootstrap grid classes found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.210595",
+      "test_type": "responsive",
+      "page": "Analytics Dashboard",
+      "check": "media_queries",
+      "status": "PASS",
+      "message": "Responsive CSS classes",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.211141",
+      "test_type": "responsive",
+      "page": "Analytics Dashboard",
+      "check": "mobile_nav",
+      "status": "PASS",
+      "message": "Mobile navigation elements",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.211152",
+      "test_type": "ui_framework",
+      "page": "Analytics Dashboard",
+      "check": "bootstrap_css",
+      "status": "PASS",
+      "message": "Bootstrap CSS loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.211165",
+      "test_type": "ui_framework",
+      "page": "Analytics Dashboard",
+      "check": "bootstrap_js",
+      "status": "PASS",
+      "message": "Bootstrap JavaScript loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.211194",
+      "test_type": "ui_framework",
+      "page": "Analytics Dashboard",
+      "check": "chartjs",
+      "status": "PASS",
+      "message": "Chart.js library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.211209",
+      "test_type": "ui_framework",
+      "page": "Analytics Dashboard",
+      "check": "socketio",
+      "status": "PASS",
+      "message": "Socket.IO library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.211216",
+      "test_type": "ui_framework",
+      "page": "Analytics Dashboard",
+      "check": "favicon",
+      "status": "PASS",
+      "message": "Favicon present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.211219",
+      "test_type": "ui_framework",
+      "page": "Analytics Dashboard",
+      "check": "page_title",
+      "status": "PASS",
+      "message": "Page title present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.211250",
+      "test_type": "navigation",
+      "page": "Analytics Dashboard",
+      "check": "main_nav",
+      "status": "PASS",
+      "message": "Main navigation present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.211367",
+      "test_type": "navigation",
+      "page": "Analytics Dashboard",
+      "check": "nav_links",
+      "status": "PASS",
+      "message": "Core nav links present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.211758",
+      "test_type": "navigation",
+      "page": "Analytics Dashboard",
+      "check": "brand_logo",
+      "status": "PASS",
+      "message": "Brand/logo present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.214426",
+      "test_type": "navigation",
+      "page": "Analytics Dashboard",
+      "check": "user_menu",
+      "status": "FAIL",
+      "message": "Missing: User menu present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.214666",
+      "test_type": "navigation",
+      "page": "Analytics Dashboard",
+      "check": "search",
+      "status": "PASS",
+      "message": "Search functionality",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.216619",
+      "test_type": "navigation",
+      "page": "Analytics Dashboard",
+      "check": "breadcrumbs",
+      "status": "WARNING",
+      "message": "Missing: Breadcrumb navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.218432",
+      "test_type": "interactive",
+      "page": "Analytics Dashboard",
+      "check": "buttons",
+      "status": "PASS",
+      "message": "Buttons present (95 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.218510",
+      "test_type": "interactive",
+      "page": "Analytics Dashboard",
+      "check": "forms",
+      "status": "PASS",
+      "message": "Forms present (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.220354",
+      "test_type": "interactive",
+      "page": "Analytics Dashboard",
+      "check": "modals",
+      "status": "PASS",
+      "message": "Modal dialogs (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.220964",
+      "test_type": "interactive",
+      "page": "Analytics Dashboard",
+      "check": "dropdowns",
+      "status": "INFO",
+      "message": "No dropdown menus",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.223438",
+      "test_type": "interactive",
+      "page": "Analytics Dashboard",
+      "check": "tabs",
+      "status": "PASS",
+      "message": "Tab navigation (6 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.225265",
+      "test_type": "interactive",
+      "page": "Analytics Dashboard",
+      "check": "tooltips",
+      "status": "PASS",
+      "message": "Tooltips/help text (26 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.227094",
+      "test_type": "interactive",
+      "page": "Analytics Dashboard",
+      "check": "alerts",
+      "status": "PASS",
+      "message": "Alert/notification components (9 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.230265",
+      "test_type": "interactive",
+      "page": "Analytics Dashboard",
+      "check": "loading",
+      "status": "PASS",
+      "message": "Loading indicators (77 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.230828",
+      "test_type": "accessibility",
+      "page": "Analytics Dashboard",
+      "check": "alt_text",
+      "status": "PASS",
+      "message": "Images with alt text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.231478",
+      "test_type": "accessibility",
+      "page": "Analytics Dashboard",
+      "check": "aria_labels",
+      "status": "PASS",
+      "message": "ARIA labels (8 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.231578",
+      "test_type": "accessibility",
+      "page": "Analytics Dashboard",
+      "check": "semantic_html",
+      "status": "PASS",
+      "message": "Semantic HTML5 (3 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.232371",
+      "test_type": "accessibility",
+      "page": "Analytics Dashboard",
+      "check": "skip_links",
+      "status": "WARNING",
+      "message": "Missing: Skip navigation links",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.233558",
+      "test_type": "accessibility",
+      "page": "Analytics Dashboard",
+      "check": "focus_indicators",
+      "status": "PASS",
+      "message": "Focus indicators (3 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.235730",
+      "test_type": "accessibility",
+      "page": "Analytics Dashboard",
+      "check": "color_only",
+      "status": "PASS",
+      "message": "Screen reader text (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.235784",
+      "test_type": "performance",
+      "page": "Analytics Dashboard",
+      "check": "minified_css",
+      "status": "PASS",
+      "message": "Minified CSS (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.235839",
+      "test_type": "performance",
+      "page": "Analytics Dashboard",
+      "check": "minified_js",
+      "status": "PASS",
+      "message": "Minified JavaScript (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.235913",
+      "test_type": "performance",
+      "page": "Analytics Dashboard",
+      "check": "compressed_assets",
+      "status": "INFO",
+      "message": "No compressed assets",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.236407",
+      "test_type": "performance",
+      "page": "Analytics Dashboard",
+      "check": "cdn_usage",
+      "status": "PASS",
+      "message": "CDN usage (5 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.238103",
+      "test_type": "performance",
+      "page": "Analytics Dashboard",
+      "check": "async_scripts",
+      "status": "PASS",
+      "message": "Async/defer scripts (12 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.238608",
+      "test_type": "performance",
+      "page": "Analytics Dashboard",
+      "check": "preload",
+      "status": "INFO",
+      "message": "No resource preloading",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.389510",
+      "test_type": "security",
+      "page": "Analytics Dashboard",
+      "check": "content_type",
+      "status": "PASS",
+      "message": "Content-Type: text/html; charset=utf-8...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.389523",
+      "test_type": "security",
+      "page": "Analytics Dashboard",
+      "check": "xss_protection",
+      "status": "PASS",
+      "message": "X-XSS-Protection: 1; mode=block...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.389527",
+      "test_type": "security",
+      "page": "Analytics Dashboard",
+      "check": "content_type_options",
+      "status": "PASS",
+      "message": "X-Content-Type-Options: nosniff...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.389529",
+      "test_type": "security",
+      "page": "Analytics Dashboard",
+      "check": "frame_options",
+      "status": "PASS",
+      "message": "X-Frame-Options: SAMEORIGIN...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.389532",
+      "test_type": "security",
+      "page": "Analytics Dashboard",
+      "check": "csp",
+      "status": "PASS",
+      "message": "Content-Security-Policy: default-src 'self' https:; script-src 'self' 'unsa...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:49.389534",
+      "test_type": "security",
+      "page": "Analytics Dashboard",
+      "check": "hsts",
+      "status": "PASS",
+      "message": "Strict-Transport-Security: max-age=31536000; includeSubDomains...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.064904",
+      "test_type": "accessibility",
+      "page": "Performance Dashboard",
+      "check": "Page Load",
+      "status": "PASS",
+      "message": "Loaded in 0.18s (HTTP 200)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.065124",
+      "test_type": "performance",
+      "page": "Performance Dashboard",
+      "check": "Load Time",
+      "status": "PASS",
+      "message": "Fast load (0.18s)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.065160",
+      "test_type": "responsive",
+      "page": "Performance Dashboard",
+      "check": "viewport_meta",
+      "status": "PASS",
+      "message": "Viewport meta tag present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.065267",
+      "test_type": "responsive",
+      "page": "Performance Dashboard",
+      "check": "responsive_grid",
+      "status": "PASS",
+      "message": "Bootstrap grid classes found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.065334",
+      "test_type": "responsive",
+      "page": "Performance Dashboard",
+      "check": "media_queries",
+      "status": "PASS",
+      "message": "Responsive CSS classes",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.066217",
+      "test_type": "responsive",
+      "page": "Performance Dashboard",
+      "check": "mobile_nav",
+      "status": "PASS",
+      "message": "Mobile navigation elements",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.066233",
+      "test_type": "ui_framework",
+      "page": "Performance Dashboard",
+      "check": "bootstrap_css",
+      "status": "PASS",
+      "message": "Bootstrap CSS loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.066247",
+      "test_type": "ui_framework",
+      "page": "Performance Dashboard",
+      "check": "bootstrap_js",
+      "status": "PASS",
+      "message": "Bootstrap JavaScript loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.066285",
+      "test_type": "ui_framework",
+      "page": "Performance Dashboard",
+      "check": "chartjs",
+      "status": "PASS",
+      "message": "Chart.js library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.066304",
+      "test_type": "ui_framework",
+      "page": "Performance Dashboard",
+      "check": "socketio",
+      "status": "PASS",
+      "message": "Socket.IO library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.066314",
+      "test_type": "ui_framework",
+      "page": "Performance Dashboard",
+      "check": "favicon",
+      "status": "PASS",
+      "message": "Favicon present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.066318",
+      "test_type": "ui_framework",
+      "page": "Performance Dashboard",
+      "check": "page_title",
+      "status": "PASS",
+      "message": "Page title present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.066362",
+      "test_type": "navigation",
+      "page": "Performance Dashboard",
+      "check": "main_nav",
+      "status": "PASS",
+      "message": "Main navigation present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.066551",
+      "test_type": "navigation",
+      "page": "Performance Dashboard",
+      "check": "nav_links",
+      "status": "PASS",
+      "message": "Core nav links present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.067214",
+      "test_type": "navigation",
+      "page": "Performance Dashboard",
+      "check": "brand_logo",
+      "status": "PASS",
+      "message": "Brand/logo present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.071960",
+      "test_type": "navigation",
+      "page": "Performance Dashboard",
+      "check": "user_menu",
+      "status": "FAIL",
+      "message": "Missing: User menu present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.072547",
+      "test_type": "navigation",
+      "page": "Performance Dashboard",
+      "check": "search",
+      "status": "PASS",
+      "message": "Search functionality",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.076919",
+      "test_type": "navigation",
+      "page": "Performance Dashboard",
+      "check": "breadcrumbs",
+      "status": "WARNING",
+      "message": "Missing: Breadcrumb navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.079547",
+      "test_type": "interactive",
+      "page": "Performance Dashboard",
+      "check": "buttons",
+      "status": "PASS",
+      "message": "Buttons present (86 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.079638",
+      "test_type": "interactive",
+      "page": "Performance Dashboard",
+      "check": "forms",
+      "status": "PASS",
+      "message": "Forms present (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.081991",
+      "test_type": "interactive",
+      "page": "Performance Dashboard",
+      "check": "modals",
+      "status": "PASS",
+      "message": "Modal dialogs (40 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.082669",
+      "test_type": "interactive",
+      "page": "Performance Dashboard",
+      "check": "dropdowns",
+      "status": "PASS",
+      "message": "Dropdown menus (49 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.085158",
+      "test_type": "interactive",
+      "page": "Performance Dashboard",
+      "check": "tabs",
+      "status": "INFO",
+      "message": "No tab navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.086815",
+      "test_type": "interactive",
+      "page": "Performance Dashboard",
+      "check": "tooltips",
+      "status": "PASS",
+      "message": "Tooltips/help text (16 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.088437",
+      "test_type": "interactive",
+      "page": "Performance Dashboard",
+      "check": "alerts",
+      "status": "PASS",
+      "message": "Alert/notification components (7 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.091151",
+      "test_type": "interactive",
+      "page": "Performance Dashboard",
+      "check": "loading",
+      "status": "PASS",
+      "message": "Loading indicators (139 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.091691",
+      "test_type": "accessibility",
+      "page": "Performance Dashboard",
+      "check": "alt_text",
+      "status": "PASS",
+      "message": "Images with alt text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.092253",
+      "test_type": "accessibility",
+      "page": "Performance Dashboard",
+      "check": "aria_labels",
+      "status": "PASS",
+      "message": "ARIA labels (3 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.092356",
+      "test_type": "accessibility",
+      "page": "Performance Dashboard",
+      "check": "semantic_html",
+      "status": "PASS",
+      "message": "Semantic HTML5 (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.093147",
+      "test_type": "accessibility",
+      "page": "Performance Dashboard",
+      "check": "skip_links",
+      "status": "WARNING",
+      "message": "Missing: Skip navigation links",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.094356",
+      "test_type": "accessibility",
+      "page": "Performance Dashboard",
+      "check": "focus_indicators",
+      "status": "PASS",
+      "message": "Focus indicators (3 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.096544",
+      "test_type": "accessibility",
+      "page": "Performance Dashboard",
+      "check": "color_only",
+      "status": "PASS",
+      "message": "Screen reader text (8 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.096600",
+      "test_type": "performance",
+      "page": "Performance Dashboard",
+      "check": "minified_css",
+      "status": "PASS",
+      "message": "Minified CSS (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.096657",
+      "test_type": "performance",
+      "page": "Performance Dashboard",
+      "check": "minified_js",
+      "status": "PASS",
+      "message": "Minified JavaScript (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.096724",
+      "test_type": "performance",
+      "page": "Performance Dashboard",
+      "check": "compressed_assets",
+      "status": "INFO",
+      "message": "No compressed assets",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.097246",
+      "test_type": "performance",
+      "page": "Performance Dashboard",
+      "check": "cdn_usage",
+      "status": "PASS",
+      "message": "CDN usage (5 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.098939",
+      "test_type": "performance",
+      "page": "Performance Dashboard",
+      "check": "async_scripts",
+      "status": "PASS",
+      "message": "Async/defer scripts (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.099420",
+      "test_type": "performance",
+      "page": "Performance Dashboard",
+      "check": "preload",
+      "status": "INFO",
+      "message": "No resource preloading",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.281558",
+      "test_type": "security",
+      "page": "Performance Dashboard",
+      "check": "content_type",
+      "status": "PASS",
+      "message": "Content-Type: text/html; charset=utf-8...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.281579",
+      "test_type": "security",
+      "page": "Performance Dashboard",
+      "check": "xss_protection",
+      "status": "PASS",
+      "message": "X-XSS-Protection: 1; mode=block...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.281583",
+      "test_type": "security",
+      "page": "Performance Dashboard",
+      "check": "content_type_options",
+      "status": "PASS",
+      "message": "X-Content-Type-Options: nosniff...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.281587",
+      "test_type": "security",
+      "page": "Performance Dashboard",
+      "check": "frame_options",
+      "status": "PASS",
+      "message": "X-Frame-Options: SAMEORIGIN...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.281591",
+      "test_type": "security",
+      "page": "Performance Dashboard",
+      "check": "csp",
+      "status": "PASS",
+      "message": "Content-Security-Policy: default-src 'self' https:; script-src 'self' 'unsa...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.281596",
+      "test_type": "security",
+      "page": "Performance Dashboard",
+      "check": "hsts",
+      "status": "PASS",
+      "message": "Strict-Transport-Security: max-age=31536000; includeSubDomains...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.931083",
+      "test_type": "accessibility",
+      "page": "AI Dashboard",
+      "check": "Page Load",
+      "status": "PASS",
+      "message": "Loaded in 0.15s (HTTP 200)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.931135",
+      "test_type": "performance",
+      "page": "AI Dashboard",
+      "check": "Load Time",
+      "status": "PASS",
+      "message": "Fast load (0.15s)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.931173",
+      "test_type": "responsive",
+      "page": "AI Dashboard",
+      "check": "viewport_meta",
+      "status": "PASS",
+      "message": "Viewport meta tag present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.931316",
+      "test_type": "responsive",
+      "page": "AI Dashboard",
+      "check": "responsive_grid",
+      "status": "PASS",
+      "message": "Bootstrap grid classes found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.931411",
+      "test_type": "responsive",
+      "page": "AI Dashboard",
+      "check": "media_queries",
+      "status": "PASS",
+      "message": "Responsive CSS classes",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.932140",
+      "test_type": "responsive",
+      "page": "AI Dashboard",
+      "check": "mobile_nav",
+      "status": "PASS",
+      "message": "Mobile navigation elements",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.932155",
+      "test_type": "ui_framework",
+      "page": "AI Dashboard",
+      "check": "bootstrap_css",
+      "status": "PASS",
+      "message": "Bootstrap CSS loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.932173",
+      "test_type": "ui_framework",
+      "page": "AI Dashboard",
+      "check": "bootstrap_js",
+      "status": "PASS",
+      "message": "Bootstrap JavaScript loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.932218",
+      "test_type": "ui_framework",
+      "page": "AI Dashboard",
+      "check": "chartjs",
+      "status": "PASS",
+      "message": "Chart.js library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.932244",
+      "test_type": "ui_framework",
+      "page": "AI Dashboard",
+      "check": "socketio",
+      "status": "PASS",
+      "message": "Socket.IO library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.932255",
+      "test_type": "ui_framework",
+      "page": "AI Dashboard",
+      "check": "favicon",
+      "status": "PASS",
+      "message": "Favicon present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.932261",
+      "test_type": "ui_framework",
+      "page": "AI Dashboard",
+      "check": "page_title",
+      "status": "PASS",
+      "message": "Page title present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.932318",
+      "test_type": "navigation",
+      "page": "AI Dashboard",
+      "check": "main_nav",
+      "status": "PASS",
+      "message": "Main navigation present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.932485",
+      "test_type": "navigation",
+      "page": "AI Dashboard",
+      "check": "nav_links",
+      "status": "PASS",
+      "message": "Core nav links present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.933012",
+      "test_type": "navigation",
+      "page": "AI Dashboard",
+      "check": "brand_logo",
+      "status": "PASS",
+      "message": "Brand/logo present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.934927",
+      "test_type": "navigation",
+      "page": "AI Dashboard",
+      "check": "user_menu",
+      "status": "FAIL",
+      "message": "Missing: User menu present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.935334",
+      "test_type": "navigation",
+      "page": "AI Dashboard",
+      "check": "search",
+      "status": "PASS",
+      "message": "Search functionality",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.936949",
+      "test_type": "navigation",
+      "page": "AI Dashboard",
+      "check": "breadcrumbs",
+      "status": "WARNING",
+      "message": "Missing: Breadcrumb navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.938306",
+      "test_type": "interactive",
+      "page": "AI Dashboard",
+      "check": "buttons",
+      "status": "PASS",
+      "message": "Buttons present (57 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.938358",
+      "test_type": "interactive",
+      "page": "AI Dashboard",
+      "check": "forms",
+      "status": "PASS",
+      "message": "Forms present (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.939836",
+      "test_type": "interactive",
+      "page": "AI Dashboard",
+      "check": "modals",
+      "status": "PASS",
+      "message": "Modal dialogs (3 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.940445",
+      "test_type": "interactive",
+      "page": "AI Dashboard",
+      "check": "dropdowns",
+      "status": "INFO",
+      "message": "No dropdown menus",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.942340",
+      "test_type": "interactive",
+      "page": "AI Dashboard",
+      "check": "tabs",
+      "status": "INFO",
+      "message": "No tab navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.943515",
+      "test_type": "interactive",
+      "page": "AI Dashboard",
+      "check": "tooltips",
+      "status": "PASS",
+      "message": "Tooltips/help text (10 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.944515",
+      "test_type": "interactive",
+      "page": "AI Dashboard",
+      "check": "alerts",
+      "status": "PASS",
+      "message": "Alert/notification components (9 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.946059",
+      "test_type": "interactive",
+      "page": "AI Dashboard",
+      "check": "loading",
+      "status": "PASS",
+      "message": "Loading indicators (47 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.946344",
+      "test_type": "accessibility",
+      "page": "AI Dashboard",
+      "check": "alt_text",
+      "status": "PASS",
+      "message": "Images with alt text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.946609",
+      "test_type": "accessibility",
+      "page": "AI Dashboard",
+      "check": "aria_labels",
+      "status": "PASS",
+      "message": "ARIA labels (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.946657",
+      "test_type": "accessibility",
+      "page": "AI Dashboard",
+      "check": "semantic_html",
+      "status": "PASS",
+      "message": "Semantic HTML5 (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.947049",
+      "test_type": "accessibility",
+      "page": "AI Dashboard",
+      "check": "skip_links",
+      "status": "WARNING",
+      "message": "Missing: Skip navigation links",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.947600",
+      "test_type": "accessibility",
+      "page": "AI Dashboard",
+      "check": "focus_indicators",
+      "status": "PASS",
+      "message": "Focus indicators (3 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.948711",
+      "test_type": "accessibility",
+      "page": "AI Dashboard",
+      "check": "color_only",
+      "status": "WARNING",
+      "message": "Missing: Screen reader text",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.948748",
+      "test_type": "performance",
+      "page": "AI Dashboard",
+      "check": "minified_css",
+      "status": "PASS",
+      "message": "Minified CSS (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.948777",
+      "test_type": "performance",
+      "page": "AI Dashboard",
+      "check": "minified_js",
+      "status": "PASS",
+      "message": "Minified JavaScript (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.948813",
+      "test_type": "performance",
+      "page": "AI Dashboard",
+      "check": "compressed_assets",
+      "status": "INFO",
+      "message": "No compressed assets",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.949099",
+      "test_type": "performance",
+      "page": "AI Dashboard",
+      "check": "cdn_usage",
+      "status": "PASS",
+      "message": "CDN usage (5 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.949928",
+      "test_type": "performance",
+      "page": "AI Dashboard",
+      "check": "async_scripts",
+      "status": "PASS",
+      "message": "Async/defer scripts (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:50.950293",
+      "test_type": "performance",
+      "page": "AI Dashboard",
+      "check": "preload",
+      "status": "INFO",
+      "message": "No resource preloading",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.100140",
+      "test_type": "security",
+      "page": "AI Dashboard",
+      "check": "content_type",
+      "status": "PASS",
+      "message": "Content-Type: text/html; charset=utf-8...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.100164",
+      "test_type": "security",
+      "page": "AI Dashboard",
+      "check": "xss_protection",
+      "status": "PASS",
+      "message": "X-XSS-Protection: 1; mode=block...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.100171",
+      "test_type": "security",
+      "page": "AI Dashboard",
+      "check": "content_type_options",
+      "status": "PASS",
+      "message": "X-Content-Type-Options: nosniff...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.100176",
+      "test_type": "security",
+      "page": "AI Dashboard",
+      "check": "frame_options",
+      "status": "PASS",
+      "message": "X-Frame-Options: SAMEORIGIN...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.100181",
+      "test_type": "security",
+      "page": "AI Dashboard",
+      "check": "csp",
+      "status": "PASS",
+      "message": "Content-Security-Policy: default-src 'self' https:; script-src 'self' 'unsa...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.100186",
+      "test_type": "security",
+      "page": "AI Dashboard",
+      "check": "hsts",
+      "status": "PASS",
+      "message": "Strict-Transport-Security: max-age=31536000; includeSubDomains...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.791984",
+      "test_type": "accessibility",
+      "page": "Security Dashboard",
+      "check": "Page Load",
+      "status": "PASS",
+      "message": "Loaded in 0.19s (HTTP 200)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.792010",
+      "test_type": "performance",
+      "page": "Security Dashboard",
+      "check": "Load Time",
+      "status": "PASS",
+      "message": "Fast load (0.19s)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.792054",
+      "test_type": "responsive",
+      "page": "Security Dashboard",
+      "check": "viewport_meta",
+      "status": "PASS",
+      "message": "Viewport meta tag present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.792158",
+      "test_type": "responsive",
+      "page": "Security Dashboard",
+      "check": "responsive_grid",
+      "status": "PASS",
+      "message": "Bootstrap grid classes found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.792225",
+      "test_type": "responsive",
+      "page": "Security Dashboard",
+      "check": "media_queries",
+      "status": "PASS",
+      "message": "Responsive CSS classes",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.792872",
+      "test_type": "responsive",
+      "page": "Security Dashboard",
+      "check": "mobile_nav",
+      "status": "PASS",
+      "message": "Mobile navigation elements",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.792887",
+      "test_type": "ui_framework",
+      "page": "Security Dashboard",
+      "check": "bootstrap_css",
+      "status": "PASS",
+      "message": "Bootstrap CSS loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.792903",
+      "test_type": "ui_framework",
+      "page": "Security Dashboard",
+      "check": "bootstrap_js",
+      "status": "PASS",
+      "message": "Bootstrap JavaScript loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.792942",
+      "test_type": "ui_framework",
+      "page": "Security Dashboard",
+      "check": "chartjs",
+      "status": "PASS",
+      "message": "Chart.js library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.792965",
+      "test_type": "ui_framework",
+      "page": "Security Dashboard",
+      "check": "socketio",
+      "status": "PASS",
+      "message": "Socket.IO library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.792975",
+      "test_type": "ui_framework",
+      "page": "Security Dashboard",
+      "check": "favicon",
+      "status": "PASS",
+      "message": "Favicon present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.792979",
+      "test_type": "ui_framework",
+      "page": "Security Dashboard",
+      "check": "page_title",
+      "status": "PASS",
+      "message": "Page title present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.793027",
+      "test_type": "navigation",
+      "page": "Security Dashboard",
+      "check": "main_nav",
+      "status": "PASS",
+      "message": "Main navigation present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.793237",
+      "test_type": "navigation",
+      "page": "Security Dashboard",
+      "check": "nav_links",
+      "status": "PASS",
+      "message": "Core nav links present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.793740",
+      "test_type": "navigation",
+      "page": "Security Dashboard",
+      "check": "brand_logo",
+      "status": "PASS",
+      "message": "Brand/logo present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.795947",
+      "test_type": "navigation",
+      "page": "Security Dashboard",
+      "check": "user_menu",
+      "status": "FAIL",
+      "message": "Missing: User menu present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.796482",
+      "test_type": "navigation",
+      "page": "Security Dashboard",
+      "check": "search",
+      "status": "PASS",
+      "message": "Search functionality",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.798409",
+      "test_type": "navigation",
+      "page": "Security Dashboard",
+      "check": "breadcrumbs",
+      "status": "WARNING",
+      "message": "Missing: Breadcrumb navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.799861",
+      "test_type": "interactive",
+      "page": "Security Dashboard",
+      "check": "buttons",
+      "status": "PASS",
+      "message": "Buttons present (51 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.799925",
+      "test_type": "interactive",
+      "page": "Security Dashboard",
+      "check": "forms",
+      "status": "PASS",
+      "message": "Forms present (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.801712",
+      "test_type": "interactive",
+      "page": "Security Dashboard",
+      "check": "modals",
+      "status": "PASS",
+      "message": "Modal dialogs (4 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.802431",
+      "test_type": "interactive",
+      "page": "Security Dashboard",
+      "check": "dropdowns",
+      "status": "INFO",
+      "message": "No dropdown menus",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.804736",
+      "test_type": "interactive",
+      "page": "Security Dashboard",
+      "check": "tabs",
+      "status": "PASS",
+      "message": "Tab navigation (3 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.806151",
+      "test_type": "interactive",
+      "page": "Security Dashboard",
+      "check": "tooltips",
+      "status": "PASS",
+      "message": "Tooltips/help text (28 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.807375",
+      "test_type": "interactive",
+      "page": "Security Dashboard",
+      "check": "alerts",
+      "status": "PASS",
+      "message": "Alert/notification components (11 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.809630",
+      "test_type": "interactive",
+      "page": "Security Dashboard",
+      "check": "loading",
+      "status": "PASS",
+      "message": "Loading indicators (31 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.810243",
+      "test_type": "accessibility",
+      "page": "Security Dashboard",
+      "check": "alt_text",
+      "status": "PASS",
+      "message": "Images with alt text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.810829",
+      "test_type": "accessibility",
+      "page": "Security Dashboard",
+      "check": "aria_labels",
+      "status": "PASS",
+      "message": "ARIA labels (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.811021",
+      "test_type": "accessibility",
+      "page": "Security Dashboard",
+      "check": "semantic_html",
+      "status": "PASS",
+      "message": "Semantic HTML5 (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.812148",
+      "test_type": "accessibility",
+      "page": "Security Dashboard",
+      "check": "skip_links",
+      "status": "WARNING",
+      "message": "Missing: Skip navigation links",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.813292",
+      "test_type": "accessibility",
+      "page": "Security Dashboard",
+      "check": "focus_indicators",
+      "status": "PASS",
+      "message": "Focus indicators (4 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.815450",
+      "test_type": "accessibility",
+      "page": "Security Dashboard",
+      "check": "color_only",
+      "status": "PASS",
+      "message": "Screen reader text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.815521",
+      "test_type": "performance",
+      "page": "Security Dashboard",
+      "check": "minified_css",
+      "status": "PASS",
+      "message": "Minified CSS (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.815573",
+      "test_type": "performance",
+      "page": "Security Dashboard",
+      "check": "minified_js",
+      "status": "PASS",
+      "message": "Minified JavaScript (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.815631",
+      "test_type": "performance",
+      "page": "Security Dashboard",
+      "check": "compressed_assets",
+      "status": "INFO",
+      "message": "No compressed assets",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.816119",
+      "test_type": "performance",
+      "page": "Security Dashboard",
+      "check": "cdn_usage",
+      "status": "PASS",
+      "message": "CDN usage (5 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.817404",
+      "test_type": "performance",
+      "page": "Security Dashboard",
+      "check": "async_scripts",
+      "status": "PASS",
+      "message": "Async/defer scripts (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.817784",
+      "test_type": "performance",
+      "page": "Security Dashboard",
+      "check": "preload",
+      "status": "INFO",
+      "message": "No resource preloading",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.982088",
+      "test_type": "security",
+      "page": "Security Dashboard",
+      "check": "content_type",
+      "status": "PASS",
+      "message": "Content-Type: text/html; charset=utf-8...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.982108",
+      "test_type": "security",
+      "page": "Security Dashboard",
+      "check": "xss_protection",
+      "status": "PASS",
+      "message": "X-XSS-Protection: 1; mode=block...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.982114",
+      "test_type": "security",
+      "page": "Security Dashboard",
+      "check": "content_type_options",
+      "status": "PASS",
+      "message": "X-Content-Type-Options: nosniff...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.982118",
+      "test_type": "security",
+      "page": "Security Dashboard",
+      "check": "frame_options",
+      "status": "PASS",
+      "message": "X-Frame-Options: SAMEORIGIN...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.982123",
+      "test_type": "security",
+      "page": "Security Dashboard",
+      "check": "csp",
+      "status": "PASS",
+      "message": "Content-Security-Policy: default-src 'self' https:; script-src 'self' 'unsa...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:51.982127",
+      "test_type": "security",
+      "page": "Security Dashboard",
+      "check": "hsts",
+      "status": "PASS",
+      "message": "Strict-Transport-Security: max-age=31536000; includeSubDomains...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.655359",
+      "test_type": "accessibility",
+      "page": "Security Page",
+      "check": "Page Load",
+      "status": "PASS",
+      "message": "Loaded in 0.17s (HTTP 200)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.655387",
+      "test_type": "performance",
+      "page": "Security Page",
+      "check": "Load Time",
+      "status": "PASS",
+      "message": "Fast load (0.17s)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.655420",
+      "test_type": "responsive",
+      "page": "Security Page",
+      "check": "viewport_meta",
+      "status": "PASS",
+      "message": "Viewport meta tag present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.655522",
+      "test_type": "responsive",
+      "page": "Security Page",
+      "check": "responsive_grid",
+      "status": "PASS",
+      "message": "Bootstrap grid classes found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.655589",
+      "test_type": "responsive",
+      "page": "Security Page",
+      "check": "media_queries",
+      "status": "PASS",
+      "message": "Responsive CSS classes",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.656216",
+      "test_type": "responsive",
+      "page": "Security Page",
+      "check": "mobile_nav",
+      "status": "PASS",
+      "message": "Mobile navigation elements",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.656229",
+      "test_type": "ui_framework",
+      "page": "Security Page",
+      "check": "bootstrap_css",
+      "status": "PASS",
+      "message": "Bootstrap CSS loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.656255",
+      "test_type": "ui_framework",
+      "page": "Security Page",
+      "check": "bootstrap_js",
+      "status": "PASS",
+      "message": "Bootstrap JavaScript loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.656288",
+      "test_type": "ui_framework",
+      "page": "Security Page",
+      "check": "chartjs",
+      "status": "PASS",
+      "message": "Chart.js library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.656307",
+      "test_type": "ui_framework",
+      "page": "Security Page",
+      "check": "socketio",
+      "status": "PASS",
+      "message": "Socket.IO library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.656315",
+      "test_type": "ui_framework",
+      "page": "Security Page",
+      "check": "favicon",
+      "status": "PASS",
+      "message": "Favicon present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.656320",
+      "test_type": "ui_framework",
+      "page": "Security Page",
+      "check": "page_title",
+      "status": "PASS",
+      "message": "Page title present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.656357",
+      "test_type": "navigation",
+      "page": "Security Page",
+      "check": "main_nav",
+      "status": "PASS",
+      "message": "Main navigation present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.656503",
+      "test_type": "navigation",
+      "page": "Security Page",
+      "check": "nav_links",
+      "status": "PASS",
+      "message": "Core nav links present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.656920",
+      "test_type": "navigation",
+      "page": "Security Page",
+      "check": "brand_logo",
+      "status": "PASS",
+      "message": "Brand/logo present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.658416",
+      "test_type": "navigation",
+      "page": "Security Page",
+      "check": "user_menu",
+      "status": "FAIL",
+      "message": "Missing: User menu present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.658652",
+      "test_type": "navigation",
+      "page": "Security Page",
+      "check": "search",
+      "status": "PASS",
+      "message": "Search functionality",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.659566",
+      "test_type": "navigation",
+      "page": "Security Page",
+      "check": "breadcrumbs",
+      "status": "WARNING",
+      "message": "Missing: Breadcrumb navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.660260",
+      "test_type": "interactive",
+      "page": "Security Page",
+      "check": "buttons",
+      "status": "PASS",
+      "message": "Buttons present (51 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.660291",
+      "test_type": "interactive",
+      "page": "Security Page",
+      "check": "forms",
+      "status": "PASS",
+      "message": "Forms present (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.661106",
+      "test_type": "interactive",
+      "page": "Security Page",
+      "check": "modals",
+      "status": "PASS",
+      "message": "Modal dialogs (4 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.661396",
+      "test_type": "interactive",
+      "page": "Security Page",
+      "check": "dropdowns",
+      "status": "INFO",
+      "message": "No dropdown menus",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.662397",
+      "test_type": "interactive",
+      "page": "Security Page",
+      "check": "tabs",
+      "status": "PASS",
+      "message": "Tab navigation (3 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.663135",
+      "test_type": "interactive",
+      "page": "Security Page",
+      "check": "tooltips",
+      "status": "PASS",
+      "message": "Tooltips/help text (28 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.663810",
+      "test_type": "interactive",
+      "page": "Security Page",
+      "check": "alerts",
+      "status": "PASS",
+      "message": "Alert/notification components (11 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.664963",
+      "test_type": "interactive",
+      "page": "Security Page",
+      "check": "loading",
+      "status": "PASS",
+      "message": "Loading indicators (31 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.665243",
+      "test_type": "accessibility",
+      "page": "Security Page",
+      "check": "alt_text",
+      "status": "PASS",
+      "message": "Images with alt text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.665505",
+      "test_type": "accessibility",
+      "page": "Security Page",
+      "check": "aria_labels",
+      "status": "PASS",
+      "message": "ARIA labels (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.665554",
+      "test_type": "accessibility",
+      "page": "Security Page",
+      "check": "semantic_html",
+      "status": "PASS",
+      "message": "Semantic HTML5 (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.665928",
+      "test_type": "accessibility",
+      "page": "Security Page",
+      "check": "skip_links",
+      "status": "WARNING",
+      "message": "Missing: Skip navigation links",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.666450",
+      "test_type": "accessibility",
+      "page": "Security Page",
+      "check": "focus_indicators",
+      "status": "PASS",
+      "message": "Focus indicators (4 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.667580",
+      "test_type": "accessibility",
+      "page": "Security Page",
+      "check": "color_only",
+      "status": "PASS",
+      "message": "Screen reader text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.667615",
+      "test_type": "performance",
+      "page": "Security Page",
+      "check": "minified_css",
+      "status": "PASS",
+      "message": "Minified CSS (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.667642",
+      "test_type": "performance",
+      "page": "Security Page",
+      "check": "minified_js",
+      "status": "PASS",
+      "message": "Minified JavaScript (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.667671",
+      "test_type": "performance",
+      "page": "Security Page",
+      "check": "compressed_assets",
+      "status": "INFO",
+      "message": "No compressed assets",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.667917",
+      "test_type": "performance",
+      "page": "Security Page",
+      "check": "cdn_usage",
+      "status": "PASS",
+      "message": "CDN usage (5 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.668685",
+      "test_type": "performance",
+      "page": "Security Page",
+      "check": "async_scripts",
+      "status": "PASS",
+      "message": "Async/defer scripts (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.668918",
+      "test_type": "performance",
+      "page": "Security Page",
+      "check": "preload",
+      "status": "INFO",
+      "message": "No resource preloading",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.825114",
+      "test_type": "security",
+      "page": "Security Page",
+      "check": "content_type",
+      "status": "PASS",
+      "message": "Content-Type: text/html; charset=utf-8...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.825136",
+      "test_type": "security",
+      "page": "Security Page",
+      "check": "xss_protection",
+      "status": "PASS",
+      "message": "X-XSS-Protection: 1; mode=block...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.825143",
+      "test_type": "security",
+      "page": "Security Page",
+      "check": "content_type_options",
+      "status": "PASS",
+      "message": "X-Content-Type-Options: nosniff...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.825147",
+      "test_type": "security",
+      "page": "Security Page",
+      "check": "frame_options",
+      "status": "PASS",
+      "message": "X-Frame-Options: SAMEORIGIN...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.825153",
+      "test_type": "security",
+      "page": "Security Page",
+      "check": "csp",
+      "status": "PASS",
+      "message": "Content-Security-Policy: default-src 'self' https:; script-src 'self' 'unsa...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:52.825159",
+      "test_type": "security",
+      "page": "Security Page",
+      "check": "hsts",
+      "status": "PASS",
+      "message": "Strict-Transport-Security: max-age=31536000; includeSubDomains...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.453682",
+      "test_type": "accessibility",
+      "page": "Devices List",
+      "check": "Page Load",
+      "status": "PASS",
+      "message": "Loaded in 0.13s (HTTP 200)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.453781",
+      "test_type": "performance",
+      "page": "Devices List",
+      "check": "Load Time",
+      "status": "PASS",
+      "message": "Fast load (0.13s)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.453839",
+      "test_type": "responsive",
+      "page": "Devices List",
+      "check": "viewport_meta",
+      "status": "PASS",
+      "message": "Viewport meta tag present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.453988",
+      "test_type": "responsive",
+      "page": "Devices List",
+      "check": "responsive_grid",
+      "status": "PASS",
+      "message": "Bootstrap grid classes found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.454076",
+      "test_type": "responsive",
+      "page": "Devices List",
+      "check": "media_queries",
+      "status": "PASS",
+      "message": "Responsive CSS classes",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.455026",
+      "test_type": "responsive",
+      "page": "Devices List",
+      "check": "mobile_nav",
+      "status": "PASS",
+      "message": "Mobile navigation elements",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.455046",
+      "test_type": "ui_framework",
+      "page": "Devices List",
+      "check": "bootstrap_css",
+      "status": "PASS",
+      "message": "Bootstrap CSS loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.455065",
+      "test_type": "ui_framework",
+      "page": "Devices List",
+      "check": "bootstrap_js",
+      "status": "PASS",
+      "message": "Bootstrap JavaScript loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.455117",
+      "test_type": "ui_framework",
+      "page": "Devices List",
+      "check": "chartjs",
+      "status": "PASS",
+      "message": "Chart.js library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.455143",
+      "test_type": "ui_framework",
+      "page": "Devices List",
+      "check": "socketio",
+      "status": "PASS",
+      "message": "Socket.IO library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.455154",
+      "test_type": "ui_framework",
+      "page": "Devices List",
+      "check": "favicon",
+      "status": "PASS",
+      "message": "Favicon present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.455194",
+      "test_type": "ui_framework",
+      "page": "Devices List",
+      "check": "page_title",
+      "status": "PASS",
+      "message": "Page title present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.455255",
+      "test_type": "navigation",
+      "page": "Devices List",
+      "check": "main_nav",
+      "status": "PASS",
+      "message": "Main navigation present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.455488",
+      "test_type": "navigation",
+      "page": "Devices List",
+      "check": "nav_links",
+      "status": "PASS",
+      "message": "Core nav links present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.456303",
+      "test_type": "navigation",
+      "page": "Devices List",
+      "check": "brand_logo",
+      "status": "PASS",
+      "message": "Brand/logo present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.460698",
+      "test_type": "navigation",
+      "page": "Devices List",
+      "check": "user_menu",
+      "status": "FAIL",
+      "message": "Missing: User menu present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.460989",
+      "test_type": "navigation",
+      "page": "Devices List",
+      "check": "search",
+      "status": "PASS",
+      "message": "Search functionality",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.463966",
+      "test_type": "navigation",
+      "page": "Devices List",
+      "check": "breadcrumbs",
+      "status": "WARNING",
+      "message": "Missing: Breadcrumb navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.465987",
+      "test_type": "interactive",
+      "page": "Devices List",
+      "check": "buttons",
+      "status": "PASS",
+      "message": "Buttons present (62 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.466059",
+      "test_type": "interactive",
+      "page": "Devices List",
+      "check": "forms",
+      "status": "PASS",
+      "message": "Forms present (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.468051",
+      "test_type": "interactive",
+      "page": "Devices List",
+      "check": "modals",
+      "status": "PASS",
+      "message": "Modal dialogs (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.468628",
+      "test_type": "interactive",
+      "page": "Devices List",
+      "check": "dropdowns",
+      "status": "INFO",
+      "message": "No dropdown menus",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.470730",
+      "test_type": "interactive",
+      "page": "Devices List",
+      "check": "tabs",
+      "status": "INFO",
+      "message": "No tab navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.472003",
+      "test_type": "interactive",
+      "page": "Devices List",
+      "check": "tooltips",
+      "status": "PASS",
+      "message": "Tooltips/help text (10 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.473103",
+      "test_type": "interactive",
+      "page": "Devices List",
+      "check": "alerts",
+      "status": "PASS",
+      "message": "Alert/notification components (17 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.474873",
+      "test_type": "interactive",
+      "page": "Devices List",
+      "check": "loading",
+      "status": "PASS",
+      "message": "Loading indicators (131 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.475286",
+      "test_type": "accessibility",
+      "page": "Devices List",
+      "check": "alt_text",
+      "status": "PASS",
+      "message": "Images with alt text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.475689",
+      "test_type": "accessibility",
+      "page": "Devices List",
+      "check": "aria_labels",
+      "status": "PASS",
+      "message": "ARIA labels (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.475748",
+      "test_type": "accessibility",
+      "page": "Devices List",
+      "check": "semantic_html",
+      "status": "PASS",
+      "message": "Semantic HTML5 (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.476271",
+      "test_type": "accessibility",
+      "page": "Devices List",
+      "check": "skip_links",
+      "status": "WARNING",
+      "message": "Missing: Skip navigation links",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.477057",
+      "test_type": "accessibility",
+      "page": "Devices List",
+      "check": "focus_indicators",
+      "status": "PASS",
+      "message": "Focus indicators (4 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.478529",
+      "test_type": "accessibility",
+      "page": "Devices List",
+      "check": "color_only",
+      "status": "WARNING",
+      "message": "Missing: Screen reader text",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.478577",
+      "test_type": "performance",
+      "page": "Devices List",
+      "check": "minified_css",
+      "status": "PASS",
+      "message": "Minified CSS (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.478625",
+      "test_type": "performance",
+      "page": "Devices List",
+      "check": "minified_js",
+      "status": "PASS",
+      "message": "Minified JavaScript (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.478678",
+      "test_type": "performance",
+      "page": "Devices List",
+      "check": "compressed_assets",
+      "status": "INFO",
+      "message": "No compressed assets",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.479221",
+      "test_type": "performance",
+      "page": "Devices List",
+      "check": "cdn_usage",
+      "status": "PASS",
+      "message": "CDN usage (5 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.480540",
+      "test_type": "performance",
+      "page": "Devices List",
+      "check": "async_scripts",
+      "status": "PASS",
+      "message": "Async/defer scripts (9 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.480945",
+      "test_type": "performance",
+      "page": "Devices List",
+      "check": "preload",
+      "status": "INFO",
+      "message": "No resource preloading",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.621344",
+      "test_type": "security",
+      "page": "Devices List",
+      "check": "content_type",
+      "status": "PASS",
+      "message": "Content-Type: text/html; charset=utf-8...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.621369",
+      "test_type": "security",
+      "page": "Devices List",
+      "check": "xss_protection",
+      "status": "PASS",
+      "message": "X-XSS-Protection: 1; mode=block...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.621376",
+      "test_type": "security",
+      "page": "Devices List",
+      "check": "content_type_options",
+      "status": "PASS",
+      "message": "X-Content-Type-Options: nosniff...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.621387",
+      "test_type": "security",
+      "page": "Devices List",
+      "check": "frame_options",
+      "status": "PASS",
+      "message": "X-Frame-Options: SAMEORIGIN...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.621395",
+      "test_type": "security",
+      "page": "Devices List",
+      "check": "csp",
+      "status": "PASS",
+      "message": "Content-Security-Policy: default-src 'self' https:; script-src 'self' 'unsa...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:53.621401",
+      "test_type": "security",
+      "page": "Devices List",
+      "check": "hsts",
+      "status": "PASS",
+      "message": "Strict-Transport-Security: max-age=31536000; includeSubDomains...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.291308",
+      "test_type": "accessibility",
+      "page": "Alerts Management",
+      "check": "Page Load",
+      "status": "PASS",
+      "message": "Loaded in 0.17s (HTTP 200)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.291344",
+      "test_type": "performance",
+      "page": "Alerts Management",
+      "check": "Load Time",
+      "status": "PASS",
+      "message": "Fast load (0.17s)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.291370",
+      "test_type": "responsive",
+      "page": "Alerts Management",
+      "check": "viewport_meta",
+      "status": "PASS",
+      "message": "Viewport meta tag present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.291439",
+      "test_type": "responsive",
+      "page": "Alerts Management",
+      "check": "responsive_grid",
+      "status": "PASS",
+      "message": "Bootstrap grid classes found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.291483",
+      "test_type": "responsive",
+      "page": "Alerts Management",
+      "check": "media_queries",
+      "status": "PASS",
+      "message": "Responsive CSS classes",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.291899",
+      "test_type": "responsive",
+      "page": "Alerts Management",
+      "check": "mobile_nav",
+      "status": "PASS",
+      "message": "Mobile navigation elements",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.291909",
+      "test_type": "ui_framework",
+      "page": "Alerts Management",
+      "check": "bootstrap_css",
+      "status": "PASS",
+      "message": "Bootstrap CSS loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.291918",
+      "test_type": "ui_framework",
+      "page": "Alerts Management",
+      "check": "bootstrap_js",
+      "status": "PASS",
+      "message": "Bootstrap JavaScript loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.291943",
+      "test_type": "ui_framework",
+      "page": "Alerts Management",
+      "check": "chartjs",
+      "status": "PASS",
+      "message": "Chart.js library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.291956",
+      "test_type": "ui_framework",
+      "page": "Alerts Management",
+      "check": "socketio",
+      "status": "PASS",
+      "message": "Socket.IO library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.291962",
+      "test_type": "ui_framework",
+      "page": "Alerts Management",
+      "check": "favicon",
+      "status": "PASS",
+      "message": "Favicon present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.291965",
+      "test_type": "ui_framework",
+      "page": "Alerts Management",
+      "check": "page_title",
+      "status": "PASS",
+      "message": "Page title present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.291994",
+      "test_type": "navigation",
+      "page": "Alerts Management",
+      "check": "main_nav",
+      "status": "PASS",
+      "message": "Main navigation present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.292101",
+      "test_type": "navigation",
+      "page": "Alerts Management",
+      "check": "nav_links",
+      "status": "PASS",
+      "message": "Core nav links present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.292421",
+      "test_type": "navigation",
+      "page": "Alerts Management",
+      "check": "brand_logo",
+      "status": "PASS",
+      "message": "Brand/logo present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.294297",
+      "test_type": "navigation",
+      "page": "Alerts Management",
+      "check": "user_menu",
+      "status": "FAIL",
+      "message": "Missing: User menu present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.294442",
+      "test_type": "navigation",
+      "page": "Alerts Management",
+      "check": "search",
+      "status": "PASS",
+      "message": "Search functionality",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.295824",
+      "test_type": "navigation",
+      "page": "Alerts Management",
+      "check": "breadcrumbs",
+      "status": "WARNING",
+      "message": "Missing: Breadcrumb navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.296827",
+      "test_type": "interactive",
+      "page": "Alerts Management",
+      "check": "buttons",
+      "status": "PASS",
+      "message": "Buttons present (59 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.296863",
+      "test_type": "interactive",
+      "page": "Alerts Management",
+      "check": "forms",
+      "status": "PASS",
+      "message": "Forms present (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.297988",
+      "test_type": "interactive",
+      "page": "Alerts Management",
+      "check": "modals",
+      "status": "PASS",
+      "message": "Modal dialogs (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.298355",
+      "test_type": "interactive",
+      "page": "Alerts Management",
+      "check": "dropdowns",
+      "status": "PASS",
+      "message": "Dropdown menus (20 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.299903",
+      "test_type": "interactive",
+      "page": "Alerts Management",
+      "check": "tabs",
+      "status": "INFO",
+      "message": "No tab navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.301116",
+      "test_type": "interactive",
+      "page": "Alerts Management",
+      "check": "tooltips",
+      "status": "PASS",
+      "message": "Tooltips/help text (10 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.302179",
+      "test_type": "interactive",
+      "page": "Alerts Management",
+      "check": "alerts",
+      "status": "PASS",
+      "message": "Alert/notification components (39 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.303877",
+      "test_type": "interactive",
+      "page": "Alerts Management",
+      "check": "loading",
+      "status": "PASS",
+      "message": "Loading indicators (62 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.304241",
+      "test_type": "accessibility",
+      "page": "Alerts Management",
+      "check": "alt_text",
+      "status": "PASS",
+      "message": "Images with alt text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.304575",
+      "test_type": "accessibility",
+      "page": "Alerts Management",
+      "check": "aria_labels",
+      "status": "PASS",
+      "message": "ARIA labels (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.304627",
+      "test_type": "accessibility",
+      "page": "Alerts Management",
+      "check": "semantic_html",
+      "status": "PASS",
+      "message": "Semantic HTML5 (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.305135",
+      "test_type": "accessibility",
+      "page": "Alerts Management",
+      "check": "skip_links",
+      "status": "WARNING",
+      "message": "Missing: Skip navigation links",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.306145",
+      "test_type": "accessibility",
+      "page": "Alerts Management",
+      "check": "focus_indicators",
+      "status": "PASS",
+      "message": "Focus indicators (5 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.307940",
+      "test_type": "accessibility",
+      "page": "Alerts Management",
+      "check": "color_only",
+      "status": "WARNING",
+      "message": "Missing: Screen reader text",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.308023",
+      "test_type": "performance",
+      "page": "Alerts Management",
+      "check": "minified_css",
+      "status": "PASS",
+      "message": "Minified CSS (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.308082",
+      "test_type": "performance",
+      "page": "Alerts Management",
+      "check": "minified_js",
+      "status": "PASS",
+      "message": "Minified JavaScript (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.308155",
+      "test_type": "performance",
+      "page": "Alerts Management",
+      "check": "compressed_assets",
+      "status": "INFO",
+      "message": "No compressed assets",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.308473",
+      "test_type": "performance",
+      "page": "Alerts Management",
+      "check": "cdn_usage",
+      "status": "PASS",
+      "message": "CDN usage (5 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.309765",
+      "test_type": "performance",
+      "page": "Alerts Management",
+      "check": "async_scripts",
+      "status": "PASS",
+      "message": "Async/defer scripts (10 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.310084",
+      "test_type": "performance",
+      "page": "Alerts Management",
+      "check": "preload",
+      "status": "INFO",
+      "message": "No resource preloading",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.438965",
+      "test_type": "security",
+      "page": "Alerts Management",
+      "check": "content_type",
+      "status": "PASS",
+      "message": "Content-Type: text/html; charset=utf-8...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.438980",
+      "test_type": "security",
+      "page": "Alerts Management",
+      "check": "xss_protection",
+      "status": "PASS",
+      "message": "X-XSS-Protection: 1; mode=block...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.438984",
+      "test_type": "security",
+      "page": "Alerts Management",
+      "check": "content_type_options",
+      "status": "PASS",
+      "message": "X-Content-Type-Options: nosniff...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.438987",
+      "test_type": "security",
+      "page": "Alerts Management",
+      "check": "frame_options",
+      "status": "PASS",
+      "message": "X-Frame-Options: SAMEORIGIN...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.438990",
+      "test_type": "security",
+      "page": "Alerts Management",
+      "check": "csp",
+      "status": "PASS",
+      "message": "Content-Security-Policy: default-src 'self' https:; script-src 'self' 'unsa...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:54.438993",
+      "test_type": "security",
+      "page": "Alerts Management",
+      "check": "hsts",
+      "status": "PASS",
+      "message": "Strict-Transport-Security: max-age=31536000; includeSubDomains...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.110594",
+      "test_type": "accessibility",
+      "page": "Notifications",
+      "check": "Page Load",
+      "status": "PASS",
+      "message": "Loaded in 0.17s (HTTP 200)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.110677",
+      "test_type": "performance",
+      "page": "Notifications",
+      "check": "Load Time",
+      "status": "PASS",
+      "message": "Fast load (0.17s)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.110750",
+      "test_type": "responsive",
+      "page": "Notifications",
+      "check": "viewport_meta",
+      "status": "PASS",
+      "message": "Viewport meta tag present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.110952",
+      "test_type": "responsive",
+      "page": "Notifications",
+      "check": "responsive_grid",
+      "status": "PASS",
+      "message": "Bootstrap grid classes found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.111069",
+      "test_type": "responsive",
+      "page": "Notifications",
+      "check": "media_queries",
+      "status": "PASS",
+      "message": "Responsive CSS classes",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.112253",
+      "test_type": "responsive",
+      "page": "Notifications",
+      "check": "mobile_nav",
+      "status": "PASS",
+      "message": "Mobile navigation elements",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.112275",
+      "test_type": "ui_framework",
+      "page": "Notifications",
+      "check": "bootstrap_css",
+      "status": "PASS",
+      "message": "Bootstrap CSS loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.112300",
+      "test_type": "ui_framework",
+      "page": "Notifications",
+      "check": "bootstrap_js",
+      "status": "PASS",
+      "message": "Bootstrap JavaScript loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.112383",
+      "test_type": "ui_framework",
+      "page": "Notifications",
+      "check": "chartjs",
+      "status": "PASS",
+      "message": "Chart.js library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.112429",
+      "test_type": "ui_framework",
+      "page": "Notifications",
+      "check": "socketio",
+      "status": "PASS",
+      "message": "Socket.IO library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.112451",
+      "test_type": "ui_framework",
+      "page": "Notifications",
+      "check": "favicon",
+      "status": "PASS",
+      "message": "Favicon present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.112463",
+      "test_type": "ui_framework",
+      "page": "Notifications",
+      "check": "page_title",
+      "status": "PASS",
+      "message": "Page title present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.112570",
+      "test_type": "navigation",
+      "page": "Notifications",
+      "check": "main_nav",
+      "status": "PASS",
+      "message": "Main navigation present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.112877",
+      "test_type": "navigation",
+      "page": "Notifications",
+      "check": "nav_links",
+      "status": "PASS",
+      "message": "Core nav links present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.113927",
+      "test_type": "navigation",
+      "page": "Notifications",
+      "check": "brand_logo",
+      "status": "PASS",
+      "message": "Brand/logo present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.118403",
+      "test_type": "navigation",
+      "page": "Notifications",
+      "check": "user_menu",
+      "status": "FAIL",
+      "message": "Missing: User menu present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.118622",
+      "test_type": "navigation",
+      "page": "Notifications",
+      "check": "search",
+      "status": "PASS",
+      "message": "Search functionality",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.121528",
+      "test_type": "navigation",
+      "page": "Notifications",
+      "check": "breadcrumbs",
+      "status": "WARNING",
+      "message": "Missing: Breadcrumb navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.123184",
+      "test_type": "interactive",
+      "page": "Notifications",
+      "check": "buttons",
+      "status": "PASS",
+      "message": "Buttons present (59 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.123245",
+      "test_type": "interactive",
+      "page": "Notifications",
+      "check": "forms",
+      "status": "PASS",
+      "message": "Forms present (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.124712",
+      "test_type": "interactive",
+      "page": "Notifications",
+      "check": "modals",
+      "status": "PASS",
+      "message": "Modal dialogs (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.125159",
+      "test_type": "interactive",
+      "page": "Notifications",
+      "check": "dropdowns",
+      "status": "PASS",
+      "message": "Dropdown menus (20 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.126801",
+      "test_type": "interactive",
+      "page": "Notifications",
+      "check": "tabs",
+      "status": "INFO",
+      "message": "No tab navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.127844",
+      "test_type": "interactive",
+      "page": "Notifications",
+      "check": "tooltips",
+      "status": "PASS",
+      "message": "Tooltips/help text (10 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.128873",
+      "test_type": "interactive",
+      "page": "Notifications",
+      "check": "alerts",
+      "status": "PASS",
+      "message": "Alert/notification components (39 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.130595",
+      "test_type": "interactive",
+      "page": "Notifications",
+      "check": "loading",
+      "status": "PASS",
+      "message": "Loading indicators (62 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.130938",
+      "test_type": "accessibility",
+      "page": "Notifications",
+      "check": "alt_text",
+      "status": "PASS",
+      "message": "Images with alt text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.131271",
+      "test_type": "accessibility",
+      "page": "Notifications",
+      "check": "aria_labels",
+      "status": "PASS",
+      "message": "ARIA labels (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.131325",
+      "test_type": "accessibility",
+      "page": "Notifications",
+      "check": "semantic_html",
+      "status": "PASS",
+      "message": "Semantic HTML5 (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.132017",
+      "test_type": "accessibility",
+      "page": "Notifications",
+      "check": "skip_links",
+      "status": "WARNING",
+      "message": "Missing: Skip navigation links",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.132780",
+      "test_type": "accessibility",
+      "page": "Notifications",
+      "check": "focus_indicators",
+      "status": "PASS",
+      "message": "Focus indicators (5 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.134173",
+      "test_type": "accessibility",
+      "page": "Notifications",
+      "check": "color_only",
+      "status": "WARNING",
+      "message": "Missing: Screen reader text",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.134215",
+      "test_type": "performance",
+      "page": "Notifications",
+      "check": "minified_css",
+      "status": "PASS",
+      "message": "Minified CSS (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.134255",
+      "test_type": "performance",
+      "page": "Notifications",
+      "check": "minified_js",
+      "status": "PASS",
+      "message": "Minified JavaScript (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.134306",
+      "test_type": "performance",
+      "page": "Notifications",
+      "check": "compressed_assets",
+      "status": "INFO",
+      "message": "No compressed assets",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.134634",
+      "test_type": "performance",
+      "page": "Notifications",
+      "check": "cdn_usage",
+      "status": "PASS",
+      "message": "CDN usage (5 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.135698",
+      "test_type": "performance",
+      "page": "Notifications",
+      "check": "async_scripts",
+      "status": "PASS",
+      "message": "Async/defer scripts (10 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.135999",
+      "test_type": "performance",
+      "page": "Notifications",
+      "check": "preload",
+      "status": "INFO",
+      "message": "No resource preloading",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.303777",
+      "test_type": "security",
+      "page": "Notifications",
+      "check": "content_type",
+      "status": "PASS",
+      "message": "Content-Type: text/html; charset=utf-8...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.303806",
+      "test_type": "security",
+      "page": "Notifications",
+      "check": "xss_protection",
+      "status": "PASS",
+      "message": "X-XSS-Protection: 1; mode=block...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.303814",
+      "test_type": "security",
+      "page": "Notifications",
+      "check": "content_type_options",
+      "status": "PASS",
+      "message": "X-Content-Type-Options: nosniff...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.303820",
+      "test_type": "security",
+      "page": "Notifications",
+      "check": "frame_options",
+      "status": "PASS",
+      "message": "X-Frame-Options: SAMEORIGIN...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.303826",
+      "test_type": "security",
+      "page": "Notifications",
+      "check": "csp",
+      "status": "PASS",
+      "message": "Content-Security-Policy: default-src 'self' https:; script-src 'self' 'unsa...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.303832",
+      "test_type": "security",
+      "page": "Notifications",
+      "check": "hsts",
+      "status": "PASS",
+      "message": "Strict-Transport-Security: max-age=31536000; includeSubDomains...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.957125",
+      "test_type": "accessibility",
+      "page": "Notification Analytics",
+      "check": "Page Load",
+      "status": "PASS",
+      "message": "Loaded in 0.15s (HTTP 200)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.957142",
+      "test_type": "performance",
+      "page": "Notification Analytics",
+      "check": "Load Time",
+      "status": "PASS",
+      "message": "Fast load (0.15s)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.957162",
+      "test_type": "responsive",
+      "page": "Notification Analytics",
+      "check": "viewport_meta",
+      "status": "PASS",
+      "message": "Viewport meta tag present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.957228",
+      "test_type": "responsive",
+      "page": "Notification Analytics",
+      "check": "responsive_grid",
+      "status": "PASS",
+      "message": "Bootstrap grid classes found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.957270",
+      "test_type": "responsive",
+      "page": "Notification Analytics",
+      "check": "media_queries",
+      "status": "PASS",
+      "message": "Responsive CSS classes",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.957704",
+      "test_type": "responsive",
+      "page": "Notification Analytics",
+      "check": "mobile_nav",
+      "status": "PASS",
+      "message": "Mobile navigation elements",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.957718",
+      "test_type": "ui_framework",
+      "page": "Notification Analytics",
+      "check": "bootstrap_css",
+      "status": "PASS",
+      "message": "Bootstrap CSS loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.957728",
+      "test_type": "ui_framework",
+      "page": "Notification Analytics",
+      "check": "bootstrap_js",
+      "status": "PASS",
+      "message": "Bootstrap JavaScript loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.957750",
+      "test_type": "ui_framework",
+      "page": "Notification Analytics",
+      "check": "chartjs",
+      "status": "PASS",
+      "message": "Chart.js library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.957762",
+      "test_type": "ui_framework",
+      "page": "Notification Analytics",
+      "check": "socketio",
+      "status": "PASS",
+      "message": "Socket.IO library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.957767",
+      "test_type": "ui_framework",
+      "page": "Notification Analytics",
+      "check": "favicon",
+      "status": "PASS",
+      "message": "Favicon present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.957770",
+      "test_type": "ui_framework",
+      "page": "Notification Analytics",
+      "check": "page_title",
+      "status": "PASS",
+      "message": "Page title present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.957799",
+      "test_type": "navigation",
+      "page": "Notification Analytics",
+      "check": "main_nav",
+      "status": "PASS",
+      "message": "Main navigation present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.957907",
+      "test_type": "navigation",
+      "page": "Notification Analytics",
+      "check": "nav_links",
+      "status": "PASS",
+      "message": "Core nav links present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.958215",
+      "test_type": "navigation",
+      "page": "Notification Analytics",
+      "check": "brand_logo",
+      "status": "PASS",
+      "message": "Brand/logo present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.959402",
+      "test_type": "navigation",
+      "page": "Notification Analytics",
+      "check": "user_menu",
+      "status": "FAIL",
+      "message": "Missing: User menu present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.959644",
+      "test_type": "navigation",
+      "page": "Notification Analytics",
+      "check": "search",
+      "status": "PASS",
+      "message": "Search functionality",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.960001",
+      "test_type": "navigation",
+      "page": "Notification Analytics",
+      "check": "breadcrumbs",
+      "status": "PASS",
+      "message": "Breadcrumb navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.960741",
+      "test_type": "interactive",
+      "page": "Notification Analytics",
+      "check": "buttons",
+      "status": "PASS",
+      "message": "Buttons present (49 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.960775",
+      "test_type": "interactive",
+      "page": "Notification Analytics",
+      "check": "forms",
+      "status": "PASS",
+      "message": "Forms present (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.961786",
+      "test_type": "interactive",
+      "page": "Notification Analytics",
+      "check": "modals",
+      "status": "PASS",
+      "message": "Modal dialogs (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.962172",
+      "test_type": "interactive",
+      "page": "Notification Analytics",
+      "check": "dropdowns",
+      "status": "PASS",
+      "message": "Dropdown menus (11 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.963525",
+      "test_type": "interactive",
+      "page": "Notification Analytics",
+      "check": "tabs",
+      "status": "INFO",
+      "message": "No tab navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.964452",
+      "test_type": "interactive",
+      "page": "Notification Analytics",
+      "check": "tooltips",
+      "status": "PASS",
+      "message": "Tooltips/help text (12 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.965399",
+      "test_type": "interactive",
+      "page": "Notification Analytics",
+      "check": "alerts",
+      "status": "PASS",
+      "message": "Alert/notification components (44 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.967013",
+      "test_type": "interactive",
+      "page": "Notification Analytics",
+      "check": "loading",
+      "status": "PASS",
+      "message": "Loading indicators (32 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.967390",
+      "test_type": "accessibility",
+      "page": "Notification Analytics",
+      "check": "alt_text",
+      "status": "PASS",
+      "message": "Images with alt text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.967695",
+      "test_type": "accessibility",
+      "page": "Notification Analytics",
+      "check": "aria_labels",
+      "status": "PASS",
+      "message": "ARIA labels (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.967744",
+      "test_type": "accessibility",
+      "page": "Notification Analytics",
+      "check": "semantic_html",
+      "status": "PASS",
+      "message": "Semantic HTML5 (3 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.968167",
+      "test_type": "accessibility",
+      "page": "Notification Analytics",
+      "check": "skip_links",
+      "status": "WARNING",
+      "message": "Missing: Skip navigation links",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.968726",
+      "test_type": "accessibility",
+      "page": "Notification Analytics",
+      "check": "focus_indicators",
+      "status": "PASS",
+      "message": "Focus indicators (3 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.969800",
+      "test_type": "accessibility",
+      "page": "Notification Analytics",
+      "check": "color_only",
+      "status": "WARNING",
+      "message": "Missing: Screen reader text",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.969831",
+      "test_type": "performance",
+      "page": "Notification Analytics",
+      "check": "minified_css",
+      "status": "PASS",
+      "message": "Minified CSS (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.969863",
+      "test_type": "performance",
+      "page": "Notification Analytics",
+      "check": "minified_js",
+      "status": "PASS",
+      "message": "Minified JavaScript (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.969899",
+      "test_type": "performance",
+      "page": "Notification Analytics",
+      "check": "compressed_assets",
+      "status": "PASS",
+      "message": "Compressed assets (4 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.970174",
+      "test_type": "performance",
+      "page": "Notification Analytics",
+      "check": "cdn_usage",
+      "status": "PASS",
+      "message": "CDN usage (5 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.970991",
+      "test_type": "performance",
+      "page": "Notification Analytics",
+      "check": "async_scripts",
+      "status": "PASS",
+      "message": "Async/defer scripts (6 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:55.971240",
+      "test_type": "performance",
+      "page": "Notification Analytics",
+      "check": "preload",
+      "status": "INFO",
+      "message": "No resource preloading",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.108451",
+      "test_type": "security",
+      "page": "Notification Analytics",
+      "check": "content_type",
+      "status": "PASS",
+      "message": "Content-Type: text/html; charset=utf-8...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.108475",
+      "test_type": "security",
+      "page": "Notification Analytics",
+      "check": "xss_protection",
+      "status": "PASS",
+      "message": "X-XSS-Protection: 1; mode=block...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.108481",
+      "test_type": "security",
+      "page": "Notification Analytics",
+      "check": "content_type_options",
+      "status": "PASS",
+      "message": "X-Content-Type-Options: nosniff...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.108486",
+      "test_type": "security",
+      "page": "Notification Analytics",
+      "check": "frame_options",
+      "status": "PASS",
+      "message": "X-Frame-Options: SAMEORIGIN...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.108492",
+      "test_type": "security",
+      "page": "Notification Analytics",
+      "check": "csp",
+      "status": "PASS",
+      "message": "Content-Security-Policy: default-src 'self' https:; script-src 'self' 'unsa...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.108497",
+      "test_type": "security",
+      "page": "Notification Analytics",
+      "check": "hsts",
+      "status": "PASS",
+      "message": "Strict-Transport-Security: max-age=31536000; includeSubDomains...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.822064",
+      "test_type": "accessibility",
+      "page": "Network Topology",
+      "check": "Page Load",
+      "status": "PASS",
+      "message": "Loaded in 0.21s (HTTP 200)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.822738",
+      "test_type": "performance",
+      "page": "Network Topology",
+      "check": "Load Time",
+      "status": "PASS",
+      "message": "Fast load (0.21s)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.822880",
+      "test_type": "responsive",
+      "page": "Network Topology",
+      "check": "viewport_meta",
+      "status": "PASS",
+      "message": "Viewport meta tag present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.823115",
+      "test_type": "responsive",
+      "page": "Network Topology",
+      "check": "responsive_grid",
+      "status": "PASS",
+      "message": "Bootstrap grid classes found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.823274",
+      "test_type": "responsive",
+      "page": "Network Topology",
+      "check": "media_queries",
+      "status": "PASS",
+      "message": "Responsive CSS classes",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.825535",
+      "test_type": "responsive",
+      "page": "Network Topology",
+      "check": "mobile_nav",
+      "status": "PASS",
+      "message": "Mobile navigation elements",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.825555",
+      "test_type": "ui_framework",
+      "page": "Network Topology",
+      "check": "bootstrap_css",
+      "status": "PASS",
+      "message": "Bootstrap CSS loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.825579",
+      "test_type": "ui_framework",
+      "page": "Network Topology",
+      "check": "bootstrap_js",
+      "status": "PASS",
+      "message": "Bootstrap JavaScript loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.825643",
+      "test_type": "ui_framework",
+      "page": "Network Topology",
+      "check": "chartjs",
+      "status": "PASS",
+      "message": "Chart.js library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.825677",
+      "test_type": "ui_framework",
+      "page": "Network Topology",
+      "check": "socketio",
+      "status": "PASS",
+      "message": "Socket.IO library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.825691",
+      "test_type": "ui_framework",
+      "page": "Network Topology",
+      "check": "favicon",
+      "status": "PASS",
+      "message": "Favicon present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.825699",
+      "test_type": "ui_framework",
+      "page": "Network Topology",
+      "check": "page_title",
+      "status": "PASS",
+      "message": "Page title present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.825769",
+      "test_type": "navigation",
+      "page": "Network Topology",
+      "check": "main_nav",
+      "status": "PASS",
+      "message": "Main navigation present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.826199",
+      "test_type": "navigation",
+      "page": "Network Topology",
+      "check": "nav_links",
+      "status": "PASS",
+      "message": "Core nav links present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.827569",
+      "test_type": "navigation",
+      "page": "Network Topology",
+      "check": "brand_logo",
+      "status": "PASS",
+      "message": "Brand/logo present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.833455",
+      "test_type": "navigation",
+      "page": "Network Topology",
+      "check": "user_menu",
+      "status": "FAIL",
+      "message": "Missing: User menu present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.834420",
+      "test_type": "navigation",
+      "page": "Network Topology",
+      "check": "search",
+      "status": "PASS",
+      "message": "Search functionality",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.838793",
+      "test_type": "navigation",
+      "page": "Network Topology",
+      "check": "breadcrumbs",
+      "status": "WARNING",
+      "message": "Missing: Breadcrumb navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.841383",
+      "test_type": "interactive",
+      "page": "Network Topology",
+      "check": "buttons",
+      "status": "PASS",
+      "message": "Buttons present (76 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.841468",
+      "test_type": "interactive",
+      "page": "Network Topology",
+      "check": "forms",
+      "status": "PASS",
+      "message": "Forms present (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.846516",
+      "test_type": "interactive",
+      "page": "Network Topology",
+      "check": "modals",
+      "status": "PASS",
+      "message": "Modal dialogs (111 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.847408",
+      "test_type": "interactive",
+      "page": "Network Topology",
+      "check": "dropdowns",
+      "status": "PASS",
+      "message": "Dropdown menus (41 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.850281",
+      "test_type": "interactive",
+      "page": "Network Topology",
+      "check": "tabs",
+      "status": "INFO",
+      "message": "No tab navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.852080",
+      "test_type": "interactive",
+      "page": "Network Topology",
+      "check": "tooltips",
+      "status": "PASS",
+      "message": "Tooltips/help text (56 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.853806",
+      "test_type": "interactive",
+      "page": "Network Topology",
+      "check": "alerts",
+      "status": "PASS",
+      "message": "Alert/notification components (14 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.856885",
+      "test_type": "interactive",
+      "page": "Network Topology",
+      "check": "loading",
+      "status": "PASS",
+      "message": "Loading indicators (51 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.857502",
+      "test_type": "accessibility",
+      "page": "Network Topology",
+      "check": "alt_text",
+      "status": "PASS",
+      "message": "Images with alt text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.858074",
+      "test_type": "accessibility",
+      "page": "Network Topology",
+      "check": "aria_labels",
+      "status": "PASS",
+      "message": "ARIA labels (3 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.858196",
+      "test_type": "accessibility",
+      "page": "Network Topology",
+      "check": "semantic_html",
+      "status": "PASS",
+      "message": "Semantic HTML5 (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.859030",
+      "test_type": "accessibility",
+      "page": "Network Topology",
+      "check": "skip_links",
+      "status": "WARNING",
+      "message": "Missing: Skip navigation links",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.860289",
+      "test_type": "accessibility",
+      "page": "Network Topology",
+      "check": "focus_indicators",
+      "status": "PASS",
+      "message": "Focus indicators (9 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.862576",
+      "test_type": "accessibility",
+      "page": "Network Topology",
+      "check": "color_only",
+      "status": "PASS",
+      "message": "Screen reader text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.862644",
+      "test_type": "performance",
+      "page": "Network Topology",
+      "check": "minified_css",
+      "status": "PASS",
+      "message": "Minified CSS (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.862712",
+      "test_type": "performance",
+      "page": "Network Topology",
+      "check": "minified_js",
+      "status": "PASS",
+      "message": "Minified JavaScript (3 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.862796",
+      "test_type": "performance",
+      "page": "Network Topology",
+      "check": "compressed_assets",
+      "status": "INFO",
+      "message": "No compressed assets",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.863311",
+      "test_type": "performance",
+      "page": "Network Topology",
+      "check": "cdn_usage",
+      "status": "PASS",
+      "message": "CDN usage (7 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.865076",
+      "test_type": "performance",
+      "page": "Network Topology",
+      "check": "async_scripts",
+      "status": "PASS",
+      "message": "Async/defer scripts (4 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:56.865579",
+      "test_type": "performance",
+      "page": "Network Topology",
+      "check": "preload",
+      "status": "INFO",
+      "message": "No resource preloading",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.057198",
+      "test_type": "security",
+      "page": "Network Topology",
+      "check": "content_type",
+      "status": "PASS",
+      "message": "Content-Type: text/html; charset=utf-8...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.057225",
+      "test_type": "security",
+      "page": "Network Topology",
+      "check": "xss_protection",
+      "status": "PASS",
+      "message": "X-XSS-Protection: 1; mode=block...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.057231",
+      "test_type": "security",
+      "page": "Network Topology",
+      "check": "content_type_options",
+      "status": "PASS",
+      "message": "X-Content-Type-Options: nosniff...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.057237",
+      "test_type": "security",
+      "page": "Network Topology",
+      "check": "frame_options",
+      "status": "PASS",
+      "message": "X-Frame-Options: SAMEORIGIN...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.057242",
+      "test_type": "security",
+      "page": "Network Topology",
+      "check": "csp",
+      "status": "PASS",
+      "message": "Content-Security-Policy: default-src 'self' https:; script-src 'self' 'unsa...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.057248",
+      "test_type": "security",
+      "page": "Network Topology",
+      "check": "hsts",
+      "status": "PASS",
+      "message": "Strict-Transport-Security: max-age=31536000; includeSubDomains...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.717641",
+      "test_type": "accessibility",
+      "page": "Network Map",
+      "check": "Page Load",
+      "status": "PASS",
+      "message": "Loaded in 0.16s (HTTP 200)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.717908",
+      "test_type": "performance",
+      "page": "Network Map",
+      "check": "Load Time",
+      "status": "PASS",
+      "message": "Fast load (0.16s)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.718009",
+      "test_type": "responsive",
+      "page": "Network Map",
+      "check": "viewport_meta",
+      "status": "PASS",
+      "message": "Viewport meta tag present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.718084",
+      "test_type": "responsive",
+      "page": "Network Map",
+      "check": "responsive_grid",
+      "status": "PASS",
+      "message": "Bootstrap grid classes found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.718144",
+      "test_type": "responsive",
+      "page": "Network Map",
+      "check": "media_queries",
+      "status": "PASS",
+      "message": "Responsive CSS classes",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.718840",
+      "test_type": "responsive",
+      "page": "Network Map",
+      "check": "mobile_nav",
+      "status": "PASS",
+      "message": "Mobile navigation elements",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.718848",
+      "test_type": "ui_framework",
+      "page": "Network Map",
+      "check": "bootstrap_css",
+      "status": "PASS",
+      "message": "Bootstrap CSS loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.718860",
+      "test_type": "ui_framework",
+      "page": "Network Map",
+      "check": "bootstrap_js",
+      "status": "PASS",
+      "message": "Bootstrap JavaScript loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.718884",
+      "test_type": "ui_framework",
+      "page": "Network Map",
+      "check": "chartjs",
+      "status": "PASS",
+      "message": "Chart.js library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.718895",
+      "test_type": "ui_framework",
+      "page": "Network Map",
+      "check": "socketio",
+      "status": "PASS",
+      "message": "Socket.IO library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.718901",
+      "test_type": "ui_framework",
+      "page": "Network Map",
+      "check": "favicon",
+      "status": "PASS",
+      "message": "Favicon present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.718903",
+      "test_type": "ui_framework",
+      "page": "Network Map",
+      "check": "page_title",
+      "status": "PASS",
+      "message": "Page title present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.718929",
+      "test_type": "navigation",
+      "page": "Network Map",
+      "check": "main_nav",
+      "status": "PASS",
+      "message": "Main navigation present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.719099",
+      "test_type": "navigation",
+      "page": "Network Map",
+      "check": "nav_links",
+      "status": "PASS",
+      "message": "Core nav links present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.719623",
+      "test_type": "navigation",
+      "page": "Network Map",
+      "check": "brand_logo",
+      "status": "PASS",
+      "message": "Brand/logo present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.722085",
+      "test_type": "navigation",
+      "page": "Network Map",
+      "check": "user_menu",
+      "status": "FAIL",
+      "message": "Missing: User menu present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.722429",
+      "test_type": "navigation",
+      "page": "Network Map",
+      "check": "search",
+      "status": "PASS",
+      "message": "Search functionality",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.724402",
+      "test_type": "navigation",
+      "page": "Network Map",
+      "check": "breadcrumbs",
+      "status": "WARNING",
+      "message": "Missing: Breadcrumb navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.726377",
+      "test_type": "interactive",
+      "page": "Network Map",
+      "check": "buttons",
+      "status": "PASS",
+      "message": "Buttons present (76 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.726463",
+      "test_type": "interactive",
+      "page": "Network Map",
+      "check": "forms",
+      "status": "PASS",
+      "message": "Forms present (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.729312",
+      "test_type": "interactive",
+      "page": "Network Map",
+      "check": "modals",
+      "status": "PASS",
+      "message": "Modal dialogs (111 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.730199",
+      "test_type": "interactive",
+      "page": "Network Map",
+      "check": "dropdowns",
+      "status": "PASS",
+      "message": "Dropdown menus (41 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.733291",
+      "test_type": "interactive",
+      "page": "Network Map",
+      "check": "tabs",
+      "status": "INFO",
+      "message": "No tab navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.735580",
+      "test_type": "interactive",
+      "page": "Network Map",
+      "check": "tooltips",
+      "status": "PASS",
+      "message": "Tooltips/help text (56 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.738433",
+      "test_type": "interactive",
+      "page": "Network Map",
+      "check": "alerts",
+      "status": "PASS",
+      "message": "Alert/notification components (14 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.747152",
+      "test_type": "interactive",
+      "page": "Network Map",
+      "check": "loading",
+      "status": "PASS",
+      "message": "Loading indicators (51 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.749365",
+      "test_type": "accessibility",
+      "page": "Network Map",
+      "check": "alt_text",
+      "status": "PASS",
+      "message": "Images with alt text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.750832",
+      "test_type": "accessibility",
+      "page": "Network Map",
+      "check": "aria_labels",
+      "status": "PASS",
+      "message": "ARIA labels (3 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.751055",
+      "test_type": "accessibility",
+      "page": "Network Map",
+      "check": "semantic_html",
+      "status": "PASS",
+      "message": "Semantic HTML5 (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.752765",
+      "test_type": "accessibility",
+      "page": "Network Map",
+      "check": "skip_links",
+      "status": "WARNING",
+      "message": "Missing: Skip navigation links",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.754943",
+      "test_type": "accessibility",
+      "page": "Network Map",
+      "check": "focus_indicators",
+      "status": "PASS",
+      "message": "Focus indicators (9 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.757933",
+      "test_type": "accessibility",
+      "page": "Network Map",
+      "check": "color_only",
+      "status": "PASS",
+      "message": "Screen reader text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.758004",
+      "test_type": "performance",
+      "page": "Network Map",
+      "check": "minified_css",
+      "status": "PASS",
+      "message": "Minified CSS (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.758073",
+      "test_type": "performance",
+      "page": "Network Map",
+      "check": "minified_js",
+      "status": "PASS",
+      "message": "Minified JavaScript (3 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.758162",
+      "test_type": "performance",
+      "page": "Network Map",
+      "check": "compressed_assets",
+      "status": "INFO",
+      "message": "No compressed assets",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.758680",
+      "test_type": "performance",
+      "page": "Network Map",
+      "check": "cdn_usage",
+      "status": "PASS",
+      "message": "CDN usage (7 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.760487",
+      "test_type": "performance",
+      "page": "Network Map",
+      "check": "async_scripts",
+      "status": "PASS",
+      "message": "Async/defer scripts (4 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.761023",
+      "test_type": "performance",
+      "page": "Network Map",
+      "check": "preload",
+      "status": "INFO",
+      "message": "No resource preloading",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.895598",
+      "test_type": "security",
+      "page": "Network Map",
+      "check": "content_type",
+      "status": "PASS",
+      "message": "Content-Type: text/html; charset=utf-8...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.895624",
+      "test_type": "security",
+      "page": "Network Map",
+      "check": "xss_protection",
+      "status": "PASS",
+      "message": "X-XSS-Protection: 1; mode=block...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.895632",
+      "test_type": "security",
+      "page": "Network Map",
+      "check": "content_type_options",
+      "status": "PASS",
+      "message": "X-Content-Type-Options: nosniff...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.895638",
+      "test_type": "security",
+      "page": "Network Map",
+      "check": "frame_options",
+      "status": "PASS",
+      "message": "X-Frame-Options: SAMEORIGIN...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.895650",
+      "test_type": "security",
+      "page": "Network Map",
+      "check": "csp",
+      "status": "PASS",
+      "message": "Content-Security-Policy: default-src 'self' https:; script-src 'self' 'unsa...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:57.895655",
+      "test_type": "security",
+      "page": "Network Map",
+      "check": "hsts",
+      "status": "PASS",
+      "message": "Strict-Transport-Security: max-age=31536000; includeSubDomains...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.602810",
+      "test_type": "accessibility",
+      "page": "NOC View",
+      "check": "Page Load",
+      "status": "PASS",
+      "message": "Loaded in 0.21s (HTTP 200)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.603102",
+      "test_type": "performance",
+      "page": "NOC View",
+      "check": "Load Time",
+      "status": "PASS",
+      "message": "Fast load (0.21s)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.603152",
+      "test_type": "responsive",
+      "page": "NOC View",
+      "check": "viewport_meta",
+      "status": "PASS",
+      "message": "Viewport meta tag present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.603256",
+      "test_type": "responsive",
+      "page": "NOC View",
+      "check": "responsive_grid",
+      "status": "PASS",
+      "message": "Bootstrap grid classes found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.603321",
+      "test_type": "responsive",
+      "page": "NOC View",
+      "check": "media_queries",
+      "status": "PASS",
+      "message": "Responsive CSS classes",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.604521",
+      "test_type": "responsive",
+      "page": "NOC View",
+      "check": "mobile_nav",
+      "status": "PASS",
+      "message": "Mobile navigation elements",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.604536",
+      "test_type": "ui_framework",
+      "page": "NOC View",
+      "check": "bootstrap_css",
+      "status": "PASS",
+      "message": "Bootstrap CSS loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.604549",
+      "test_type": "ui_framework",
+      "page": "NOC View",
+      "check": "bootstrap_js",
+      "status": "PASS",
+      "message": "Bootstrap JavaScript loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.604582",
+      "test_type": "ui_framework",
+      "page": "NOC View",
+      "check": "chartjs",
+      "status": "PASS",
+      "message": "Chart.js library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.604599",
+      "test_type": "ui_framework",
+      "page": "NOC View",
+      "check": "socketio",
+      "status": "PASS",
+      "message": "Socket.IO library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.604607",
+      "test_type": "ui_framework",
+      "page": "NOC View",
+      "check": "favicon",
+      "status": "PASS",
+      "message": "Favicon present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.604616",
+      "test_type": "ui_framework",
+      "page": "NOC View",
+      "check": "page_title",
+      "status": "PASS",
+      "message": "Page title present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.604650",
+      "test_type": "navigation",
+      "page": "NOC View",
+      "check": "main_nav",
+      "status": "PASS",
+      "message": "Main navigation present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.604808",
+      "test_type": "navigation",
+      "page": "NOC View",
+      "check": "nav_links",
+      "status": "PASS",
+      "message": "Core nav links present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.605370",
+      "test_type": "navigation",
+      "page": "NOC View",
+      "check": "brand_logo",
+      "status": "PASS",
+      "message": "Brand/logo present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.608009",
+      "test_type": "navigation",
+      "page": "NOC View",
+      "check": "user_menu",
+      "status": "FAIL",
+      "message": "Missing: User menu present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.608157",
+      "test_type": "navigation",
+      "page": "NOC View",
+      "check": "search",
+      "status": "PASS",
+      "message": "Search functionality",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.610135",
+      "test_type": "navigation",
+      "page": "NOC View",
+      "check": "breadcrumbs",
+      "status": "WARNING",
+      "message": "Missing: Breadcrumb navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.611696",
+      "test_type": "interactive",
+      "page": "NOC View",
+      "check": "buttons",
+      "status": "PASS",
+      "message": "Buttons present (114 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.611749",
+      "test_type": "interactive",
+      "page": "NOC View",
+      "check": "forms",
+      "status": "PASS",
+      "message": "Forms present (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.613642",
+      "test_type": "interactive",
+      "page": "NOC View",
+      "check": "modals",
+      "status": "PASS",
+      "message": "Modal dialogs (163 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.614278",
+      "test_type": "interactive",
+      "page": "NOC View",
+      "check": "dropdowns",
+      "status": "INFO",
+      "message": "No dropdown menus",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.617162",
+      "test_type": "interactive",
+      "page": "NOC View",
+      "check": "tabs",
+      "status": "INFO",
+      "message": "No tab navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.619154",
+      "test_type": "interactive",
+      "page": "NOC View",
+      "check": "tooltips",
+      "status": "PASS",
+      "message": "Tooltips/help text (10 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.621129",
+      "test_type": "interactive",
+      "page": "NOC View",
+      "check": "alerts",
+      "status": "PASS",
+      "message": "Alert/notification components (48 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.624564",
+      "test_type": "interactive",
+      "page": "NOC View",
+      "check": "loading",
+      "status": "PASS",
+      "message": "Loading indicators (85 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.625217",
+      "test_type": "accessibility",
+      "page": "NOC View",
+      "check": "alt_text",
+      "status": "PASS",
+      "message": "Images with alt text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.625857",
+      "test_type": "accessibility",
+      "page": "NOC View",
+      "check": "aria_labels",
+      "status": "PASS",
+      "message": "ARIA labels (10 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.625949",
+      "test_type": "accessibility",
+      "page": "NOC View",
+      "check": "semantic_html",
+      "status": "PASS",
+      "message": "Semantic HTML5 (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.626865",
+      "test_type": "accessibility",
+      "page": "NOC View",
+      "check": "skip_links",
+      "status": "WARNING",
+      "message": "Missing: Skip navigation links",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.628286",
+      "test_type": "accessibility",
+      "page": "NOC View",
+      "check": "focus_indicators",
+      "status": "PASS",
+      "message": "Focus indicators (8 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.631063",
+      "test_type": "accessibility",
+      "page": "NOC View",
+      "check": "color_only",
+      "status": "PASS",
+      "message": "Screen reader text (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.631158",
+      "test_type": "performance",
+      "page": "NOC View",
+      "check": "minified_css",
+      "status": "PASS",
+      "message": "Minified CSS (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.631249",
+      "test_type": "performance",
+      "page": "NOC View",
+      "check": "minified_js",
+      "status": "PASS",
+      "message": "Minified JavaScript (3 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.631357",
+      "test_type": "performance",
+      "page": "NOC View",
+      "check": "compressed_assets",
+      "status": "INFO",
+      "message": "No compressed assets",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.632430",
+      "test_type": "performance",
+      "page": "NOC View",
+      "check": "cdn_usage",
+      "status": "PASS",
+      "message": "CDN usage (7 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.636594",
+      "test_type": "performance",
+      "page": "NOC View",
+      "check": "async_scripts",
+      "status": "PASS",
+      "message": "Async/defer scripts (13 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.637394",
+      "test_type": "performance",
+      "page": "NOC View",
+      "check": "preload",
+      "status": "INFO",
+      "message": "No resource preloading",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.835625",
+      "test_type": "security",
+      "page": "NOC View",
+      "check": "content_type",
+      "status": "PASS",
+      "message": "Content-Type: text/html; charset=utf-8...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.835684",
+      "test_type": "security",
+      "page": "NOC View",
+      "check": "xss_protection",
+      "status": "PASS",
+      "message": "X-XSS-Protection: 1; mode=block...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.835697",
+      "test_type": "security",
+      "page": "NOC View",
+      "check": "content_type_options",
+      "status": "PASS",
+      "message": "X-Content-Type-Options: nosniff...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.835706",
+      "test_type": "security",
+      "page": "NOC View",
+      "check": "frame_options",
+      "status": "PASS",
+      "message": "X-Frame-Options: SAMEORIGIN...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.835716",
+      "test_type": "security",
+      "page": "NOC View",
+      "check": "csp",
+      "status": "PASS",
+      "message": "Content-Security-Policy: default-src 'self' https:; script-src 'self' 'unsa...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:50:58.835726",
+      "test_type": "security",
+      "page": "NOC View",
+      "check": "hsts",
+      "status": "PASS",
+      "message": "Strict-Transport-Security: max-age=31536000; includeSubDomains...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.109880",
+      "test_type": "accessibility",
+      "page": "Settings",
+      "check": "Page Load",
+      "status": "PASS",
+      "message": "Loaded in 0.77s (HTTP 200)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.109921",
+      "test_type": "performance",
+      "page": "Settings",
+      "check": "Load Time",
+      "status": "PASS",
+      "message": "Fast load (0.77s)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.109952",
+      "test_type": "responsive",
+      "page": "Settings",
+      "check": "viewport_meta",
+      "status": "PASS",
+      "message": "Viewport meta tag present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.110051",
+      "test_type": "responsive",
+      "page": "Settings",
+      "check": "responsive_grid",
+      "status": "PASS",
+      "message": "Bootstrap grid classes found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.110113",
+      "test_type": "responsive",
+      "page": "Settings",
+      "check": "media_queries",
+      "status": "PASS",
+      "message": "Responsive CSS classes",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.110749",
+      "test_type": "responsive",
+      "page": "Settings",
+      "check": "mobile_nav",
+      "status": "PASS",
+      "message": "Mobile navigation elements",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.110762",
+      "test_type": "ui_framework",
+      "page": "Settings",
+      "check": "bootstrap_css",
+      "status": "PASS",
+      "message": "Bootstrap CSS loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.110777",
+      "test_type": "ui_framework",
+      "page": "Settings",
+      "check": "bootstrap_js",
+      "status": "PASS",
+      "message": "Bootstrap JavaScript loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.110815",
+      "test_type": "ui_framework",
+      "page": "Settings",
+      "check": "chartjs",
+      "status": "PASS",
+      "message": "Chart.js library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.110836",
+      "test_type": "ui_framework",
+      "page": "Settings",
+      "check": "socketio",
+      "status": "PASS",
+      "message": "Socket.IO library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.110845",
+      "test_type": "ui_framework",
+      "page": "Settings",
+      "check": "favicon",
+      "status": "PASS",
+      "message": "Favicon present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.110855",
+      "test_type": "ui_framework",
+      "page": "Settings",
+      "check": "page_title",
+      "status": "PASS",
+      "message": "Page title present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.110902",
+      "test_type": "navigation",
+      "page": "Settings",
+      "check": "main_nav",
+      "status": "PASS",
+      "message": "Main navigation present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.111050",
+      "test_type": "navigation",
+      "page": "Settings",
+      "check": "nav_links",
+      "status": "PASS",
+      "message": "Core nav links present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.111542",
+      "test_type": "navigation",
+      "page": "Settings",
+      "check": "brand_logo",
+      "status": "PASS",
+      "message": "Brand/logo present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.113825",
+      "test_type": "navigation",
+      "page": "Settings",
+      "check": "user_menu",
+      "status": "FAIL",
+      "message": "Missing: User menu present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.114315",
+      "test_type": "navigation",
+      "page": "Settings",
+      "check": "search",
+      "status": "PASS",
+      "message": "Search functionality",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.116307",
+      "test_type": "navigation",
+      "page": "Settings",
+      "check": "breadcrumbs",
+      "status": "WARNING",
+      "message": "Missing: Breadcrumb navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.118094",
+      "test_type": "interactive",
+      "page": "Settings",
+      "check": "buttons",
+      "status": "PASS",
+      "message": "Buttons present (88 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.118160",
+      "test_type": "interactive",
+      "page": "Settings",
+      "check": "forms",
+      "status": "PASS",
+      "message": "Forms present (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.119757",
+      "test_type": "interactive",
+      "page": "Settings",
+      "check": "modals",
+      "status": "PASS",
+      "message": "Modal dialogs (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.120270",
+      "test_type": "interactive",
+      "page": "Settings",
+      "check": "dropdowns",
+      "status": "INFO",
+      "message": "No dropdown menus",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.122186",
+      "test_type": "interactive",
+      "page": "Settings",
+      "check": "tabs",
+      "status": "INFO",
+      "message": "No tab navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.123444",
+      "test_type": "interactive",
+      "page": "Settings",
+      "check": "tooltips",
+      "status": "PASS",
+      "message": "Tooltips/help text (10 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.124524",
+      "test_type": "interactive",
+      "page": "Settings",
+      "check": "alerts",
+      "status": "PASS",
+      "message": "Alert/notification components (26 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.126088",
+      "test_type": "interactive",
+      "page": "Settings",
+      "check": "loading",
+      "status": "PASS",
+      "message": "Loading indicators (16 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.126380",
+      "test_type": "accessibility",
+      "page": "Settings",
+      "check": "alt_text",
+      "status": "PASS",
+      "message": "Images with alt text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.126677",
+      "test_type": "accessibility",
+      "page": "Settings",
+      "check": "aria_labels",
+      "status": "PASS",
+      "message": "ARIA labels (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.126731",
+      "test_type": "accessibility",
+      "page": "Settings",
+      "check": "semantic_html",
+      "status": "PASS",
+      "message": "Semantic HTML5 (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.127331",
+      "test_type": "accessibility",
+      "page": "Settings",
+      "check": "skip_links",
+      "status": "WARNING",
+      "message": "Missing: Skip navigation links",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.128207",
+      "test_type": "accessibility",
+      "page": "Settings",
+      "check": "focus_indicators",
+      "status": "PASS",
+      "message": "Focus indicators (3 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.129314",
+      "test_type": "accessibility",
+      "page": "Settings",
+      "check": "color_only",
+      "status": "WARNING",
+      "message": "Missing: Screen reader text",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.129346",
+      "test_type": "performance",
+      "page": "Settings",
+      "check": "minified_css",
+      "status": "PASS",
+      "message": "Minified CSS (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.129374",
+      "test_type": "performance",
+      "page": "Settings",
+      "check": "minified_js",
+      "status": "PASS",
+      "message": "Minified JavaScript (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.129410",
+      "test_type": "performance",
+      "page": "Settings",
+      "check": "compressed_assets",
+      "status": "INFO",
+      "message": "No compressed assets",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.129656",
+      "test_type": "performance",
+      "page": "Settings",
+      "check": "cdn_usage",
+      "status": "PASS",
+      "message": "CDN usage (5 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.130433",
+      "test_type": "performance",
+      "page": "Settings",
+      "check": "async_scripts",
+      "status": "PASS",
+      "message": "Async/defer scripts (9 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.130680",
+      "test_type": "performance",
+      "page": "Settings",
+      "check": "preload",
+      "status": "INFO",
+      "message": "No resource preloading",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.300692",
+      "test_type": "security",
+      "page": "Settings",
+      "check": "content_type",
+      "status": "PASS",
+      "message": "Content-Type: text/html; charset=utf-8...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.300710",
+      "test_type": "security",
+      "page": "Settings",
+      "check": "xss_protection",
+      "status": "PASS",
+      "message": "X-XSS-Protection: 1; mode=block...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.300715",
+      "test_type": "security",
+      "page": "Settings",
+      "check": "content_type_options",
+      "status": "PASS",
+      "message": "X-Content-Type-Options: nosniff...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.300719",
+      "test_type": "security",
+      "page": "Settings",
+      "check": "frame_options",
+      "status": "PASS",
+      "message": "X-Frame-Options: SAMEORIGIN...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.300723",
+      "test_type": "security",
+      "page": "Settings",
+      "check": "csp",
+      "status": "PASS",
+      "message": "Content-Security-Policy: default-src 'self' https:; script-src 'self' 'unsa...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.300726",
+      "test_type": "security",
+      "page": "Settings",
+      "check": "hsts",
+      "status": "PASS",
+      "message": "Strict-Transport-Security: max-age=31536000; includeSubDomains...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.955068",
+      "test_type": "accessibility",
+      "page": "System Information",
+      "check": "Page Load",
+      "status": "PASS",
+      "message": "Loaded in 0.15s (HTTP 200)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.955095",
+      "test_type": "performance",
+      "page": "System Information",
+      "check": "Load Time",
+      "status": "PASS",
+      "message": "Fast load (0.15s)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.955133",
+      "test_type": "responsive",
+      "page": "System Information",
+      "check": "viewport_meta",
+      "status": "PASS",
+      "message": "Viewport meta tag present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.955233",
+      "test_type": "responsive",
+      "page": "System Information",
+      "check": "responsive_grid",
+      "status": "PASS",
+      "message": "Bootstrap grid classes found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.955292",
+      "test_type": "responsive",
+      "page": "System Information",
+      "check": "media_queries",
+      "status": "PASS",
+      "message": "Responsive CSS classes",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.955625",
+      "test_type": "responsive",
+      "page": "System Information",
+      "check": "mobile_nav",
+      "status": "PASS",
+      "message": "Mobile navigation elements",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.955634",
+      "test_type": "ui_framework",
+      "page": "System Information",
+      "check": "bootstrap_css",
+      "status": "PASS",
+      "message": "Bootstrap CSS loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.955644",
+      "test_type": "ui_framework",
+      "page": "System Information",
+      "check": "bootstrap_js",
+      "status": "PASS",
+      "message": "Bootstrap JavaScript loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.955665",
+      "test_type": "ui_framework",
+      "page": "System Information",
+      "check": "chartjs",
+      "status": "PASS",
+      "message": "Chart.js library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.955678",
+      "test_type": "ui_framework",
+      "page": "System Information",
+      "check": "socketio",
+      "status": "PASS",
+      "message": "Socket.IO library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.955684",
+      "test_type": "ui_framework",
+      "page": "System Information",
+      "check": "favicon",
+      "status": "PASS",
+      "message": "Favicon present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.955687",
+      "test_type": "ui_framework",
+      "page": "System Information",
+      "check": "page_title",
+      "status": "PASS",
+      "message": "Page title present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.955711",
+      "test_type": "navigation",
+      "page": "System Information",
+      "check": "main_nav",
+      "status": "PASS",
+      "message": "Main navigation present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.955796",
+      "test_type": "navigation",
+      "page": "System Information",
+      "check": "nav_links",
+      "status": "PASS",
+      "message": "Core nav links present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.956084",
+      "test_type": "navigation",
+      "page": "System Information",
+      "check": "brand_logo",
+      "status": "PASS",
+      "message": "Brand/logo present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.957250",
+      "test_type": "navigation",
+      "page": "System Information",
+      "check": "user_menu",
+      "status": "FAIL",
+      "message": "Missing: User menu present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.957424",
+      "test_type": "navigation",
+      "page": "System Information",
+      "check": "search",
+      "status": "PASS",
+      "message": "Search functionality",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.958229",
+      "test_type": "navigation",
+      "page": "System Information",
+      "check": "breadcrumbs",
+      "status": "WARNING",
+      "message": "Missing: Breadcrumb navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.958903",
+      "test_type": "interactive",
+      "page": "System Information",
+      "check": "buttons",
+      "status": "PASS",
+      "message": "Buttons present (33 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.958940",
+      "test_type": "interactive",
+      "page": "System Information",
+      "check": "forms",
+      "status": "PASS",
+      "message": "Forms present (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.959847",
+      "test_type": "interactive",
+      "page": "System Information",
+      "check": "modals",
+      "status": "PASS",
+      "message": "Modal dialogs (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.960240",
+      "test_type": "interactive",
+      "page": "System Information",
+      "check": "dropdowns",
+      "status": "INFO",
+      "message": "No dropdown menus",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.961701",
+      "test_type": "interactive",
+      "page": "System Information",
+      "check": "tabs",
+      "status": "INFO",
+      "message": "No tab navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.962908",
+      "test_type": "interactive",
+      "page": "System Information",
+      "check": "tooltips",
+      "status": "PASS",
+      "message": "Tooltips/help text (10 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.963939",
+      "test_type": "interactive",
+      "page": "System Information",
+      "check": "alerts",
+      "status": "PASS",
+      "message": "Alert/notification components (8 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.965500",
+      "test_type": "interactive",
+      "page": "System Information",
+      "check": "loading",
+      "status": "PASS",
+      "message": "Loading indicators (26 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.965827",
+      "test_type": "accessibility",
+      "page": "System Information",
+      "check": "alt_text",
+      "status": "PASS",
+      "message": "Images with alt text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.966169",
+      "test_type": "accessibility",
+      "page": "System Information",
+      "check": "aria_labels",
+      "status": "PASS",
+      "message": "ARIA labels (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.966228",
+      "test_type": "accessibility",
+      "page": "System Information",
+      "check": "semantic_html",
+      "status": "PASS",
+      "message": "Semantic HTML5 (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.966641",
+      "test_type": "accessibility",
+      "page": "System Information",
+      "check": "skip_links",
+      "status": "WARNING",
+      "message": "Missing: Skip navigation links",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.967176",
+      "test_type": "accessibility",
+      "page": "System Information",
+      "check": "focus_indicators",
+      "status": "PASS",
+      "message": "Focus indicators (3 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.968500",
+      "test_type": "accessibility",
+      "page": "System Information",
+      "check": "color_only",
+      "status": "PASS",
+      "message": "Screen reader text (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.968533",
+      "test_type": "performance",
+      "page": "System Information",
+      "check": "minified_css",
+      "status": "PASS",
+      "message": "Minified CSS (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.968563",
+      "test_type": "performance",
+      "page": "System Information",
+      "check": "minified_js",
+      "status": "PASS",
+      "message": "Minified JavaScript (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.968599",
+      "test_type": "performance",
+      "page": "System Information",
+      "check": "compressed_assets",
+      "status": "PASS",
+      "message": "Compressed assets (4 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.968868",
+      "test_type": "performance",
+      "page": "System Information",
+      "check": "cdn_usage",
+      "status": "PASS",
+      "message": "CDN usage (5 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.969629",
+      "test_type": "performance",
+      "page": "System Information",
+      "check": "async_scripts",
+      "status": "PASS",
+      "message": "Async/defer scripts (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:00.969883",
+      "test_type": "performance",
+      "page": "System Information",
+      "check": "preload",
+      "status": "INFO",
+      "message": "No resource preloading",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.103211",
+      "test_type": "security",
+      "page": "System Information",
+      "check": "content_type",
+      "status": "PASS",
+      "message": "Content-Type: text/html; charset=utf-8...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.103235",
+      "test_type": "security",
+      "page": "System Information",
+      "check": "xss_protection",
+      "status": "PASS",
+      "message": "X-XSS-Protection: 1; mode=block...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.103241",
+      "test_type": "security",
+      "page": "System Information",
+      "check": "content_type_options",
+      "status": "PASS",
+      "message": "X-Content-Type-Options: nosniff...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.103246",
+      "test_type": "security",
+      "page": "System Information",
+      "check": "frame_options",
+      "status": "PASS",
+      "message": "X-Frame-Options: SAMEORIGIN...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.103251",
+      "test_type": "security",
+      "page": "System Information",
+      "check": "csp",
+      "status": "PASS",
+      "message": "Content-Security-Policy: default-src 'self' https:; script-src 'self' 'unsa...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.103256",
+      "test_type": "security",
+      "page": "System Information",
+      "check": "hsts",
+      "status": "PASS",
+      "message": "Strict-Transport-Security: max-age=31536000; includeSubDomains...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.731227",
+      "test_type": "accessibility",
+      "page": "About Page",
+      "check": "Page Load",
+      "status": "PASS",
+      "message": "Loaded in 0.13s (HTTP 200)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.731249",
+      "test_type": "performance",
+      "page": "About Page",
+      "check": "Load Time",
+      "status": "PASS",
+      "message": "Fast load (0.13s)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.731273",
+      "test_type": "responsive",
+      "page": "About Page",
+      "check": "viewport_meta",
+      "status": "PASS",
+      "message": "Viewport meta tag present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.731348",
+      "test_type": "responsive",
+      "page": "About Page",
+      "check": "responsive_grid",
+      "status": "PASS",
+      "message": "Bootstrap grid classes found",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.731391",
+      "test_type": "responsive",
+      "page": "About Page",
+      "check": "media_queries",
+      "status": "PASS",
+      "message": "Responsive CSS classes",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.731799",
+      "test_type": "responsive",
+      "page": "About Page",
+      "check": "mobile_nav",
+      "status": "PASS",
+      "message": "Mobile navigation elements",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.731809",
+      "test_type": "ui_framework",
+      "page": "About Page",
+      "check": "bootstrap_css",
+      "status": "PASS",
+      "message": "Bootstrap CSS loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.731820",
+      "test_type": "ui_framework",
+      "page": "About Page",
+      "check": "bootstrap_js",
+      "status": "PASS",
+      "message": "Bootstrap JavaScript loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.731845",
+      "test_type": "ui_framework",
+      "page": "About Page",
+      "check": "chartjs",
+      "status": "PASS",
+      "message": "Chart.js library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.731870",
+      "test_type": "ui_framework",
+      "page": "About Page",
+      "check": "socketio",
+      "status": "PASS",
+      "message": "Socket.IO library loaded",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.731876",
+      "test_type": "ui_framework",
+      "page": "About Page",
+      "check": "favicon",
+      "status": "PASS",
+      "message": "Favicon present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.731880",
+      "test_type": "ui_framework",
+      "page": "About Page",
+      "check": "page_title",
+      "status": "PASS",
+      "message": "Page title present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.731912",
+      "test_type": "navigation",
+      "page": "About Page",
+      "check": "main_nav",
+      "status": "PASS",
+      "message": "Main navigation present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.732013",
+      "test_type": "navigation",
+      "page": "About Page",
+      "check": "nav_links",
+      "status": "PASS",
+      "message": "Core nav links present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.732249",
+      "test_type": "navigation",
+      "page": "About Page",
+      "check": "brand_logo",
+      "status": "PASS",
+      "message": "Brand/logo present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.733242",
+      "test_type": "navigation",
+      "page": "About Page",
+      "check": "user_menu",
+      "status": "FAIL",
+      "message": "Missing: User menu present",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.733508",
+      "test_type": "navigation",
+      "page": "About Page",
+      "check": "search",
+      "status": "PASS",
+      "message": "Search functionality",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.734337",
+      "test_type": "navigation",
+      "page": "About Page",
+      "check": "breadcrumbs",
+      "status": "WARNING",
+      "message": "Missing: Breadcrumb navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.735125",
+      "test_type": "interactive",
+      "page": "About Page",
+      "check": "buttons",
+      "status": "PASS",
+      "message": "Buttons present (27 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.735159",
+      "test_type": "interactive",
+      "page": "About Page",
+      "check": "forms",
+      "status": "PASS",
+      "message": "Forms present (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.736070",
+      "test_type": "interactive",
+      "page": "About Page",
+      "check": "modals",
+      "status": "PASS",
+      "message": "Modal dialogs (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.736408",
+      "test_type": "interactive",
+      "page": "About Page",
+      "check": "dropdowns",
+      "status": "INFO",
+      "message": "No dropdown menus",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.737844",
+      "test_type": "interactive",
+      "page": "About Page",
+      "check": "tabs",
+      "status": "INFO",
+      "message": "No tab navigation",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.738760",
+      "test_type": "interactive",
+      "page": "About Page",
+      "check": "tooltips",
+      "status": "PASS",
+      "message": "Tooltips/help text (10 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.739624",
+      "test_type": "interactive",
+      "page": "About Page",
+      "check": "alerts",
+      "status": "PASS",
+      "message": "Alert/notification components (8 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.741190",
+      "test_type": "interactive",
+      "page": "About Page",
+      "check": "loading",
+      "status": "PASS",
+      "message": "Loading indicators (19 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.741430",
+      "test_type": "accessibility",
+      "page": "About Page",
+      "check": "alt_text",
+      "status": "PASS",
+      "message": "Images with alt text (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.741663",
+      "test_type": "accessibility",
+      "page": "About Page",
+      "check": "aria_labels",
+      "status": "PASS",
+      "message": "ARIA labels (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.741711",
+      "test_type": "accessibility",
+      "page": "About Page",
+      "check": "semantic_html",
+      "status": "PASS",
+      "message": "Semantic HTML5 (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.742074",
+      "test_type": "accessibility",
+      "page": "About Page",
+      "check": "skip_links",
+      "status": "WARNING",
+      "message": "Missing: Skip navigation links",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.742562",
+      "test_type": "accessibility",
+      "page": "About Page",
+      "check": "focus_indicators",
+      "status": "PASS",
+      "message": "Focus indicators (3 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.743382",
+      "test_type": "accessibility",
+      "page": "About Page",
+      "check": "color_only",
+      "status": "WARNING",
+      "message": "Missing: Screen reader text",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.743405",
+      "test_type": "performance",
+      "page": "About Page",
+      "check": "minified_css",
+      "status": "PASS",
+      "message": "Minified CSS (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.743428",
+      "test_type": "performance",
+      "page": "About Page",
+      "check": "minified_js",
+      "status": "PASS",
+      "message": "Minified JavaScript (2 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.743456",
+      "test_type": "performance",
+      "page": "About Page",
+      "check": "compressed_assets",
+      "status": "INFO",
+      "message": "No compressed assets",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.743643",
+      "test_type": "performance",
+      "page": "About Page",
+      "check": "cdn_usage",
+      "status": "PASS",
+      "message": "CDN usage (5 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.744279",
+      "test_type": "performance",
+      "page": "About Page",
+      "check": "async_scripts",
+      "status": "PASS",
+      "message": "Async/defer scripts (1 found)",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.744446",
+      "test_type": "performance",
+      "page": "About Page",
+      "check": "preload",
+      "status": "INFO",
+      "message": "No resource preloading",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.899671",
+      "test_type": "security",
+      "page": "About Page",
+      "check": "content_type",
+      "status": "PASS",
+      "message": "Content-Type: text/html; charset=utf-8...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.899686",
+      "test_type": "security",
+      "page": "About Page",
+      "check": "xss_protection",
+      "status": "PASS",
+      "message": "X-XSS-Protection: 1; mode=block...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.899690",
+      "test_type": "security",
+      "page": "About Page",
+      "check": "content_type_options",
+      "status": "PASS",
+      "message": "X-Content-Type-Options: nosniff...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.899692",
+      "test_type": "security",
+      "page": "About Page",
+      "check": "frame_options",
+      "status": "PASS",
+      "message": "X-Frame-Options: SAMEORIGIN...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.899695",
+      "test_type": "security",
+      "page": "About Page",
+      "check": "csp",
+      "status": "PASS",
+      "message": "Content-Security-Policy: default-src 'self' https:; script-src 'self' 'unsa...",
+      "details": ""
+    },
+    {
+      "timestamp": "2025-09-21T07:51:01.899699",
+      "test_type": "security",
+      "page": "About Page",
+      "check": "hsts",
+      "status": "PASS",
+      "message": "Strict-Transport-Security: max-age=31536000; includeSubDomains...",
+      "details": ""
+    }
+  ],
+  "pages_tested": [
+    {
+      "path": "/",
+      "name": "Main Dashboard",
+      "type": "dashboard",
+      "critical": true
+    },
+    {
+      "path": "/dashboard/full",
+      "name": "Full Dashboard",
+      "type": "dashboard",
+      "critical": true
+    },
+    {
+      "path": "/analytics",
+      "name": "Analytics Dashboard",
+      "type": "analytics",
+      "critical": true
+    },
+    {
+      "path": "/performance-dashboard",
+      "name": "Performance Dashboard",
+      "type": "performance",
+      "critical": true
+    },
+    {
+      "path": "/ai-dashboard",
+      "name": "AI Dashboard",
+      "type": "ai",
+      "critical": false
+    },
+    {
+      "path": "/security-dashboard",
+      "name": "Security Dashboard",
+      "type": "security",
+      "critical": true
+    },
+    {
+      "path": "/security",
+      "name": "Security Page",
+      "type": "security",
+      "critical": true
+    },
+    {
+      "path": "/devices",
+      "name": "Devices List",
+      "type": "management",
+      "critical": true
+    },
+    {
+      "path": "/alerts",
+      "name": "Alerts Management",
+      "type": "management",
+      "critical": true
+    },
+    {
+      "path": "/notifications",
+      "name": "Notifications",
+      "type": "management",
+      "critical": false
+    },
+    {
+      "path": "/notifications/analytics",
+      "name": "Notification Analytics",
+      "type": "analytics",
+      "critical": false
+    },
+    {
+      "path": "/topology",
+      "name": "Network Topology",
+      "type": "visualization",
+      "critical": true
+    },
+    {
+      "path": "/network-map",
+      "name": "Network Map",
+      "type": "visualization",
+      "critical": false
+    },
+    {
+      "path": "/noc",
+      "name": "NOC View",
+      "type": "monitoring",
+      "critical": true
+    },
+    {
+      "path": "/settings",
+      "name": "Settings",
+      "type": "configuration",
+      "critical": true
+    },
+    {
+      "path": "/system-info",
+      "name": "System Information",
+      "type": "information",
+      "critical": false
+    },
+    {
+      "path": "/about",
+      "name": "About Page",
+      "type": "information",
+      "critical": false
+    }
+  ]
+}

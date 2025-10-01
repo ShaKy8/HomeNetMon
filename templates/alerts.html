@@ -1,2137 +1,1397 @@
-{% extends "base_with_quickstats.html" %}
+{% extends "base_beautiful.html" %}
 
-{% block title %}Issues & Alerts - HomeNetMon{% endblock %}
+{% block title %}Alerts - HomeNetMon{% endblock %}
 
 {% block extra_css %}
 <style>
-/* Mobile-first alert interface styles */
-.alert-summary-card {
+/* Alerts-specific styles */
+
+/* Controls Section */
+.controls-section {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 2rem;
+    align-items: center;
+    margin-bottom: 2rem;
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
+}
+
+.search-filter-section {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.search-box {
+    position: relative;
+    flex: 1;
+    min-width: 200px;
+}
+
+.search-box input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.5rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    color: #e0e0e0;
+    font-size: 0.95rem;
+}
+
+.search-box input:focus {
+    outline: none;
+    border-color: rgba(59, 130, 246, 0.5);
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
+.search-box .search-icon {
+    position: absolute;
+    left: 0.75rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #888;
+}
+
+.filter-controls {
+    display: flex;
+    gap: 1rem;
+    align-items: center;
+}
+
+.filter-select {
+    padding: 0.6rem 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    color: #e0e0e0;
+    font-size: 0.9rem;
+}
+
+.filter-select:focus {
+    outline: none;
+    border-color: rgba(59, 130, 246, 0.5);
+}
+
+.action-buttons {
+    display: flex;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+/* Special styling for Delete ALL button - more prominent */
+.btn-danger-bold {
+    background: linear-gradient(135deg, #dc3545, #b02a37);
+    border: 2px solid #dc3545;
+    color: white;
+    font-weight: 600;
+    text-transform: uppercase;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+.btn-danger-bold:hover {
+    background: linear-gradient(135deg, #c82333, #a02026);
+    border-color: #c82333;
+    box-shadow: 0 4px 12px rgba(220, 53, 69, 0.4);
+    transform: translateY(-1px);
+}
+
+/* Dropdown styling for bulk delete options */
+.dropdown-menu-dark {
+    background-color: rgba(33, 37, 41, 0.95);
+    border: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.dropdown-menu-dark .dropdown-item {
+    color: #e0e0e0;
+}
+
+.dropdown-menu-dark .dropdown-item:hover {
+    background-color: rgba(255, 255, 255, 0.1);
+    color: #fff;
+}
+
+/* Alerts Grid */
+.alerts-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(400px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.alert-card {
+    background: rgba(255, 255, 255, 0.02);
+    backdrop-filter: blur(20px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    padding: 1.5rem;
     transition: all 0.3s ease;
-    cursor: pointer;
-}
-
-.alert-summary-card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
-}
-
-.alert-summary-card .progress {
-    transition: width 0.5s ease;
-}
-
-/* Enhanced alert list items */
-.list-group-item {
-    transition: all 0.2s ease;
-}
-
-.list-group-item:hover {
-    background-color: var(--bs-light);
-}
-
-.list-group-item.border-start {
-    border-left-width: 4px !important;
-}
-
-/* Mobile-responsive adjustments */
-@media (max-width: 768px) {
-    .btn-group-vertical .btn-group {
-        display: flex;
-        width: 100%;
-    }
-    
-    .btn-group-vertical .btn-group .btn {
-        flex: 1;
-    }
-    
-    .modal-xl {
-        max-width: 95vw;
-        margin: 0.5rem auto;
-    }
-    
-    .card-body .row.g-3 > div {
-        margin-bottom: 1rem;
-    }
-}
-
-/* Toast container adjustments */
-.toast-container {
-    max-width: 300px;
-}
-
-@media (max-width: 576px) {
-    .toast-container {
-        left: 1rem;
-        right: 1rem;
-        max-width: none;
-    }
-}
-
-/* Connection status indicator */
-#connection-status {
-    font-size: 0.875rem;
-}
-
-#connection-status .spinner-border-sm {
-    animation: spin 2s linear infinite;
-}
-
-/* Filter summary badges */
-#filter-summary .badge {
-    margin-right: 0.5rem;
-    margin-bottom: 0.25rem;
-}
-
-/* Bulk actions bar */
-#bulk-actions-bar {
-    border-radius: 0;
-    border-left: 0;
-    border-right: 0;
-}
-
-/* Alert timeline styles */
-.timeline-item {
-    border-left: 2px solid var(--bs-gray-300);
-    padding-left: 1rem;
-    margin-left: 0.5rem;
     position: relative;
 }
 
-.timeline-item::before {
-    content: '';
-    position: absolute;
-    left: -6px;
-    top: 0.5rem;
-    width: 10px;
-    height: 10px;
+.alert-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
+    border-color: rgba(255, 255, 255, 0.2);
+}
+
+.alert-card.critical {
+    border-left: 4px solid #ff4757;
+    box-shadow: 0 0 20px rgba(255, 71, 87, 0.1);
+}
+
+.alert-card.high {
+    border-left: 4px solid #ff9800;
+    box-shadow: 0 0 20px rgba(255, 152, 0, 0.1);
+}
+
+.alert-card.medium {
+    border-left: 4px solid #ffc107;
+    box-shadow: 0 0 20px rgba(255, 193, 7, 0.1);
+}
+
+.alert-card.low {
+    border-left: 4px solid #28a745;
+    box-shadow: 0 0 20px rgba(40, 167, 69, 0.1);
+}
+
+.alert-card.resolved {
+    opacity: 0.6;
+    border-left: 4px solid #6c757d;
+}
+
+.alert-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 1rem;
+}
+
+.alert-title {
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #e0e0e0;
+    margin-bottom: 0.25rem;
+}
+
+.alert-device {
+    font-size: 0.9rem;
+    color: #888;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.alert-status {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+
+.status-badge {
+    padding: 0.25rem 0.75rem;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.status-badge.critical {
+    background: rgba(255, 71, 87, 0.2);
+    color: #ff4757;
+    border: 1px solid rgba(255, 71, 87, 0.3);
+}
+
+.status-badge.high {
+    background: rgba(255, 152, 0, 0.2);
+    color: #ff9800;
+    border: 1px solid rgba(255, 152, 0, 0.3);
+}
+
+.status-badge.medium {
+    background: rgba(255, 193, 7, 0.2);
+    color: #ffc107;
+    border: 1px solid rgba(255, 193, 7, 0.3);
+}
+
+.status-badge.low {
+    background: rgba(40, 167, 69, 0.2);
+    color: #28a745;
+    border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.status-badge.resolved {
+    background: rgba(108, 117, 125, 0.2);
+    color: #6c757d;
+    border: 1px solid rgba(108, 117, 125, 0.3);
+}
+
+.alert-timestamp {
+    font-size: 0.8rem;
+    color: #666;
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.alert-content {
+    margin-bottom: 1rem;
+}
+
+.alert-message {
+    font-size: 0.95rem;
+    line-height: 1.5;
+    color: #b0b0b0;
+}
+
+.alert-actions {
+    display: flex;
+    gap: 0.5rem;
+    justify-content: flex-end;
+}
+
+.alert-actions .btn {
+    padding: 0.4rem 0.8rem;
+    font-size: 0.8rem;
+}
+
+/* Empty States */
+.empty-state {
+    text-align: center;
+    padding: 4rem 2rem;
+    color: #888;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    color: #666;
+    margin-bottom: 1rem;
+    display: block;
+}
+
+.empty-state h3 {
+    font-size: 1.5rem;
+    color: #b0b0b0;
+    margin-bottom: 0.5rem;
+}
+
+.empty-state p {
+    font-size: 1rem;
+    margin-bottom: 1.5rem;
+}
+
+/* Loading Animation */
+.loading-spinner {
+    display: inline-block;
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 255, 255, 0.3);
     border-radius: 50%;
-    background-color: var(--bs-primary);
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
 }
 
-.timeline-item:last-child {
-    border-left: none;
+/* Checkbox styling */
+.alert-checkbox {
+    position: absolute;
+    top: 1rem;
+    left: 1rem;
+    width: 18px;
+    height: 18px;
+    accent-color: rgba(59, 130, 246, 0.8);
 }
 
-/* Search input enhancements */
-#search-alerts:focus {
-    border-color: var(--bs-primary);
-    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+.alert-card.selected {
+    border-color: rgba(59, 130, 246, 0.5);
+    background: rgba(59, 130, 246, 0.05);
 }
 
-/* Accessibility improvements */
-@media (prefers-reduced-motion: reduce) {
-    .alert-summary-card,
-    .list-group-item,
-    .progress {
-        transition: none;
-    }
-    
-    .alert-summary-card:hover {
-        transform: none;
-    }
-    
-    #connection-status .spinner-border-sm {
-        animation: none;
-    }
+/* Toast Notifications */
+.toast-container {
+    position: fixed;
+    top: 100px;
+    right: 20px;
+    z-index: 9999;
+    max-width: 400px;
 }
 
-/* High contrast mode support */
-@media (prefers-contrast: high) {
-    .list-group-item {
-        border-color: var(--bs-dark) !important;
-    }
-    
-    .badge {
-        border: 1px solid currentColor;
-    }
+.toast {
+    background: rgba(0, 0, 0, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 0.5rem;
+    color: white;
+    font-size: 0.9rem;
+    opacity: 0;
+    transform: translateX(100%);
+    transition: all 0.3s ease;
 }
 
-/* Print styles */
-@media print {
-    .btn, .modal, .toast-container, #bulk-actions-bar {
-        display: none !important;
+.toast.show {
+    opacity: 1;
+    transform: translateX(0);
+}
+
+.toast.success {
+    border-left: 4px solid #28a745;
+}
+
+.toast.warning {
+    border-left: 4px solid #ffc107;
+}
+
+.toast.error {
+    border-left: 4px solid #dc3545;
+}
+
+.toast.info {
+    border-left: 4px solid #17a2b8;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .controls-section {
+        grid-template-columns: 1fr;
+        gap: 1rem;
     }
-    
-    .alert-summary-card {
-        break-inside: avoid;
+
+    .alerts-grid {
+        grid-template-columns: 1fr;
     }
-    
-    .list-group-item {
-        break-inside: avoid;
-        border: 1px solid #000 !important;
-        margin-bottom: 0.5rem;
+
+    .search-filter-section {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .action-buttons {
+        justify-content: center;
     }
 }
 </style>
 {% endblock %}
 
 {% block content %}
-<!-- Breadcrumb Navigation -->
-<nav aria-label="breadcrumb" class="mb-3">
-    <ol class="breadcrumb">
-        <li class="breadcrumb-item"><a href="{{ url_for('dashboard') }}"><i class="bi bi-house"></i> Dashboard</a></li>
-        <li class="breadcrumb-item active" aria-current="page"><i class="bi bi-exclamation-triangle"></i> Issues & Alerts</li>
-    </ol>
-</nav>
+<div class="page-header">
+    <h1 class="page-title">Network Alerts</h1>
+    <p class="page-subtitle">Monitor and manage network device alerts</p>
+    <div class="page-version">v1.0.0</div>
+</div>
 
-<!-- Mobile-First Header -->
-<div class="d-flex flex-column flex-md-row justify-content-between align-items-start align-items-md-center mb-4 gap-3">
-    <div class="d-flex align-items-center gap-3">
-        <h1 class="mb-0"><i class="bi bi-exclamation-triangle text-warning"></i> Issues & Alerts</h1>
-        <div class="d-flex align-items-center gap-2">
-            <div class="badge bg-danger" id="active-alert-count">0</div>
-            <small class="text-muted d-none d-md-inline">Active</small>
+<div class="controls-section">
+    <div class="search-filter-section">
+        <div class="search-box">
+            <i class="bi bi-search search-icon"></i>
+            <input type="text" id="search-input" placeholder="Search alerts..." autocomplete="off">
+        </div>
+        <div class="filter-controls">
+            <select id="severity-filter" class="filter-select">
+                <option value="">All Severities</option>
+                <option value="critical">Critical</option>
+                <option value="high">High</option>
+                <option value="medium">Medium</option>
+                <option value="low">Low</option>
+            </select>
+            <select id="status-filter" class="filter-select">
+                <option value="">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="resolved">Resolved</option>
+            </select>
+            <select id="time-filter" class="filter-select">
+                <option value="">All Time</option>
+                <option value="1h">Last Hour</option>
+                <option value="24h">Last 24 Hours</option>
+                <option value="7d">Last 7 Days</option>
+                <option value="30d">Last 30 Days</option>
+            </select>
         </div>
     </div>
-    
-    <!-- Mobile-friendly action buttons -->
-    <div class="btn-group-vertical btn-group-sm d-md-none w-100" role="group">
-        <button type="button" class="btn btn-outline-primary" id="refresh-alerts-mobile">
-            <i class="bi bi-arrow-clockwise"></i> Refresh
+    <div class="action-buttons">
+        <button class="btn-modern btn-secondary" onclick="selectAllAlerts()" id="select-all-btn">
+            <i class="bi bi-check2-square"></i>
+            Select All
         </button>
-        <div class="btn-group btn-group-sm">
-            <button type="button" class="btn btn-outline-secondary" id="acknowledge-all-mobile">
-                <i class="bi bi-check-all"></i> Acknowledge All
+        <button class="btn-modern btn-warning" onclick="resolveSelectedAlerts()" id="resolve-btn" disabled>
+            <i class="bi bi-check-circle"></i>
+            Resolve Selected
+        </button>
+        <button class="btn-modern btn-danger" onclick="deleteSelectedAlerts()" id="delete-btn" disabled>
+            <i class="bi bi-trash"></i>
+            Delete Selected
+        </button>
+        <button class="btn-modern btn-danger-bold" onclick="deleteAllAlerts()" id="delete-all-btn" title="Delete ALL alerts - Use with caution!">
+            <i class="bi bi-trash3"></i>
+            Delete ALL Alerts
+        </button>
+        <div class="dropdown" style="display: inline-block;">
+            <button class="btn-modern btn-danger dropdown-toggle" type="button" id="bulkDeleteDropdown" data-bs-toggle="dropdown" aria-expanded="false">
+                <i class="bi bi-funnel"></i>
+                Bulk Delete
             </button>
-            <button type="button" class="btn btn-outline-danger" id="clear-all-alerts-mobile">
-                <i class="bi bi-trash"></i> Clear All
-            </button>
-        </div>
-    </div>
-    
-    <!-- Desktop action buttons -->
-    <div class="btn-group d-none d-md-flex">
-        <button type="button" class="btn btn-outline-primary" id="refresh-alerts">
-            <i class="bi bi-arrow-clockwise"></i> Refresh
-        </button>
-        <button type="button" class="btn btn-outline-secondary" id="acknowledge-all">
-            <i class="bi bi-check-all"></i> Acknowledge All
-        </button>
-        <button type="button" class="btn btn-outline-danger" id="clear-all-alerts">
-            <i class="bi bi-trash"></i> Clear All Alerts
-        </button>
-        <a href="{{ url_for('notifications') }}" class="btn btn-outline-info">
-            <i class="bi bi-bell"></i> Notification History
-        </a>
-    </div>
-</div>
-
-<!-- Enhanced Alert Summary with Mobile-First Design -->
-<div class="row g-3 mb-4">
-    <div class="col-12 col-sm-6 col-lg-4">
-        <div class="card border-danger h-100 alert-summary-card" data-severity="critical">
-            <div class="card-body text-center p-3">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <i class="bi bi-exclamation-triangle fs-2 text-danger"></i>
-                    <div class="badge bg-danger" id="critical-trend">--</div>
-                </div>
-                <h3 class="mb-1 text-danger fw-bold" id="critical-count">--</h3>
-                <p class="mb-0 small">Critical</p>
-                <div class="progress mt-2" style="height: 4px;">
-                    <div class="progress-bar bg-danger" id="critical-progress" style="width: 0%"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-12 col-sm-6 col-lg-4">
-        <div class="card border-warning h-100 alert-summary-card" data-severity="warning">
-            <div class="card-body text-center p-3">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <i class="bi bi-exclamation-circle fs-2 text-warning"></i>
-                    <div class="badge bg-warning text-dark" id="warning-trend">--</div>
-                </div>
-                <h3 class="mb-1 text-warning fw-bold" id="warning-count">--</h3>
-                <p class="mb-0 small">Warning</p>
-                <div class="progress mt-2" style="height: 4px;">
-                    <div class="progress-bar bg-warning" id="warning-progress" style="width: 0%"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="col-12 col-sm-12 col-lg-4">
-        <div class="card border-info h-100 alert-summary-card" data-severity="info">
-            <div class="card-body text-center p-3">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <i class="bi bi-info-circle fs-2 text-info"></i>
-                    <div class="badge bg-info" id="info-trend">--</div>
-                </div>
-                <h3 class="mb-1 text-info fw-bold" id="info-count">--</h3>
-                <p class="mb-0 small">Info</p>
-                <div class="progress mt-2" style="height: 4px;">
-                    <div class="progress-bar bg-info" id="info-progress" style="width: 0%"></div>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Real-time Status Banner -->
-<div class="alert alert-info alert-dismissible d-none" id="realtime-status" role="alert">
-    <div class="d-flex align-items-center">
-        <div class="spinner-border spinner-border-sm me-2" role="status">
-            <span class="visually-hidden">Loading...</span>
-        </div>
-        <span id="realtime-message">Connecting to real-time updates...</span>
-    </div>
-    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-</div>
-
-<!-- Enhanced Filters with Search -->
-<div class="card mb-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h6 class="mb-0">Search & Filters</h6>
-        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#advanced-filters">
-            <i class="bi bi-sliders"></i> Advanced
-        </button>
-    </div>
-    <div class="card-body">
-        <!-- Search Bar -->
-        <div class="row g-3 mb-3">
-            <div class="col-12">
-                <div class="input-group">
-                    <span class="input-group-text"><i class="bi bi-search"></i></span>
-                    <input type="text" class="form-control" id="search-alerts" placeholder="Search alerts by device name, IP, or message..." autocomplete="off">
-                    <button class="btn btn-outline-secondary" type="button" id="clear-search">
-                        <i class="bi bi-x-circle"></i>
-                    </button>
-                </div>
-                <div class="form-text">Search across device names, IP addresses, and alert messages</div>
-            </div>
-        </div>
-        
-        <!-- Quick Filters -->
-        <div class="row g-3 align-items-end">
-            <div class="col-6 col-md-3">
-                <label for="filter-severity" class="form-label small">Severity</label>
-                <select class="form-select form-select-sm" id="filter-severity">
-                    <option value="">All Severities</option>
-                    <option value="critical">Critical</option>
-                    <option value="warning">Warning</option>
-                    <option value="info">Info</option>
-                </select>
-            </div>
-            
-            <div class="col-6 col-md-3">
-                <label for="filter-status" class="form-label small">Status</label>
-                <select class="form-select form-select-sm" id="filter-status">
-                    <option value="">All</option>
-                    <option value="false" selected>Active</option>
-                    <option value="true">Resolved</option>
-                </select>
-            </div>
-            
-            <div class="col-6 col-md-3">
-                <label for="filter-hours" class="form-label small">Time Period</label>
-                <select class="form-select form-select-sm" id="filter-hours">
-                    <option value="1">Last Hour</option>
-                    <option value="24" selected>Last 24 Hours</option>
-                    <option value="168">Last 7 Days</option>
-                    <option value="720">Last 30 Days</option>
-                </select>
-            </div>
-            
-            <div class="col-6 col-md-3">
-                <button type="button" class="btn btn-outline-secondary btn-sm w-100" id="clear-filters">
-                    <i class="bi bi-x-circle"></i> Clear All
-                </button>
-            </div>
-        </div>
-        
-        <!-- Advanced Filters (Collapsible) -->
-        <div class="collapse mt-3" id="advanced-filters">
-            <hr>
-            <div class="row g-3">
-                <div class="col-6 col-md-4">
-                    <label for="filter-device-type" class="form-label small">Device Type</label>
-                    <select class="form-select form-select-sm" id="filter-device-type">
-                        <option value="">All Device Types</option>
-                        <option value="router">Router</option>
-                        <option value="server">Server</option>
-                        <option value="computer">Computer</option>
-                        <option value="mobile">Mobile</option>
-                        <option value="iot">IoT Device</option>
-                    </select>
-                </div>
-                
-                <div class="col-6 col-md-4">
-                    <label for="filter-alert-type" class="form-label small">Alert Type</label>
-                    <select class="form-select form-select-sm" id="filter-alert-type">
-                        <option value="">All Alert Types</option>
-                        <option value="device_down">Device Down</option>
-                        <option value="device_recovery">Device Recovery</option>
-                        <option value="high_latency">High Latency</option>
-                        <option value="anomaly_connectivity_pattern">Connectivity Anomaly</option>
-                    </select>
-                </div>
-                
-                <div class="col-12 col-md-4">
-                    <label class="form-label small">Sort By</label>
-                    <select class="form-select form-select-sm" id="sort-alerts">
-                        <option value="created_at_desc">Newest First</option>
-                        <option value="created_at_asc">Oldest First</option>
-                        <option value="severity_desc">Severity (High to Low)</option>
-                        <option value="device_name_asc">Device Name (A-Z)</option>
-                    </select>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Filter Summary -->
-        <div class="mt-3" id="filter-summary" style="display: none;">
-            <div class="d-flex flex-wrap gap-2">
-                <span class="badge bg-light text-dark">Filters applied:</span>
-                <div id="active-filters"></div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Loading Indicator -->
-<div class="text-center py-5" id="loading-indicator">
-    <div class="spinner-border text-primary" role="status">
-        <span class="visually-hidden">Loading...</span>
-    </div>
-    <p class="mt-2 text-muted">Loading alerts...</p>
-</div>
-
-<!-- Enhanced Alerts List -->
-<div class="card" id="alerts-container" style="display: none;">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <div class="d-flex align-items-center gap-3">
-            <h5 class="mb-0">Alerts</h5>
-            <span class="badge bg-secondary" id="filtered-count">0</span>
-            <div class="d-flex align-items-center gap-2 d-none d-md-flex">
-                <div class="form-check form-switch form-check-sm">
-                    <input class="form-check-input" type="checkbox" id="auto-refresh" checked>
-                    <label class="form-check-label small" for="auto-refresh">Auto-refresh</label>
-                </div>
-                <div class="vr"></div>
-                <div class="d-flex align-items-center gap-1" id="connection-status">
-                    <div class="spinner-border spinner-border-sm text-success" style="width: 0.8rem; height: 0.8rem;"></div>
-                    <small class="text-success">Live</small>
-                </div>
-            </div>
-        </div>
-        
-        <div class="dropdown">
-            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" type="button" data-bs-toggle="dropdown">
-                <i class="bi bi-three-dots"></i>
-            </button>
-            <ul class="dropdown-menu dropdown-menu-end">
-                <li><button class="dropdown-item" type="button" id="select-all-alerts">
-                    <i class="bi bi-check-all"></i> Select All
-                </button></li>
-                <li><button class="dropdown-item" type="button" id="deselect-all-alerts">
-                    <i class="bi bi-square"></i> Deselect All
-                </button></li>
+            <ul class="dropdown-menu dropdown-menu-dark" aria-labelledby="bulkDeleteDropdown">
+                <li><a class="dropdown-item" href="#" onclick="bulkDeleteByType('performance')">Delete All Performance Alerts</a></li>
+                <li><a class="dropdown-item" href="#" onclick="bulkDeleteByType('device_recovery')">Delete All Recovery Alerts</a></li>
+                <li><a class="dropdown-item" href="#" onclick="bulkDeleteByStatus(true)">Delete All Resolved Alerts</a></li>
+                <li><a class="dropdown-item" href="#" onclick="bulkDeleteByStatus(false)">Delete All Unresolved Alerts</a></li>
                 <li><hr class="dropdown-divider"></li>
-                <li><button class="dropdown-item" type="button" id="export-alerts">
-                    <i class="bi bi-download"></i> Export Selected
-                </button></li>
+                <li><a class="dropdown-item text-warning" href="#" onclick="bulkDeleteBySeverity('info')">Delete All Info Alerts</a></li>
+                <li><a class="dropdown-item text-danger" href="#" onclick="bulkDeleteBySeverity('warning')">Delete All Warning Alerts</a></li>
             </ul>
         </div>
-    </div>
-    
-    <!-- Bulk Actions Bar (Hidden by default) -->
-    <div class="alert alert-primary m-0 d-none" id="bulk-actions-bar">
-        <div class="d-flex justify-content-between align-items-center">
-            <span><strong id="selected-count">0</strong> alerts selected</span>
-            <div class="btn-group btn-group-sm">
-                <button type="button" class="btn btn-outline-warning" id="bulk-acknowledge">
-                    <i class="bi bi-check"></i> Acknowledge
-                </button>
-                <button type="button" class="btn btn-outline-success" id="bulk-resolve">
-                    <i class="bi bi-check-circle"></i> Resolve
-                </button>
-                <button type="button" class="btn btn-outline-danger" id="bulk-delete">
-                    <i class="bi bi-trash"></i> Delete
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    <div class="card-body p-0">
-        <div id="alerts-list" class="list-group list-group-flush">
-            <!-- Alert items will be inserted here -->
-        </div>
+        <button class="btn-modern btn-primary" onclick="refreshAlerts()">
+            <i class="bi bi-arrow-clockwise"></i>
+            Refresh
+        </button>
     </div>
 </div>
 
-<!-- No Alerts Message -->
-<div class="text-center py-5" id="no-alerts" style="display: none;">
-    <i class="bi bi-check-circle display-1 text-success"></i>
-    <h3 class="mt-3 text-success">No alerts found</h3>
-    <p class="text-muted">All systems are running smoothly!</p>
-</div>
+<div id="alerts-container">
+    <!-- Loading State -->
+    <div id="loading-state" class="empty-state">
+        <i class="bi bi-hourglass-split loading-spinner"></i>
+        <h3>Loading Alerts</h3>
+        <p>Fetching network alerts...</p>
+    </div>
 
-<!-- Enhanced Alert Detail Modal -->
-<div class="modal fade" id="alertDetailModal" tabindex="-1">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header bg-light">
-                <div class="d-flex align-items-center gap-3">
-                    <i class="bi bi-info-circle-fill fs-4" id="modal-severity-icon"></i>
-                    <div>
-                        <h5 class="modal-title mb-0" id="modal-title">Alert Details</h5>
-                        <small class="text-muted" id="modal-subtitle">Loading...</small>
-                    </div>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body" id="alert-detail-content">
-                <div class="row g-4">
-                    <!-- Alert Information -->
-                    <div class="col-12 col-md-8">
-                        <div class="card h-100">
-                            <div class="card-header">
-                                <h6 class="mb-0"><i class="bi bi-info-circle"></i> Alert Information</h6>
-                            </div>
-                            <div class="card-body">
-                                <div id="alert-info-content">
-                                    <!-- Dynamic content -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Device Information -->
-                    <div class="col-12 col-md-4">
-                        <div class="card h-100">
-                            <div class="card-header">
-                                <h6 class="mb-0"><i class="bi bi-router"></i> Device Information</h6>
-                            </div>
-                            <div class="card-body">
-                                <div id="device-info-content">
-                                    <!-- Dynamic content -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Notification Status -->
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0"><i class="bi bi-bell"></i> Notification Status</h6>
-                                <div class="btn-group btn-group-sm">
-                                    <button class="btn btn-outline-primary" id="view-notifications-btn" style="display: none;">
-                                        <i class="bi bi-list"></i> View History
-                                    </button>
-                                    <button class="btn btn-outline-warning" id="retry-notification-btn" style="display: none;">
-                                        <i class="bi bi-arrow-repeat"></i> Retry
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="card-body">
-                                <div id="notification-status-content">
-                                    <!-- Notification status will be loaded here -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Alert Timeline -->
-                    <div class="col-12">
-                        <div class="card">
-                            <div class="card-header d-flex justify-content-between align-items-center">
-                                <h6 class="mb-0"><i class="bi bi-clock-history"></i> Unified Timeline</h6>
-                                <button class="btn btn-sm btn-outline-secondary" id="refresh-timeline">
-                                    <i class="bi bi-arrow-clockwise"></i> Refresh
-                                </button>
-                            </div>
-                            <div class="card-body">
-                                <div id="alert-timeline-content">
-                                    <!-- Timeline will be loaded here -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <!-- Related Alerts -->
-                    <div class="col-12" id="related-alerts-section" style="display: none;">
-                        <div class="card">
-                            <div class="card-header">
-                                <h6 class="mb-0"><i class="bi bi-diagram-2"></i> Related Alerts</h6>
-                            </div>
-                            <div class="card-body">
-                                <div id="related-alerts-content">
-                                    <!-- Related alerts will be loaded here -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer bg-light">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-outline-primary" id="view-device-btn">
-                    <i class="bi bi-router"></i> View Device
-                </button>
-                <button type="button" class="btn btn-warning" id="acknowledge-alert-btn" style="display: none;">
-                    <i class="bi bi-check"></i> Acknowledge
-                </button>
-                <button type="button" class="btn btn-success" id="resolve-alert-btn" style="display: none;">
-                    <i class="bi bi-check-circle"></i> Resolve
-                </button>
-            </div>
-        </div>
+    <!-- Alerts Grid -->
+    <div id="alerts-grid" class="alerts-grid" style="display: none;">
+        <!-- Alert cards will be dynamically inserted here -->
+    </div>
+
+    <!-- No Alerts State -->
+    <div id="no-alerts-state" class="empty-state" style="display: none;">
+        <i class="bi bi-shield-check"></i>
+        <h3>No Alerts</h3>
+        <p>Your network is running smoothly! No alerts to display.</p>
+        <button class="btn-modern btn-primary" onclick="refreshAlerts()">
+            <i class="bi bi-arrow-clockwise"></i>
+            Refresh
+        </button>
+    </div>
+
+    <!-- Error State -->
+    <div id="error-state" class="empty-state" style="display: none;">
+        <i class="bi bi-exclamation-circle"></i>
+        <h3>Error Loading Alerts</h3>
+        <p id="error-message">Unable to load alerts. Please try again.</p>
+        <button class="btn-modern btn-primary" onclick="loadAlerts()">
+            <i class="bi bi-arrow-clockwise"></i>
+            Retry
+        </button>
     </div>
 </div>
 
-<!-- Toast Container for Notifications -->
-<div class="toast-container position-fixed bottom-0 end-0 p-3" style="z-index: 11000;">
-    <!-- Toasts will be dynamically added here -->
-</div>
+<!-- Toast Container -->
+<div id="toast-container" class="toast-container"></div>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_js %}
 <script>
-// Enhanced alerts management with mobile-first design
+console.log('🔔 Alerts page loaded');
+
 class AlertsManager {
     constructor() {
         this.alerts = [];
         this.filteredAlerts = [];
         this.selectedAlerts = new Set();
-        this.searchTerm = '';
         this.socket = null;
-        this.autoRefresh = true;
-        this.refreshInterval = null;
-        this.lastUpdate = null;
-        
-        this.init();
-    }
-    
-    init() {
-        this.initWebSocket();
+        this.isLoading = false;
+        this.loadingTimeout = null;
+        this.retryCount = 0;
+        this.maxRetries = 3;
+        this.retryDelay = 1000; // Start with 1 second
+        this.debugMode = localStorage.getItem('alerts_debug') === 'true';
+
+        this.debug('AlertsManager initialized');
+        this.initializeSocketIO();
         this.bindEvents();
         this.loadAlerts();
-        this.startAutoRefresh();
+
+        // Set up automatic timeout protection
+        this.setupLoadingTimeoutProtection();
     }
-    
-    initWebSocket() {
+
+    debug(message, data = null) {
+        if (this.debugMode || console.time) { // Always log in development
+            const timestamp = new Date().toISOString();
+            console.log(`[AlertsManager ${timestamp}] ${message}`, data || '');
+        }
+    }
+
+    setupLoadingTimeoutProtection() {
+        // Clear any existing timeout
+        if (this.loadingTimeout) {
+            clearTimeout(this.loadingTimeout);
+        }
+
+        // Set a 30-second timeout to automatically clear loading state
+        this.loadingTimeout = setTimeout(() => {
+            this.debug('Loading timeout reached - forcing clear loading state');
+            this.isLoading = false;
+            this.showLoadingState(false);
+            this.showToast('Loading took longer than expected. Please try refreshing.', 'warning', 10000);
+        }, 30000);
+    }
+
+    initializeSocketIO() {
         try {
-            // Use Socket.IO instead of native WebSocket
-            this.socket = io();
-            
+            this.debug('Initializing WebSocket connection');
+
+            // Check if Socket.IO is available
+            if (typeof io === 'undefined') {
+                this.debug('Socket.IO not available - real-time updates disabled');
+                this.showToast('Real-time updates unavailable (Socket.IO not loaded)', 'info', 5000);
+                return;
+            }
+
+            this.socket = io({
+                timeout: 10000,
+                reconnection: true,
+                reconnectionDelay: 1000,
+                reconnectionAttempts: 5,
+                maxReconnectionAttempts: 5
+            });
+
             this.socket.on('connect', () => {
-                console.log('Socket.IO connected for real-time alerts');
-                this.updateConnectionStatus(true);
-                this.showToast('Connected to real-time updates', 'success', 3000);
+                this.debug('WebSocket connected successfully');
+                this.showToast('Real-time updates active', 'success', 2000);
             });
-            
-            this.socket.on('alert_update', (data) => {
-                console.log('Real-time alert update received:', data);
-                this.handleRealtimeAlert(data);
+
+            this.socket.on('disconnect', (reason) => {
+                this.debug('WebSocket disconnected:', reason);
+                if (reason !== 'io client disconnect') { // Don't show toast for intentional disconnects
+                    this.showToast('Real-time updates disconnected', 'warning', 3000);
+                }
             });
-            
-            this.socket.on('disconnect', () => {
-                console.log('Socket.IO disconnected');
-                this.updateConnectionStatus(false);
+
+            this.socket.on('reconnect', (attemptNumber) => {
+                this.debug(`WebSocket reconnected after ${attemptNumber} attempts`);
+                this.showToast('Real-time updates restored', 'success', 2000);
             });
-            
-            this.socket.on('connect_error', (error) => {
-                console.error('Socket.IO connection error:', error);
-                this.updateConnectionStatus(false);
+
+            this.socket.on('reconnect_attempt', (attemptNumber) => {
+                this.debug(`WebSocket reconnection attempt ${attemptNumber}`);
             });
-            
-            // Request initial alerts update
-            this.socket.emit('request_alerts_update');
+
+            this.socket.on('reconnect_error', (error) => {
+                this.debug('WebSocket reconnection error:', error);
+            });
+
+            this.socket.on('reconnect_failed', () => {
+                this.debug('WebSocket reconnection failed after maximum attempts');
+                this.showToast('Unable to restore real-time updates', 'error', 5000);
+            });
+
+            // Listen for alert events
+            this.socket.on('alert_created', (alert) => {
+                this.debug('Received alert_created event:', alert);
+                this.handleNewAlert(alert);
+            });
+
+            this.socket.on('alert_updated', (alert) => {
+                this.debug('Received alert_updated event:', alert);
+                this.handleUpdatedAlert(alert);
+            });
+
+            this.socket.on('alert_resolved', (alertId) => {
+                this.debug('Received alert_resolved event:', alertId);
+                this.handleResolvedAlert(alertId);
+            });
+
         } catch (error) {
-            console.error('Failed to initialize Socket.IO:', error);
-            this.updateConnectionStatus(false);
-        }
-    }
-    
-    updateConnectionStatus(connected) {
-        const statusEl = document.getElementById('connection-status');
-        if (!statusEl) return;
-        
-        if (connected) {
-            statusEl.innerHTML = `
-                <div class="spinner-border spinner-border-sm text-success" style="width: 0.8rem; height: 0.8rem;"></div>
-                <small class="text-success">Live</small>
-            `;
-        } else {
-            statusEl.innerHTML = `
-                <div class="bg-danger rounded-circle" style="width: 0.8rem; height: 0.8rem;"></div>
-                <small class="text-muted">Offline</small>
-            `;
-        }
-    }
-    
-    handleRealtimeAlert(alert) {
-        // Update alert in local array if it exists, or add if new
-        const existingIndex = this.alerts.findIndex(a => a.id === alert.id);
-        if (existingIndex >= 0) {
-            this.alerts[existingIndex] = alert;
-        } else {
-            this.alerts.unshift(alert); // Add to beginning
-        }
-        
-        // Re-filter and re-render
-        this.applyFilters();
-        this.updateAlertCounts();
-        
-        // Show notification for new critical alerts
-        if (alert.severity === 'critical' && !alert.resolved) {
-            this.showToast(`🚨 Critical Alert: ${alert.device_name}`, 'danger', 8000);
-        }
-    }
-    
-    async loadAlerts(filters = {}) {
-        console.log('Loading alerts with filters:', filters);
-        
-        // Show loading indicator
-        this.showLoading(true);
-        
-        try {
-            // Build query parameters
-            const params = new URLSearchParams();
-            if (filters.severity) params.append('severity', filters.severity);
-            if (filters.resolved !== undefined) params.append('resolved', filters.resolved);
-            if (filters.hours) params.append('hours', filters.hours);
-            if (filters.device_type) params.append('device_type', filters.device_type);
-            if (filters.alert_type) params.append('alert_type', filters.alert_type);
-            params.append('limit', '100'); // Get more alerts for better filtering
-            
-            const url = `/api/monitoring/alerts${params.toString() ? '?' + params.toString() : ''}`;
-            console.log('Fetching:', url);
-            
-            const response = await fetch(url);
-            if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-            }
-            
-            const data = await response.json();
-            console.log('Alerts loaded:', data);
-            
-            this.alerts = data.alerts || [];
-            this.lastUpdate = new Date();
-            
-            this.applyFilters();
-            this.updateAlertCounts();
-            
-        } catch (error) {
-            console.error('Error loading alerts:', error);
-            this.showError('Failed to load alerts: ' + error.message);
-        } finally {
-            this.showLoading(false);
-        }
-    }
-
-    getCurrentFilters() {
-        return {
-            severity: document.getElementById('filter-severity').value || undefined,
-            resolved: document.getElementById('filter-status').value === '' ? undefined : document.getElementById('filter-status').value,
-            hours: parseInt(document.getElementById('filter-hours').value) || 24,
-            device_type: document.getElementById('filter-device-type').value || undefined,
-            alert_type: document.getElementById('filter-alert-type').value || undefined,
-            sort: document.getElementById('sort-alerts').value || 'created_at_desc'
-        };
-    }
-    
-    applyFilters() {
-        let filtered = [...this.alerts];
-        const filters = this.getCurrentFilters();
-        
-        // Apply search filter
-        if (this.searchTerm) {
-            const searchLower = this.searchTerm.toLowerCase();
-            filtered = filtered.filter(alert => 
-                alert.device_name.toLowerCase().includes(searchLower) ||
-                alert.device_ip.toLowerCase().includes(searchLower) ||
-                alert.message.toLowerCase().includes(searchLower)
-            );
-        }
-        
-        // Apply other filters
-        if (filters.severity) {
-            filtered = filtered.filter(alert => alert.severity === filters.severity);
-        }
-        
-        if (filters.resolved !== undefined) {
-            filtered = filtered.filter(alert => alert.resolved.toString() === filters.resolved);
-        }
-        
-        if (filters.device_type) {
-            filtered = filtered.filter(alert => 
-                alert.device_type && alert.device_type.toLowerCase().includes(filters.device_type.toLowerCase())
-            );
-        }
-        
-        if (filters.alert_type) {
-            filtered = filtered.filter(alert => alert.alert_type === filters.alert_type);
-        }
-        
-        // Apply sorting
-        this.sortAlerts(filtered, filters.sort);
-        
-        this.filteredAlerts = filtered;
-        this.renderAlerts();
-        this.updateFilterSummary();
-    }
-    
-    sortAlerts(alerts, sortBy) {
-        switch (sortBy) {
-            case 'created_at_desc':
-                alerts.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
-                break;
-            case 'created_at_asc':
-                alerts.sort((a, b) => new Date(a.created_at) - new Date(b.created_at));
-                break;
-            case 'severity_desc':
-                const severityOrder = { critical: 3, warning: 2, info: 1 };
-                alerts.sort((a, b) => (severityOrder[b.severity] || 0) - (severityOrder[a.severity] || 0));
-                break;
-            case 'device_name_asc':
-                alerts.sort((a, b) => a.device_name.localeCompare(b.device_name));
-                break;
-        }
-    }
-
-    renderAlerts() {
-        const alertsList = document.getElementById('alerts-list');
-        const alertsContainer = document.getElementById('alerts-container');
-        const noAlertsEl = document.getElementById('no-alerts');
-        const filteredCountEl = document.getElementById('filtered-count');
-        
-        // Update count
-        if (filteredCountEl) {
-            filteredCountEl.textContent = this.filteredAlerts.length;
-        }
-        
-        if (this.filteredAlerts.length === 0) {
-            alertsContainer.style.display = 'none';
-            noAlertsEl.style.display = 'block';
-            return;
-        }
-        
-        alertsContainer.style.display = 'block';
-        noAlertsEl.style.display = 'none';
-        
-        // Clear existing alerts
-        alertsList.innerHTML = '';
-        
-        this.filteredAlerts.forEach((alert, index) => {
-            const alertElement = this.createAlertElement(alert, index);
-            alertsList.appendChild(alertElement);
-        });
-    }
-    
-    createAlertElement(alert, index) {
-        const alertDiv = document.createElement('div');
-        alertDiv.className = 'list-group-item list-group-item-action border-0';
-        alertDiv.dataset.alertId = alert.id;
-        
-        // Add severity class for better visual distinction
-        if (alert.severity === 'critical') {
-            alertDiv.classList.add('border-start', 'border-danger', 'border-3');
-        } else if (alert.severity === 'warning') {
-            alertDiv.classList.add('border-start', 'border-warning', 'border-3');
-        }
-        
-        const timeAgo = this.getTimeAgo(new Date(alert.created_at));
-        const deviceIcon = this.getDeviceIcon(alert.device_type);
-        const severityIcon = this.getSeverityIcon(alert.severity);
-        
-        alertDiv.innerHTML = `
-            <div class="d-flex align-items-start gap-3 p-2">
-                <!-- Selection checkbox -->
-                <div class="form-check mt-1">
-                    <input class="form-check-input alert-checkbox" type="checkbox" data-alert-id="${alert.id}">
-                </div>
-                
-                <!-- Alert content -->
-                <div class="flex-grow-1 min-w-0">
-                    <div class="d-flex flex-column flex-md-row justify-content-between align-items-start gap-2 mb-2">
-                        <div class="d-flex align-items-center gap-2">
-                            ${deviceIcon}
-                            <h6 class="mb-0 text-truncate">${alert.device_name}</h6>
-                            <span class="badge bg-light text-dark small">${alert.device_ip}</span>
-                        </div>
-                        
-                        <div class="d-flex align-items-center gap-2">
-                            ${severityIcon}
-                            <span class="badge ${
-                                alert.severity === 'critical' ? 'bg-danger text-white' :
-                                alert.severity === 'warning' ? 'bg-warning text-dark' :
-                                alert.severity === 'info' ? 'bg-info text-white' : 'bg-secondary text-white'
-                            } text-uppercase small">${alert.severity}</span>
-                        </div>
-                    </div>
-                    
-                    <p class="mb-1 text-break">${alert.message}</p>
-                    
-                    <div class="d-flex flex-wrap align-items-center gap-3 text-muted small">
-                        <span><i class="bi bi-clock"></i> ${timeAgo}</span>
-                        <span><i class="bi bi-tag"></i> ${alert.alert_type.replace('_', ' ')}</span>
-                        ${this.getNotificationStatusBadge(alert)}
-                        ${alert.acknowledged ? `<span class="text-success"><i class="bi bi-check"></i> Acknowledged</span>` : ''}
-                        ${alert.resolved ? `<span class="text-info"><i class="bi bi-check-circle"></i> Resolved</span>` : ''}
-                    </div>
-                </div>
-                
-                <!-- Action buttons -->
-                <div class="d-flex flex-column gap-1">
-                    <button type="button" class="btn btn-sm btn-outline-primary view-alert-btn" data-alert-id="${alert.id}" title="View Details">
-                        <i class="bi bi-eye"></i>
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-danger delete-alert-btn" data-alert-id="${alert.id}" title="Delete Alert">
-                        <i class="bi bi-trash"></i>
-                    </button>
-                </div>
-            </div>
-        `;
-        
-        return alertDiv;
-    }
-
-    getDeviceIcon(deviceType) {
-        const iconMap = {
-            'router': '<i class="bi bi-router text-primary"></i>',
-            'server': '<i class="bi bi-server text-success"></i>',
-            'computer': '<i class="bi bi-laptop text-info"></i>',
-            'mobile': '<i class="bi bi-phone text-warning"></i>',
-            'iot': '<i class="bi bi-cpu text-secondary"></i>'
-        };
-        return iconMap[deviceType?.toLowerCase()] || '<i class="bi bi-question-circle text-muted"></i>';
-    }
-    
-    getSeverityIcon(severity) {
-        const iconMap = {
-            'critical': '<i class="bi bi-exclamation-triangle-fill text-danger"></i>',
-            'warning': '<i class="bi bi-exclamation-circle-fill text-warning"></i>',
-            'info': '<i class="bi bi-info-circle-fill text-info"></i>'
-        };
-        return iconMap[severity] || '<i class="bi bi-question-circle text-muted"></i>';
-    }
-    
-    getNotificationStatusBadge(alert) {
-        if (!alert.notification_sent && alert.notification_status === 'none') {
-            return '<span class="text-muted"><i class="bi bi-bell-slash"></i> No notification</span>';
-        }
-        
-        switch (alert.notification_status) {
-            case 'sent':
-                const count = alert.notification_count > 1 ? ` (${alert.notification_count})` : '';
-                return `<span class="text-success" role="button" onclick="viewNotificationsForAlert(${alert.id})" title="View notifications for this alert" style="cursor: pointer;"><i class="bi bi-bell-check"></i> Sent${count}</span>`;
-            case 'failed':
-                return `<span class="text-danger" role="button" onclick="viewNotificationsForAlert(${alert.id})" title="View failed notifications" style="cursor: pointer;"><i class="bi bi-bell-slash"></i> Failed</span>`;
-            case 'pending':
-                return `<span class="text-warning" role="button" onclick="viewNotificationsForAlert(${alert.id})" title="View pending notifications" style="cursor: pointer;"><i class="bi bi-bell"></i> Pending</span>`;
-            default:
-                return `<span class="text-muted" role="button" onclick="viewNotificationsForAlert(${alert.id})" title="View notifications for this alert" style="cursor: pointer;"><i class="bi bi-bell"></i> Unknown</span>`;
-        }
-    }
-    
-    getTimeAgo(date) {
-        const now = new Date();
-        const diffMs = now - date;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMins / 60);
-        const diffDays = Math.floor(diffHours / 24);
-        
-        if (diffMins < 1) return 'Just now';
-        if (diffMins < 60) return `${diffMins}m ago`;
-        if (diffHours < 24) return `${diffHours}h ago`;
-        return `${diffDays}d ago`;
-    }
-    
-    updateAlertCounts() {
-        // Count by severity from all alerts (not just filtered)
-        const criticalCount = this.alerts.filter(a => a.severity === 'critical' && !a.resolved).length;
-        const warningCount = this.alerts.filter(a => a.severity === 'warning' && !a.resolved).length;
-        const infoCount = this.alerts.filter(a => a.severity === 'info' && !a.resolved).length;
-        const totalActive = criticalCount + warningCount + infoCount;
-        
-        // Update main counts
-        document.getElementById('critical-count').textContent = criticalCount;
-        document.getElementById('warning-count').textContent = warningCount;
-        document.getElementById('info-count').textContent = infoCount;
-        document.getElementById('active-alert-count').textContent = totalActive;
-        
-        // Update trend indicators (simplified)
-        document.getElementById('critical-trend').textContent = criticalCount > 0 ? '↑' : '—';
-        document.getElementById('warning-trend').textContent = warningCount > 0 ? '↑' : '—';
-        document.getElementById('info-trend').textContent = infoCount > 0 ? '↑' : '—';
-        
-        // Update progress bars (relative to max of 10)
-        const maxCount = 10;
-        document.getElementById('critical-progress').style.width = `${Math.min(criticalCount / maxCount * 100, 100)}%`;
-        document.getElementById('warning-progress').style.width = `${Math.min(warningCount / maxCount * 100, 100)}%`;
-        document.getElementById('info-progress').style.width = `${Math.min(infoCount / maxCount * 100, 100)}%`;
-    }
-
-    updateFilterSummary() {
-        const summaryEl = document.getElementById('filter-summary');
-        const activeFiltersEl = document.getElementById('active-filters');
-        const filters = this.getCurrentFilters();
-        
-        const activeFilters = [];
-        
-        if (this.searchTerm) activeFilters.push(`Search: "${this.searchTerm}"`);
-        if (filters.severity) activeFilters.push(`Severity: ${filters.severity}`);
-        if (filters.resolved !== undefined) activeFilters.push(`Status: ${filters.resolved === 'true' ? 'Resolved' : 'Active'}`);
-        if (filters.device_type) activeFilters.push(`Device: ${filters.device_type}`);
-        if (filters.alert_type) activeFilters.push(`Type: ${filters.alert_type.replace('_', ' ')}`);
-        
-        if (activeFilters.length > 0) {
-            activeFiltersEl.innerHTML = activeFilters.map(filter => 
-                `<span class="badge bg-primary">${filter}</span>`
-            ).join(' ');
-            summaryEl.style.display = 'block';
-        } else {
-            summaryEl.style.display = 'none';
-        }
-    }
-    
-    clearFilters() {
-        document.getElementById('filter-severity').value = '';
-        document.getElementById('filter-status').value = 'false';
-        document.getElementById('filter-hours').value = '24';
-        document.getElementById('filter-device-type').value = '';
-        document.getElementById('filter-alert-type').value = '';
-        document.getElementById('sort-alerts').value = 'created_at_desc';
-        document.getElementById('search-alerts').value = '';
-        this.searchTerm = '';
-        this.applyFilters();
-    }
-    
-    clearSearch() {
-        document.getElementById('search-alerts').value = '';
-        this.searchTerm = '';
-        this.applyFilters();
-    }
-    
-    async acknowledgeAllAlerts() {
-        try {
-            const response = await fetch('/api/monitoring/alerts/acknowledge-all', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    acknowledged_by: 'web_user'
-                })
-            });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-                console.log('Acknowledged alerts:', data);
-                this.showToast(data.message, 'success');
-                await this.loadAlerts();
-            } else {
-                console.error('Error acknowledging alerts:', data);
-                this.showToast('Error acknowledging alerts: ' + (data.error || 'Unknown error'), 'danger');
-            }
-            
-        } catch (error) {
-            console.error('Error acknowledging alerts:', error);
-            this.showToast('Error acknowledging alerts: ' + error.message, 'danger');
-        }
-    }
-
-    async clearAllAlerts() {
-        if (!confirm('Are you sure you want to permanently delete ALL alerts? This action cannot be undone.')) {
-            return;
-        }
-        
-        // Double confirmation for destructive action
-        if (!confirm('This will permanently delete all alerts from the database. Are you absolutely sure?')) {
-            return;
-        }
-        
-        try {
-            console.log('Starting clearAllAlerts request...');
-            
-            // Test connectivity first
-            try {
-                const healthResponse = await fetch('/api/health/overview');
-                console.log('Health check response:', healthResponse.status, healthResponse.statusText);
-            } catch (healthError) {
-                console.error('Health check failed:', healthError);
-                throw new Error('Unable to connect to server. Please refresh the page and try again.');
-            }
-            
-            const response = await fetch('/api/monitoring/alerts/delete-all', {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    confirm: true
-                })
-            });
-            
-            console.log('Response received:', response.status, response.statusText);
-            
-            // Check if response is actually JSON
-            const contentType = response.headers.get('content-type');
-            console.log('Response content-type:', contentType);
-            
-            let data;
-            if (contentType && contentType.includes('application/json')) {
-                data = await response.json();
-            } else {
-                // If not JSON, get as text for debugging
-                const text = await response.text();
-                console.error('Non-JSON response received:', text);
-                throw new Error(`Server returned non-JSON response: ${response.status} ${response.statusText}`);
-            }
-            
-            if (response.ok) {
-                console.log('Cleared all alerts:', data);
-                this.showToast(`Successfully deleted ${data.total_deleted} alerts`, 'success');
-                await this.loadAlerts();
-            } else {
-                console.error('Error clearing alerts:', data);
-                this.showToast('Error clearing alerts: ' + (data.error || 'Unknown error'), 'danger');
-            }
-            
-        } catch (error) {
-            console.error('Error clearing alerts:', error);
-            
-            // Provide more detailed error information
-            let errorMessage = 'Failed to fetch';
-            if (error.message) {
-                errorMessage = error.message;
-            }
-            
-            // Special handling for common network errors
-            if (error.name === 'TypeError' && error.message.includes('fetch')) {
-                errorMessage = 'Network error: Unable to connect to server. Please check your connection and try again.';
-            }
-            
-            this.showToast('Error clearing alerts: ' + errorMessage, 'danger');
-        }
-    }
-
-    async deleteAlert(alertId) {
-        if (!confirm('Are you sure you want to permanently delete this alert?')) {
-            return;
-        }
-        
-        try {
-            const response = await fetch(`/api/monitoring/alerts/${alertId}`, {
-                method: 'DELETE'
-            });
-            
-            const data = await response.json();
-            
-            if (response.ok) {
-                console.log('Deleted alert:', data);
-                this.showToast('Alert deleted successfully', 'success');
-                // Remove from local array
-                this.alerts = this.alerts.filter(alert => alert.id !== alertId);
-                this.applyFilters();
-                this.updateAlertCounts();
-            } else {
-                console.error('Error deleting alert:', data);
-                this.showToast('Error deleting alert: ' + (data.error || 'Unknown error'), 'danger');
-            }
-            
-        } catch (error) {
-            console.error('Error deleting alert:', error);
-            this.showToast('Error deleting alert: ' + error.message, 'danger');
-        }
-    }
-
-    showToast(message, type = 'info', duration = 5000) {
-        const toastContainer = document.querySelector('.toast-container');
-        const toastId = `toast-${Date.now()}`;
-        
-        const bgClass = {
-            'success': 'bg-success text-white',
-            'danger': 'bg-danger text-white',
-            'warning': 'bg-warning text-dark',
-            'info': 'bg-info text-white'
-        }[type] || 'bg-light text-dark';
-        
-        const iconClass = {
-            'success': 'bi-check-circle-fill',
-            'danger': 'bi-exclamation-triangle-fill',
-            'warning': 'bi-exclamation-circle-fill',
-            'info': 'bi-info-circle-fill'
-        }[type] || 'bi-info-circle';
-        
-        const toastHtml = `
-            <div class="toast ${bgClass}" id="${toastId}" role="alert" aria-live="assertive" aria-atomic="true">
-                <div class="toast-header ${bgClass} border-0">
-                    <i class="bi ${iconClass} me-2"></i>
-                    <strong class="me-auto">HomeNetMon</strong>
-                    <small class="text-muted">${new Date().toLocaleTimeString()}</small>
-                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>
-                </div>
-                <div class="toast-body">
-                    ${message}
-                </div>
-            </div>
-        `;
-        
-        toastContainer.insertAdjacentHTML('beforeend', toastHtml);
-        
-        const toastElement = document.getElementById(toastId);
-        const toast = new bootstrap.Toast(toastElement, { delay: duration });
-        toast.show();
-        
-        // Clean up after toast is hidden
-        toastElement.addEventListener('hidden.bs.toast', () => {
-            toastElement.remove();
-        });
-    }
-    
-    showError(message) {
-        this.showToast(message, 'danger', 8000);
-    }
-    
-    showLoading(show) {
-        const loadingEl = document.getElementById('loading-indicator');
-        const alertsContainer = document.getElementById('alerts-container');
-        const noAlertsEl = document.getElementById('no-alerts');
-        
-        if (show) {
-            loadingEl.style.display = 'block';
-            alertsContainer.style.display = 'none';
-            noAlertsEl.style.display = 'none';
-        } else {
-            loadingEl.style.display = 'none';
-        }
-    }
-    
-    startAutoRefresh() {
-        this.refreshInterval = setInterval(() => {
-            if (this.autoRefresh && document.visibilityState === 'visible') {
-                this.loadAlerts(this.getCurrentFilters());
-            }
-        }, 30000); // Refresh every 30 seconds
-    }
-    
-    stopAutoRefresh() {
-        if (this.refreshInterval) {
-            clearInterval(this.refreshInterval);
-            this.refreshInterval = null;
+            this.debug('Socket.IO initialization error:', error);
+            this.showToast('Failed to initialize real-time updates', 'warning', 3000);
         }
     }
 
     bindEvents() {
-        // Search functionality
-        const searchInput = document.getElementById('search-alerts');
-        searchInput.addEventListener('input', (e) => {
-            this.searchTerm = e.target.value;
-            this.applyFilters();
-        });
-        
-        document.getElementById('clear-search').addEventListener('click', () => this.clearSearch());
-        
-        // Filter event listeners
-        ['filter-severity', 'filter-status', 'filter-hours', 'filter-device-type', 'filter-alert-type', 'sort-alerts'].forEach(id => {
-            document.getElementById(id).addEventListener('change', () => this.applyFilters());
-        });
-        
-        document.getElementById('clear-filters').addEventListener('click', () => this.clearFilters());
-        
-        // Button event listeners (desktop)
-        document.getElementById('refresh-alerts').addEventListener('click', () => this.loadAlerts(this.getCurrentFilters()));
-        document.getElementById('acknowledge-all').addEventListener('click', () => this.acknowledgeAllAlerts());
-        document.getElementById('clear-all-alerts').addEventListener('click', () => this.clearAllAlerts());
-        
-        // Button event listeners (mobile)
-        document.getElementById('refresh-alerts-mobile').addEventListener('click', () => this.loadAlerts(this.getCurrentFilters()));
-        document.getElementById('acknowledge-all-mobile').addEventListener('click', () => this.acknowledgeAllAlerts());
-        document.getElementById('clear-all-alerts-mobile').addEventListener('click', () => this.clearAllAlerts());
-        
-        // Auto-refresh toggle
-        document.getElementById('auto-refresh').addEventListener('change', (e) => {
-            this.autoRefresh = e.target.checked;
-        });
-        
-        // Event delegation for dynamic content
-        document.addEventListener('click', (e) => {
-            if (e.target.closest('.delete-alert-btn')) {
-                const alertId = parseInt(e.target.closest('.delete-alert-btn').dataset.alertId);
-                if (alertId) this.deleteAlert(alertId);
-            }
-            
-            if (e.target.closest('.view-alert-btn')) {
-                const alertId = parseInt(e.target.closest('.view-alert-btn').dataset.alertId);
-                if (alertId) this.showAlertDetails(alertId);
-            }
-            
-            if (e.target.closest('.alert-summary-card')) {
-                const severity = e.target.closest('.alert-summary-card').dataset.severity;
-                this.filterBySeverity(severity);
+        // Search input
+        const searchInput = document.getElementById('search-input');
+        if (searchInput) {
+            searchInput.addEventListener('input', (e) => {
+                this.filterAlerts();
+            });
+        }
+
+        // Filter selects
+        const filters = ['severity-filter', 'status-filter', 'time-filter'];
+        filters.forEach(filterId => {
+            const element = document.getElementById(filterId);
+            if (element) {
+                element.addEventListener('change', () => {
+                    this.filterAlerts();
+                });
             }
         });
-        
-        // Checkbox event delegation
-        document.addEventListener('change', (e) => {
-            if (e.target.classList.contains('alert-checkbox')) {
-                this.handleAlertSelection(e.target);
-            }
-        });
-        
-        // Bulk action event listeners
-        document.getElementById('select-all-alerts').addEventListener('click', () => this.selectAllAlerts());
-        document.getElementById('deselect-all-alerts').addEventListener('click', () => this.deselectAllAlerts());
-        document.getElementById('bulk-acknowledge').addEventListener('click', () => this.bulkAcknowledgeAlerts());
-        document.getElementById('bulk-resolve').addEventListener('click', () => this.bulkResolveAlerts());
-        document.getElementById('bulk-delete').addEventListener('click', () => this.bulkDeleteAlerts());
-        document.getElementById('export-alerts').addEventListener('click', () => this.exportSelectedAlerts());
-        
+
         // Keyboard shortcuts
         document.addEventListener('keydown', (e) => {
             if (e.ctrlKey || e.metaKey) {
-                switch(e.key) {
+                switch (e.key) {
+                    case 'a':
+                        e.preventDefault();
+                        this.selectAllAlerts();
+                        break;
                     case 'r':
                         e.preventDefault();
-                        this.loadAlerts(this.getCurrentFilters());
-                        break;
-                    case 'f':
-                        e.preventDefault();
-                        document.getElementById('search-alerts').focus();
+                        this.refreshAlerts();
                         break;
                 }
             }
         });
     }
-    
-    filterBySeverity(severity) {
-        document.getElementById('filter-severity').value = severity;
-        this.applyFilters();
-    }
-    
-    handleAlertSelection(checkbox) {
-        const alertId = parseInt(checkbox.dataset.alertId);
-        if (checkbox.checked) {
-            this.selectedAlerts.add(alertId);
-        } else {
-            this.selectedAlerts.delete(alertId);
-        }
-        this.updateBulkActionsBar();
-    }
-    
-    updateBulkActionsBar() {
-        const bulkActionsBar = document.getElementById('bulk-actions-bar');
-        const selectedCount = document.getElementById('selected-count');
-        
-        if (this.selectedAlerts.size > 0) {
-            bulkActionsBar.classList.remove('d-none');
-            selectedCount.textContent = this.selectedAlerts.size;
-        } else {
-            bulkActionsBar.classList.add('d-none');
-        }
-    }
-    
-    async showAlertDetails(alertId) {
-        const alert = this.alerts.find(a => a.id === alertId);
-        if (!alert) return;
-        
-        // Update modal content
-        document.getElementById('modal-title').textContent = `Alert #${alert.id}`;
-        document.getElementById('modal-subtitle').textContent = `${alert.device_name} (${alert.device_ip})`;
-        
-        // Set severity icon
-        const severityIcon = document.getElementById('modal-severity-icon');
-        severityIcon.className = `bi ${this.getSeverityIcon(alert.severity).match(/bi-[\w-]+/)[0]} fs-4`;
-        
-        // Load alert information
-        this.loadAlertInfo(alert);
-        
-        // Store alert ID in modal for reference
-        const modalElement = document.getElementById('alertDetailModal');
-        modalElement.dataset.alertId = alertId;
-        
-        // Show modal
-        const modal = new bootstrap.Modal(modalElement);
-        modal.show();
-    }
-    
-    async loadAlertInfo(alert) {
-        const alertInfoContent = document.getElementById('alert-info-content');
-        const deviceInfoContent = document.getElementById('device-info-content');
-        const timelineContent = document.getElementById('alert-timeline-content');
-        
-        // Load basic alert information
-        this.renderAlertInfo(alert, alertInfoContent);
-        
-        // Load device information
-        this.renderDeviceInfo(alert, deviceInfoContent);
-        
-        // Load notification status
-        await this.loadNotificationStatus(alert.id);
-        
-        // Load unified timeline (alerts + notifications)
-        await this.loadUnifiedTimeline(alert.id, timelineContent);
-        
-        // Load related alerts
-        await this.loadRelatedAlerts(alert.device_id, alert.id);
-        
-        // Set up modal action buttons
-        this.setupModalActions(alert);
-    }
-    
-    async loadNotificationStatus(alertId) {
-        try {
-            const container = document.getElementById('notification-status-content');
-            container.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm"></div> Loading...</div>';
-            
-            const response = await fetch(`/api/notifications/alert/${alertId}`);
-            if (!response.ok) {
-                throw new Error('Failed to load notification status');
-            }
-            
-            const data = await response.json();
-            this.renderNotificationStatus(data, container);
-            
-        } catch (error) {
-            console.error('Error loading notification status:', error);
-            const container = document.getElementById('notification-status-content');
-            container.innerHTML = `
-                <div class="alert alert-warning">
-                    <i class="bi bi-exclamation-triangle"></i>
-                    Failed to load notification status.
-                </div>
-            `;
-        }
-    }
-    
-    renderNotificationStatus(data, container) {
-        const { notifications, delivery_summary, total_count } = data;
-        
-        if (total_count === 0) {
-            container.innerHTML = `
-                <div class="text-center text-muted py-3">
-                    <i class="bi bi-bell-slash fs-1"></i>
-                    <p class="mt-2">No notifications sent for this alert</p>
-                </div>
-            `;
+
+    async loadAlerts() {
+        if (this.isLoading) {
+            this.debug('Load already in progress, skipping');
             return;
         }
-        
-        const successRate = total_count > 0 ? 
-            Math.round((delivery_summary.success / total_count) * 100) : 0;
-        
-        let statusHtml = `
-            <div class="row g-3 mb-3">
-                <div class="col-md-3">
-                    <div class="text-center">
-                        <div class="h4 mb-1">${total_count}</div>
-                        <small class="text-muted">Total Sent</small>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="text-center">
-                        <div class="h4 mb-1 text-success">${delivery_summary.success}</div>
-                        <small class="text-muted">Delivered</small>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="text-center">
-                        <div class="h4 mb-1 text-danger">${delivery_summary.failed}</div>
-                        <small class="text-muted">Failed</small>
-                    </div>
-                </div>
-                <div class="col-md-3">
-                    <div class="text-center">
-                        <div class="h4 mb-1 text-info">${successRate}%</div>
-                        <small class="text-muted">Success Rate</small>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        if (notifications.length > 0) {
-            statusHtml += '<h6 class="mb-3">Recent Notifications</h6>';
-            statusHtml += '<div class="list-group list-group-flush">';
-            
-            notifications.slice(0, 5).forEach(notification => {
-                const statusBadge = this.getDeliveryStatusBadge(notification.delivery_status);
-                const timeAgo = this.getTimeAgo(new Date(notification.sent_at));
-                
-                statusHtml += `
-                    <div class="list-group-item border-0 px-0">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <h6 class="mb-1">${notification.title}</h6>
-                                <p class="mb-1 small text-muted">${notification.message}</p>
-                                <small class="text-muted">
-                                    <i class="bi bi-clock"></i> ${timeAgo}
-                                    ${notification.error_message ? `<br><span class="text-danger">${notification.error_message}</span>` : ''}
-                                </small>
-                            </div>
-                            <div class="text-end">
-                                ${statusBadge}
-                                ${notification.delivery_status === 'failed' ? 
-                                    `<br><button class="btn btn-sm btn-outline-warning mt-1" onclick="alertsManager.retryNotification(${notification.id})">
-                                        <i class="bi bi-arrow-repeat"></i> Retry
-                                    </button>` : ''
-                                }
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-            
-            statusHtml += '</div>';
-            
-            // Show view notifications button if there are notifications
-            const viewBtn = document.getElementById('view-notifications-btn');
-            if (viewBtn) {
-                viewBtn.style.display = 'inline-block';
-                viewBtn.onclick = () => window.open('/notifications?alert_id=' + data.alert_id, '_blank');
-            }
-        }
-        
-        container.innerHTML = statusHtml;
-    }
-    
-    getDeliveryStatusBadge(status) {
-        switch (status) {
-            case 'success':
-                return '<span class="badge bg-success">Delivered</span>';
-            case 'failed':
-                return '<span class="badge bg-danger">Failed</span>';
-            default:
-                return '<span class="badge bg-secondary">Unknown</span>';
-        }
-    }
-    
-    async loadUnifiedTimeline(alertId, container) {
+
+        this.isLoading = true;
+        this.retryCount++;
+        this.debug(`Loading alerts (attempt ${this.retryCount})`);
+
+        this.showLoadingState(true);
+        this.setupLoadingTimeoutProtection();
+
         try {
-            container.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm"></div> Loading timeline...</div>';
-            
-            const response = await fetch(`/api/monitoring/alerts/${alertId}/unified-timeline`);
-            if (!response.ok) {
-                throw new Error('Failed to load timeline');
-            }
-            
-            const data = await response.json();
-            this.renderUnifiedTimeline(data.timeline, data.summary, container);
-            
-        } catch (error) {
-            console.error('Error loading unified timeline:', error);
-            // Fall back to basic timeline
-            container.innerHTML = `
-                <div class="alert alert-warning">
-                    <i class="bi bi-exclamation-triangle"></i>
-                    Loading enhanced timeline failed, showing basic timeline...
-                </div>
-            `;
-            
-            // Load basic timeline as fallback
-            await this.loadAlertTimeline(alertId, container);
-        }
-    }
-    
-    renderUnifiedTimeline(timeline, summary, container) {
-        if (!timeline || timeline.length === 0) {
-            container.innerHTML = '<p class="text-muted text-center">No timeline data available.</p>';
-            return;
-        }
-        
-        let timelineHtml = '';
-        
-        // Add summary info
-        if (summary) {
-            timelineHtml += `
-                <div class="row g-3 mb-4 p-3 bg-light rounded">
-                    <div class="col-6 col-md-3 text-center">
-                        <div class="h6 mb-1">${summary.total_events}</div>
-                        <small class="text-muted">Total Events</small>
-                    </div>
-                    <div class="col-6 col-md-3 text-center">
-                        <div class="h6 mb-1">${summary.notifications_sent}</div>
-                        <small class="text-muted">Notifications</small>
-                    </div>
-                    <div class="col-6 col-md-3 text-center">
-                        <div class="h6 mb-1">${summary.notification_success_rate}%</div>
-                        <small class="text-muted">Delivery Rate</small>
-                    </div>
-                    <div class="col-6 col-md-3 text-center">
-                        <div class="h6 mb-1">${Math.round(summary.alert_duration)}m</div>
-                        <small class="text-muted">Duration</small>
-                    </div>
-                </div>
-            `;
-        }
-        
-        timelineHtml += timeline.map((event, index) => `
-            <div class="timeline-item mb-3 ${index === timeline.length - 1 ? '' : 'border-start border-2'}" style="border-color: var(--bs-${event.color})!important;">
-                <div class="d-flex align-items-start">
-                    <div class="timeline-icon me-3 mt-1">
-                        <i class="bi ${event.icon} text-${event.color}"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <h6 class="mb-1">
-                                    ${event.action}
-                                    <span class="badge bg-${event.type === 'alert' ? 'primary' : 'info'} ms-2">${event.type}</span>
-                                </h6>
-                                <p class="mb-1 text-muted small">${event.description}</p>
-                                ${event.details && Object.keys(event.details).length > 0 ? 
-                                    `<div class="mt-2">
-                                        ${Object.entries(event.details).map(([key, value]) => 
-                                            value ? `<small class="text-muted d-block"><strong>${key}:</strong> ${value}</small>` : ''
-                                        ).join('')}
-                                    </div>` : ''
-                                }
-                            </div>
-                            <small class="text-muted">
-                                <i class="bi bi-clock"></i> ${new Date(event.timestamp).toLocaleString()}
-                            </small>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-        
-        container.innerHTML = timelineHtml;
-    }
-    
-    async retryNotification(notificationId) {
-        try {
-            this.showToast('Retrying notification...', 'info', 2000);
-            
-            const response = await fetch(`/api/notifications/retry/${notificationId}`, {
-                method: 'POST'
-            });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                this.showToast('Notification resent successfully!', 'success');
-                // Reload notification status
-                const modal = document.getElementById('alertDetailModal');
-                const alertId = modal.dataset.alertId;
-                if (alertId) {
-                    await this.loadNotificationStatus(parseInt(alertId));
+            const response = await fetch('/api/monitoring/alerts', {
+                method: 'GET',
+                headers: {
+                    'Cache-Control': 'no-cache'
                 }
-            } else {
-                this.showToast(`Failed to retry notification: ${result.error}`, 'danger');
-            }
-        } catch (error) {
-            console.error('Error retrying notification:', error);
-            this.showToast('Error retrying notification: ' + error.message, 'danger');
-        }
-    }
-    
-    renderAlertInfo(alert, container) {
-        const duration = alert.resolved_at ? 
-            this.calculateDuration(new Date(alert.created_at), new Date(alert.resolved_at)) : 
-            this.calculateDuration(new Date(alert.created_at), new Date());
-            
-        container.innerHTML = `
-            <dl class="row mb-0">
-                <dt class="col-sm-4">Message:</dt>
-                <dd class="col-sm-8">${alert.message}</dd>
-                
-                <dt class="col-sm-4">Severity:</dt>
-                <dd class="col-sm-8">
-                    <span class="badge bg-${alert.severity === 'critical' ? 'danger' : alert.severity === 'warning' ? 'warning' : 'info'} me-2">
-                        ${alert.severity.toUpperCase()}
-                    </span>
-                    ${alert.priority_score ? `<small class="text-muted">Priority: ${alert.priority_score}</small>` : ''}
-                </dd>
-                
-                <dt class="col-sm-4">Type:</dt>
-                <dd class="col-sm-8">
-                    <span class="badge bg-light text-dark">${alert.alert_type.replace('_', ' ')}</span>
-                </dd>
-                
-                <dt class="col-sm-4">Duration:</dt>
-                <dd class="col-sm-8">
-                    <span class="fw-bold ${alert.resolved ? 'text-success' : 'text-warning'}">${duration}</span>
-                    ${alert.resolved ? '<i class="bi bi-check-circle text-success ms-1"></i>' : '<i class="bi bi-clock text-warning ms-1"></i>'}
-                </dd>
-                
-                <dt class="col-sm-4">Created:</dt>
-                <dd class="col-sm-8">
-                    ${new Date(alert.created_at).toLocaleString()}
-                    <br><small class="text-muted">${this.getTimeAgo(new Date(alert.created_at))}</small>
-                </dd>
-                
-                ${alert.acknowledged ? `
-                    <dt class="col-sm-4">Acknowledged:</dt>
-                    <dd class="col-sm-8">
-                        <i class="bi bi-check-circle text-success"></i>
-                        ${new Date(alert.acknowledged_at).toLocaleString()}
-                        <br><small class="text-muted">by ${alert.acknowledged_by}</small>
-                    </dd>
-                ` : ''}
-                
-                ${alert.resolved ? `
-                    <dt class="col-sm-4">Resolved:</dt>
-                    <dd class="col-sm-8">
-                        <i class="bi bi-check-circle-fill text-success"></i>
-                        ${new Date(alert.resolved_at).toLocaleString()}
-                        <br><small class="text-muted">${this.getTimeAgo(new Date(alert.resolved_at))}</small>
-                    </dd>
-                ` : ''}
-            </dl>
-        `;
-    }
-    
-    renderDeviceInfo(alert, container) {
-        container.innerHTML = `
-            <dl class="row mb-3">
-                <dt class="col-sm-5">Name:</dt>
-                <dd class="col-sm-7">
-                    <strong>${alert.device_name}</strong>
-                    ${this.getDeviceIcon(alert.device_type)}
-                </dd>
-                
-                <dt class="col-sm-5">IP Address:</dt>
-                <dd class="col-sm-7">
-                    <code>${alert.device_ip}</code>
-                </dd>
-                
-                <dt class="col-sm-5">Type:</dt>
-                <dd class="col-sm-7">${alert.device_type || 'Unknown'}</dd>
-                
-                <dt class="col-sm-5">Status:</dt>
-                <dd class="col-sm-7">
-                    <span class="badge bg-${alert.device_status === 'up' ? 'success' : 'danger'}">
-                        ${alert.device_status || 'Unknown'}
-                    </span>
-                </dd>
-            </dl>
-            
-            <div class="d-grid gap-2">
-                <button class="btn btn-outline-primary btn-sm" onclick="window.open('/device/${alert.device_id}', '_blank')">
-                    <i class="bi bi-external-link"></i> View Device Details
-                </button>
-                <button class="btn btn-outline-secondary btn-sm" onclick="alertsManager.pingDevice('${alert.device_ip}')">
-                    <i class="bi bi-wifi"></i> Test Connection
-                </button>
-            </div>
-        `;
-    }
-    
-    calculateDuration(start, end) {
-        const diffMs = end - start;
-        const diffMins = Math.floor(diffMs / 60000);
-        const diffHours = Math.floor(diffMins / 60);
-        const diffDays = Math.floor(diffHours / 24);
-        
-        if (diffDays > 0) return `${diffDays}d ${diffHours % 24}h`;
-        if (diffHours > 0) return `${diffHours}h ${diffMins % 60}m`;
-        if (diffMins > 0) return `${diffMins}m`;
-        return 'Just now';
-    }
-    
-    async loadAlertTimeline(alertId, container) {
-        try {
-            container.innerHTML = '<div class="text-center"><div class="spinner-border spinner-border-sm"></div> Loading timeline...</div>';
-            
-            const response = await fetch(`/api/monitoring/alerts/${alertId}/timeline`);
+            });
+
             if (!response.ok) {
-                throw new Error('Failed to load timeline');
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-            
+
             const data = await response.json();
-            this.renderTimeline(data.timeline || [], container);
-            
+            this.debug('Alerts loaded successfully:', { count: data.alerts?.length || 0 });
+
+            this.alerts = data.alerts || [];
+            this.retryCount = 0; // Reset retry count on success
+            this.filterAlerts();
+            this.showLoadingState(false);
+
         } catch (error) {
-            console.error('Error loading alert timeline:', error);
-            container.innerHTML = `
-                <div class="alert alert-warning">
-                    <i class="bi bi-exclamation-triangle"></i>
-                    Timeline could not be loaded. Creating basic timeline...
-                </div>
-            `;
-            
-            // Create basic timeline from alert data
-            const alert = this.alerts.find(a => a.id === alertId);
-            if (alert) {
-                const basicTimeline = this.createBasicTimeline(alert);
-                this.renderTimeline(basicTimeline, container);
+            this.debug('Error loading alerts:', error);
+            this.handleLoadError(error);
+        } finally {
+            this.isLoading = false;
+            // Clear timeout since loading completed
+            if (this.loadingTimeout) {
+                clearTimeout(this.loadingTimeout);
+                this.loadingTimeout = null;
             }
         }
     }
-    
-    createBasicTimeline(alert) {
-        const timeline = [];
-        
-        timeline.push({
-            timestamp: alert.created_at,
-            action: 'Alert Created',
-            description: `${alert.severity.charAt(0).toUpperCase() + alert.severity.slice(1)} alert created for ${alert.device_name}`,
-            icon: 'bi-exclamation-triangle',
-            color: alert.severity === 'critical' ? 'danger' : alert.severity === 'warning' ? 'warning' : 'info'
+
+    handleLoadError(error) {
+        this.showLoadingState(false);
+
+        if (this.retryCount < this.maxRetries) {
+            const delay = this.retryDelay * Math.pow(2, this.retryCount - 1); // Exponential backoff
+            this.debug(`Retrying in ${delay}ms (attempt ${this.retryCount}/${this.maxRetries})`);
+
+            this.showToast(`Loading failed, retrying in ${delay/1000}s...`, 'warning', delay);
+
+            setTimeout(() => {
+                this.loadAlerts();
+            }, delay);
+        } else {
+            this.debug('Max retries reached, showing error state');
+            this.showErrorState(`Failed to load alerts: ${error.message}`);
+            this.showToast('Failed to load alerts after multiple attempts', 'error', 5000);
+        }
+    }
+
+    showLoadingState(show) {
+        const loadingState = document.getElementById('loading-state');
+        const alertsGrid = document.getElementById('alerts-grid');
+        const noAlertsState = document.getElementById('no-alerts-state');
+        const errorState = document.getElementById('error-state');
+
+        if (show) {
+            loadingState.style.display = 'block';
+            alertsGrid.style.display = 'none';
+            noAlertsState.style.display = 'none';
+            errorState.style.display = 'none';
+        } else {
+            loadingState.style.display = 'none';
+        }
+    }
+
+    showErrorState(message) {
+        const loadingState = document.getElementById('loading-state');
+        const alertsGrid = document.getElementById('alerts-grid');
+        const noAlertsState = document.getElementById('no-alerts-state');
+        const errorState = document.getElementById('error-state');
+        const errorMessage = document.getElementById('error-message');
+
+        loadingState.style.display = 'none';
+        alertsGrid.style.display = 'none';
+        noAlertsState.style.display = 'none';
+        errorState.style.display = 'block';
+
+        if (errorMessage) {
+            errorMessage.textContent = message;
+        }
+    }
+
+    filterAlerts() {
+        const searchTerm = document.getElementById('search-input')?.value.toLowerCase() || '';
+        const severityFilter = document.getElementById('severity-filter')?.value || '';
+        const statusFilter = document.getElementById('status-filter')?.value || '';
+        const timeFilter = document.getElementById('time-filter')?.value || '';
+
+        this.filteredAlerts = this.alerts.filter(alert => {
+            // Search filter
+            if (searchTerm) {
+                const searchableText = `
+                    ${alert.title || ''}
+                    ${alert.message || ''}
+                    ${alert.device_name || ''}
+                    ${alert.device_ip || ''}
+                `.toLowerCase();
+
+                if (!searchableText.includes(searchTerm)) {
+                    return false;
+                }
+            }
+
+            // Severity filter
+            if (severityFilter && alert.severity !== severityFilter) {
+                return false;
+            }
+
+            // Status filter
+            if (statusFilter) {
+                const isResolved = alert.resolved_at !== null;
+                if (statusFilter === 'active' && isResolved) return false;
+                if (statusFilter === 'resolved' && !isResolved) return false;
+            }
+
+            // Time filter
+            if (timeFilter) {
+                const alertTime = new Date(alert.created_at);
+                const now = new Date();
+                const timeLimit = this.getTimeLimit(timeFilter);
+
+                if (now - alertTime > timeLimit) {
+                    return false;
+                }
+            }
+
+            return true;
         });
-        
-        if (alert.acknowledged) {
-            timeline.push({
-                timestamp: alert.acknowledged_at,
-                action: 'Alert Acknowledged',
-                description: `Acknowledged by ${alert.acknowledged_by}`,
-                icon: 'bi-check',
-                color: 'success'
-            });
-        }
-        
-        if (alert.resolved) {
-            timeline.push({
-                timestamp: alert.resolved_at,
-                action: 'Alert Resolved',
-                description: 'Alert was automatically resolved',
-                icon: 'bi-check-circle',
-                color: 'success'
-            });
-        }
-        
-        return timeline.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+        this.renderAlerts();
     }
-    
-    renderTimeline(timeline, container) {
-        if (!timeline || timeline.length === 0) {
-            container.innerHTML = '<p class="text-muted text-center">No timeline data available.</p>';
-            return;
-        }
-        
-        const timelineHtml = timeline.map((event, index) => `
-            <div class="timeline-item mb-3 ${index === timeline.length - 1 ? '' : 'border-start border-2'}" style="border-color: var(--bs-${event.color})!important;">
-                <div class="d-flex align-items-start">
-                    <div class="timeline-icon me-3 mt-1">
-                        <i class="bi ${event.icon} text-${event.color}"></i>
-                    </div>
-                    <div class="flex-grow-1">
-                        <h6 class="mb-1">${event.action}</h6>
-                        <p class="mb-1 text-muted small">${event.description}</p>
-                        <small class="text-muted">
-                            <i class="bi bi-clock"></i> ${new Date(event.timestamp).toLocaleString()}
-                            (${this.getTimeAgo(new Date(event.timestamp))})
-                        </small>
-                    </div>
-                </div>
-            </div>
-        `).join('');
-        
-        container.innerHTML = timelineHtml;
-    }
-    
-    async loadRelatedAlerts(deviceId, currentAlertId) {
-        try {
-            const response = await fetch(`/api/monitoring/alerts?device_id=${deviceId}&limit=10`);
-            if (!response.ok) return;
-            
-            const data = await response.json();
-            const relatedAlerts = data.alerts.filter(alert => alert.id !== currentAlertId);
-            
-            const relatedSection = document.getElementById('related-alerts-section');
-            const relatedContent = document.getElementById('related-alerts-content');
-            
-            if (relatedAlerts.length > 0) {
-                relatedSection.style.display = 'block';
-                relatedContent.innerHTML = relatedAlerts.map(alert => `
-                    <div class="card card-body mb-2 border-start border-3 border-${alert.severity === 'critical' ? 'danger' : alert.severity === 'warning' ? 'warning' : 'info'}">
-                        <div class="d-flex justify-content-between align-items-start">
-                            <div>
-                                <h6 class="mb-1">${alert.message}</h6>
-                                <small class="text-muted">
-                                    ${new Date(alert.created_at).toLocaleString()}
-                                    ${alert.resolved ? ' • Resolved' : ''}
-                                    ${alert.acknowledged ? ' • Acknowledged' : ''}
-                                </small>
-                            </div>
-                            <span class="badge bg-${alert.severity === 'critical' ? 'danger' : alert.severity === 'warning' ? 'warning' : 'info'}">
-                                ${alert.severity}
-                            </span>
-                        </div>
-                    </div>
-                `).join('');
-            } else {
-                relatedSection.style.display = 'none';
-            }
-            
-        } catch (error) {
-            console.error('Error loading related alerts:', error);
-        }
-    }
-    
-    setupModalActions(alert) {
-        const acknowledgeBtn = document.getElementById('acknowledge-alert-btn');
-        const resolveBtn = document.getElementById('resolve-alert-btn');
-        const viewDeviceBtn = document.getElementById('view-device-btn');
-        
-        // Show/hide action buttons based on alert state
-        if (!alert.acknowledged && !alert.resolved) {
-            acknowledgeBtn.style.display = 'inline-block';
-            acknowledgeBtn.onclick = () => this.acknowledgeAlert(alert.id);
-        } else {
-            acknowledgeBtn.style.display = 'none';
-        }
-        
-        if (!alert.resolved) {
-            resolveBtn.style.display = 'inline-block';
-            resolveBtn.onclick = () => this.resolveAlert(alert.id);
-        } else {
-            resolveBtn.style.display = 'none';
-        }
-        
-        viewDeviceBtn.onclick = () => {
-            window.open(`/device/${alert.device_id}`, '_blank');
+
+    getTimeLimit(timeFilter) {
+        const timeMap = {
+            '1h': 60 * 60 * 1000,
+            '24h': 24 * 60 * 60 * 1000,
+            '7d': 7 * 24 * 60 * 60 * 1000,
+            '30d': 30 * 24 * 60 * 60 * 1000
         };
+        return timeMap[timeFilter] || Infinity;
     }
-    
-    async acknowledgeAlert(alertId) {
-        try {
-            const response = await fetch(`/api/monitoring/alerts/${alertId}/acknowledge`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ acknowledged_by: 'web_user' })
-            });
-            
-            if (response.ok) {
-                this.showToast('Alert acknowledged successfully', 'success');
-                // Refresh the modal content
-                const alert = this.alerts.find(a => a.id === alertId);
-                if (alert) {
-                    alert.acknowledged = true;
-                    alert.acknowledged_at = new Date().toISOString();
-                    alert.acknowledged_by = 'web_user';
-                    await this.loadAlertInfo(alert);
-                }
-                // Refresh the main view
-                this.applyFilters();
-            } else {
-                throw new Error('Failed to acknowledge alert');
-            }
-        } catch (error) {
-            this.showToast('Error acknowledging alert: ' + error.message, 'danger');
+
+    renderAlerts() {
+        const alertsGrid = document.getElementById('alerts-grid');
+        const noAlertsState = document.getElementById('no-alerts-state');
+        const loadingState = document.getElementById('loading-state');
+        const errorState = document.getElementById('error-state');
+
+        // Hide all states first
+        loadingState.style.display = 'none';
+        errorState.style.display = 'none';
+
+        if (this.filteredAlerts.length === 0) {
+            alertsGrid.style.display = 'none';
+            noAlertsState.style.display = 'block';
+            return;
         }
+
+        noAlertsState.style.display = 'none';
+        alertsGrid.style.display = 'grid';
+
+        alertsGrid.innerHTML = this.filteredAlerts.map(alert => this.renderAlertCard(alert)).join('');
+
+        // Update selection UI
+        this.updateSelectionUI();
     }
-    
+
+    renderAlertCard(alert) {
+        const isResolved = alert.resolved_at !== null;
+        const resolvedClass = isResolved ? 'resolved' : '';
+        const timeAgo = this.getTimeAgo(alert.created_at);
+
+        return `
+            <div class="alert-card ${alert.severity} ${resolvedClass}" data-alert-id="${alert.id}">
+                <input type="checkbox" class="alert-checkbox" onchange="alertsManager.toggleAlert(${alert.id})">
+
+                <div class="alert-header">
+                    <div>
+                        <div class="alert-title">${this.escapeHtml(alert.title || 'Network Alert')}</div>
+                        <div class="alert-device">
+                            <i class="bi bi-router"></i>
+                            ${this.escapeHtml(alert.device_name || alert.device_ip || 'Unknown Device')}
+                        </div>
+                    </div>
+                    <div class="alert-status">
+                        <span class="status-badge ${alert.severity}">${alert.severity.toUpperCase()}</span>
+                        ${isResolved ? '<span class="status-badge resolved">RESOLVED</span>' : ''}
+                    </div>
+                </div>
+
+                <div class="alert-content">
+                    <div class="alert-message">${this.escapeHtml(alert.message || 'No additional details available.')}</div>
+                </div>
+
+                <div class="alert-timestamp">
+                    <i class="bi bi-clock"></i>
+                    ${timeAgo}
+                    ${isResolved ? `<span class="text-muted">• Resolved ${this.getTimeAgo(alert.resolved_at)}</span>` : ''}
+                </div>
+
+                <div class="alert-actions">
+                    ${!isResolved ? `
+                        <button class="btn-modern btn-warning" onclick="alertsManager.resolveAlert(${alert.id})">
+                            <i class="bi bi-check-circle"></i>
+                            Resolve
+                        </button>
+                    ` : ''}
+                    <button class="btn-modern btn-danger" onclick="alertsManager.deleteAlert(${alert.id})">
+                        <i class="bi bi-trash"></i>
+                        Delete
+                    </button>
+                </div>
+            </div>
+        `;
+    }
+
+    escapeHtml(text) {
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    }
+
+    getTimeAgo(timestamp) {
+        const now = new Date();
+        const time = new Date(timestamp);
+        const diffInSeconds = Math.floor((now - time) / 1000);
+
+        if (diffInSeconds < 60) return `${diffInSeconds}s ago`;
+        if (diffInSeconds < 3600) return `${Math.floor(diffInSeconds / 60)}m ago`;
+        if (diffInSeconds < 86400) return `${Math.floor(diffInSeconds / 3600)}h ago`;
+        return `${Math.floor(diffInSeconds / 86400)}d ago`;
+    }
+
+    toggleAlert(alertId) {
+        if (this.selectedAlerts.has(alertId)) {
+            this.selectedAlerts.delete(alertId);
+        } else {
+            this.selectedAlerts.add(alertId);
+        }
+        this.updateSelectionUI();
+    }
+
+    updateSelectionUI() {
+        // Update action buttons
+        const resolveBtn = document.getElementById('resolve-btn');
+        const deleteBtn = document.getElementById('delete-btn');
+        const selectAllBtn = document.getElementById('select-all-btn');
+        const hasSelection = this.selectedAlerts.size > 0;
+
+        if (resolveBtn) resolveBtn.disabled = !hasSelection;
+        if (deleteBtn) deleteBtn.disabled = !hasSelection;
+
+        // Update select all button text and icon
+        if (selectAllBtn) {
+            const allSelected = this.filteredAlerts.length > 0 && this.selectedAlerts.size === this.filteredAlerts.length;
+            if (allSelected) {
+                selectAllBtn.innerHTML = '<i class="bi bi-square"></i> Deselect All';
+            } else {
+                selectAllBtn.innerHTML = '<i class="bi bi-check2-square"></i> Select All';
+            }
+        }
+
+        // Update card selection visual state
+        document.querySelectorAll('.alert-card').forEach(card => {
+            const alertId = parseInt(card.dataset.alertId);
+            const checkbox = card.querySelector('.alert-checkbox');
+            const isSelected = this.selectedAlerts.has(alertId);
+
+            if (checkbox) checkbox.checked = isSelected;
+            card.classList.toggle('selected', isSelected);
+        });
+    }
+
+    selectAllAlerts() {
+        // Select all currently visible alerts (regardless of resolution status)
+        // This makes the button behavior more intuitive - it selects what the user can see
+        const visibleAlerts = this.filteredAlerts;
+
+        if (this.selectedAlerts.size === visibleAlerts.length && visibleAlerts.length > 0) {
+            // Deselect all
+            this.selectedAlerts.clear();
+        } else {
+            // Select all visible alerts
+            visibleAlerts.forEach(alert => this.selectedAlerts.add(alert.id));
+        }
+
+        this.updateSelectionUI();
+    }
+
     async resolveAlert(alertId) {
         try {
             const response = await fetch(`/api/monitoring/alerts/${alertId}/resolve`, {
-                method: 'POST'
-            });
-            
-            if (response.ok) {
-                this.showToast('Alert resolved successfully', 'success');
-                // Close modal and refresh
-                const modal = bootstrap.Modal.getInstance(document.getElementById('alertDetailModal'));
-                if (modal) modal.hide();
-                this.loadAlerts(this.getCurrentFilters());
-            } else {
-                throw new Error('Failed to resolve alert');
-            }
-        } catch (error) {
-            this.showToast('Error resolving alert: ' + error.message, 'danger');
-        }
-    }
-    
-    async pingDevice(ip) {
-        try {
-            this.showToast(`Testing connection to ${ip}...`, 'info', 2000);
-            
-            const response = await fetch('/api/devices/ping', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ip_address: ip })
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             });
-            
-            const result = await response.json();
-            
-            if (result.success) {
-                this.showToast(`Device ${ip} is reachable (${result.response_time}ms)`, 'success');
-            } else {
-                this.showToast(`Device ${ip} is not reachable`, 'warning');
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-            
+
+            this.showToast('Alert resolved successfully', 'success');
+            this.selectedAlerts.delete(alertId);
+            this.loadAlerts(); // Refresh to get updated data
+
         } catch (error) {
-            this.showToast('Error testing connection: ' + error.message, 'danger');
+            this.debug('Error resolving alert:', error);
+            this.showToast(`Failed to resolve alert: ${error.message}`, 'error');
         }
     }
-    
-    selectAllAlerts() {
-        this.filteredAlerts.forEach(alert => {
-            this.selectedAlerts.add(alert.id);
-            const checkbox = document.querySelector(`input[data-alert-id="${alert.id}"]`);
-            if (checkbox) checkbox.checked = true;
-        });
-        this.updateBulkActionsBar();
-    }
-    
-    deselectAllAlerts() {
-        this.selectedAlerts.clear();
-        document.querySelectorAll('.alert-checkbox').forEach(checkbox => {
-            checkbox.checked = false;
-        });
-        this.updateBulkActionsBar();
-    }
-    
-    async bulkAcknowledgeAlerts() {
-        if (this.selectedAlerts.size === 0) {
-            this.showToast('No alerts selected', 'warning');
-            return;
-        }
-        
-        if (!confirm(`Acknowledge ${this.selectedAlerts.size} selected alerts?`)) {
-            return;
-        }
-        
+
+    async resolveSelectedAlerts() {
+        if (this.selectedAlerts.size === 0) return;
+
+        const alertIds = Array.from(this.selectedAlerts);
         try {
-            const response = await fetch('/api/monitoring/alerts/bulk-acknowledge', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    alert_ids: Array.from(this.selectedAlerts),
-                    acknowledged_by: 'bulk_web_user'
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (response.ok) {
-                this.showToast(`Successfully acknowledged ${result.acknowledged_count} alerts`, 'success');
-                this.deselectAllAlerts();
-                this.loadAlerts(this.getCurrentFilters());
-            } else {
-                throw new Error(result.error || 'Failed to acknowledge alerts');
-            }
-            
+            const promises = alertIds.map(id => this.resolveAlert(id));
+            await Promise.all(promises);
+
+            this.showToast(`Resolved ${alertIds.length} alert(s)`, 'success');
+            this.selectedAlerts.clear();
+            this.updateSelectionUI();
+
         } catch (error) {
-            this.showToast('Error acknowledging alerts: ' + error.message, 'danger');
+            this.debug('Error resolving selected alerts:', error);
+            this.showToast('Some alerts could not be resolved', 'warning');
         }
     }
-    
-    async bulkResolveAlerts() {
-        if (this.selectedAlerts.size === 0) {
-            this.showToast('No alerts selected', 'warning');
+
+    async deleteAlert(alertId) {
+        if (!confirm('Are you sure you want to delete this alert? This action cannot be undone.')) {
             return;
         }
-        
-        if (!confirm(`Resolve ${this.selectedAlerts.size} selected alerts?`)) {
-            return;
-        }
-        
+
         try {
-            const response = await fetch('/api/monitoring/alerts/bulk-resolve', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    alert_ids: Array.from(this.selectedAlerts)
-                })
+            const response = await fetch(`/api/monitoring/alerts/${alertId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             });
-            
-            const result = await response.json();
-            
-            if (response.ok) {
-                this.showToast(`Successfully resolved ${result.resolved_count} alerts`, 'success');
-                this.deselectAllAlerts();
-                this.loadAlerts(this.getCurrentFilters());
-            } else {
-                throw new Error(result.error || 'Failed to resolve alerts');
+
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
             }
-            
+
+            this.showToast('Alert deleted successfully', 'success');
+            this.selectedAlerts.delete(alertId);
+            this.loadAlerts(); // Refresh to get updated data
+
         } catch (error) {
-            this.showToast('Error resolving alerts: ' + error.message, 'danger');
+            this.debug('Error deleting alert:', error);
+            this.showToast(`Failed to delete alert: ${error.message}`, 'error');
         }
     }
-    
-    async bulkDeleteAlerts() {
-        if (this.selectedAlerts.size === 0) {
-            this.showToast('No alerts selected', 'warning');
+
+    async deleteSelectedAlerts() {
+        if (this.selectedAlerts.size === 0) return;
+
+        const alertCount = this.selectedAlerts.size;
+        if (!confirm(`Are you sure you want to delete ${alertCount} alert(s)? This action cannot be undone.`)) {
             return;
         }
-        
-        if (!confirm(`Permanently delete ${this.selectedAlerts.size} selected alerts? This action cannot be undone.`)) {
-            return;
-        }
-        
-        // Additional confirmation for destructive action
-        if (!confirm('Are you absolutely sure? This will permanently remove the alerts from the database.')) {
-            return;
-        }
-        
+
+        const alertIds = Array.from(this.selectedAlerts);
         try {
-            const response = await fetch('/api/monitoring/alerts/bulk-delete', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    alert_ids: Array.from(this.selectedAlerts),
-                    force: true  // Allow deletion of unresolved alerts
-                })
-            });
-            
-            const result = await response.json();
-            
-            if (response.ok) {
-                this.showToast(`Successfully deleted ${result.deleted_count} alerts`, 'success');
-                this.deselectAllAlerts();
-                this.loadAlerts(this.getCurrentFilters());
-            } else {
-                throw new Error(result.error || 'Failed to delete alerts');
-            }
-            
+            const promises = alertIds.map(id =>
+                fetch(`/api/monitoring/alerts/${id}`, { method: 'DELETE' })
+            );
+            await Promise.all(promises);
+
+            this.showToast(`Deleted ${alertIds.length} alert(s)`, 'success');
+            this.selectedAlerts.clear();
+            this.updateSelectionUI();
+            this.loadAlerts();
+
         } catch (error) {
-            this.showToast('Error deleting alerts: ' + error.message, 'danger');
+            this.debug('Error deleting selected alerts:', error);
+            this.showToast('Some alerts could not be deleted', 'warning');
         }
     }
-    
-    exportSelectedAlerts() {
-        if (this.selectedAlerts.size === 0) {
-            this.showToast('No alerts selected for export', 'warning');
-            return;
+
+    refreshAlerts() {
+        this.debug('Manual refresh requested');
+        this.retryCount = 0; // Reset retry count for manual refresh
+        this.loadAlerts();
+    }
+
+    handleNewAlert(alert) {
+        this.alerts.unshift(alert); // Add to beginning
+        this.filterAlerts();
+        this.showToast(`New ${alert.severity} alert: ${alert.title}`, 'warning', 5000);
+    }
+
+    handleUpdatedAlert(alert) {
+        const index = this.alerts.findIndex(a => a.id === alert.id);
+        if (index !== -1) {
+            this.alerts[index] = alert;
+            this.filterAlerts();
         }
-        
-        const selectedAlertData = this.filteredAlerts.filter(alert => 
-            this.selectedAlerts.has(alert.id)
-        );
-        
-        // Prepare CSV data
-        const csvHeaders = ['ID', 'Device Name', 'Device IP', 'Alert Type', 'Severity', 'Message', 'Created', 'Acknowledged', 'Resolved'];
-        const csvRows = selectedAlertData.map(alert => [
-            alert.id,
-            alert.device_name,
-            alert.device_ip,
-            alert.alert_type,
-            alert.severity,
-            alert.message.replace(/"/g, '""'), // Escape quotes
-            new Date(alert.created_at).toLocaleString(),
-            alert.acknowledged ? 'Yes' : 'No',
-            alert.resolved ? 'Yes' : 'No'
-        ]);
-        
-        // Create CSV content
-        const csvContent = [
-            csvHeaders.join(','),
-            ...csvRows.map(row => row.map(cell => `"${cell}"`).join(','))
-        ].join('\n');
-        
-        // Download CSV
-        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const timestamp = new Date().toISOString().split('T')[0];
-        
-        link.href = URL.createObjectURL(blob);
-        link.download = `alerts_export_${timestamp}.csv`;
-        link.style.visibility = 'hidden';
-        
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-        
-        this.showToast(`Exported ${selectedAlertData.length} alerts to CSV`, 'success');
+    }
+
+    handleResolvedAlert(alertId) {
+        const alert = this.alerts.find(a => a.id === alertId);
+        if (alert) {
+            alert.resolved_at = new Date().toISOString();
+            this.selectedAlerts.delete(alertId);
+            this.filterAlerts();
+            this.showToast('Alert resolved', 'success');
+        }
+    }
+
+    showToast(message, type = 'info', duration = 3000) {
+        const container = document.getElementById('toast-container');
+        if (!container) return;
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        toast.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                <i class="bi bi-${this.getToastIcon(type)}"></i>
+                <span>${message}</span>
+            </div>
+        `;
+
+        container.appendChild(toast);
+
+        // Trigger animation
+        setTimeout(() => toast.classList.add('show'), 100);
+
+        // Auto remove
+        setTimeout(() => {
+            toast.classList.remove('show');
+            setTimeout(() => {
+                if (toast.parentNode) {
+                    toast.remove();
+                }
+            }, 300);
+        }, duration);
+    }
+
+    getToastIcon(type) {
+        const icons = {
+            success: 'check-circle',
+            warning: 'exclamation-triangle',
+            error: 'x-circle',
+            info: 'info-circle'
+        };
+        return icons[type] || 'info-circle';
+    }
+
+    // Debug helper functions
+    getDebugInfo() {
+        return {
+            alerts: this.alerts.length,
+            filtered: this.filteredAlerts.length,
+            selected: this.selectedAlerts.size,
+            isLoading: this.isLoading,
+            retryCount: this.retryCount,
+            socketConnected: this.socket?.connected || false
+        };
     }
 }
 
-// Global function to view notifications for a specific alert
-function viewNotificationsForAlert(alertId) {
-    // Navigate to notifications page with alert filter
-    window.location.href = `/notifications?alert_id=${alertId}`;
+// Global functions for button actions
+function selectAllAlerts() {
+    if (window.alertsManager) {
+        window.alertsManager.selectAllAlerts();
+    }
 }
 
-// Initialize alerts manager when page loads
-let alertsManager;
+function resolveSelectedAlerts() {
+    if (window.alertsManager) {
+        window.alertsManager.resolveSelectedAlerts();
+    }
+}
+
+function deleteSelectedAlerts() {
+    if (window.alertsManager) {
+        window.alertsManager.deleteSelectedAlerts();
+    }
+}
+
+function refreshAlerts() {
+    if (window.alertsManager) {
+        window.alertsManager.refreshAlerts();
+    }
+}
+
+async function deleteAllAlerts() {
+    // Multiple confirmation layers for safety
+    const totalAlerts = window.alertsManager ? window.alertsManager.alerts.length : 0;
+
+    if (totalAlerts === 0) {
+        alert('No alerts to delete.');
+        return;
+    }
+
+    // First confirmation
+    const firstConfirm = confirm(
+        `⚠️ WARNING: This will permanently delete ALL ${totalAlerts} alerts!\n\n` +
+        `This action cannot be undone.\n\n` +
+        `Are you sure you want to continue?`
+    );
+
+    if (!firstConfirm) return;
+
+    // Second confirmation with typing requirement
+    const typeConfirm = prompt(
+        `🚨 FINAL CONFIRMATION 🚨\n\n` +
+        `To proceed with deleting ALL ${totalAlerts} alerts, type: DELETE ALL ALERTS\n\n` +
+        `Type exactly: "DELETE ALL ALERTS" (without quotes):`
+    );
+
+    if (typeConfirm !== 'DELETE ALL ALERTS') {
+        alert('Deletion cancelled. Text did not match exactly.');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/monitoring/alerts/delete-all', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.content || ''
+            },
+            body: JSON.stringify({ confirm: true })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert(`✅ Success: ${result.message}\nAlert generation paused for ${result.alert_generation_paused}`);
+            // Refresh the alerts list
+            if (window.alertsManager) {
+                window.alertsManager.refreshAlerts();
+            }
+        } else {
+            throw new Error(result.error || 'Failed to delete alerts');
+        }
+    } catch (error) {
+        console.error('Error deleting all alerts:', error);
+        alert(`❌ Error: Failed to delete alerts. ${error.message}`);
+    }
+}
+
+async function bulkDeleteByType(alertType) {
+    const displayName = alertType.replace('_', ' ').replace(/\b\w/g, l => l.toUpperCase());
+
+    const confirm = window.confirm(
+        `Delete all "${displayName}" alerts?\n\n` +
+        `This will permanently delete all alerts of this type.`
+    );
+
+    if (!confirm) return;
+
+    try {
+        const response = await fetch('/api/monitoring/alerts/bulk-delete', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.content || ''
+            },
+            body: JSON.stringify({ alert_type: alertType })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert(`✅ ${result.message}\nAlert generation paused for ${result.alert_generation_paused}`);
+            if (window.alertsManager) {
+                window.alertsManager.refreshAlerts();
+            }
+        } else {
+            throw new Error(result.error || 'Failed to delete alerts');
+        }
+    } catch (error) {
+        console.error('Error in bulk delete:', error);
+        alert(`❌ Error: ${error.message}`);
+    }
+}
+
+async function bulkDeleteByStatus(resolved) {
+    const statusText = resolved ? 'resolved' : 'unresolved';
+
+    const confirm = window.confirm(
+        `Delete all ${statusText} alerts?\n\n` +
+        `This will permanently delete all ${statusText} alerts.`
+    );
+
+    if (!confirm) return;
+
+    try {
+        const response = await fetch('/api/monitoring/alerts/bulk-delete', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.content || ''
+            },
+            body: JSON.stringify({ resolved: resolved })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert(`✅ ${result.message}\nAlert generation paused for ${result.alert_generation_paused}`);
+            if (window.alertsManager) {
+                window.alertsManager.refreshAlerts();
+            }
+        } else {
+            throw new Error(result.error || 'Failed to delete alerts');
+        }
+    } catch (error) {
+        console.error('Error in bulk delete:', error);
+        alert(`❌ Error: ${error.message}`);
+    }
+}
+
+async function bulkDeleteBySeverity(severity) {
+    const confirm = window.confirm(
+        `Delete all "${severity}" severity alerts?\n\n` +
+        `This will permanently delete all alerts with ${severity} severity.`
+    );
+
+    if (!confirm) return;
+
+    try {
+        const response = await fetch('/api/monitoring/alerts/bulk-delete', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name=csrf-token]')?.content || ''
+            },
+            body: JSON.stringify({ severity: severity })
+        });
+
+        const result = await response.json();
+
+        if (response.ok) {
+            alert(`✅ ${result.message}\nAlert generation paused for ${result.alert_generation_paused}`);
+            if (window.alertsManager) {
+                window.alertsManager.refreshAlerts();
+            }
+        } else {
+            throw new Error(result.error || 'Failed to delete alerts');
+        }
+    } catch (error) {
+        console.error('Error in bulk delete:', error);
+        alert(`❌ Error: ${error.message}`);
+    }
+}
+
+function loadAlerts() {
+    if (window.alertsManager) {
+        window.alertsManager.loadAlerts();
+    }
+}
+
+function enableDebugMode() {
+    localStorage.setItem('alerts_debug', 'true');
+    console.log('🐛 Alerts Debug Mode Enabled');
+    console.log('Use getDebugInfo() to see current state');
+    console.log('Use disableDebugMode() to turn off debug mode');
+}
+
+function disableDebugMode() {
+    localStorage.removeItem('alerts_debug');
+    console.log('🐛 Alerts Debug Mode Disabled');
+}
+
+function getDebugInfo() {
+    if (window.alertsManager) {
+        return window.alertsManager.getDebugInfo();
+    }
+    return null;
+}
+
+// Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('Alerts page loaded, initializing AlertsManager');
-    alertsManager = new AlertsManager();
+    let alertsManager;
+
+    try {
+        console.log('🚀 Initializing AlertsManager...');
+        alertsManager = new AlertsManager();
+        window.alertsManager = alertsManager; // Make available for debugging
+        console.log('✅ AlertsManager initialized successfully');
+
+        // Show debug info if enabled
+        if (localStorage.getItem('alerts_debug') === 'true') {
+            console.log('🐛 Alerts Debug Mode Enabled');
+            console.log('Use getDebugInfo() to see current state');
+            console.log('Use disableDebugMode() to turn off debug mode');
+        } else {
+            console.log('💡 Enable debug mode with: enableDebugMode()');
+        }
+    } catch (error) {
+        console.error('❌ Failed to initialize AlertsManager:', error);
+
+        // Show user-friendly error message
+        const errorDiv = document.createElement('div');
+        errorDiv.style.cssText = `
+            position: fixed;
+            top: 100px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(220, 53, 69, 0.9);
+            color: white;
+            padding: 1rem 2rem;
+            border-radius: 8px;
+            z-index: 9999;
+            max-width: 90%;
+            text-align: center;
+        `;
+        errorDiv.innerHTML = `
+            <strong>Alerts Manager Error</strong><br>
+            ${error.message || 'Unknown initialization error'}<br>
+            <small>Check browser console for details</small>
+        `;
+        document.body.appendChild(errorDiv);
+
+        // Auto-remove error after 10 seconds
+        setTimeout(() => {
+            if (errorDiv.parentNode) {
+                errorDiv.remove();
+            }
+        }, 10000);
+    }
 });
 </script>
 {% endblock %}

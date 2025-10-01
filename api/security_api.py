@@ -13,6 +13,7 @@ This module provides comprehensive REST API endpoints for security operations:
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 import logging
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 from services.security_scanner import security_scanner, ComplianceFramework
 from services.network_security_monitor import network_security_monitor
@@ -28,6 +29,7 @@ security_api = Blueprint('security_api', __name__, url_prefix='/api/security')
 
 # Security Scanning Endpoints
 @security_api.route('/scan/start', methods=['POST'])
+@create_endpoint_limiter('critical')
 def start_security_scan():
     """Start a comprehensive security scan"""
     try:
@@ -53,6 +55,7 @@ def start_security_scan():
 
 
 @security_api.route('/scan/progress', methods=['GET'])
+@create_endpoint_limiter('critical')
 def get_scan_progress():
     """Get current security scan progress"""
     try:
@@ -65,6 +68,7 @@ def get_scan_progress():
 
 
 @security_api.route('/vulnerabilities', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_vulnerabilities():
     """Get security vulnerabilities"""
     try:
@@ -109,6 +113,7 @@ def get_vulnerabilities():
 
 
 @security_api.route('/vulnerabilities/<string:finding_id>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_vulnerability_detail(finding_id):
     """Get detailed information about a specific vulnerability"""
     try:
@@ -125,6 +130,7 @@ def get_vulnerability_detail(finding_id):
 
 
 @security_api.route('/vulnerabilities/<string:finding_id>/status', methods=['PUT'])
+@create_endpoint_limiter('strict')
 def update_vulnerability_status():
     """Update vulnerability status"""
     try:
@@ -159,6 +165,7 @@ def update_vulnerability_status():
 
 # Threat Monitoring Endpoints
 @security_api.route('/threats', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_security_threats():
     """Get recent security threats"""
     try:
@@ -177,6 +184,7 @@ def get_security_threats():
 
 
 @security_api.route('/monitoring/status', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_monitoring_status():
     """Get network security monitoring status"""
     try:
@@ -189,6 +197,7 @@ def get_monitoring_status():
 
 
 @security_api.route('/monitoring/start', methods=['POST'])
+@create_endpoint_limiter('strict')
 def start_security_monitoring():
     """Start network security monitoring"""
     try:
@@ -205,6 +214,7 @@ def start_security_monitoring():
 
 
 @security_api.route('/monitoring/stop', methods=['POST'])
+@create_endpoint_limiter('strict')
 def stop_security_monitoring():
     """Stop network security monitoring"""
     try:
@@ -222,6 +232,7 @@ def stop_security_monitoring():
 
 # Incident Management Endpoints
 @security_api.route('/incidents', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_security_incidents():
     """Get security incidents"""
     try:
@@ -260,6 +271,7 @@ def get_security_incidents():
 
 
 @security_api.route('/incidents/<string:incident_id>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_incident_detail(incident_id):
     """Get detailed information about a specific incident"""
     try:
@@ -284,6 +296,7 @@ def get_incident_detail(incident_id):
 
 
 @security_api.route('/incidents/<string:incident_id>/status', methods=['PUT'])
+@create_endpoint_limiter('strict')
 def update_incident_status(incident_id):
     """Update incident status"""
     try:
@@ -329,6 +342,7 @@ def update_incident_status(incident_id):
 
 # Response Management Endpoints
 @security_api.route('/response/status', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_response_status():
     """Get security response engine status"""
     try:
@@ -341,6 +355,7 @@ def get_response_status():
 
 
 @security_api.route('/response/start', methods=['POST'])
+@create_endpoint_limiter('strict')
 def start_response_engine():
     """Start security response engine"""
     try:
@@ -357,6 +372,7 @@ def start_response_engine():
 
 
 @security_api.route('/response/stop', methods=['POST'])
+@create_endpoint_limiter('strict')
 def stop_response_engine():
     """Stop security response engine"""
     try:
@@ -373,6 +389,7 @@ def stop_response_engine():
 
 
 @security_api.route('/response/playbooks', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_response_playbooks():
     """Get available response playbooks"""
     try:
@@ -400,6 +417,7 @@ def get_response_playbooks():
 
 
 @security_api.route('/response/playbooks', methods=['POST'])
+@create_endpoint_limiter('strict')
 def create_response_playbook():
     """Create a custom response playbook"""
     try:
@@ -425,6 +443,7 @@ def create_response_playbook():
 
 
 @security_api.route('/remediation/tasks', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_remediation_tasks():
     """Get remediation tasks"""
     try:
@@ -457,6 +476,7 @@ def get_remediation_tasks():
 
 
 @security_api.route('/remediation/tasks', methods=['POST'])
+@create_endpoint_limiter('strict')
 def create_remediation_task():
     """Create a new remediation task"""
     try:
@@ -489,6 +509,7 @@ def create_remediation_task():
 
 
 @security_api.route('/remediation/tasks/<string:task_id>/status', methods=['PUT'])
+@create_endpoint_limiter('strict')
 def update_remediation_task_status(task_id):
     """Update remediation task status"""
     try:
@@ -515,6 +536,7 @@ def update_remediation_task_status(task_id):
 
 # Compliance Endpoints
 @security_api.route('/compliance/assess', methods=['POST'])
+@create_endpoint_limiter('critical')
 def run_compliance_assessment():
     """Run compliance assessment"""
     try:
@@ -566,6 +588,7 @@ def run_compliance_assessment():
 
 
 @security_api.route('/compliance/results', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_compliance_results():
     """Get compliance assessment results"""
     try:
@@ -599,6 +622,7 @@ def get_compliance_results():
 
 
 @security_api.route('/compliance/report', methods=['POST'])
+@create_endpoint_limiter('strict')
 def generate_compliance_report():
     """Generate compliance report"""
     try:
@@ -660,6 +684,7 @@ def generate_compliance_report():
 
 
 @security_api.route('/compliance/trends', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_compliance_trends():
     """Get compliance trends over time"""
     try:
@@ -682,6 +707,7 @@ def get_compliance_trends():
 
 # Security Configuration Endpoints
 @security_api.route('/config', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_security_config():
     """Get security configuration"""
     try:
@@ -716,6 +742,7 @@ def get_security_config():
 
 
 @security_api.route('/summary', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_security_summary():
     """Get comprehensive security summary"""
     try:
@@ -752,6 +779,7 @@ def get_security_summary():
 
 
 @security_api.route('/device/<int:device_id>/posture', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_device_security_posture(device_id):
     """Get comprehensive security posture for a specific device"""
     try:

@@ -1,190 +1,284 @@
-{% extends "base_clean.html" %}
+{% extends "base_beautiful.html" %}
 
-{% block title %}About HomeNetMon{% endblock %}
+{% block title %}About SHAKY8 HomeNetMon{% endblock %}
+
+{% block extra_css %}
+<style>
+/* About page specific styling */
+.shaky8-logo {
+    border-radius: 16px;
+    position: relative;
+    transition: all 0.3s ease;
+    filter: brightness(1.1) contrast(1.1);
+
+    /* Multi-layered glow effect */
+    box-shadow:
+        0 0 20px rgba(0, 255, 255, 0.3),
+        0 0 40px rgba(0, 255, 255, 0.2),
+        0 0 60px rgba(0, 255, 255, 0.1),
+        0 8px 32px rgba(0, 0, 0, 0.4);
+
+    /* Subtle glitch effects */
+    animation:
+        glow-pulse 3s ease-in-out infinite,
+        glitch-shift 4s ease-in-out infinite,
+        flicker 8s ease-in-out infinite;
+}
+
+.shaky8-logo:hover {
+    transform: scale(1.08);
+    filter: brightness(1.3) contrast(1.2);
+
+    /* Intensified hover glow */
+    box-shadow:
+        0 0 30px rgba(0, 255, 255, 0.6),
+        0 0 60px rgba(0, 255, 255, 0.4),
+        0 0 90px rgba(0, 255, 255, 0.2),
+        0 0 120px rgba(0, 255, 255, 0.1),
+        0 12px 48px rgba(0, 0, 0, 0.5);
+
+    /* Enhanced glitch on hover */
+    animation:
+        glow-pulse-intense 1.5s ease-in-out infinite,
+        glitch-shift-intense 2s ease-in-out infinite,
+        rgb-split 0.1s ease-in-out infinite,
+        flicker-intense 4s ease-in-out infinite;
+}
+
+/* Glitch pseudo-elements for RGB split effect */
+.shaky8-logo::before,
+.shaky8-logo::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border-radius: 16px;
+    opacity: 0;
+    pointer-events: none;
+    background-image: inherit;
+    background-size: cover;
+    background-position: center;
+    transition: opacity 0.3s ease;
+}
+
+.shaky8-logo::before {
+    background: linear-gradient(45deg, rgba(255, 0, 0, 0.1), transparent);
+    animation: glitch-red 3s ease-in-out infinite;
+}
+
+.shaky8-logo::after {
+    background: linear-gradient(-45deg, rgba(0, 255, 0, 0.1), transparent);
+    animation: glitch-green 3.5s ease-in-out infinite;
+}
+
+/* Keyframe animations */
+@keyframes glow-pulse {
+    0%, 100% {
+        box-shadow:
+            0 0 20px rgba(0, 255, 255, 0.3),
+            0 0 40px rgba(0, 255, 255, 0.2),
+            0 0 60px rgba(0, 255, 255, 0.1),
+            0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+    50% {
+        box-shadow:
+            0 0 30px rgba(0, 255, 255, 0.4),
+            0 0 60px rgba(0, 255, 255, 0.3),
+            0 0 90px rgba(0, 255, 255, 0.2),
+            0 8px 32px rgba(0, 0, 0, 0.4);
+    }
+}
+
+@keyframes glow-pulse-intense {
+    0%, 100% {
+        box-shadow:
+            0 0 30px rgba(0, 255, 255, 0.6),
+            0 0 60px rgba(0, 255, 255, 0.4),
+            0 0 90px rgba(0, 255, 255, 0.2),
+            0 0 120px rgba(0, 255, 255, 0.1),
+            0 12px 48px rgba(0, 0, 0, 0.5);
+    }
+    50% {
+        box-shadow:
+            0 0 40px rgba(0, 255, 255, 0.8),
+            0 0 80px rgba(0, 255, 255, 0.6),
+            0 0 120px rgba(0, 255, 255, 0.4),
+            0 0 160px rgba(0, 255, 255, 0.2),
+            0 15px 60px rgba(0, 0, 0, 0.6);
+    }
+}
+
+@keyframes glitch-shift {
+    0%, 90%, 100% { transform: translate(0, 0); }
+    20% { transform: translate(-1px, 1px); }
+    40% { transform: translate(1px, -1px); }
+    60% { transform: translate(-1px, -1px); }
+    80% { transform: translate(1px, 1px); }
+}
+
+@keyframes glitch-shift-intense {
+    0%, 85%, 100% { transform: translate(0, 0) scale(1.08); }
+    10% { transform: translate(-2px, 2px) scale(1.08); }
+    25% { transform: translate(2px, -2px) scale(1.08); }
+    40% { transform: translate(-1px, -2px) scale(1.08); }
+    55% { transform: translate(2px, 1px) scale(1.08); }
+    70% { transform: translate(-2px, -1px) scale(1.08); }
+}
+
+@keyframes rgb-split {
+    0%, 95%, 100% {
+        text-shadow: none;
+        filter: brightness(1.3) contrast(1.2);
+    }
+    5% {
+        text-shadow: 2px 0 rgba(255, 0, 0, 0.7), -2px 0 rgba(0, 255, 0, 0.7);
+        filter: brightness(1.5) contrast(1.4) hue-rotate(10deg);
+    }
+}
+
+@keyframes flicker {
+    0%, 95%, 100% { opacity: 1; }
+    96% { opacity: 0.95; }
+    97% { opacity: 1; }
+    98% { opacity: 0.98; }
+    99% { opacity: 1; }
+}
+
+@keyframes flicker-intense {
+    0%, 90%, 100% { opacity: 1; }
+    91% { opacity: 0.9; }
+    92% { opacity: 1; }
+    93% { opacity: 0.95; }
+    94% { opacity: 1; }
+    95% { opacity: 0.92; }
+    96% { opacity: 1; }
+}
+
+@keyframes glitch-red {
+    0%, 90%, 100% { opacity: 0; transform: translate(0, 0); }
+    2% { opacity: 0.2; transform: translate(2px, 0); }
+    4% { opacity: 0; transform: translate(-2px, 0); }
+}
+
+@keyframes glitch-green {
+    0%, 85%, 100% { opacity: 0; transform: translate(0, 0); }
+    3% { opacity: 0.15; transform: translate(-1px, 1px); }
+    6% { opacity: 0; transform: translate(1px, -1px); }
+}
+
+.version-info {
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    backdrop-filter: blur(20px);
+}
+
+.feature-card {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 16px;
+    backdrop-filter: blur(20px);
+    transition: all 0.3s ease;
+}
+
+.feature-card:hover {
+    transform: translateY(-2px);
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+.stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.stat-item {
+    text-align: center;
+    padding: 1.5rem;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    backdrop-filter: blur(20px);
+}
+
+.stat-value {
+    font-size: 2rem;
+    font-weight: 300;
+    color: #ffffff;
+    margin-bottom: 0.5rem;
+}
+
+.stat-label {
+    font-size: 0.875rem;
+    opacity: 0.7;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+</style>
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid p-4">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
-                <div class="d-flex align-items-center">
-                    <i class="bi bi-info-circle text-primary me-3" style="font-size: 2rem;"></i>
-                    <div>
-                        <h1 class="h3 mb-0">About HomeNetMon</h1>
-                        <small class="text-muted">System Information & Credits</small>
-                    </div>
-                </div>
-                <div>
-                    <a href="/" class="btn btn-outline-primary btn-sm">
-                        <i class="bi bi-arrow-left"></i> Back to Dashboard
-                    </a>
-                </div>
-            </div>
-        </div>
-    </div>
+<div class="page-header">
+    <h1 class="page-title">About HomeNetMon</h1>
+    <p class="page-subtitle">Comprehensive Home Network Monitoring Solution</p>
+    <div class="page-version">v2.0.0</div>
+</div>
 
-    <!-- Application Info Card -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-transparent border-0 pb-0">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-router me-2"></i>HomeNetMon
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row">
-                        <div class="col-lg-6">
-                            <p class="text-muted mb-3">Comprehensive Home Network Monitoring Solution</p>
-                            
-                            <div class="mb-3">
-                                <strong>Version:</strong> 
-                                <span class="badge bg-primary ms-1" id="version-info">Loading...</span>
-                                <span class="badge bg-secondary ms-1" id="build-info">Loading...</span>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <strong>Build Date:</strong> 
-                                <span id="build-date">Loading...</span>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <strong>Author:</strong> 
-                                <span id="build-author">Loading...</span>
-                            </div>
-                            
-                            <div class="mb-3">
-                                <strong>License:</strong> MIT License
-                            </div>
-                        </div>
-                        
-                        <div class="col-lg-6">
-                            <h6>Key Features</h6>
-                            <ul class="list-unstyled">
-                                <li><i class="bi bi-check-circle text-success me-2"></i>Real-time Device Monitoring</li>
-                                <li><i class="bi bi-check-circle text-success me-2"></i>Smart Anomaly Detection</li>
-                                <li><i class="bi bi-check-circle text-success me-2"></i>Network Security Scanning</li>
-                                <li><i class="bi bi-check-circle text-success me-2"></i>Push Notifications & Alerts</li>
-                                <li><i class="bi bi-check-circle text-success me-2"></i>Interactive Network Topology</li>
-                                <li><i class="bi bi-check-circle text-success me-2"></i>Speed Testing & Analytics</li>
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
+<!-- SHAKY8 Logo Hero Section -->
+<div class="modern-card text-center mb-4">
+    <div class="card-body">
+        <img src="{{ url_for('static', filename='images/shaky8-logo.jpg') }}?v=20250830fix" alt="SHAKY8" height="200" width="200" class="mb-4 shaky8-logo">
+        <h2 class="text-gradient mb-3">SHAKY8 HomeNetMon</h2>
+        <p class="mb-0" style="opacity: 0.8;">Professional-grade network monitoring for home and small business environments</p>
     </div>
+</div>
 
-    <div class="row">
-        <!-- System Information -->
-        <div class="col-lg-8 mb-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-transparent border-0 pb-0">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-cpu me-2"></i>System Information
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <div class="border rounded p-3">
-                                <h6 class="text-primary mb-2">Platform</h6>
-                                <div class="small">
-                                    <div><strong>OS:</strong> <span id="system-platform">Loading...</span></div>
-                                    <div><strong>Python:</strong> <span id="python-version">Loading...</span></div>
-                                    <div><strong>Architecture:</strong> <span id="system-machine">Loading...</span></div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="border rounded p-3">
-                                <h6 class="text-success mb-2">Application</h6>
-                                <div class="small">
-                                    <div><strong>Process ID:</strong> <span id="process-pid">Loading...</span></div>
-                                    <div><strong>Memory Usage:</strong> <span id="memory-usage">Loading...</span></div>
-                                    <div><strong>Uptime:</strong> <span id="app-uptime">Loading...</span></div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="border rounded p-3">
-                                <h6 class="text-info mb-2">Resources</h6>
-                                <div class="small">
-                                    <div><strong>CPU Cores:</strong> <span id="cpu-count">Loading...</span></div>
-                                    <div><strong>Total Memory:</strong> <span id="total-memory">Loading...</span></div>
-                                    <div><strong>Available Memory:</strong> <span id="available-memory">Loading...</span></div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="col-md-6">
-                            <div class="border rounded p-3">
-                                <h6 class="text-warning mb-2">Storage</h6>
-                                <div class="small">
-                                    <div><strong>Disk Total:</strong> <span id="disk-total">Loading...</span></div>
-                                    <div><strong>Disk Free:</strong> <span id="disk-free">Loading...</span></div>
-                                    <div><strong>Disk Usage:</strong> <span id="disk-usage">Loading...</span></div>
-                                </div>
-                            </div>
-                        </div>
+<!-- Application Info Section -->
+<div class="modern-card mb-4">
+    <div class="card-header">
+        <h3><i class="bi bi-info-circle"></i> Application Information</h3>
+    </div>
+    <div class="card-body">
+        <div class="row">
+            <div class="col-lg-6">
+                <div class="version-info p-3 mb-3">
+                    <h5 class="mb-3">Version Information</h5>
+                    <div class="mb-2">
+                        <strong>Version:</strong>
+                        <span class="badge bg-success ms-2" id="version-info">v2.0.0</span>
+                    </div>
+                    <div class="mb-2">
+                        <strong>Build:</strong>
+                        <span class="badge bg-secondary ms-2" id="build-info">Production</span>
+                    </div>
+                    <div class="mb-2">
+                        <strong>License:</strong> MIT License
+                    </div>
+                    <div class="mb-2">
+                        <strong>Author:</strong> SHAKY8 Network Solutions
                     </div>
                 </div>
             </div>
-        </div>
-        
-        <!-- Technology Stack -->
-        <div class="col-lg-4 mb-4">
-            <div class="card border-0 shadow-sm">
-                <div class="card-header bg-transparent border-0 pb-0">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-stack me-2"></i>Technology Stack
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <h6 class="text-primary">Backend</h6>
-                        <ul class="list-unstyled small">
-                            <li><i class="bi bi-dot"></i>Python Flask</li>
-                            <li><i class="bi bi-dot"></i>SQLAlchemy ORM</li>
-                            <li><i class="bi bi-dot"></i>Socket.IO WebSockets</li>
+            <div class="col-lg-6">
+                <h5 class="mb-3">Key Features</h5>
+                <div class="row">
+                    <div class="col-sm-6">
+                        <ul class="list-unstyled">
+                            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Real-time Monitoring</li>
+                            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Smart Anomaly Detection</li>
+                            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Security Scanning</li>
                         </ul>
                     </div>
-                    
-                    <div class="mb-3">
-                        <h6 class="text-success">Frontend</h6>
-                        <ul class="list-unstyled small">
-                            <li><i class="bi bi-dot"></i>Bootstrap 5 UI</li>
-                            <li><i class="bi bi-dot"></i>Chart.js Analytics</li>
-                            <li><i class="bi bi-dot"></i>D3.js Visualization</li>
+                    <div class="col-sm-6">
+                        <ul class="list-unstyled">
+                            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Push Notifications</li>
+                            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Network Topology</li>
+                            <li class="mb-2"><i class="bi bi-check-circle text-success me-2"></i>Performance Analytics</li>
                         </ul>
-                    </div>
-                    
-                    <div class="mb-3">
-                        <h6 class="text-info">Tools</h6>
-                        <ul class="list-unstyled small">
-                            <li><i class="bi bi-dot"></i>nmap Security Scanning</li>
-                            <li><i class="bi bi-dot"></i>ML Anomaly Detection</li>
-                            <li><i class="bi bi-dot"></i>Performance Optimization</li>
-                        </ul>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Git Information (if available) -->
-            <div class="card border-0 shadow-sm mt-3" id="git-info-card" style="display: none;">
-                <div class="card-header bg-transparent border-0 pb-0">
-                    <h5 class="card-title mb-0">
-                        <i class="bi bi-git me-2"></i>Repository Info
-                    </h5>
-                </div>
-                <div class="card-body">
-                    <div class="small">
-                        <div><strong>Branch:</strong> <span id="git-branch">-</span></div>
-                        <div><strong>Commit:</strong> <span id="git-commit">-</span></div>
-                        <div><strong>Status:</strong> <span id="git-status">-</span></div>
                     </div>
                 </div>
             </div>
@@ -192,105 +286,129 @@
     </div>
 </div>
 
-<style>
-.card:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 8px 25px rgba(0,0,0,0.15) !important;
-    transition: all 0.2s ease;
-}
+<!-- System Information -->
+<div class="row">
+    <div class="col-lg-8 mb-4">
+        <div class="modern-card">
+            <div class="card-header">
+                <h3><i class="bi bi-cpu"></i> System Information</h3>
+            </div>
+            <div class="card-body">
+                <div class="stats-grid">
+                    <div class="stat-item">
+                        <div class="stat-value" id="system-platform">Loading...</div>
+                        <div class="stat-label">Platform</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="python-version">Loading...</div>
+                        <div class="stat-label">Python Version</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="cpu-count">Loading...</div>
+                        <div class="stat-label">CPU Cores</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="total-memory">Loading...</div>
+                        <div class="stat-label">Total Memory</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="disk-free">Loading...</div>
+                        <div class="stat-label">Free Disk Space</div>
+                    </div>
+                    <div class="stat-item">
+                        <div class="stat-value" id="app-uptime">Loading...</div>
+                        <div class="stat-label">Uptime</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 
-@media (max-width: 768px) {
-    .container-fluid {
-        padding: 1rem !important;
-    }
-}
-</style>
+    <div class="col-lg-4 mb-4">
+        <div class="modern-card">
+            <div class="card-header">
+                <h3><i class="bi bi-stack"></i> Technology Stack</h3>
+            </div>
+            <div class="card-body">
+                <div class="feature-card p-3 mb-3">
+                    <h6 class="text-primary mb-2">Backend</h6>
+                    <ul class="list-unstyled small mb-0">
+                        <li>• Python Flask</li>
+                        <li>• SQLAlchemy ORM</li>
+                        <li>• Socket.IO</li>
+                        <li>• SQLite Database</li>
+                    </ul>
+                </div>
 
-<script>
-// Load system information when page loads
-document.addEventListener('DOMContentLoaded', async () => {
-    try {
-        const response = await fetch('/api/system/info');
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        
-        const data = await response.json();
-        updateAboutPage(data);
-        
-    } catch (error) {
-        console.error('Failed to load system information:', error);
-        showErrorState();
-    }
+                <div class="feature-card p-3 mb-3">
+                    <h6 class="text-success mb-2">Frontend</h6>
+                    <ul class="list-unstyled small mb-0">
+                        <li>• Bootstrap 5</li>
+                        <li>• Chart.js</li>
+                        <li>• Socket.IO Client</li>
+                        <li>• Modern JavaScript</li>
+                    </ul>
+                </div>
+
+                <div class="feature-card p-3">
+                    <h6 class="text-info mb-2">Monitoring Tools</h6>
+                    <ul class="list-unstyled small mb-0">
+                        <li>• ping3 Library</li>
+                        <li>• nmap Integration</li>
+                        <li>• psutil Metrics</li>
+                        <li>• Real-time Threading</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+// Load system information
+document.addEventListener('DOMContentLoaded', function() {
+    loadSystemInfo();
 });
 
-function updateAboutPage(data) {
-    const version = data.version || {};
-    const system = data.system || {};
-    const application = data.application || {};
-    
-    // Version information
-    document.getElementById('version-info').textContent = version.full_version || version.version || 'Unknown';
-    document.getElementById('build-info').textContent = version.release_name || 'Release';
-    document.getElementById('build-date').textContent = version.build_date || 'Unknown';
-    document.getElementById('build-author').textContent = version.build_author || application.author || 'Unknown';
-    
-    // System information
-    if (system.system) {
-        document.getElementById('system-platform').textContent = system.system.platform || 'Unknown';
-        document.getElementById('python-version').textContent = system.system.python_version || 'Unknown';
-        document.getElementById('system-machine').textContent = system.system.machine || 'Unknown';
-        document.getElementById('cpu-count').textContent = system.system.cpu_count || 'Unknown';
-        document.getElementById('total-memory').textContent = (system.system.total_memory_gb || 0) + ' GB';
-        document.getElementById('available-memory').textContent = (system.system.available_memory_gb || 0) + ' GB';
-        document.getElementById('disk-total').textContent = (system.system.disk_total_gb || 0) + ' GB';
-        document.getElementById('disk-free').textContent = (system.system.disk_free_gb || 0) + ' GB';
-        document.getElementById('disk-usage').textContent = (system.system.disk_percent || 0) + '%';
-    }
-    
-    // Process information
-    if (system.process) {
-        document.getElementById('process-pid').textContent = system.process.pid || 'Unknown';
-        document.getElementById('memory-usage').textContent = (system.process.memory_usage_mb || 0) + ' MB';
-        
-        // Calculate uptime from process start time
-        if (system.process.started) {
-            const startTime = new Date(system.process.started);
-            const now = new Date();
-            const uptimeMs = now - startTime;
-            const uptimeHours = Math.floor(uptimeMs / (1000 * 60 * 60));
-            const uptimeMins = Math.floor((uptimeMs % (1000 * 60 * 60)) / (1000 * 60));
-            document.getElementById('app-uptime').textContent = `${uptimeHours}h ${uptimeMins}m`;
-        }
-    }
-    
-    // Git information (if available)
-    if (version.git) {
-        const gitCard = document.getElementById('git-info-card');
-        gitCard.style.display = 'block';
-        
-        document.getElementById('git-branch').textContent = version.git.branch || 'Unknown';
-        document.getElementById('git-commit').textContent = version.git.commit_short || 'Unknown';
-        document.getElementById('git-status').textContent = version.git.is_dirty ? 'Modified' : 'Clean';
-    }
+function loadSystemInfo() {
+    fetch('/api/system/info')
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.system && data.system.system) {
+                updateSystemInfo(data.system.system);
+            } else {
+                console.error('Invalid response format:', data);
+                setDefaultValues();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading system info:', error);
+            setDefaultValues();
+        });
 }
 
-function showErrorState() {
-    // Set fallback values if API call fails
-    document.getElementById('version-info').textContent = 'Unknown';
-    document.getElementById('build-info').textContent = 'Unknown';
-    document.getElementById('build-date').textContent = 'Unknown';
-    document.getElementById('build-author').textContent = 'Unknown';
-    
-    // System info fallbacks
-    const elements = [
-        'system-platform', 'python-version', 'system-machine', 'process-pid',
-        'memory-usage', 'app-uptime', 'cpu-count', 'total-memory', 
-        'available-memory', 'disk-total', 'disk-free', 'disk-usage'
-    ];
-    
+function updateSystemInfo(data) {
+    const updates = {
+        'system-platform': data.platform || 'Unknown',
+        'python-version': data.python_version || 'Unknown',
+        'cpu-count': `${data.cpu_count || 'Unknown'} cores`,
+        'total-memory': data.total_memory_gb ? `${data.total_memory_gb.toFixed(1)} GB` : 'Unknown',
+        'disk-free': data.disk_free_gb ? `${data.disk_free_gb.toFixed(1)} GB` : 'Unknown',
+        'app-uptime': data.system_uptime || 'Unknown'
+    };
+
+    Object.entries(updates).forEach(([id, value]) => {
+        const element = document.getElementById(id);
+        if (element) element.textContent = value;
+    });
+}
+
+function setDefaultValues() {
+    const elements = ['system-platform', 'python-version', 'cpu-count', 'total-memory', 'disk-free', 'app-uptime'];
     elements.forEach(id => {
         const elem = document.getElementById(id);
         if (elem) elem.textContent = 'Unavailable';
     });
 }
-</script>
 {% endblock %}

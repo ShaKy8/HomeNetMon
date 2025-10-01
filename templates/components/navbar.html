@@ -1,0 +1,287 @@
+<!-- Standardized Navigation Component -->
+<nav class="navbar navbar-expand-lg navbar-dark" style="background-color: #17a2b8;">
+    <div class="container-fluid">
+        <a class="navbar-brand d-flex align-items-center" href="/about">
+            <img src="{{ url_for('static', filename='images/shaky8-navbar.jpg') }}?v=20250830" alt="SHAKY8" height="32" width="32" class="me-2 rounded">
+            HomeNetMon
+        </a>
+
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <ul class="navbar-nav me-auto">
+                <li class="nav-item">
+                    <a class="nav-link{% if request.endpoint == 'dashboard' %} active{% endif %}" href="{{ url_for('dashboard') }}">
+                        <i class="bi bi-speedometer2"></i> Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{% if request.endpoint == 'alerts' %} active{% endif %}" href="{{ url_for('alerts') }}">
+                        <i class="bi bi-exclamation-triangle"></i> Alerts
+                        <span id="alert-count-badge" class="badge bg-danger ms-1" style="display: none;">0</span>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{% if request.endpoint == 'analytics' %} active{% endif %}" href="{{ url_for('analytics') }}">
+                        <i class="bi bi-graph-up"></i> Analytics
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{% if request.endpoint == 'network_map' %} active{% endif %}" href="{{ url_for('network_map') }}">
+                        <i class="bi bi-diagram-3"></i> Network Map
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{% if request.endpoint == 'ai_dashboard' %} active{% endif %}" href="{{ url_for('ai_dashboard') }}">
+                        <i class="bi bi-robot"></i> AI Dashboard
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{% if request.endpoint == 'security' %} active{% endif %}" href="{{ url_for('security') }}">
+                        <i class="bi bi-shield-check"></i> Security
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{% if request.endpoint == 'settings' %} active{% endif %}" href="{{ url_for('settings') }}">
+                        <i class="bi bi-gear"></i> Settings
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link{% if request.endpoint == 'full_view' %} active{% endif %}" href="{{ url_for('full_view') }}" target="_blank">
+                        <i class="bi bi-display"></i> Full View
+                    </a>
+                </li>
+            </ul>
+
+            <!-- Global Search -->
+            <form class="d-flex me-auto" style="max-width: 300px;">
+                <div class="input-group">
+                    <input class="form-control" type="search" id="global-search"
+                           placeholder="Search devices..." aria-label="Search">
+                    <button class="btn btn-outline-light" type="button" id="search-btn">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </form>
+
+            <ul class="navbar-nav">
+                <li class="nav-item me-2">
+                    <a class="btn btn-outline-light btn-sm" href="{{ url_for('about') }}" title="About HomeNetMon">
+                        <i class="bi bi-info-circle"></i>
+                    </a>
+                </li>
+                <li class="nav-item me-3">
+                    <button class="btn btn-outline-light btn-sm" id="shortcuts-help-btn" title="Keyboard Shortcuts (?)">
+                        <i class="bi bi-question-circle"></i>
+                    </button>
+                </li>
+                <li class="nav-item me-3">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-sun-fill text-warning me-2"></i>
+                        <label class="theme-toggle">
+                            <input type="checkbox" id="theme-toggle">
+                            <span class="theme-slider"></span>
+                        </label>
+                        <i class="bi bi-moon-fill text-info ms-2"></i>
+                    </div>
+                </li>
+                <li class="nav-item">
+                    <span class="navbar-text">
+                        <span id="connection-status" class="badge bg-success">
+                            <i class="bi bi-wifi"></i> Connected
+                        </span>
+                    </span>
+                </li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<style>
+/* Theme Toggle Styles */
+.theme-toggle {
+    position: relative;
+    display: inline-block;
+    width: 44px;
+    height: 24px;
+}
+
+.theme-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.theme-slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 24px;
+    transition: 0.3s;
+}
+
+.theme-slider:before {
+    position: absolute;
+    content: "";
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    border-radius: 50%;
+    transition: 0.3s;
+}
+
+input:checked + .theme-slider {
+    background-color: rgba(59, 130, 246, 0.3);
+}
+
+input:checked + .theme-slider:before {
+    transform: translateX(20px);
+}
+
+/* Active nav item styling */
+.nav-link.active {
+    background-color: rgba(255, 255, 255, 0.1) !important;
+    border-radius: 0.375rem;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+    .navbar-nav .nav-link {
+        padding: 0.75rem 1rem;
+    }
+
+    .theme-toggle {
+        width: 36px;
+        height: 20px;
+    }
+
+    .theme-slider:before {
+        height: 14px;
+        width: 14px;
+        left: 3px;
+        bottom: 3px;
+    }
+
+    input:checked + .theme-slider:before {
+        transform: translateX(16px);
+    }
+}
+</style>
+
+<script>
+// Initialize navbar functionality
+document.addEventListener('DOMContentLoaded', function() {
+    // Theme toggle functionality
+    const themeToggle = document.getElementById('theme-toggle');
+    const currentTheme = localStorage.getItem('theme') || 'light';
+
+    // Set initial theme
+    document.documentElement.setAttribute('data-bs-theme', currentTheme);
+    if (currentTheme === 'dark') {
+        themeToggle.checked = true;
+    }
+
+    // Theme toggle event listener
+    themeToggle.addEventListener('change', function() {
+        const theme = this.checked ? 'dark' : 'light';
+        document.documentElement.setAttribute('data-bs-theme', theme);
+        localStorage.setItem('theme', theme);
+    });
+
+    // Global search functionality
+    const searchInput = document.getElementById('global-search');
+    const searchBtn = document.getElementById('search-btn');
+
+    function performSearch() {
+        const query = searchInput.value.trim();
+        if (query) {
+            // Navigate to dashboard with search parameter
+            window.location.href = `/?search=${encodeURIComponent(query)}`;
+        }
+    }
+
+    searchBtn.addEventListener('click', performSearch);
+    searchInput.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            performSearch();
+        }
+    });
+
+    // Keyboard shortcuts help
+    document.getElementById('shortcuts-help-btn').addEventListener('click', function() {
+        // You can implement a modal or tooltip here
+        alert('Keyboard Shortcuts:\n\n' +
+              '/ - Focus search\n' +
+              'Ctrl+R - Refresh dashboard\n' +
+              'Ctrl+N - Scan network\n' +
+              'Escape - Clear search');
+    });
+
+    // Load alerts count for badge
+    loadActiveAlertsCount();
+
+    // Update alerts count every 30 seconds
+    setInterval(loadActiveAlertsCount, 30000);
+});
+
+// Load active alerts count for navbar badge
+async function loadActiveAlertsCount() {
+    try {
+        const response = await fetch('/api/monitoring/alerts?resolved=false');
+        const data = await response.json();
+
+        const count = data.count || 0;
+        const badge = document.getElementById('alert-count-badge');
+
+        if (count > 0) {
+            badge.textContent = count;
+            badge.style.display = 'inline';
+        } else {
+            badge.style.display = 'none';
+        }
+    } catch (error) {
+        console.error('Error loading alerts count:', error);
+    }
+}
+
+// Connection status update
+function updateConnectionStatus(connected) {
+    const statusElement = document.getElementById('connection-status');
+    if (statusElement) {
+        if (connected) {
+            statusElement.innerHTML = '<i class="bi bi-wifi"></i> Connected';
+            statusElement.className = 'badge bg-success';
+        } else {
+            statusElement.innerHTML = '<i class="bi bi-wifi-off"></i> Disconnected';
+            statusElement.className = 'badge bg-danger';
+        }
+    }
+}
+
+// Global keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Focus search on '/' key
+    if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        document.getElementById('global-search').focus();
+    }
+
+    // Clear search on 'Escape' key
+    if (e.key === 'Escape') {
+        const searchInput = document.getElementById('global-search');
+        if (searchInput === document.activeElement) {
+            searchInput.value = '';
+            searchInput.blur();
+        }
+    }
+});
+</script>

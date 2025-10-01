@@ -8,6 +8,7 @@ import json
 security_bp = Blueprint('security', __name__)
 
 @security_bp.route('/status', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_security_status():
     """Get security scanner status"""
     try:
@@ -28,6 +29,7 @@ def get_security_status():
         return jsonify({'error': str(e)}), 500
 
 @security_bp.route('/summary', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_security_summary():
     """Get security summary statistics"""
     try:
@@ -49,6 +51,7 @@ def get_security_summary():
         return jsonify({'error': str(e)}), 500
 
 @security_bp.route('/alerts', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_security_alerts():
     """Get recent security alerts"""
     try:
@@ -106,6 +109,7 @@ def get_security_alerts():
         return jsonify({'error': str(e)}), 500
 
 @security_bp.route('/scans', methods=['GET'])
+@create_endpoint_limiter('critical')
 def get_scan_results():
     """Get recent scan results"""
     try:
@@ -158,6 +162,7 @@ def scan_device(device_id):
         return jsonify({'error': str(e)}), 500
 
 @security_bp.route('/device/<int:device_id>/ports', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_device_ports(device_id):
     """Get open ports and services for a specific device"""
     try:
@@ -221,6 +226,7 @@ def get_device_ports(device_id):
         return jsonify({'error': str(e)}), 500
 
 @security_bp.route('/network-overview', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_network_security_overview():
     """Get network-wide security overview"""
     try:
@@ -311,17 +317,18 @@ def run_network_scan():
         return jsonify({'error': str(e)}), 500
 
 @security_bp.route('/scan-progress', methods=['GET'])
+@create_endpoint_limiter('critical')
 def get_scan_progress():
     """Get current scan progress"""
     try:
         progress = security_scanner.get_scan_progress()
-        
+
         # Add duration if scan is running or completed
         if progress['start_time']:
             start_time = progress['start_time']
             if isinstance(start_time, str):
                 start_time = datetime.fromisoformat(start_time.replace('Z', '+00:00'))
-            
+
             if progress['status'] == 'running':
                 duration = (datetime.utcnow() - start_time).total_seconds()
             elif progress['end_time']:
@@ -331,19 +338,42 @@ def get_scan_progress():
                 duration = (end_time - start_time).total_seconds()
             else:
                 duration = 0
-            
+
             progress['duration_seconds'] = int(duration)
             progress['duration_formatted'] = f"{int(duration // 60)}m {int(duration % 60)}s"
-        
+
         return jsonify({
             'success': True,
             'progress': progress
         })
-        
+
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@security_bp.route('/stop-scan', methods=['POST'])
+@create_endpoint_limiter('critical')
+def stop_network_scan():
+    """Stop the currently running network security scan"""
+    try:
+        result = security_scanner.stop_current_scan()
+
+        if result['success']:
+            return jsonify({
+                'success': True,
+                'message': result['message'],
+                'scan_stopped': True
+            })
+        else:
+            return jsonify({
+                'success': False,
+                'error': result['error']
+            }), 400
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @security_bp.route('/risk-assessment', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_risk_assessment():
     """Get network risk assessment"""
     try:

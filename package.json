@@ -1,0 +1,31 @@
+{
+  "name": "homenetmon",
+  "version": "1.0.0",
+  "description": "A comprehensive, self-hosted network monitoring solution designed for home networks. Monitor device availability, track performance metrics, receive alerts, and gain insights into your network's health through an intuitive web dashboard.",
+  "main": "index.js",
+  "directories": {
+    "doc": "docs",
+    "example": "examples",
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ShaKy8/HomeNetMon.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/ShaKy8/HomeNetMon/issues"
+  },
+  "homepage": "https://github.com/ShaKy8/HomeNetMon#readme",
+  "dependencies": {
+    "playwright": "^1.55.1"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.1"
+  }
+}

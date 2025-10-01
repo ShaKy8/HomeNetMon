@@ -2,10 +2,12 @@ from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 from sqlalchemy import func, desc
 from models import db, Device, PerformanceMetrics, MonitoringData, BandwidthData
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 performance_bp = Blueprint('performance', __name__)
 
 @performance_bp.route('/summary', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_performance_summary():
     """Get network-wide performance summary"""
     try:
@@ -32,6 +34,7 @@ def get_performance_summary():
         }), 500
 
 @performance_bp.route('/devices', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_devices_performance():
     """Get performance metrics for all devices"""
     try:
@@ -146,6 +149,7 @@ def get_devices_performance():
         }), 500
 
 @performance_bp.route('/device/<int:device_id>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_device_performance(device_id):
     """Get detailed performance metrics for a specific device"""
     try:
@@ -204,6 +208,7 @@ def get_device_performance(device_id):
         }), 500
 
 @performance_bp.route('/device/<int:device_id>/timeline', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_device_performance_timeline(device_id):
     """Get performance metrics timeline for a specific device"""
     try:
@@ -267,6 +272,7 @@ def get_device_performance_timeline(device_id):
         }), 500
 
 @performance_bp.route('/health-scores', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_health_scores_distribution():
     """Get distribution of health scores across all devices"""
     try:
@@ -385,6 +391,7 @@ def get_health_scores_distribution():
         }), 500
 
 @performance_bp.route('/top-performers', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_top_performers():
     """Get top performing devices"""
     try:
@@ -466,6 +473,7 @@ def get_top_performers():
         }), 500
 
 @performance_bp.route('/collect/<int:device_id>', methods=['POST'])
+@create_endpoint_limiter('critical')
 def trigger_device_performance_collection(device_id):
     """Manually trigger performance metrics collection for a specific device"""
     try:
@@ -500,6 +508,7 @@ def trigger_device_performance_collection(device_id):
         }), 500
 
 @performance_bp.route('/collect', methods=['POST'])
+@create_endpoint_limiter('critical')
 def trigger_all_performance_collection():
     """Manually trigger performance metrics collection for all devices"""
     try:
@@ -562,6 +571,7 @@ def _get_performance_status(health_score):
         return 'critical'
 
 @performance_bp.route('/alerts/summary', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_performance_alerts_summary():
     """Get summary of current performance alerts"""
     try:

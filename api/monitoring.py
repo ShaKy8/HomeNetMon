@@ -3,14 +3,36 @@ from datetime import datetime, timedelta
 from sqlalchemy import func
 from models import db, Device, MonitoringData, Alert, BandwidthData
 from monitoring.monitor import DeviceMonitor
+from services.pagination import paginator, create_pagination_response
 import ipaddress
 import subprocess
 import threading
 from concurrent.futures import ThreadPoolExecutor
 from functools import lru_cache
 import time
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 monitoring_bp = Blueprint('monitoring', __name__)
+
+# Simple cache for background activity endpoint (30-second cache)
+_background_activity_cache = {
+    'data': None,
+    'timestamp': 0,
+    'ttl': 30  # 30 seconds
+}
+
+def _get_cached_background_activity():
+    """Get cached background activity data if still valid"""
+    current_time = time.time()
+    if (_background_activity_cache['data'] is not None and 
+        current_time - _background_activity_cache['timestamp'] < _background_activity_cache['ttl']):
+        return _background_activity_cache['data']
+    return None
+
+def _cache_background_activity(data):
+    """Cache background activity data"""
+    _background_activity_cache['data'] = data
+    _background_activity_cache['timestamp'] = time.time()
 
 def get_current_network_range():
     """Get the currently configured network range"""
@@ -62,6 +84,7 @@ def filter_devices_by_network_range(query, network_range=None):
         return query
 
 @monitoring_bp.route('/scan', methods=['POST'])
+@create_endpoint_limiter('critical')
 def trigger_network_scan():
     """Trigger manual network scan"""
     try:
@@ -108,6 +131,7 @@ def trigger_network_scan():
         }), 500
 
 @monitoring_bp.route('/reload-config', methods=['POST'])
+@create_endpoint_limiter('critical')
 def reload_scanner_config():
     """Force reload scanner configuration"""
     try:
@@ -143,19 +167,17 @@ def reload_scanner_config():
         }), 500
 
 @monitoring_bp.route('/data', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_monitoring_data():
-    """Get monitoring data with optional filtering"""
+    """Get monitoring data with optional filtering and pagination"""
     try:
         # Query parameters
         device_id = request.args.get('device_id', type=int)
         hours = request.args.get('hours', default=24, type=int)
-        limit = request.args.get('limit', default=100, type=int)
         
         # Validate parameters
         if hours > 168:  # Max 7 days
             hours = 168
-        if limit > 1000:  # Max 1000 records
-            limit = 1000
         
         # Build query
         cutoff = datetime.utcnow() - timedelta(hours=hours)
@@ -164,9 +186,23 @@ def get_monitoring_data():
         if device_id:
             query = query.filter(MonitoringData.device_id == device_id)
         
-        monitoring_data = query.order_by(MonitoringData.timestamp.desc()).limit(limit).all()
+        # Order by timestamp (newest first)
+        query = query.order_by(MonitoringData.timestamp.desc())
         
-        # Convert to dict format
+        # Get pagination parameters
+        page, per_page = paginator.get_request_pagination()
+        
+        # Apply pagination
+        pagination_result = paginator.paginate_query(
+            query,
+            page=page,
+            per_page=per_page,
+            error_out=False
+        )
+        
+        monitoring_data = pagination_result['items']
+        
+        # Convert to dict format with device info
         data = []
         for item in monitoring_data:
             item_dict = item.to_dict()
@@ -176,7 +212,14 @@ def get_monitoring_data():
         
         return jsonify({
             'monitoring_data': data,
-            'count': len(data),
+            'pagination': {
+                'page': pagination_result['page'],
+                'per_page': pagination_result['per_page'],
+                'total': pagination_result['total'],
+                'pages': pagination_result['pages'],
+                'has_prev': pagination_result['has_prev'],
+                'has_next': pagination_result['has_next']
+            },
             'hours': hours
         })
         
@@ -184,6 +227,7 @@ def get_monitoring_data():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/statistics', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_monitoring_statistics():
     """Get monitoring statistics"""
     try:
@@ -249,6 +293,7 @@ def get_live_network_stats(network_range):
     }
 
 @monitoring_bp.route('/quick-stats', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_quick_stats():
     """Get quick statistics for sidebar display with optional live ping data"""
     try:
@@ -335,6 +380,7 @@ def get_quick_stats():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/chart-data', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_chart_data():
     """Simple chart data endpoint for testing"""
     try:
@@ -371,6 +417,7 @@ def get_chart_data():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/timeline', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_monitoring_timeline():
     """Get monitoring timeline data for charts"""
     try:
@@ -466,6 +513,7 @@ def get_monitoring_timeline():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_alerts():
     """Get alerts with optional filtering"""
     try:
@@ -507,6 +555,7 @@ def get_alerts():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/<int:alert_id>/acknowledge', methods=['POST'])
+@create_endpoint_limiter('strict')
 def acknowledge_alert(alert_id):
     """Acknowledge an alert"""
     try:
@@ -531,6 +580,7 @@ def acknowledge_alert(alert_id):
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/acknowledge-all', methods=['POST'])
+@create_endpoint_limiter('bulk')
 def acknowledge_all_alerts():
     """Acknowledge all active alerts"""
     try:
@@ -554,6 +604,7 @@ def acknowledge_all_alerts():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/<int:alert_id>/resolve', methods=['POST'])
+@create_endpoint_limiter('strict')
 def resolve_alert(alert_id):
     """Resolve an alert"""
     try:
@@ -575,6 +626,7 @@ def resolve_alert(alert_id):
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/<int:alert_id>', methods=['DELETE'])
+# @create_endpoint_limiter('critical')  # Temporarily disabled for debugging
 def delete_alert(alert_id):
     """Delete a specific alert"""
     try:
@@ -627,6 +679,7 @@ def delete_alert(alert_id):
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/delete-all', methods=['DELETE'])
+@create_endpoint_limiter('critical')
 def delete_all_alerts():
     """Delete all alerts"""
     try:
@@ -664,7 +717,80 @@ def delete_all_alerts():
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
 
+@monitoring_bp.route('/alerts/bulk-delete', methods=['DELETE'])
+@create_endpoint_limiter('critical')
+def bulk_delete_alerts():
+    """Delete alerts by specific criteria (type, status, etc.)"""
+    try:
+        data = request.get_json() or {}
+
+        # Build query based on criteria
+        query = Alert.query
+        criteria_used = []
+
+        # Filter by alert type
+        if 'alert_type' in data:
+            alert_types = data['alert_type']
+            if isinstance(alert_types, str):
+                alert_types = [alert_types]
+            query = query.filter(Alert.alert_type.in_(alert_types))
+            criteria_used.append(f"type: {', '.join(alert_types)}")
+
+        # Filter by resolved status
+        if 'resolved' in data:
+            resolved_status = data['resolved']
+            query = query.filter(Alert.resolved == resolved_status)
+            criteria_used.append(f"resolved: {resolved_status}")
+
+        # Filter by severity
+        if 'severity' in data:
+            severities = data['severity']
+            if isinstance(severities, str):
+                severities = [severities]
+            query = query.filter(Alert.severity.in_(severities))
+            criteria_used.append(f"severity: {', '.join(severities)}")
+
+        # Get count and summary before deletion
+        alerts_to_delete = query.all()
+        delete_count = len(alerts_to_delete)
+
+        if delete_count == 0:
+            return jsonify({
+                'message': 'No alerts match the specified criteria',
+                'deleted_count': 0,
+                'criteria': criteria_used
+            })
+
+        # Generate summary
+        summary = {}
+        for alert in alerts_to_delete:
+            key = f"{alert.alert_type}_{alert.severity}"
+            summary[key] = summary.get(key, 0) + 1
+
+        # Delete matching alerts
+        query.delete(synchronize_session=False)
+        db.session.commit()
+
+        # Pause alert generation proportional to deletion count
+        pause_minutes = min(10, max(2, delete_count // 20))
+        from flask import current_app
+        if hasattr(current_app, 'alert_manager'):
+            current_app.alert_manager.set_alert_pause(pause_minutes)
+
+        return jsonify({
+            'message': f'Successfully deleted {delete_count} alerts matching criteria',
+            'deleted_count': delete_count,
+            'criteria': criteria_used,
+            'summary': summary,
+            'alert_generation_paused': f'{pause_minutes} minutes'
+        })
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({'error': str(e)}), 500
+
 @monitoring_bp.route('/alerts/cleanup-duplicates', methods=['POST'])
+@create_endpoint_limiter('strict')
 def cleanup_duplicate_alerts():
     """Clean up duplicate alerts using correlation service"""
     try:
@@ -694,6 +820,7 @@ def cleanup_duplicate_alerts():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/status', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_monitoring_status():
     """Get overall monitoring system status"""
     try:
@@ -741,6 +868,7 @@ def get_monitoring_status():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/export', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def export_monitoring_data():
     """Export monitoring data as CSV"""
     try:
@@ -804,9 +932,16 @@ def export_monitoring_data():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/background-activity', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_background_activity():
-    """Get background monitoring activity information"""
+    """Get background monitoring activity information with caching"""
     try:
+        # Check cache first
+        cached_data = _get_cached_background_activity()
+        if cached_data:
+            return jsonify(cached_data)
+        
+        # Cache miss - compute fresh data
         from config import Config
         
         # Calculate next scan time based on configuration
@@ -869,7 +1004,8 @@ def get_background_activity():
         cutoff_24hours = datetime.utcnow() - timedelta(hours=24)
         device_changes_24h = Device.query.filter(Device.updated_at >= cutoff_24hours).count()
         
-        return jsonify({
+        # Prepare response data
+        response_data = {
             'monitoring_active': monitoring_active,
             'last_ping_time': (last_ping_time.isoformat() + 'Z') if last_ping_time else None,
             'last_scan_time': (last_scan_time.isoformat() + 'Z') if last_scan_time else None,
@@ -882,12 +1018,18 @@ def get_background_activity():
                 'device_changes_24h': device_changes_24h
             },
             'timestamp': datetime.utcnow().isoformat() + 'Z'
-        })
+        }
+        
+        # Cache the response
+        _cache_background_activity(response_data)
+        
+        return jsonify(response_data)
         
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/topology-test', methods=['GET'])
+@create_endpoint_limiter('critical')
 def get_topology_test():
     """Network topology endpoint with all real devices"""
     try:
@@ -999,6 +1141,7 @@ def get_topology_test():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/topology', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_network_topology():
     """Get network topology data for interactive graph visualization"""
     try:
@@ -1135,6 +1278,7 @@ def get_network_topology():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/bandwidth', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_bandwidth_data():
     """Get bandwidth usage data with optional filtering"""
     try:
@@ -1176,6 +1320,7 @@ def get_bandwidth_data():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/bandwidth/timeline', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_bandwidth_timeline():
     """Get bandwidth timeline data for charts"""
     try:
@@ -1271,6 +1416,7 @@ def get_bandwidth_timeline():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/bandwidth/summary', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_bandwidth_summary():
     """Get bandwidth usage summary statistics"""
     try:
@@ -1383,6 +1529,7 @@ def get_bandwidth_summary():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/bandwidth/devices', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_device_bandwidth_rankings():
     """Get bandwidth usage rankings by device"""
     try:
@@ -1463,6 +1610,7 @@ def get_device_bandwidth_rankings():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/priority-summary', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_alert_priority_summary():
     """Get priority summary of all active alerts"""
     try:
@@ -1481,6 +1629,7 @@ def get_alert_priority_summary():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/recalculate-priorities', methods=['POST'])
+@create_endpoint_limiter('strict')
 def recalculate_alert_priorities():
     """Recalculate priorities for all active alerts"""
     try:
@@ -1511,6 +1660,7 @@ def recalculate_alert_priorities():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/by-priority', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_alerts_by_priority():
     """Get alerts sorted by priority score"""
     try:
@@ -1540,6 +1690,7 @@ def get_alerts_by_priority():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/<int:alert_id>/priority', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_alert_priority_details(alert_id):
     """Get detailed priority breakdown for a specific alert"""
     try:
@@ -1571,6 +1722,7 @@ def get_alert_priority_details(alert_id):
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/bulk-acknowledge', methods=['POST'])
+@create_endpoint_limiter('bulk')
 def bulk_acknowledge_alerts():
     """Acknowledge multiple alerts at once"""
     try:
@@ -1608,6 +1760,7 @@ def bulk_acknowledge_alerts():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/bulk-resolve', methods=['POST'])
+@create_endpoint_limiter('bulk')
 def bulk_resolve_alerts():
     """Resolve multiple alerts at once"""
     try:
@@ -1644,7 +1797,8 @@ def bulk_resolve_alerts():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/bulk-delete', methods=['POST'])
-def bulk_delete_alerts():
+@create_endpoint_limiter('critical')
+def bulk_delete_alerts_by_ids():
     """Delete multiple alerts at once (for resolved alerts only)"""
     try:
         data = request.get_json()
@@ -1693,6 +1847,7 @@ def bulk_delete_alerts():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/bulk-update-priority', methods=['POST'])
+@create_endpoint_limiter('bulk')
 def bulk_update_alert_priority():
     """Update priority for multiple alerts at once"""
     try:
@@ -1734,6 +1889,7 @@ def bulk_update_alert_priority():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/suppressions', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_alert_suppressions():
     """Get all alert suppression rules"""
     try:
@@ -1751,6 +1907,7 @@ def get_alert_suppressions():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/suppressions', methods=['POST'])
+@create_endpoint_limiter('strict')
 def create_alert_suppression():
     """Create a new alert suppression rule"""
     try:
@@ -1810,6 +1967,7 @@ def create_alert_suppression():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/suppressions/<int:suppression_id>', methods=['PUT'])
+@create_endpoint_limiter('strict')
 def update_alert_suppression(suppression_id):
     """Update an alert suppression rule"""
     try:
@@ -1880,6 +2038,7 @@ def update_alert_suppression(suppression_id):
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/suppressions/<int:suppression_id>', methods=['DELETE'])
+@create_endpoint_limiter('critical')
 def delete_alert_suppression(suppression_id):
     """Delete an alert suppression rule"""
     try:
@@ -1902,6 +2061,7 @@ def delete_alert_suppression(suppression_id):
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/suppressions/active', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_active_suppressions():
     """Get currently active suppression rules"""
     try:
@@ -1920,6 +2080,7 @@ def get_active_suppressions():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/<int:alert_id>/timeline', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_alert_timeline(alert_id):
     """Get timeline for a specific alert"""
     try:
@@ -1997,6 +2158,7 @@ def get_alert_timeline(alert_id):
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/<int:alert_id>/unified-timeline', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 def get_unified_alert_timeline(alert_id):
     """Get unified timeline for a specific alert including notifications"""
     try:
@@ -2088,6 +2250,131 @@ def get_unified_alert_timeline(alert_id):
                     (datetime.utcnow() - alert.created_at).total_seconds() / 60
                 )
             }
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+@monitoring_bp.route('/summary', methods=['GET'])
+@create_endpoint_limiter('relaxed')
+def get_monitoring_summary():
+    """Get comprehensive monitoring summary for high-level dashboard"""
+    try:
+        from models import Device, Alert, MonitoringData
+        from datetime import datetime, timedelta
+        
+        # Get current network range
+        network_range = get_current_network_range()
+        
+        # Get device counts
+        total_devices = Device.query.count()
+        
+        # Determine status of devices (based on last_seen within 10 minutes)
+        online_threshold = datetime.utcnow() - timedelta(minutes=10)
+        devices_up = Device.query.filter(
+            Device.is_monitored == True,
+            Device.last_seen >= online_threshold
+        ).count()
+        
+        devices_down = Device.query.filter(
+            Device.is_monitored == True,
+            Device.last_seen < online_threshold
+        ).count()
+        
+        devices_unknown = total_devices - devices_up - devices_down
+        
+        # Get active alerts count
+        active_alerts = Alert.query.filter_by(resolved=False).count()
+        
+        # Calculate average response time from recent monitoring data
+        one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+        recent_data = MonitoringData.query.filter(
+            MonitoringData.timestamp >= one_hour_ago,
+            MonitoringData.response_time.isnot(None)
+        ).all()
+        
+        avg_response_time = 0
+        if recent_data:
+            response_times = [d.response_time for d in recent_data if d.response_time]
+            avg_response_time = sum(response_times) / len(response_times) if response_times else 0
+        
+        # Calculate network uptime (percentage of devices up)
+        network_uptime = "99.9%"  # Default value
+        if total_devices > 0:
+            uptime_percent = (devices_up / total_devices) * 100
+            network_uptime = f"{uptime_percent:.1f}%"
+        
+        return jsonify({
+            'total_devices': total_devices,
+            'devices_up': devices_up,
+            'devices_down': devices_down,
+            'devices_unknown': devices_unknown,
+            'active_alerts': active_alerts,
+            'avg_response_time': round(avg_response_time, 2),
+            'network_uptime': network_uptime,
+            'network_range': network_range,
+            'timestamp': datetime.utcnow().isoformat() + 'Z'
+        })
+        
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@monitoring_bp.route('/recent-activity', methods=['GET'])
+@create_endpoint_limiter('relaxed')
+def get_recent_activity():
+    """Get recent network activity for dashboard feed"""
+    try:
+        from models import Device, Alert, MonitoringData
+        from datetime import datetime, timedelta
+        
+        limit = request.args.get('limit', 10, type=int)
+        activities = []
+        
+        # Get recent device status changes
+        one_hour_ago = datetime.utcnow() - timedelta(hours=1)
+        
+        # Get recent alerts
+        recent_alerts = Alert.query.filter(
+            Alert.created_at >= one_hour_ago
+        ).order_by(Alert.created_at.desc()).limit(limit).all()
+        
+        for alert in recent_alerts:
+            activities.append({
+                'type': 'alert',
+                'message': f'{alert.device.display_name}: {alert.message}',
+                'timestamp': alert.created_at.isoformat() + 'Z',
+                'severity': alert.severity
+            })
+        
+        # Get recent device status changes
+        recent_devices = Device.query.filter(
+            Device.updated_at >= one_hour_ago
+        ).order_by(Device.updated_at.desc()).limit(limit).all()
+        
+        for device in recent_devices:
+            if device.status == 'up':
+                activities.append({
+                    'type': 'device_up',
+                    'message': f'{device.display_name} came online',
+                    'timestamp': device.updated_at.isoformat() + 'Z',
+                    'severity': 'info'
+                })
+            elif device.status == 'down':
+                activities.append({
+                    'type': 'device_down',
+                    'message': f'{device.display_name} went offline',
+                    'timestamp': device.updated_at.isoformat() + 'Z',
+                    'severity': 'warning'
+                })
+        
+        # Sort by timestamp and limit
+        activities.sort(key=lambda x: x['timestamp'], reverse=True)
+        activities = activities[:limit]
+        
+        return jsonify({
+            'activities': activities,
+            'count': len(activities)
         })
         
     except Exception as e:

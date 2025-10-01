@@ -23,16 +23,31 @@ class NetworkScanner:
         self._stop_event = threading.Event()
         self.app = app
         self.rule_engine_service = None
-        
+
         # Configuration caching for hot-reload
         self._config_cache = {}
         self._config_versions = {}
         self._last_config_check = datetime.utcnow()
-        
+
         # Track new devices for notifications
         self._devices_before_scan = set()
         self._new_devices_found = []
-        
+
+    def _emit_scan_progress(self, progress, stage, devices_found=0, new_devices=0):
+        """Emit scan progress via WebSocket"""
+        try:
+            if hasattr(self.app, 'socketio'):
+                self.app.socketio.emit('scan_progress', {
+                    'progress': progress,
+                    'stage': stage,
+                    'devices_found': devices_found,
+                    'new_devices': new_devices,
+                    'timestamp': datetime.utcnow().isoformat()
+                })
+                logger.debug(f"Emitted scan progress: {progress}% - {stage}")
+        except Exception as e:
+            logger.error(f"Error emitting scan progress: {e}")
+
     def get_config_value(self, key, default):
         """Get configuration value from database with hot-reload support"""
         try:
@@ -89,6 +104,29 @@ class NetworkScanner:
             logger.info("Triggering network scan with new range")
             threading.Thread(target=self.scan_network, daemon=True, name='NetworkRangeScan').start()
     
+    def get_adaptive_scan_interval(self):
+        """Get adaptive scan interval based on network activity and time of day"""
+        base_interval = int(self.get_config_value('scan_interval', Config.SCAN_INTERVAL))
+        
+        try:
+            current_hour = datetime.now().hour
+            
+            # Reduce scanning during typical sleep hours (11 PM - 7 AM)
+            if current_hour >= 23 or current_hour <= 7:
+                return base_interval * 2  # Double interval during night hours
+            
+            # Reduce scanning during typical work hours (9 AM - 5 PM) when network is more active
+            elif 9 <= current_hour <= 17:
+                return int(base_interval * 1.5)  # 1.5x interval during day
+            
+            # Normal interval during evening hours
+            else:
+                return base_interval
+                
+        except Exception as e:
+            logger.warning(f"Error calculating adaptive scan interval: {e}")
+            return base_interval
+
     def reload_config(self):
         """Force reload all cached configuration"""
         logger.info("Force reloading all configuration")
@@ -139,17 +177,125 @@ class NetworkScanner:
             
         return devices
     
+    def is_sensitive_device(self, device_info):
+        """Check if device should be scanned less frequently or excluded"""
+        sensitive_patterns = [
+            # IoT devices that may be sensitive to scanning
+            'ring', 'nest', 'wyze', 'arlo', 'roku', 'chromecast',
+            'echo', 'alexa', 'thermostat', 'camera', 'sensor',
+            'bulb', 'switch', 'plug', 'doorbell', 'apple-tv',
+            # Manufacturers known for IoT devices
+            'amazon', 'google', 'nest labs', 'ring inc', 'wyze labs'
+        ]
+        
+        device_name = device_info.get('hostname', '').lower()
+        device_vendor = device_info.get('vendor', '').lower()
+        
+        for pattern in sensitive_patterns:
+            if pattern in device_name or pattern in device_vendor:
+                return True
+        return False
+
+    def _get_excluded_device_ips(self):
+        """Get list of device IPs that should be excluded from nmap scanning"""
+        excluded_ips = []
+        try:
+            with self.app.app_context():
+                # Get printers and other sensitive device types
+                sensitive_types = ['printer']
+                
+                # Query for devices with sensitive types
+                sensitive_devices = Device.query.filter(
+                    Device.device_type.in_(sensitive_types)
+                ).all()
+                
+                for device in sensitive_devices:
+                    if device.ip_address:
+                        excluded_ips.append(device.ip_address)
+                        logger.debug(f"Excluding {device.device_type} device from nmap scan: {device.ip_address}")
+                
+                # Also check for user-configured exclusions
+                excluded_config = self.get_config_value('scan_excluded_ips', '')
+                if excluded_config:
+                    # Parse comma-separated IP list
+                    for ip in excluded_config.split(','):
+                        ip = ip.strip()
+                        if ip and ip not in excluded_ips:
+                            excluded_ips.append(ip)
+                            logger.debug(f"Excluding user-configured IP from nmap scan: {ip}")
+                            
+        except Exception as e:
+            logger.error(f"Error getting excluded device IPs: {e}")
+            
+        return excluded_ips
+    
+    def _get_scan_targets_excluding_ips(self, network_range, excluded_ips):
+        """Generate scan targets from network range while excluding specific IPs"""
+        scan_targets = []
+        try:
+            import ipaddress
+            
+            # Parse the network range
+            network = ipaddress.IPv4Network(network_range, strict=False)
+            
+            # For small networks (< 50 hosts), scan individual IPs
+            # For larger networks, use subnet exclusion where possible
+            if network.num_addresses <= 50:
+                # Generate individual IP list, excluding the ones we want to skip
+                for ip in network.hosts():
+                    ip_str = str(ip)
+                    if ip_str not in excluded_ips:
+                        scan_targets.append(ip_str)
+            else:
+                # For larger networks, use the full range and rely on nmap's built-in exclusion
+                # This is less precise but more efficient for large networks
+                scan_targets.append(network_range)
+                logger.warning(f"Large network detected ({network.num_addresses} addresses), using range scan with post-processing exclusion")
+                
+        except Exception as e:
+            logger.error(f"Error processing network range exclusions: {e}")
+            # Fallback to original network range
+            scan_targets.append(network_range)
+            
+        return scan_targets
+
     def nmap_scan(self, network_range):
-        """Perform nmap scan to discover devices"""
+        """Perform nmap scan to discover devices, excluding sensitive devices like printers"""
         devices = []
         try:
-            logger.info(f"Starting nmap scan of {network_range}")
+            # Get list of printer IPs to exclude from nmap scanning
+            excluded_ips = self._get_excluded_device_ips()
             
-            # Use nmap ping scan to find live hosts
-            scan_result = self.nm.scan(hosts=network_range, arguments='-sn')
+            if excluded_ips:
+                logger.info(f"Excluding {len(excluded_ips)} sensitive devices from nmap scan: {', '.join(excluded_ips)}")
+            
+            # If we have devices to exclude, we need to scan individual IPs or subnets
+            if excluded_ips and '/' in network_range:
+                # Parse network range and exclude specific IPs
+                scan_targets = self._get_scan_targets_excluding_ips(network_range, excluded_ips)
+                if not scan_targets:
+                    logger.info("All devices in network range are excluded, skipping nmap scan")
+                    return devices
+                scan_hosts = ','.join(scan_targets)
+            else:
+                scan_hosts = network_range
+            
+            logger.info(f"Starting gentle nmap scan of network (excluding sensitive devices)")
+            
+            # Use gentle nmap ping scan optimized for home networks
+            # -sn: Ping scan only (no port scan)
+            # -T2: Polite timing (slower but less aggressive)
+            # --max-rtt-timeout 2000ms: Allow slower devices more time to respond
+            # --max-retries 1: Reduce retries to minimize network traffic
+            scan_result = self.nm.scan(hosts=scan_hosts, arguments='-sn -T2 --max-rtt-timeout 2000ms --max-retries 1')
             
             for host in scan_result['scan']:
                 host_info = scan_result['scan'][host]
+                
+                # Skip excluded IPs (double-check in case they somehow got scanned)
+                if host in excluded_ips:
+                    logger.debug(f"Filtering out excluded IP from nmap results: {host}")
+                    continue
                 
                 if host_info['status']['state'] == 'up':
                     device_info = {
@@ -282,11 +428,17 @@ class NetworkScanner:
             if any(keyword in hostname for keyword in ['tv', 'roku', 'shield', 'chromecast']):
                 return 'media'
             
-        # Printers
-        printer_keywords = ['printer', 'print', 'canon', 'epson', 'brother', 'hp-printer']
+        # Printers - Enhanced detection to catch all printer models
+        printer_keywords = ['printer', 'print', 'canon', 'epson', 'brother', 'hp-printer',
+                           'laserjet', 'deskjet', 'officejet', 'envy', 'pixma', 'imageclass',
+                           'ultrathink', 'xerox', 'lexmark', 'ricoh', 'sharp', 'kyocera',
+                           'samsung-printer', 'dell-printer', 'konica', 'minolta', 'toshiba']
         if any(keyword in hostname for keyword in printer_keywords):
             return 'printer'
-        if any(keyword in vendor for keyword in ['canon', 'epson', 'brother']) and 'print' in hostname:
+        # Check vendor names for printer manufacturers
+        printer_vendors = ['canon', 'epson', 'brother', 'hewlett', 'hp', 'xerox',
+                          'lexmark', 'ricoh', 'sharp', 'kyocera', 'konica', 'minolta']
+        if any(keyword in vendor for keyword in printer_vendors):
             return 'printer'
             
         # Storage/NAS
@@ -301,10 +453,10 @@ class NetworkScanner:
     def scan_network(self):
         """Perform complete network scan and update database"""
         logger.info("Starting network discovery scan")
-        
+
         # Set scanning flag
         self.is_scanning = True
-        
+
         # Store existing devices before scan for new device detection (use MAC when available)
         try:
             with self.app.app_context():
@@ -315,6 +467,9 @@ class NetworkScanner:
                     identifier = device.mac_address if device.mac_address else device.ip_address
                     self._devices_before_scan.add(identifier)
                 self._new_devices_found = []
+
+                # Emit initial progress
+                self._emit_scan_progress(5, 'Initializing scan...', 0, 0)
         except Exception as e:
             logger.error(f"Error getting existing devices: {e}")
             self._devices_before_scan = set()
@@ -325,16 +480,19 @@ class NetworkScanner:
             with self.app.app_context():
                 try:
                     # Get devices from ARP table (faster)
+                    self._emit_scan_progress(15, 'Scanning ARP table...', 0, 0)
                     arp_devices = self.get_arp_table()
                     logger.info(f"Found {len(arp_devices)} devices in ARP table")
-                    
+
                     # Get network range from database configuration
                     network_range = self.get_config_value('network_range', Config.NETWORK_RANGE)
                     logger.info(f"Using network range: {network_range}")
-                    
+
                     # Merge with nmap scan results
+                    self._emit_scan_progress(30, 'Running network discovery (nmap)...', len(arp_devices), 0)
                     nmap_devices = self.nmap_scan(network_range)
                     logger.info(f"Found {len(nmap_devices)} devices with nmap scan")
+                    self._emit_scan_progress(60, 'Merging scan results...', len(nmap_devices), 0)
                     
                     # Combine and deduplicate devices
                     all_devices = {}
@@ -352,19 +510,45 @@ class NetworkScanner:
                             all_devices[device['ip']] = device
                     
                     # Process each discovered device
-                    for ip, device_info in all_devices.items():
+                    self._emit_scan_progress(75, 'Processing discovered devices...', len(all_devices), 0)
+                    for i, (ip, device_info) in enumerate(all_devices.items()):
                         self.process_discovered_device(device_info)
-                        
+
+                        # Update progress for device processing
+                        if i % 5 == 0:  # Update every 5 devices to avoid too many emissions
+                            progress = 75 + (i / len(all_devices)) * 15  # From 75% to 90%
+                            self._emit_scan_progress(progress, f'Processing device {i+1}/{len(all_devices)}...', len(all_devices), len(self._new_devices_found))
+
+                    self._emit_scan_progress(90, 'Updating database...', len(all_devices), len(self._new_devices_found))
+
+                    # Commit the database changes
+                    db.session.commit()
+
                     logger.info(f"Network scan completed. Processed {len(all_devices)} devices")
-                    
+
+                    self._emit_scan_progress(95, 'Finalizing results...', len(all_devices), len(self._new_devices_found))
+
                     # Send push notifications for scan completion and new devices
                     self._send_scan_completion_notifications(len(all_devices))
-                    
+
                     # Trigger rule engine for scan completion
                     self._trigger_rule_engine_for_scan_completion(len(all_devices), len(self._new_devices_found))
+
+                    # Emit final 100% completion
+                    self._emit_scan_progress(100, 'Scan completed successfully!', len(all_devices), len(self._new_devices_found))
                     
                 except Exception as e:
                     logger.error(f"Error during network scan: {e}")
+                    # Emit error event via WebSocket
+                    try:
+                        if hasattr(self.app, 'socketio'):
+                            self.app.socketio.emit('scan_error', {
+                                'error': str(e),
+                                'timestamp': datetime.utcnow().isoformat()
+                            }, namespace='/', broadcast=True)
+                    except Exception as emit_error:
+                        logger.error(f"Error emitting scan error: {emit_error}")
+                    raise
         finally:
             # Always clear the scanning flag when done
             self.is_scanning = False
@@ -390,28 +574,54 @@ class NetworkScanner:
                         old_ip = device.ip_address
                         logger.info(f"Device MAC {mac} IP changed: {old_ip} -> {ip}")
                         
+                        # Check if another device already has this IP
+                        existing_device_with_ip = Device.query.filter_by(ip_address=ip).first()
+
+                        if existing_device_with_ip and existing_device_with_ip.id != device.id:
+                            logger.warning(f"IP conflict detected: {ip} is already used by device {existing_device_with_ip.id}")
+
+                            # Resolve conflict: if the other device has no MAC or different MAC,
+                            # it's likely a stale entry, so clear its IP
+                            if not existing_device_with_ip.mac_address or existing_device_with_ip.mac_address != mac:
+                                logger.info(f"Clearing IP from stale device {existing_device_with_ip.id}")
+                                existing_device_with_ip.ip_address = None
+                                existing_device_with_ip.updated_at = datetime.utcnow()
+                            else:
+                                # Both devices have the same MAC - this shouldn't happen, but skip update
+                                logger.error(f"Two devices with same MAC {mac} and IP {ip} - skipping update")
+                                return
+
                         # Log IP change to history table
                         try:
                             db.session.execute(db.text("""
-                                INSERT INTO device_ip_history 
-                                (device_id, old_ip_address, new_ip_address, change_reason, changed_at, detected_by)
-                                VALUES (:device_id, :old_ip, :new_ip, :reason, :changed_at, :detected_by)
+                                INSERT INTO device_ip_history
+                                (device_id, old_ip_address, new_ip_address, change_reason, changed_at, detected_by, change_detected_at, change_source)
+                                VALUES (:device_id, :old_ip, :new_ip, :reason, :changed_at, :detected_by, :change_detected_at, :change_source)
                             """), {
                                 'device_id': device.id,
                                 'old_ip': old_ip,
                                 'new_ip': ip,
                                 'reason': 'DHCP IP address change detected during scan',
                                 'changed_at': datetime.utcnow().isoformat(),
-                                'detected_by': 'network_scanner'
+                                'detected_by': 'network_scanner',
+                                'change_detected_at': datetime.utcnow().isoformat(),
+                                'change_source': 'network_scanner'
                             })
-                            
+
                             # Update device IP address
                             device.ip_address = ip
                             ip_changed = True
                             logger.info(f"Updated device {device.display_name} IP: {old_ip} -> {ip}")
-                            
+
                         except Exception as e:
                             logger.error(f"Error logging IP change for device {device.id}: {e}")
+                            # Even if history logging fails, try to update the IP
+                            try:
+                                device.ip_address = ip
+                                ip_changed = True
+                                logger.info(f"Updated device {device.display_name} IP: {old_ip} -> {ip} (history logging failed)")
+                            except Exception as ip_error:
+                                logger.error(f"Failed to update IP for device {device.id}: {ip_error}")
                 
             # Fallback: IP-based lookup for devices without MAC
             if not device:
@@ -471,17 +681,32 @@ class NetworkScanner:
                 is_new_device = True
                 hostname = device_info.get('hostname') or self.resolve_hostname(ip)
                 vendor = None
-                
+
                 if mac:
                     vendor = self.get_mac_vendor(mac)
-                
+
                 device_type = self.classify_device_type({
                     'hostname': hostname,
                     'vendor': vendor,
                     'mac': mac,
                     'ip': ip
                 })
-                
+
+                # Check if another device already has this IP (collision handling)
+                existing_ip_device = Device.query.filter_by(ip_address=ip).first()
+                if existing_ip_device:
+                    logger.warning(f"IP {ip} already exists for device {existing_ip_device.id}. Resolving conflict...")
+
+                    # If existing device has no MAC or different MAC, clear its IP
+                    if not existing_ip_device.mac_address or (mac and existing_ip_device.mac_address != mac):
+                        logger.info(f"Clearing IP from existing device {existing_ip_device.id} to resolve conflict")
+                        existing_ip_device.ip_address = None
+                        existing_ip_device.updated_at = datetime.utcnow()
+                    else:
+                        # Both have same IP/MAC - this is a duplicate, skip creation
+                        logger.error(f"Duplicate device detected: IP {ip}, MAC {mac} - skipping creation")
+                        return
+
                 device = Device(
                     ip_address=ip,
                     mac_address=mac,
@@ -490,7 +715,7 @@ class NetworkScanner:
                     device_type=device_type,
                     last_seen=datetime.utcnow()
                 )
-                
+
                 db.session.add(device)
                 db.session.flush()  # Ensure device has an ID for rule engine
                 
@@ -513,8 +738,8 @@ class NetworkScanner:
                         'vendor': vendor
                     })
             
-            db.session.commit()
-            
+            # Don't commit here - let the scan_network method handle batch commits
+
             # Log significant events
             if ip_changed:
                 logger.info(f"Device {device.display_name} (MAC: {mac}) changed IP address")
@@ -599,10 +824,11 @@ class NetworkScanner:
             logger.error(f"SCANNER TRACEBACK: {traceback.format_exc()}")
             return
         
-        # Continue scanning at intervals
+        # Continue scanning at adaptive intervals
         while not self._stop_event.is_set():
             try:
-                scan_interval = int(self.get_config_value('scan_interval', Config.SCAN_INTERVAL))
+                scan_interval = self.get_adaptive_scan_interval()
+                logger.info(f"Next network scan in {scan_interval} seconds")
                 self._stop_event.wait(scan_interval)
                 if not self._stop_event.is_set():
                     self.scan_network()

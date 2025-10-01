@@ -8,9 +8,9 @@ import base64
 from collections import defaultdict
 import logging
 from functools import wraps
-from remote_auth import get_auth_manager, require_auth
 from models import Device, MonitoringData, Alert, db
 import sqlalchemy as sa
+from api.rate_limited_endpoints import create_endpoint_limiter
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -105,6 +105,7 @@ def paginate_results(query, page=1, per_page=50, max_per_page=200):
 # ============================================================================
 
 @mobile_api.route('/devices', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 @mobile_auth_required
 def get_devices():
     """Get devices with mobile-optimized format"""
@@ -197,6 +198,7 @@ def get_devices():
         }), 500
 
 @mobile_api.route('/devices/<int:device_id>', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 @mobile_auth_required
 def get_device_details(device_id):
     """Get detailed device information"""
@@ -362,6 +364,7 @@ def calculate_device_performance_summary(device_id, hours_back):
 # ============================================================================
 
 @mobile_api.route('/sync/delta', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 @mobile_auth_required
 def get_delta_sync():
     """Get incremental updates since last sync"""
@@ -485,6 +488,7 @@ def get_delta_sync():
         }), 500
 
 @mobile_api.route('/sync/batch', methods=['POST'])
+@create_endpoint_limiter('bulk')
 @mobile_auth_required
 def batch_sync():
     """Batch sync operations for offline queue processing"""
@@ -590,6 +594,7 @@ def process_sync_operation(operation):
 # ============================================================================
 
 @mobile_api.route('/network/summary', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 @mobile_auth_required
 def get_network_summary():
     """Get network overview optimized for mobile dashboards"""
@@ -677,6 +682,7 @@ def get_network_summary():
 # ============================================================================
 
 @mobile_api.route('/ping/<int:device_id>', methods=['POST'])
+@create_endpoint_limiter('strict')
 @mobile_auth_required
 def ping_device(device_id):
     """Trigger device ping from mobile client"""
@@ -703,6 +709,7 @@ def ping_device(device_id):
         }), 500
 
 @mobile_api.route('/alerts/<int:alert_id>/acknowledge', methods=['POST'])
+@create_endpoint_limiter('strict')
 @mobile_auth_required
 def acknowledge_alert(alert_id):
     """Acknowledge alert from mobile client"""
@@ -742,6 +749,7 @@ def acknowledge_alert(alert_id):
         }), 500
 
 @mobile_api.route('/config/mobile', methods=['GET'])
+@create_endpoint_limiter('relaxed')
 @mobile_auth_required
 def get_mobile_config():
     """Get mobile app configuration"""
