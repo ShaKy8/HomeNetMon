@@ -2341,36 +2341,3 @@ def invalidate_performance_cache(mapper, connection, target):
         cache_invalidator.invalidate_device_cache(target.device_id)
     except:
         pass  # Silently fail if cache service not available
-# Authentication models
-class User(db.Model):
-    """User model for authentication"""
-    __tablename__ = 'users'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(80), unique=True, nullable=False)
-    password_hash = db.Column(db.String(255), nullable=False)
-    email = db.Column(db.String(120))
-    is_active = db.Column(db.Boolean, default=True)
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    
-    def __repr__(self):
-        return f'<User {self.username}>'
-
-class Session(db.Model):
-    """Session model for user sessions"""
-    __tablename__ = 'sessions'
-    
-    id = db.Column(db.Integer, primary_key=True)
-    session_id = db.Column(db.String(255), unique=True, nullable=False)
-    user_id = db.Column(db.Integer, db.ForeignKey('users.id'), nullable=False)
-    ip_address = db.Column(db.String(45))
-    user_agent = db.Column(db.String(255))
-    created_at = db.Column(db.DateTime, default=datetime.utcnow)
-    expires_at = db.Column(db.DateTime, nullable=False)
-    is_active = db.Column(db.Boolean, default=True)
-    
-    user = db.relationship('User', backref=db.backref('sessions', lazy='dynamic'))
-    
-    def __repr__(self):
-        return f'<Session {self.session_id}>'

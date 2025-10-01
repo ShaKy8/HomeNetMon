@@ -16,7 +16,7 @@ The project is for home or small business use on small single-subnet networks (x
 - Historical data tracking and performance charts
 - Advanced analytics and anomaly detection
 - Performance optimization and resource monitoring
-- Security features including authentication, rate limiting, and CSRF protection
+- Security features including rate limiting and CSRF protection
 - Usage analytics and SaaS administration capabilities
 - REST API for external integrations with comprehensive security
 - Docker deployment support
@@ -60,10 +60,9 @@ docker-compose logs -f
 
 ### Development
 - `python app.py` - Start development server
-- `ADMIN_PASSWORD=admin123 HOST=0.0.0.0 DEBUG=true python app.py` - Start with auth enabled
+- `HOST=0.0.0.0 DEBUG=true python app.py` - Start with debug enabled
 - `python build_assets.py` - Bundle and minify CSS/JS assets
 - `python -m pytest` - Run tests
-- `python test_auth.py` - Test authentication system
 - `python optimize_performance.py` - Run performance optimizations
 - `python database_performance_fix.py` - Optimize database performance
 - `docker-compose up -d` - Start services in background
@@ -88,7 +87,6 @@ app.py (Flask Application)
 ├── models.py (SQLAlchemy Models)
 ├── config.py (Configuration Management)
 ├── core/ (Core Services)
-│   ├── auth.py, auth_db.py (Authentication System)
 │   ├── security_middleware.py (CSRF & Security)
 │   ├── rate_limiter.py (Rate Limiting)
 │   ├── cache_layer.py (Caching System)
@@ -106,7 +104,7 @@ app.py (Flask Application)
 └── api/ (Extensive REST API)
     ├── devices.py, devices_optimized.py
     ├── monitoring.py, performance.py
-    ├── auth.py, security.py
+    ├── security.py
     ├── analytics.py, usage_analytics_api.py
     ├── saas_admin.py, rate_limiting.py
     └── [25+ specialized API modules]
@@ -180,14 +178,11 @@ WebSocket events for real-time updates:
 - Docker containers run as non-root user
 
 ### Application Security
-- Database-backed authentication system with admin controls
 - CSRF protection via security middleware
 - Comprehensive rate limiting with Redis support
 - Input validation and sanitization on all endpoints
 - SQL injection protection via SQLAlchemy ORM
 - XSS prevention through template escaping
-- Secure session management
-- API security with authentication tokens
 - Security headers and middleware
 
 ## Deployment Options
@@ -240,13 +235,7 @@ WebSocket events for real-time updates:
 - Memory-efficient real-time updates
 - Connection throttling and resource management
 
-## Authentication & Security
-
-### Development Authentication
-- Use `ADMIN_PASSWORD=admin123` environment variable for development
-- Authentication system stores users in database
-- Run `python migrate_to_db_auth.py` to set up database authentication
-- Test with `python test_auth.py`
+## Security Features
 
 ### Rate Limiting
 - Redis-backed rate limiting (falls back to in-memory)
@@ -272,22 +261,16 @@ WebSocket events for real-time updates:
 - Automatic indexing and query performance monitoring
 
 ### Testing and Quality
-- Comprehensive test suite with authentication tests
+- Comprehensive test suite
 - Performance monitoring and profiling tools
 - Database performance validation
 - Asset optimization verification
-
-### Authentication & Route Issues
-- If @login_required decorators cause 500 errors, check for missing 'login' route
-- The login_required decorator in core/auth.py redirects to url_for('login')
-- For admin pages (/security, /settings, /analytics), consider removing @login_required if no login route exists
-- Authentication models (User, Session) must be properly defined in models.py
 
 ## Architecture Highlights
 
 - **Modular Design**: Core services, API modules, and monitoring separated
 - **Performance-First**: Extensive caching, optimization, and profiling
-- **Security-Aware**: Authentication, CSRF protection, rate limiting
+- **Security-Aware**: CSRF protection, rate limiting, input validation
 - **Production-Ready**: Asset bundling, database optimization, monitoring
 - **Scalable**: Resource management, connection optimization, caching layers
-- Do not add an authentication system
+- **Open Access**: No authentication required - designed for trusted home/small business networks

@@ -13,7 +13,6 @@ from monitoring.scanner import NetworkScanner
 from monitoring.monitor import DeviceMonitor
 from monitoring.alerts import AlertManager
 from monitoring.bandwidth_monitor import BandwidthMonitor
-from core.auth import login_required
 
 # Global variable to track server startup time
 SERVER_START_TIME = datetime.now()
@@ -401,7 +400,6 @@ def create_app():
         return {'csrf_token': csrf_token}
 
     @app.route('/api/csrf-token', methods=['GET'])
-    @login_required
     def get_csrf_token():
         """API endpoint to get a fresh CSRF token"""
         try:
@@ -463,7 +461,6 @@ def create_app():
             return render_template('dashboard.html', dashboard_title='Home Network Monitor')
     
     @app.route('/dashboard/full')
-    @login_required
     def dashboard_full():
         """Full featured dashboard with device grid and detailed monitoring"""
         try:
@@ -500,7 +497,6 @@ def create_app():
         return redirect(url_for('alerts'))
     
     @app.route('/notifications/analytics')
-    @login_required
     def notification_analytics():
         """Advanced notification analytics dashboard"""
         return render_template('notification_analytics.html')
@@ -519,7 +515,6 @@ def create_app():
         return render_template('ai_dashboard.html')
     
     @app.route('/security-dashboard')
-    @login_required
     def security_dashboard():
         """Redirect old security-dashboard URL to new security URL for consistency"""
         return redirect(url_for('security'), code=301)
@@ -556,7 +551,6 @@ def create_app():
         return redirect(url_for('ai_dashboard'))
     
     @app.route('/security_dashboard')
-    @login_required
     def security_dashboard_underscore_redirect():
         return redirect(url_for('security'))
     
@@ -597,25 +591,21 @@ def create_app():
     # Note: Backward compatibility redirects are handled by the existing routes above
     
     @app.route('/escalation-rules')
-    @login_required
     def escalation_rules():
         """Escalation rules management page"""
         return render_template('escalation_rules.html')
     
     @app.route('/escalation-rules/new')
-    @login_required
     def new_escalation_rule():
         """Create new escalation rule page"""
         return render_template('escalation_rule_form.html', rule_id=None)
     
     @app.route('/escalation-rules/<int:rule_id>/edit')
-    @login_required
     def edit_escalation_rule(rule_id):
         """Edit existing escalation rule page"""
         return render_template('escalation_rule_form.html', rule_id=rule_id)
     
     @app.route('/escalation-executions')
-    @login_required
     def escalation_executions():
         """Escalation executions monitoring page"""
         return render_template('escalation_executions.html')
