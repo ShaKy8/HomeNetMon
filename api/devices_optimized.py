@@ -128,9 +128,9 @@ def compute_device_status(last_seen, response_time):
     """OPTIMIZED: Compute device status in Python to avoid repeated DB queries"""
     if not last_seen:
         return 'unknown'
-    
-    # Device is down if not seen for more than 10 minutes
-    threshold = datetime.utcnow() - timedelta(seconds=600)
+
+    # Device is down if not seen for more than 15 minutes (ping interval + buffer)
+    threshold = datetime.utcnow() - timedelta(seconds=900)
     
     if last_seen < threshold:
         return 'down'
@@ -161,7 +161,8 @@ def get_devices_summary():
         WHERE 1=1
         """)
         
-        threshold = datetime.utcnow() - timedelta(seconds=600)
+        # Use 15-minute threshold to match ping interval (600s) plus buffer for network delays
+        threshold = datetime.utcnow() - timedelta(seconds=900)
         result = db.session.execute(summary_query, {'threshold': threshold}).fetchone()
         
         return jsonify({

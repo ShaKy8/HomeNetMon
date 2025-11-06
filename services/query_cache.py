@@ -211,7 +211,8 @@ def get_cached_device_list(app_context_func) -> List[Dict[str, Any]]:
         with app_context_func():
             # Get all devices efficiently with optimized query
             devices_query = db.session.query(Device).all()
-            logger.debug(f"Cache miss: Retrieved {len(devices_query)} devices from database")
+            logger.info(f"=== CACHE MISS: Retrieved {len(devices_query)} devices from database ===")
+            logger.info(f"Sample IPs: {[d.ip_address for d in devices_query[:10]]}")
             
             # TODO: Re-add monitoring data and alerts in a separate optimization phase
             # For now, just return basic device data to fix the NOC display issue
@@ -228,7 +229,7 @@ def get_cached_device_list(app_context_func) -> List[Dict[str, Any]]:
                 # Calculate status efficiently based on last_seen timestamp
                 status = 'unknown'
                 if device.last_seen:
-                    threshold = current_time - timedelta(seconds=600)  # 10-minute threshold
+                    threshold = current_time - timedelta(seconds=900)  # 15-minute threshold (ping interval + buffer)
                     if device.last_seen >= threshold:
                         # Device was seen recently, consider it up
                         # TODO: Add proper response time checking in future optimization
@@ -258,7 +259,8 @@ def get_cached_device_list(app_context_func) -> List[Dict[str, Any]]:
                     'updated_at': device.updated_at.isoformat() + 'Z' if device.updated_at else None
                 }
                 device_list.append(device_data)
-            
+
+            logger.info(f"=== Returning {len(device_list)} devices from cache function ===")
             return device_list
     
     return _get_device_list()

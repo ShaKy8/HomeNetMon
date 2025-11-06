@@ -57,26 +57,27 @@ class Device(db.Model):
     def status(self):
         if not self.last_seen:
             return 'unknown'
-        
-        # Consider device down if not seen for more than 10 minutes (600 seconds)
-        # This is more forgiving than the previous 3*ping_interval approach
+
+        # Consider device down if not seen for more than 15 minutes (900 seconds)
+        # This accounts for ping interval (600s) plus buffer for network delays
         from config import Config
-        threshold = datetime.utcnow() - timedelta(seconds=600)
-        
+        threshold = datetime.utcnow() - timedelta(seconds=900)
+
         if self.last_seen < threshold:
             return 'down'
-        
-        # Check latest monitoring data for response time
+
+        # Check latest monitoring data for response time to determine warning state
+        # Only check if device was seen recently (within threshold)
         latest_data = MonitoringData.query.filter_by(device_id=self.id)\
                                          .order_by(MonitoringData.timestamp.desc())\
                                          .first()
-        
+
         if latest_data:
-            if latest_data.response_time is None:
-                return 'down'
-            elif latest_data.response_time > 1000:  # >1 second
+            # Don't mark as down based on single failed ping if recently seen
+            # Only check for high response time (warning state)
+            if latest_data.response_time is not None and latest_data.response_time > 1000:  # >1 second
                 return 'warning'
-        
+
         return 'up'
     
     @cached_property(ttl=30, key_func=lambda self: f"device_{self.id}_response_time")

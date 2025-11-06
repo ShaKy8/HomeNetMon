@@ -29,13 +29,13 @@ devices_bp = Blueprint('devices', __name__)
 @create_endpoint_limiter('relaxed')
 def get_devices():
     """Get all devices with optional filtering - ULTRA-CACHED VERSION"""
-    
-    # TEMPORARILY DISABLE ultra-fast cache for debugging
-    # if ULTRA_CACHE_AVAILABLE:
-    #     cache_key = f"devices:{request.args}"
-    #     cached_result = response_cache.get(cache_key)
-    #     if cached_result:
-    #         return cached_result
+
+    # Ultra-fast response cache for frequently accessed endpoints
+    if ULTRA_CACHE_AVAILABLE:
+        cache_key = f"devices:{request.args}"
+        cached_result = response_cache.get(cache_key)
+        if cached_result:
+            return cached_result
     try:
         # Validate and sanitize query parameters
         group = InputValidator.sanitize_string(request.args.get('group', ''), max_length=100)
@@ -49,7 +49,7 @@ def get_devices():
         # PERFORMANCE OPTIMIZATION: Use cached device list for massive speed improvement
         try:
             devices_data = get_cached_device_list(current_app.app_context)
-            logger.debug(f"Retrieved {len(devices_data)} devices from cache")
+            logger.info(f"=== API get_devices: Retrieved {len(devices_data)} devices from get_cached_device_list ===")
         except Exception as e:
             logger.warning(f"Cache failed, falling back to database query: {e}")
             # Fallback to original query if cache fails
@@ -75,7 +75,9 @@ def get_devices():
         
         if status:
             filtered_devices = [d for d in filtered_devices if d.get('status') == status]
-        
+
+        logger.info(f"=== After filtering: {len(filtered_devices)} devices (network_filter={network_filter}, group={group}, type={device_type}, status={status}, monitored={monitored_only}) ===")
+
         # Sort by IP address (cached data might not be sorted)
         try:
             import ipaddress
@@ -118,11 +120,11 @@ def get_devices():
                 'total': len(filtered_devices),
                 'cached': True  # Indicate this response was cached
             }
-        
-        # TEMPORARILY DISABLE ultra-fast cache for debugging  
-        # if ULTRA_CACHE_AVAILABLE:
-        #     response_cache.set(cache_key, response)
-        
+
+        # Cache the response for fast subsequent requests
+        if ULTRA_CACHE_AVAILABLE:
+            response_cache.set(cache_key, response)
+
         return jsonify(response)
         
     except Exception as e:
@@ -133,7 +135,7 @@ def get_devices():
             request.args.get('type'),
             request.args.get('status'),
             request.args.get('monitored', 'false').lower() == 'true',
-            request.args.get('network_filter', 'true').lower() == 'true'
+            request.args.get('network_filter', 'false').lower() == 'true'  # Changed default to false to match primary path
         )
 
 def get_devices_fallback(group=None, device_type=None, status=None, monitored_only=False, network_filter=False):
@@ -875,10 +877,11 @@ def get_devices_summary():
         from datetime import datetime, timedelta
         
         # Calculate status efficiently using the same logic as the status property
-        # A device is 'up' if it has successful monitoring data in the last 5 minutes
-        # 'down' if it has data but none successful in last 5 minutes  
+        # A device is 'up' if it has successful monitoring data within the ping interval plus buffer
+        # The ping interval is 600 seconds (10 minutes), so we use 15 minutes (900 seconds) to account for network delays
+        # 'down' if it has data but none successful in the monitoring window
         # 'unknown' if no monitoring data exists
-        cutoff_time = datetime.utcnow() - timedelta(minutes=5)
+        cutoff_time = datetime.utcnow() - timedelta(seconds=900)  # 15 minutes
         
         # Get latest monitoring data timestamp for each device
         latest_monitoring_subquery = db.session.query(
@@ -1326,19 +1329,11 @@ def update_device_monitoring_status(device_id):
             'error': str(e)
         }), 500
 
-@devices_bp.before_request
-def debug_devices_request():
-    """Debug all requests to devices blueprint"""
-    print(f"🔍 DEVICES BLUEPRINT REQUEST: {request.method} {request.path}")
-    print(f"🔍 Full URL: {request.url}")
-
 @devices_bp.route('/scan', methods=['POST'])
 @devices_bp.route('/scan-now', methods=['POST'])  # Add alternative URL to bypass cache
 def scan_network():
     """Trigger a manual network scan with progress updates"""
-    print("🚀 SCAN ENDPOINT HIT: /api/devices/scan")
-    print(f"🚀 Request method: {request.method}")
-    print(f"🚀 Request headers: {dict(request.headers)}")
+    logger.info(f"Network scan triggered via {request.method} {request.path}")
     try:
         # Get scanner instance from app
         scanner = current_app._scanner if hasattr(current_app, '_scanner') else None
