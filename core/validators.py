@@ -233,8 +233,8 @@ class InputValidator:
     def validate_device_type(cls, device_type: str) -> str:
         """Validate device type against allowed values."""
         if not device_type:
-            return 'unknown'
-            
+            return ''  # Return empty string when no type specified (don't filter)
+
         device_type = device_type.strip().lower()
         
         allowed_types = [

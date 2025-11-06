@@ -167,3 +167,10 @@ temp/
 config-local.yaml
 local-config.yaml*.backup*
 *.db.backup*
+
+# Production data and database archives
+production_data/
+database_archives/
+
+# Local configuration files
+*.local.json
