@@ -100,19 +100,6 @@ def create_app():
         return False
     
     socketio = SocketIO(app, cors_allowed_origins=cors_allowed_origins_callback, logger=False, engineio_logger=False)
-    
-    # Add application-level request debugging for scan endpoint
-    @app.before_request
-    def debug_application_request():
-        if '/api/devices/scan' in request.path:
-            print(f"🌟 APPLICATION LEVEL: Request received for {request.method} {request.path}")
-            print(f"🌟 Headers: {dict(request.headers)}")
-            print(f"🌟 User-Agent: {request.headers.get('User-Agent', 'None')}")
-            print(f"🌟 Content-Type: {request.content_type}")
-            if request.form:
-                print(f"🌟 Form data: {dict(request.form)}")
-            if request.is_json:
-                print(f"🌟 JSON data: {request.get_json()}")
 
     # Import and register blueprints
     from api.devices import devices_bp  # Use original for now
@@ -152,7 +139,15 @@ def create_app():
     app.register_blueprint(performance_optimization_bp)
     app.register_blueprint(rate_limit_admin_bp, url_prefix='/api/rate-limit')
     app.register_blueprint(maintenance_bp, url_prefix='/api/maintenance')
-    
+
+    # Setup API documentation (Swagger/OpenAPI)
+    try:
+        from api_documentation import setup_swagger_ui
+        setup_swagger_ui(app)
+        logger.info("API documentation available at /api/docs and /api/redoc")
+    except ImportError:
+        logger.warning("API documentation setup failed - swagger UI not available")
+
     # Initialize monitoring services
     scanner = NetworkScanner(app)
     monitor = DeviceMonitor(socketio, app)
@@ -183,21 +178,29 @@ def create_app():
     from services.escalation_service import escalation_service
     escalation_service.init_app(app)
     
-    # Initialize rate limiter service - TEMPORARILY DISABLED FOR DEBUGGING
-    # from services.rate_limiter import init_rate_limiter
-    # rate_limiter = init_rate_limiter(app)
-    rate_limiter = None
+    # Initialize rate limiter service for production security
+    try:
+        from services.rate_limiter import init_rate_limiter
+        rate_limiter = init_rate_limiter(app)
+        logger.info("Rate limiter initialized successfully")
+    except Exception as e:
+        logger.warning(f"Rate limiter initialization failed, continuing without it: {e}")
+        rate_limiter = None
     
     # Initialize performance monitor service
     from services.performance_monitor import performance_monitor
     performance_monitor.app = app
     performance_monitor.set_socketio(socketio)
     
-    
-    # Apply global rate limiting - TEMPORARILY DISABLED FOR DEBUGGING
-    # from core.rate_limiter import apply_global_rate_limiting
-    # apply_global_rate_limiting(app)
-    
+
+    # Apply global rate limiting for production security
+    try:
+        from core.rate_limiter import apply_global_rate_limiting
+        apply_global_rate_limiting(app)
+        logger.info("Global rate limiting applied successfully")
+    except Exception as e:
+        logger.warning(f"Global rate limiting failed, continuing without it: {e}")
+
     # Make services accessible to other parts of the app
     app._scanner = scanner
     app._monitor = monitor
@@ -1140,11 +1143,7 @@ def create_app():
     # Comprehensive error handling
     @app.errorhandler(400)
     def bad_request(error):
-        print(f"🚨 400 ERROR DEBUG: {error}")
-        print(f"🚨 Request path: {request.path}")
-        print(f"🚨 Request method: {request.method}")
-        print(f"🚨 Error description: {error.description}")
-        print(f"🚨 Error code: {error.code}")
+        logger.warning(f"400 Bad Request: {request.method} {request.path} - {error.description}")
         return jsonify({
             'error': 'Bad Request',
             'message': 'The request could not be processed due to invalid data',
@@ -1437,7 +1436,7 @@ def create_app():
                 if confidence_values:
                     avg_confidence = f"{sum(confidence_values) / len(confidence_values):.1f}%"
             except Exception as e:
-                print(f"Error fetching anomaly alerts: {e}")
+                logger.error(f"Error fetching anomaly alerts: {e}")
 
             # Generate trend data for charts (last 7 days)
             trend_labels = []
@@ -1506,7 +1505,7 @@ def create_app():
             return jsonify(dashboard_data)
 
         except Exception as e:
-            print(f"Error in AI dashboard endpoint: {e}")
+            logger.error(f"Error in AI dashboard endpoint: {e}")
             return jsonify({
                 'error': 'Failed to load AI dashboard data',
                 'detection_status': 'Error',
@@ -1556,7 +1555,7 @@ def create_app():
                             })
 
             except Exception as e:
-                print(f"Detection error: {e}")
+                logger.error(f"Detection error: {e}")
 
             return jsonify({
                 'success': True,
@@ -1568,7 +1567,7 @@ def create_app():
             })
 
         except Exception as e:
-            print(f"Error in AI detection endpoint: {e}")
+            logger.error(f"Error in AI detection endpoint: {e}")
             return jsonify({
                 'success': False,
                 'error': 'Failed to run AI detection',
@@ -1613,7 +1612,7 @@ def create_app():
             return jsonify(model_status)
 
         except Exception as e:
-            print(f"Error in AI model status endpoint: {e}")
+            logger.error(f"Error in AI model status endpoint: {e}")
             return jsonify({
                 'status': 'Error',
                 'error': 'Failed to get model status',
@@ -1673,7 +1672,7 @@ def create_app():
             return response
 
         except Exception as e:
-            print(f"Error in export anomalies endpoint: {e}")
+            logger.error(f"Error in export anomalies endpoint: {e}")
             return jsonify({
                 'error': 'Failed to export anomalies',
                 'message': str(e)
@@ -1688,7 +1687,7 @@ def create_app():
                 return jsonify({'success': False, 'error': 'No configuration data provided'}), 400
 
             # Log the configuration (in production, this would be saved to database/config file)
-            print(f"AI Configuration received: {data}")
+            logger.info(f"AI Configuration received: sensitivity={data.get('sensitivity')}, enabled_detection_types={len(data.get('detection_types', []))}")
 
             # Validate configuration data
             valid_sensitivities = ['low', 'medium', 'high']
@@ -1731,7 +1730,7 @@ def create_app():
             })
 
         except Exception as e:
-            print(f"Error in AI configure endpoint: {e}")
+            logger.error(f"Error in AI configure endpoint: {e}")
             return jsonify({
                 'success': False,
                 'error': 'Failed to save AI configuration',
@@ -1767,7 +1766,7 @@ def create_app():
             })
 
         except Exception as e:
-            print(f"Error in get AI configuration endpoint: {e}")
+            logger.error(f"Error in get AI configuration endpoint: {e}")
             return jsonify({
                 'success': False,
                 'error': 'Failed to load AI configuration',
