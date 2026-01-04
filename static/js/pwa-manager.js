@@ -33,7 +33,6 @@ class PWAManager {
     }
     
     async init() {
-        console.log('[PWAManager] Initializing PWA functionality');
         
         try {
             // Register service worker
@@ -53,9 +52,7 @@ class PWAManager {
                 await this.initPushNotifications();
             }
             
-            console.log('[PWAManager] PWA initialization complete');
         } catch (error) {
-            console.error('[PWAManager] Failed to initialize PWA:', error);
         }
     }
     
@@ -68,11 +65,9 @@ class PWAManager {
                 });
                 
                 this.serviceWorker = registration;
-                console.log('[PWAManager] Service Worker registered successfully');
                 
                 // Handle service worker updates
                 registration.addEventListener('updatefound', () => {
-                    console.log('[PWAManager] New service worker version available');
                     this.handleServiceWorkerUpdate(registration.installing);
                 });
                 
@@ -83,7 +78,6 @@ class PWAManager {
                 
                 return registration;
             } catch (error) {
-                console.error('[PWAManager] Service Worker registration failed:', error);
                 throw error;
             }
         } else {
@@ -99,7 +93,6 @@ class PWAManager {
             request.onerror = () => reject(request.error);
             request.onsuccess = () => {
                 this.db = request.result;
-                console.log('[PWAManager] IndexedDB initialized');
                 resolve(this.db);
             };
             
@@ -156,12 +149,10 @@ class PWAManager {
     setupEventListeners() {
         // Enhanced online/offline status with stability checking
         window.addEventListener('online', () => {
-            console.log('[PWAManager] Browser online event');
             this.handleConnectionEvent('online');
         });
         
         window.addEventListener('offline', () => {
-            console.log('[PWAManager] Browser offline event');
             this.handleConnectionEvent('offline');
         });
         
@@ -178,7 +169,6 @@ class PWAManager {
         
         // App installed
         window.addEventListener('appinstalled', () => {
-            console.log('[PWAManager] PWA installed successfully');
             this.trackEvent('pwa_installed');
         });
         
@@ -199,7 +189,6 @@ class PWAManager {
         // Page navigation events - suppress offline detection during navigation
         window.addEventListener('beforeunload', () => {
             this.isNavigating = true;
-            console.log('[PWAManager] Page navigation detected, suppressing offline events');
         });
         
         // Page load complete
@@ -217,7 +206,6 @@ class PWAManager {
     handleConnectionEvent(eventType) {
         // Skip connection events during page navigation
         if (this.isNavigating) {
-            console.log('[PWAManager] Ignoring connection event during page navigation');
             return;
         }
         
@@ -250,14 +238,12 @@ class PWAManager {
             const timeSinceLastOnline = now - this.connectionState.lastOnlineTime;
             
             if (timeSinceLastOnline < this.config.transitionGracePeriod) {
-                console.log('[PWAManager] Ignoring rapid offline event during transition');
                 return;
             }
             
             // Set a timeout to only show offline status if we stay offline
             this.connectionState.transitionTimeout = setTimeout(() => {
                 if (!navigator.onLine) {
-                    console.log('[PWAManager] Confirmed offline status after grace period');
                     this.isOnline = false;
                     this.handleOnlineStatusChange(false);
                 }
@@ -278,7 +264,6 @@ class PWAManager {
             const isActuallyOnline = response.ok;
             
             if (isActuallyOnline !== this.isOnline) {
-                console.log(`[PWAManager] Connection verification: ${isActuallyOnline ? 'online' : 'offline'}`);
                 this.isOnline = isActuallyOnline;
                 
                 // Only show notifications for verified status changes
@@ -292,7 +277,6 @@ class PWAManager {
         } catch (error) {
             // Network request failed, likely actually offline
             if (this.isOnline) {
-                console.log('[PWAManager] Connection verification failed, going offline');
                 this.isOnline = false;
                 this.handleOnlineStatusChange(false);
             }
@@ -345,7 +329,6 @@ class PWAManager {
     
     // Service Worker Message Handler
     handleServiceWorkerMessage(data) {
-        console.log('[PWAManager] Message from Service Worker:', data);
         
         switch (data.type) {
             case 'SERVER_RECONNECTED':
@@ -373,7 +356,6 @@ class PWAManager {
             const permission = await Notification.requestPermission();
             
             if (permission === 'granted') {
-                console.log('[PWAManager] Push notifications enabled');
                 
                 // Subscribe to push notifications
                 const subscription = await this.subscribeToNotifications();
@@ -381,10 +363,8 @@ class PWAManager {
                     await this.sendSubscriptionToServer(subscription);
                 }
             } else {
-                console.log('[PWAManager] Push notifications denied');
             }
         } catch (error) {
-            console.error('[PWAManager] Failed to initialize push notifications:', error);
         }
     }
     
@@ -397,10 +377,8 @@ class PWAManager {
                 applicationServerKey: await this.getVapidKey()
             });
             
-            console.log('[PWAManager] Push subscription created');
             return subscription;
         } catch (error) {
-            console.error('[PWAManager] Failed to create push subscription:', error);
             return null;
         }
     }
@@ -411,7 +389,6 @@ class PWAManager {
             const data = await response.json();
             return this.urlBase64ToUint8Array(data.publicKey);
         } catch (error) {
-            console.error('[PWAManager] Failed to get VAPID key:', error);
             // Return a default key or handle gracefully
             return null;
         }
@@ -444,10 +421,8 @@ class PWAManager {
             });
             
             if (response.ok) {
-                console.log('[PWAManager] Push subscription registered with server');
             }
         } catch (error) {
-            console.error('[PWAManager] Failed to register push subscription:', error);
         }
     }
     
@@ -467,10 +442,8 @@ class PWAManager {
                 await store.put(data);
             }
             
-            console.log(`[PWAManager] Data stored offline in ${storeName}`);
             return true;
         } catch (error) {
-            console.error(`[PWAManager] Failed to store offline data in ${storeName}:`, error);
             return false;
         }
     }
@@ -494,7 +467,6 @@ class PWAManager {
                 request.onerror = () => reject(request.error);
             });
         } catch (error) {
-            console.error(`[PWAManager] Failed to get offline data from ${storeName}:`, error);
             return null;
         }
     }
@@ -504,7 +476,6 @@ class PWAManager {
         if (this.syncInProgress || !this.isOnline) return;
         
         this.syncInProgress = true;
-        console.log('[PWAManager] Starting offline data sync');
         
         try {
             // Get queued actions from offline queue
@@ -519,9 +490,7 @@ class PWAManager {
             // Refresh cached data
             await this.refreshCachedData();
             
-            console.log('[PWAManager] Offline data sync complete');
         } catch (error) {
-            console.error('[PWAManager] Failed to sync offline data:', error);
         } finally {
             this.syncInProgress = false;
         }
@@ -541,13 +510,11 @@ class PWAManager {
                     await this.processConfigAction(action);
                     break;
                 default:
-                    console.warn(`[PWAManager] Unknown sync tag: ${action.sync_tag}`);
             }
             
             // Remove from queue on success
             await this.removeFromQueue(action.id);
         } catch (error) {
-            console.error(`[PWAManager] Failed to process queued action:`, error);
             
             // Increment retry count
             action.retry_count = (action.retry_count || 0) + 1;
@@ -608,7 +575,6 @@ class PWAManager {
             const store = transaction.objectStore('offline_queue');
             await store.delete(actionId);
         } catch (error) {
-            console.error('[PWAManager] Failed to remove action from queue:', error);
         }
     }
     
@@ -650,7 +616,6 @@ class PWAManager {
                     }
                 }
             } catch (error) {
-                console.error(`[PWAManager] Failed to refresh data for ${endpoint}:`, error);
             }
         }
     }
@@ -667,7 +632,6 @@ class PWAManager {
         
         const lastShown = this.lastNotifications.get(notificationKey);
         if (lastShown && (now - lastShown) < 10000) { // 10 second cooldown
-            console.log(`[PWAManager] Suppressing duplicate notification: ${title}`);
             return;
         }
         
@@ -804,10 +768,8 @@ class PWAManager {
             event.prompt();
             event.userChoice.then((choiceResult) => {
                 if (choiceResult.outcome === 'accepted') {
-                    console.log('[PWAManager] User accepted install prompt');
                     this.trackEvent('pwa_install_accepted');
                 } else {
-                    console.log('[PWAManager] User dismissed install prompt');
                     this.trackEvent('pwa_install_dismissed');
                 }
                 document.body.removeChild(installPrompt);
@@ -860,11 +822,9 @@ class PWAManager {
     }
     
     handleCacheUpdate(url) {
-        console.log(`[PWAManager] Cache updated for: ${url}`);
     }
     
     handleSyncComplete(syncTag) {
-        console.log(`[PWAManager] Background sync complete: ${syncTag}`);
     }
     
     // Check for app updates
@@ -872,16 +832,13 @@ class PWAManager {
         if (this.serviceWorker) {
             try {
                 const registration = await this.serviceWorker.update();
-                console.log('[PWAManager] Checked for updates');
             } catch (error) {
-                console.error('[PWAManager] Failed to check for updates:', error);
             }
         }
     }
     
     // Analytics/tracking
     trackEvent(eventName, properties = {}) {
-        console.log(`[PWAManager] Event tracked: ${eventName}`, properties);
         
         // Send to analytics if available
         if (window.gtag) {
@@ -910,7 +867,6 @@ class PWAManager {
             
             return true;
         } catch (error) {
-            console.error('[PWAManager] Failed to queue offline action:', error);
             return false;
         }
     }

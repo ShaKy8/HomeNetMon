@@ -377,7 +377,6 @@ class ReadReceiptTracker {
      */
     log(message, data = {}) {
         if (this.debugMode) {
-            console.log(`[ReadReceiptTracker] ${message}`, data);
         }
     }
 }
@@ -424,7 +423,6 @@ const ReadReceiptUtils = {
             }
             
         } catch (error) {
-            console.warn('Failed to setup notification tracking:', error);
         }
         
         return { tracker, trackingToken: null, cleanup: () => {} };

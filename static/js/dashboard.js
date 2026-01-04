@@ -34,7 +34,6 @@ class UserPreferences {
                 return { ...this.defaults, ...parsed };
             }
         } catch (error) {
-            console.warn('Error loading user preferences:', error);
         }
         return { ...this.defaults };
     }
@@ -43,7 +42,6 @@ class UserPreferences {
         try {
             localStorage.setItem(this.storageKey, JSON.stringify(this.preferences));
         } catch (error) {
-            console.warn('Error saving user preferences:', error);
         }
     }
     
@@ -68,7 +66,6 @@ window.userPrefs = new UserPreferences();
 // Initialize dashboard when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
     if (document.querySelector('[data-dashboard]')) {
-        console.log('Initializing dashboard...');
         initializeDashboard();
     }
 });
@@ -110,7 +107,6 @@ function initializeDashboard() {
     }, 100);
     
     Dashboard.initialized = true;
-    console.log('Dashboard initialized');
 }
 
 /**
@@ -325,7 +321,6 @@ function handleQuickAction(action, deviceId) {
             toggleDeviceMonitoring(deviceId);
             break;
         default:
-            console.warn('Unknown quick action:', action);
     }
 }
 
@@ -337,11 +332,9 @@ function performDevicePing(deviceId) {
     
     HomeNetMon.apiCall(`/devices/${deviceId}/ping`, { method: 'POST' })
         .then(response => {
-            console.log('Ping result:', response);
             showToast('Ping initiated', 'success');
         })
         .catch(error => {
-            console.error('Ping failed:', error);
             showToast('Ping failed', 'error');
         });
 }
@@ -354,11 +347,9 @@ function toggleDeviceMonitoring(deviceId) {
     
     HomeNetMon.apiCall(`/devices/${deviceId}/toggle-monitoring`, { method: 'POST' })
         .then(response => {
-            console.log('Monitoring toggled:', response);
             showToast('Monitoring setting updated', 'success');
         })
         .catch(error => {
-            console.error('Toggle monitoring failed:', error);
             showToast('Failed to update monitoring', 'error');
         });
 }
@@ -429,7 +420,6 @@ function showToast(message, type = 'info', duration = 4000, options = {}) {
         return window.toastManager.show(message, type, duration, options);
     } else {
         // Fallback to simple implementation if ToastManager not available
-        console.warn('ToastManager not available, using fallback');
         const toast = document.createElement('div');
         toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} toast-notification`;
         toast.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
@@ -1319,7 +1309,6 @@ async function loadDevices() {
         }
         
     } catch (error) {
-        console.error('Error loading devices:', error);
         
         const loadingIndicator = document.getElementById('loading-indicator');
         if (loadingIndicator) {

@@ -47,7 +47,7 @@ class HTMLSanitizer {
     }
 
     init() {
-        console.log('🛡️ HTML Sanitizer initialized');
+        // Sanitizer initialized
     }
 
     /**
@@ -153,7 +153,6 @@ class HTMLSanitizer {
      */
     setHTML(element, html) {
         if (!element || !(element instanceof Element)) {
-            console.warn('Invalid element provided to setHTML');
             return;
         }
 
@@ -167,7 +166,6 @@ class HTMLSanitizer {
      */
     setText(element, text) {
         if (!element || !(element instanceof Element)) {
-            console.warn('Invalid element provided to setText');
             return;
         }
 
@@ -270,12 +268,6 @@ if (typeof window !== 'undefined') {
         
         Object.defineProperty(Element.prototype, 'innerHTML', {
             set: function(value) {
-                if (typeof value === 'string' && value.includes('<') && !this.dataset.allowUnsafeHTML) {
-                    console.warn(
-                        'Potentially unsafe innerHTML usage detected. Consider using safeHTML() instead.',
-                        this, value
-                    );
-                }
                 return originalInnerHTML.set.call(this, value);
             },
             get: function() {

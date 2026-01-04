@@ -21,7 +21,6 @@ window.HomeNetMon = {
 
 // Initialize application when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('HomeNetMon application initializing...');
     
     // Initialize Socket.IO connection
     initializeSocket();
@@ -34,7 +33,6 @@ document.addEventListener('DOMContentLoaded', function() {
         startAutoRefresh();
     }
     
-    console.log('HomeNetMon application initialized');
 });
 
 /**
@@ -48,13 +46,11 @@ function initializeSocket() {
         });
         
         HomeNetMon.socket.on('connect', function() {
-            console.log('Socket.IO connected');
             HomeNetMon.config.socketConnected = true;
             updateConnectionStatus(true);
         });
         
         HomeNetMon.socket.on('disconnect', function() {
-            console.log('Socket.IO disconnected');
             HomeNetMon.config.socketConnected = false;
             updateConnectionStatus(false);
         });
@@ -70,7 +66,6 @@ function initializeSocket() {
         });
         
     } catch (error) {
-        console.error('Socket.IO initialization failed:', error);
     }
 }
 
@@ -209,7 +204,6 @@ function startAutoRefresh() {
  * Refresh data manually
  */
 function refreshData() {
-    console.log('Refreshing data...');
     // Trigger page refresh or data reload
     window.location.reload();
 }
@@ -234,7 +228,6 @@ function apiCall(endpoint, options = {}) {
         return response.json();
     })
     .catch(error => {
-        console.error('API call failed:', error);
         throw error;
     });
 }

@@ -30,14 +30,12 @@ class LazyLoader {
             script.async = true;
             
             script.onload = () => {
-                console.log(`[LazyLoader] Loaded: ${name}`);
                 this.loadedLibraries.add(name);
                 this.loadingPromises.delete(name);
                 resolve();
             };
             
             script.onerror = () => {
-                console.error(`[LazyLoader] Failed to load: ${name}`);
                 this.loadingPromises.delete(name);
                 reject(new Error(`Failed to load ${name}`));
             };
@@ -95,7 +93,6 @@ class LazyLoader {
                 callback();
             }
         } catch (error) {
-            console.error(`[LazyLoader] Error loading ${library}:`, error);
         }
     }
 

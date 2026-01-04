@@ -21,10 +21,8 @@ function initializeNetworkTopology() {
     const container = document.getElementById('network-topology');
     if (!container || NetworkTopology.initialized) return;
     
-    console.log('Initializing network topology...');
     
     if (typeof d3 === 'undefined') {
-        console.warn('D3.js not available, topology visualization disabled');
         container.innerHTML = '<div class="alert alert-warning">Network topology visualization requires D3.js</div>';
         return;
     }
@@ -33,7 +31,6 @@ function initializeNetworkTopology() {
     loadNetworkData();
     
     NetworkTopology.initialized = true;
-    console.log('Network topology initialized');
 }
 
 /**
@@ -87,7 +84,6 @@ function setupTopologyContainer(container) {
  */
 function loadNetworkData() {
     if (!window.HomeNetMon || !window.HomeNetMon.apiCall) {
-        console.error('HomeNetMon API not available');
         return;
     }
     
@@ -99,7 +95,6 @@ function loadNetworkData() {
             }
         })
         .catch(error => {
-            console.error('Failed to load network data:', error);
             showTopologyError('Failed to load network data');
         });
 }

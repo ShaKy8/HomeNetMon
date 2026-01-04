@@ -17,10 +17,8 @@ window.RealTimeUpdates = {
  * Initialize real-time updates system
  */
 function initializeRealTimeUpdates() {
-    console.log('Initializing real-time updates...');
     
     if (typeof io === 'undefined') {
-        console.warn('Socket.IO not available, real-time updates disabled');
         return;
     }
     
@@ -41,7 +39,6 @@ function connectWebSocket() {
         setupSocketHandlers();
         
     } catch (error) {
-        console.error('WebSocket connection failed:', error);
         scheduleReconnect();
     }
 }
@@ -53,7 +50,6 @@ function setupSocketHandlers() {
     const socket = RealTimeUpdates.socket;
     
     socket.on('connect', function() {
-        console.log('Real-time updates connected');
         RealTimeUpdates.connected = true;
         RealTimeUpdates.reconnectAttempts = 0;
         
@@ -68,7 +64,6 @@ function setupSocketHandlers() {
     });
     
     socket.on('disconnect', function(reason) {
-        console.log('Real-time updates disconnected:', reason);
         RealTimeUpdates.connected = false;
         updateConnectionIndicator(false);
         
@@ -82,7 +77,6 @@ function setupSocketHandlers() {
     });
     
     socket.on('connect_error', function(error) {
-        console.error('Real-time connection error:', error);
         scheduleReconnect();
     });
     
@@ -118,7 +112,6 @@ function setupSocketHandlers() {
 function handleDeviceUpdate(data) {
     if (!data || !data.device_id) return;
     
-    console.debug('Device update received:', data);
     
     // Update device displays
     updateDeviceDisplays(data);
@@ -138,7 +131,6 @@ function handleDeviceUpdate(data) {
 function handleMonitoringSummary(data) {
     if (!data) return;
     
-    console.debug('Monitoring summary received:', data);
     
     // Update summary displays
     updateSummaryDisplays(data);
@@ -156,7 +148,6 @@ function handleMonitoringSummary(data) {
 function handleChartUpdate(data) {
     if (!data) return;
     
-    console.debug('Chart update received:', data);
     
     // Update charts based on type
     switch (data.type) {
@@ -181,7 +172,6 @@ function handleChartUpdate(data) {
 function handleAlertUpdate(data) {
     if (!data) return;
     
-    console.debug('Alert update received:', data);
     
     // Update alert displays
     updateAlertDisplays(data);
@@ -201,7 +191,6 @@ function handleAlertUpdate(data) {
 function handlePerformanceUpdate(data) {
     if (!data) return;
     
-    console.debug('Performance update received:', data);
     
     // Update performance displays
     updatePerformanceDisplays(data);
@@ -278,7 +267,6 @@ function subscribeToUpdates(room) {
         return;
     }
     
-    console.log('Subscribing to updates:', room);
     RealTimeUpdates.socket.emit('join', room);
     RealTimeUpdates.subscriptions.add(room);
 }
@@ -291,7 +279,6 @@ function unsubscribeFromUpdates(room) {
         return;
     }
     
-    console.log('Unsubscribing from updates:', room);
     RealTimeUpdates.socket.emit('leave', room);
     RealTimeUpdates.subscriptions.delete(room);
 }
@@ -322,7 +309,6 @@ function updateConnectionIndicator(connected) {
  */
 function scheduleReconnect() {
     if (RealTimeUpdates.reconnectAttempts >= RealTimeUpdates.maxReconnectAttempts) {
-        console.error('Max reconnection attempts reached');
         updateConnectionIndicator(false);
         return;
     }
@@ -330,7 +316,6 @@ function scheduleReconnect() {
     RealTimeUpdates.reconnectAttempts++;
     const delay = Math.min(1000 * Math.pow(2, RealTimeUpdates.reconnectAttempts), 30000);
     
-    console.log(`Scheduling reconnect attempt ${RealTimeUpdates.reconnectAttempts} in ${delay}ms`);
     
     setTimeout(() => {
         if (!RealTimeUpdates.connected) {
