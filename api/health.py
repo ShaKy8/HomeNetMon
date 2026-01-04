@@ -243,20 +243,20 @@ def get_network_topology():
     try:
         devices = Device.query.filter_by(is_monitored=True).all()
         online_threshold = datetime.utcnow() - timedelta(minutes=10)
-        
+
+        # Batch fetch monitoring data to avoid N+1 queries
+        device_ids = [d.id for d in devices]
+        batch_data = Device.batch_get_device_data(device_ids)
+
         topology_data = []
         for device in devices:
             # Determine device status
             status = 'online' if device.last_seen and device.last_seen >= online_threshold else 'offline'
-            
-            # Get latest response time
-            latest_data = MonitoringData.query\
-                .filter_by(device_id=device.id)\
-                .order_by(MonitoringData.timestamp.desc())\
-                .first()
-            
+
+            # Get latest response time from batch data
+            latest_data = batch_data['monitoring_data'].get(device.id)
             response_time = latest_data.response_time if latest_data and latest_data.response_time is not None and latest_data.response_time > 0 else None
-            
+
             topology_data.append({
                 'id': device.id,
                 'ip_address': device.ip_address,
@@ -267,7 +267,7 @@ def get_network_topology():
                 'group': device.device_group,
                 'last_seen': device.last_seen.isoformat() + 'Z' if device.last_seen else None
             })
-        
+
         return jsonify({
             'success': True,
             'devices': topology_data,

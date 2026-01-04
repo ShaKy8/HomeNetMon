@@ -66,82 +66,35 @@ class SecurityMiddleware:
     def _before_request(self):
         """Run security checks before each request."""
 
-        # Enhanced debug logging for scan endpoints
-        if '/api/devices/scan' in request.path:
-            print(f"🔍 SCAN DEBUG: Processing scan request")
-            print(f"🔍 Method: {request.method}")
-            print(f"🔍 Path: {request.path}")
-            print(f"🔍 Endpoint: {request.endpoint}")
-            print(f"🔍 Headers: {dict(request.headers)}")
-            print(f"🔍 Content-Type: {request.content_type}")
-            print(f"🔍 Content-Length: {request.content_length}")
-            print(f"🔍 Has JSON: {request.is_json}")
-
-        # Enhanced debug logging for alerts API
-        if '/api/monitoring/alerts' in request.path:
-            print(f"🔍 SECURITY DEBUG: Processing alerts request")
-            print(f"🔍 Method: {request.method}")
-            print(f"🔍 Path: {request.path}")
-            print(f"🔍 Endpoint: {request.endpoint}")
-            print(f"🔍 Query args: {dict(request.args)}")
-            print(f"🔍 Headers: {dict(request.headers)}")
-            print(f"🔍 User agent: {request.headers.get('User-Agent', 'None')}")
+        # Debug logging for sensitive endpoints
+        if '/api/devices/scan' in request.path or '/api/monitoring/alerts' in request.path:
+            logger.debug(f"Security check: {request.method} {request.path}")
 
         # Check host header
         if self.config['allowed_hosts'] and request.host not in self.config['allowed_hosts']:
             logger.warning(f"Invalid host header: {request.host}")
-            if '/api/monitoring/alerts' in request.path:
-                print(f"🔍 SECURITY DEBUG: FAILED - Invalid host header: {request.host}")
             return jsonify({'error': 'Invalid host header'}), 400
 
         # Validate content type for POST/PUT/PATCH requests
         if request.method in ['POST', 'PUT', 'PATCH']:
             content_type = request.content_type
-            if '/api/devices/scan' in request.path:
-                print(f"🔍 SCAN DEBUG: Checking content type: {content_type}")
-                print(f"🔍 SCAN DEBUG: Is safe content type: {self._is_safe_content_type(content_type) if content_type else 'No content type'}")
             if content_type and not self._is_safe_content_type(content_type):
                 logger.warning(f"Unsafe content type: {content_type}")
-                if '/api/monitoring/alerts' in request.path:
-                    print(f"🔍 SECURITY DEBUG: FAILED - Unsafe content type: {content_type}")
-                if '/api/devices/scan' in request.path:
-                    print(f"🔍 SCAN DEBUG: FAILED - Unsafe content type: {content_type}")
                 return jsonify({'error': 'Unsupported content type'}), 400
 
         # CSRF protection
         if self.config['enable_csrf'] and request.method in ['POST', 'PUT', 'PATCH', 'DELETE']:
-            if '/api/devices/scan' in request.path:
-                print(f"🔍 SCAN DEBUG: Checking CSRF token...")
             if not self._verify_csrf_token():
                 logger.warning("CSRF token verification failed")
-                if '/api/monitoring/alerts' in request.path:
-                    print(f"🔍 SECURITY DEBUG: FAILED - CSRF token validation failed")
-                if '/api/devices/scan' in request.path:
-                    print(f"🔍 SCAN DEBUG: FAILED - CSRF token validation failed")
                 return jsonify({'error': 'CSRF token validation failed'}), 403
-            elif '/api/devices/scan' in request.path:
-                print(f"🔍 SCAN DEBUG: CSRF token validation PASSED")
 
         # Input validation
         if self.config['enable_input_validation']:
-            if '/api/monitoring/alerts' in request.path:
-                print(f"🔍 SECURITY DEBUG: Running input validation...")
-            if '/api/devices/scan' in request.path:
-                print(f"🔍 SCAN DEBUG: Running input validation...")
             validation_error = self._validate_input()
             if validation_error:
-                if '/api/monitoring/alerts' in request.path:
-                    print(f"🔍 SECURITY DEBUG: FAILED - Input validation error: {validation_error}")
-                if '/api/devices/scan' in request.path:
-                    print(f"🔍 SCAN DEBUG: FAILED - Input validation error: {validation_error}")
                 return validation_error
-            elif '/api/devices/scan' in request.path:
-                print(f"🔍 SCAN DEBUG: Input validation PASSED")
 
-        if '/api/monitoring/alerts' in request.path:
-            print(f"🔍 SECURITY DEBUG: All security checks PASSED")
-        if '/api/devices/scan' in request.path:
-            print(f"🔍 SCAN DEBUG: All security checks PASSED")
+        logger.debug(f"Security checks passed for {request.path}")
                 
     def _after_request(self, response):
         """Add security headers to response."""
@@ -243,52 +196,29 @@ class SecurityMiddleware:
         
     def _validate_input(self) -> Optional[tuple]:
         """Validate request input for common security issues."""
-
-        # Debug logging for alerts API
-        is_alerts_request = '/api/monitoring/alerts' in request.path
-
         # Validate query parameters
         for key, value in request.args.items():
-            if is_alerts_request:
-                print(f"🔍 SECURITY DEBUG: Checking query param '{key}' = '{value}'")
             if self._contains_malicious_pattern(str(value)):
                 logger.warning(f"Malicious pattern detected in query parameter: {key}")
-                if is_alerts_request:
-                    print(f"🔍 SECURITY DEBUG: MALICIOUS PATTERN in query param '{key}' = '{value}'")
-                    # Show which pattern matched
-                    self._debug_malicious_pattern(str(value))
                 return jsonify({'error': f'Invalid input in parameter: {key}'}), 400
 
         # Validate form data
         if request.form:
             for key, value in request.form.items():
-                if is_alerts_request:
-                    print(f"🔍 SECURITY DEBUG: Checking form field '{key}' = '{value}'")
                 if self._contains_malicious_pattern(str(value)):
                     logger.warning(f"Malicious pattern detected in form field: {key}")
-                    if is_alerts_request:
-                        print(f"🔍 SECURITY DEBUG: MALICIOUS PATTERN in form field '{key}' = '{value}'")
-                        self._debug_malicious_pattern(str(value))
                     return jsonify({'error': f'Invalid input in field: {key}'}), 400
 
         # Validate JSON data
         if request.is_json:
-            if is_alerts_request:
-                print(f"🔍 SECURITY DEBUG: Checking JSON data...")
             # Use silent=True to avoid exceptions for empty/invalid JSON bodies
             json_data = request.get_json(silent=True)
             # Only validate if there's actual JSON data (DELETE requests with JSON content type might have None data)
             if json_data is not None:
                 validation_error = self._validate_json_data(json_data)
                 if validation_error:
-                    if is_alerts_request:
-                        print(f"🔍 SECURITY DEBUG: MALICIOUS PATTERN in JSON: {validation_error}")
                     return jsonify({'error': validation_error}), 400
-            elif is_alerts_request:
-                print(f"🔍 SECURITY DEBUG: JSON content type but no JSON data (e.g., DELETE request) - skipping validation")
 
-        if is_alerts_request:
-            print(f"🔍 SECURITY DEBUG: Input validation completed - no issues found")
         return None
         
     def _contains_malicious_pattern(self, value: str) -> bool:
@@ -325,45 +255,6 @@ class SecurityMiddleware:
                 return True
                 
         return False
-
-    def _debug_malicious_pattern(self, value: str):
-        """Debug method to identify which pattern matched."""
-        # SQL injection patterns
-        sql_patterns = [
-            r"(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|CREATE|ALTER)\b)",
-            r"(--|#|/\*|\*/)",
-            r"(\bOR\b\s*\d+\s*=\s*\d+)",
-            r"(\bAND\b\s*\d+\s*=\s*\d+)"
-        ]
-
-        # XSS patterns
-        xss_patterns = [
-            r"<script[^>]*>.*?</script>",
-            r"javascript:",
-            r"on\w+\s*=",
-            r"<iframe[^>]*>",
-            r"<object[^>]*>"
-        ]
-
-        # Command injection patterns
-        cmd_patterns = [
-            r"[;&|`$()]",
-            r"\.\./",
-            r"/etc/passwd",
-            r"/bin/sh"
-        ]
-
-        pattern_categories = [
-            ("SQL", sql_patterns),
-            ("XSS", xss_patterns),
-            ("CMD", cmd_patterns)
-        ]
-
-        for category, patterns in pattern_categories:
-            for pattern in patterns:
-                if re.search(pattern, value, re.IGNORECASE):
-                    print(f"🔍 SECURITY DEBUG: MATCHED {category} PATTERN: '{pattern}' in value: '{value}'")
-                    return
 
     def _validate_json_data(self, data: Any, depth: int = 0) -> Optional[str]:
         """Recursively validate JSON data."""

@@ -1,3 +1,4 @@
+import logging
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 from sqlalchemy import func, and_, or_
@@ -5,6 +6,8 @@ from models import db, Device, MonitoringData, Alert
 from collections import defaultdict
 import statistics
 from api.rate_limited_endpoints import create_endpoint_limiter
+
+logger = logging.getLogger(__name__)
 
 # Import health score calculation function for consistency
 from api.health import calculate_health_score
@@ -32,34 +35,36 @@ def get_network_health_score():
     try:
         hours = request.args.get('hours', default=24, type=int)
         cutoff = datetime.utcnow() - timedelta(hours=hours)
-        
-        # Get all monitored devices
-        total_devices = Device.query.filter_by(is_monitored=True).count()
+
+        # Consolidated query for device stats (2 counts in one query)
+        device_stats = db.session.query(
+            func.count(Device.id).label('total_devices'),
+            func.sum(
+                func.cast(Device.last_seen >= cutoff, db.Integer)
+            ).label('devices_up')
+        ).filter(Device.is_monitored == True).first()
+
+        total_devices = device_stats.total_devices or 0
         if total_devices == 0:
             return jsonify({'error': 'No monitored devices found'}), 404
-        
-        # Calculate various health metrics
-        devices_up = Device.query.filter_by(is_monitored=True).filter(
-            Device.last_seen >= cutoff
-        ).count()
-        
-        # Average response time
-        avg_response = db.session.query(func.avg(MonitoringData.response_time)).filter(
-            MonitoringData.timestamp >= cutoff,
-            MonitoringData.response_time.isnot(None)
-        ).scalar() or 0
-        
-        # Success rate
-        total_pings = MonitoringData.query.filter(MonitoringData.timestamp >= cutoff).count()
-        successful_pings = MonitoringData.query.filter(
-            MonitoringData.timestamp >= cutoff,
-            MonitoringData.response_time.isnot(None)
-        ).count()
-        
+
+        devices_up = device_stats.devices_up or 0
+
+        # Consolidated query for monitoring metrics (avg, total, successful in one query)
+        monitoring_stats = db.session.query(
+            func.avg(MonitoringData.response_time).label('avg_response'),
+            func.count(MonitoringData.id).label('total_pings'),
+            func.count(MonitoringData.response_time).label('successful_pings')
+        ).filter(MonitoringData.timestamp >= cutoff).first()
+
+        avg_response = monitoring_stats.avg_response or 0
+        total_pings = monitoring_stats.total_pings or 0
+        successful_pings = monitoring_stats.successful_pings or 0
+
         success_rate = (successful_pings / total_pings * 100) if total_pings > 0 else 0
         uptime_percentage = (devices_up / total_devices * 100)
-        
-        # Get active alerts count for standardized health score calculation
+
+        # Active alerts count
         active_alerts = Alert.query.filter_by(resolved=False).count()
         
         # Use standardized health score calculation (consistent with Health Overview)
@@ -111,41 +116,53 @@ def get_general_device_insights():
     """Get insights about device patterns and behavior"""
     try:
         hours = request.args.get('hours', default=168, type=int)  # Default 7 days
-        cutoff = datetime.utcnow() - timedelta(hours=hours)
-        
-        # Most reliable devices
+        uptime_days = hours // 24 if hours >= 24 else 1
+
+        # Fetch all monitored devices once
+        devices = Device.query.filter_by(is_monitored=True).all()
+        device_ids = [d.id for d in devices]
+
+        # Batch fetch uptime and monitoring data to avoid N+1 queries
+        batch_data = Device.batch_get_device_data(device_ids, include_uptime=True, uptime_days=uptime_days)
+
+        # Build device list with uptime from batch data
         devices_with_uptime = []
-        for device in Device.query.filter_by(is_monitored=True).all():
-            try:
-                uptime = device.uptime_percentage() or 0
-                if uptime >= 0:  # Include devices with 0% uptime for completeness
-                    devices_with_uptime.append({
-                        'id': device.id,
-                        'name': device.display_name,
-                        'ip': device.ip_address,
-                        'uptime': uptime,
-                        'type': device.device_type
-                    })
-            except Exception as e:
-                # Log error but continue processing other devices
-                print(f"Error calculating uptime for device {device.id}: {e}")
-                continue
-        
+        fastest_devices = []
+        for device in devices:
+            uptime = batch_data['uptime_percentages'].get(device.id, 0)
+            devices_with_uptime.append({
+                'id': device.id,
+                'name': device.display_name,
+                'ip': device.ip_address,
+                'uptime': uptime,
+                'type': device.device_type
+            })
+
+            # Get response time from batch monitoring data
+            monitoring_data = batch_data['monitoring_data'].get(device.id)
+            if monitoring_data and monitoring_data.response_time is not None:
+                fastest_devices.append({
+                    'id': device.id,
+                    'name': device.display_name,
+                    'ip': device.ip_address,
+                    'response_time': monitoring_data.response_time
+                })
+
         # Sort by uptime
         most_reliable = sorted(devices_with_uptime, key=lambda x: x['uptime'], reverse=True)[:5]
         least_reliable = sorted(devices_with_uptime, key=lambda x: x['uptime'])[:5]
-        
+
         # Device type analysis
         type_stats = defaultdict(lambda: {'count': 0, 'avg_uptime': 0, 'total_uptime': 0})
         for device_data in devices_with_uptime:
             device_type = device_data['type'] or 'Unknown'
             type_stats[device_type]['count'] += 1
             type_stats[device_type]['total_uptime'] += device_data['uptime']
-        
+
         # Calculate average uptime per type
         for type_name, stats in type_stats.items():
             stats['avg_uptime'] = round(stats['total_uptime'] / stats['count'], 1)
-        
+
         # Convert to list for JSON
         device_types = [
             {
@@ -156,23 +173,12 @@ def get_general_device_insights():
             for type_name, stats in type_stats.items()
         ]
         device_types.sort(key=lambda x: x['avg_uptime'], reverse=True)
-        
-        # Response time leaders
-        fastest_devices = []
-        for device in Device.query.filter_by(is_monitored=True).all():
-            latest_response = device.latest_response_time
-            if latest_response is not None:
-                fastest_devices.append({
-                    'id': device.id,
-                    'name': device.display_name,
-                    'ip': device.ip_address,
-                    'response_time': latest_response
-                })
-        
+
+        # Sort response times
         fastest_devices.sort(key=lambda x: x['response_time'])
         fastest_top5 = fastest_devices[:5]
         slowest_top5 = fastest_devices[-5:] if len(fastest_devices) >= 5 else []
-        
+
         return jsonify({
             'most_reliable': most_reliable,
             'least_reliable': least_reliable,

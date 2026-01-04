@@ -827,33 +827,53 @@ def get_monitoring_status():
         # Get system statistics
         monitor = DeviceMonitor()
         network_stats = monitor.get_network_statistics(hours=1)
-        
-        # Count devices by status
+
+        # Fetch devices and batch data to avoid N+1 queries
         devices = Device.query.filter_by(is_monitored=True).all()
+        device_ids = [d.id for d in devices]
+        batch_data = Device.batch_get_device_data(device_ids)
+
+        # Count devices by status using batch data
         status_counts = {
             'up': 0,
             'down': 0,
             'warning': 0,
             'unknown': 0
         }
-        
+        threshold = datetime.utcnow() - timedelta(seconds=900)
+
         for device in devices:
-            status = device.status
+            # Calculate status without triggering additional queries
+            if not device.last_seen:
+                status = 'unknown'
+            elif device.last_seen < threshold:
+                status = 'down'
+            else:
+                # Check monitoring data for warning state
+                monitoring_data = batch_data['monitoring_data'].get(device.id)
+                if monitoring_data and monitoring_data.response_time and monitoring_data.response_time > 500:
+                    status = 'warning'
+                else:
+                    status = 'up'
             if status in status_counts:
                 status_counts[status] += 1
-        
-        # Active alerts by severity
-        alert_counts = {
-            'critical': Alert.query.filter_by(resolved=False, severity='critical').count(),
-            'warning': Alert.query.filter_by(resolved=False, severity='warning').count(),
-            'info': Alert.query.filter_by(resolved=False, severity='info').count()
-        }
-        
+
+        # Aggregate alert counts in a single query
+        alert_severity_counts = db.session.query(
+            Alert.severity,
+            func.count(Alert.id)
+        ).filter(Alert.resolved == False).group_by(Alert.severity).all()
+
+        alert_counts = {'critical': 0, 'warning': 0, 'info': 0}
+        for severity, count in alert_severity_counts:
+            if severity in alert_counts:
+                alert_counts[severity] = count
+
         # Recent monitoring activity
         recent_checks = MonitoringData.query.filter(
             MonitoringData.timestamp >= datetime.utcnow() - timedelta(minutes=5)
         ).count()
-        
+
         return jsonify({
             'timestamp': datetime.utcnow().isoformat() + 'Z',
             'total_devices': len(devices),
@@ -1035,52 +1055,63 @@ def get_topology_test():
     try:
         # Get all monitored devices
         devices = Device.query.filter_by(is_monitored=True).all()
-        
+        device_ids = [d.id for d in devices]
+
+        # Batch fetch all related data to avoid N+1 queries
+        batch_data = Device.batch_get_device_data(device_ids, include_uptime=True)
+
+        # Pre-calculate device statuses
+        threshold = datetime.utcnow() - timedelta(seconds=900)
+        device_statuses = {}
+        for device in devices:
+            if not device.last_seen:
+                device_statuses[device.id] = 'unknown'
+            elif device.last_seen < threshold:
+                device_statuses[device.id] = 'down'
+            else:
+                monitoring_data = batch_data['monitoring_data'].get(device.id)
+                if monitoring_data and monitoring_data.response_time and monitoring_data.response_time > 500:
+                    device_statuses[device.id] = 'warning'
+                else:
+                    device_statuses[device.id] = 'up'
+
         # Create nodes for devices
         nodes = []
+        color_map = {
+            'up': '#28a745',
+            'down': '#dc3545',
+            'warning': '#ffc107',
+            'unknown': '#6c757d'
+        }
+        icon_map = {
+            'router': '🌐',
+            'computer': '💻',
+            'phone': '📱',
+            'camera': '📷',
+            'iot': '🏠',
+            'printer': '🖨️',
+            'storage': '💾',
+            'gaming': '🎮',
+            'media': '📺',
+            'apple': '🍎',
+            'smart_home': '🏡',
+            'unknown': '❓'
+        }
+
         for device in devices:
-            # Determine node color based on status
-            color_map = {
-                'up': '#28a745',
-                'down': '#dc3545', 
-                'warning': '#ffc107',
-                'unknown': '#6c757d'
-            }
-            
-            # Get device type icon
-            icon_map = {
-                'router': '🌐',
-                'computer': '💻',
-                'phone': '📱',
-                'camera': '📷',
-                'iot': '🏠',
-                'printer': '🖨️',
-                'storage': '💾',
-                'gaming': '🎮',
-                'media': '📺',
-                'apple': '🍎',
-                'smart_home': '🏡',
-                'unknown': '❓'
-            }
-            
-            # Get latest response time directly to avoid property caching issues
-            latest_data = MonitoringData.query.filter_by(device_id=device.id)\
-                                             .order_by(MonitoringData.timestamp.desc())\
-                                             .first()
+            # Get data from batch results
+            latest_data = batch_data['monitoring_data'].get(device.id)
             latest_response_time = latest_data.response_time if latest_data else None
-            
-            # Get active alerts count
-            active_alerts = Alert.query.filter_by(device_id=device.id, resolved=False).count()
-            
-            # Calculate uptime percentage (method call, not property)
-            uptime_pct = device.uptime_percentage() or 0
-            
+            active_alerts = batch_data['alert_counts'].get(device.id, 0)
+            uptime_pct = batch_data['uptime_percentages'].get(device.id, 0)
+            status = device_statuses[device.id]
+
             nodes.append({
                 'id': str(device.id),
                 'label': device.display_name,
                 'ip': device.ip_address,
-                'status': device.status,
-                'color': color_map.get(device.status, '#6c757d'),
+                'status': status,
+                'color': color_map.get(status, '#6c757d'),
                 'icon': icon_map.get(device.device_type, '❓'),
                 'device_type': device.device_type,
                 'response_time': latest_response_time,
@@ -1089,43 +1120,41 @@ def get_topology_test():
                 'active_alerts': active_alerts,
                 'size': 20 + uptime_pct / 5  # Size based on uptime
             })
-        
+
         # Create edges (connections) - hub topology with router at center
         edges = []
         router_device = None
-        
+
         # Find the router (usually .1 in the network)
         for device in devices:
             device_type = device.device_type or ''
             if device.ip_address.endswith('.1') or 'router' in device_type.lower():
                 router_device = device
                 break
-        
+
         # If no explicit router found, use the first device as hub
         if not router_device and devices:
             router_device = devices[0]
-        
+
         # Create star topology with router at center
         if router_device:
             for device in devices:
                 if device.id != router_device.id:
-                    # Connection strength based on response time
+                    # Connection strength based on response time (use batch data)
                     strength = 1.0
-                    # Get latest response time for this device
-                    latest_data = MonitoringData.query.filter_by(device_id=device.id)\
-                                                     .order_by(MonitoringData.timestamp.desc())\
-                                                     .first()
+                    latest_data = batch_data['monitoring_data'].get(device.id)
                     if latest_data and latest_data.response_time:
                         # Lower response time = stronger connection
                         strength = max(0.1, 1.0 - (latest_data.response_time / 1000.0))
-                    
+
+                    status = device_statuses[device.id]
                     edges.append({
                         'source': str(router_device.id),
                         'target': str(device.id),
                         'strength': strength,
-                        'color': '#28a745' if device.status == 'up' else '#dc3545'
+                        'color': '#28a745' if status == 'up' else '#dc3545'
                     })
-        
+
         return jsonify({
             'nodes': nodes,
             'edges': edges,
@@ -1147,52 +1176,63 @@ def get_network_topology():
     try:
         # Get all devices
         devices = Device.query.filter_by(is_monitored=True).all()
-        
+        device_ids = [d.id for d in devices]
+
+        # Batch fetch all related data to avoid N+1 queries
+        batch_data = Device.batch_get_device_data(device_ids, include_uptime=True)
+
+        # Pre-calculate device statuses
+        threshold = datetime.utcnow() - timedelta(seconds=900)
+        device_statuses = {}
+        for device in devices:
+            if not device.last_seen:
+                device_statuses[device.id] = 'unknown'
+            elif device.last_seen < threshold:
+                device_statuses[device.id] = 'down'
+            else:
+                monitoring_data = batch_data['monitoring_data'].get(device.id)
+                if monitoring_data and monitoring_data.response_time and monitoring_data.response_time > 500:
+                    device_statuses[device.id] = 'warning'
+                else:
+                    device_statuses[device.id] = 'up'
+
         # Create nodes for devices
         nodes = []
+        color_map = {
+            'up': '#28a745',
+            'down': '#dc3545',
+            'warning': '#ffc107',
+            'unknown': '#6c757d'
+        }
+        icon_map = {
+            'router': '🌐',
+            'computer': '💻',
+            'phone': '📱',
+            'camera': '📷',
+            'iot': '🏠',
+            'printer': '🖨️',
+            'storage': '💾',
+            'gaming': '🎮',
+            'media': '📺',
+            'apple': '🍎',
+            'smart_home': '🏡',
+            'unknown': '❓'
+        }
+
         for device in devices:
-            # Determine node color based on status
-            color_map = {
-                'up': '#28a745',
-                'down': '#dc3545', 
-                'warning': '#ffc107',
-                'unknown': '#6c757d'
-            }
-            
-            # Get device type icon
-            icon_map = {
-                'router': '🌐',
-                'computer': '💻',
-                'phone': '📱',
-                'camera': '📷',
-                'iot': '🏠',
-                'printer': '🖨️',
-                'storage': '💾',
-                'gaming': '🎮',
-                'media': '📺',
-                'apple': '🍎',
-                'smart_home': '🏡',
-                'unknown': '❓'
-            }
-            
-            # Get latest response time directly to avoid property caching issues
-            latest_data = MonitoringData.query.filter_by(device_id=device.id)\
-                                             .order_by(MonitoringData.timestamp.desc())\
-                                             .first()
+            # Get data from batch results
+            latest_data = batch_data['monitoring_data'].get(device.id)
             latest_response_time = latest_data.response_time if latest_data else None
-            
-            # Get active alerts count
-            active_alerts = Alert.query.filter_by(device_id=device.id, resolved=False).count()
-            
-            # Calculate uptime percentage (method call, not property)
-            uptime_pct = device.uptime_percentage() or 0
-            
+            active_alerts = batch_data['alert_counts'].get(device.id, 0)
+            uptime_pct = batch_data['uptime_percentages'].get(device.id, 0)
+            status = device_statuses[device.id]
+
             nodes.append({
                 'id': str(device.id),
                 'label': device.display_name,
                 'ip': device.ip_address,
-                'status': device.status,
-                'color': color_map.get(device.status, '#6c757d'),
+                'status': status,
+                'color': color_map.get(status, '#6c757d'),
                 'icon': icon_map.get(device.device_type, '❓'),
                 'device_type': device.device_type,
                 'response_time': latest_response_time,
@@ -1201,42 +1241,39 @@ def get_network_topology():
                 'active_alerts': active_alerts,
                 'size': 20 + uptime_pct / 5  # Size based on uptime
             })
-        
+
         # Create edges (connections) - for now, we'll connect everything to the router
-        # In a real network, you'd determine actual topology through ARP tables, switch data, etc.
         edges = []
         router_device = None
-        
+
         # Find the router (usually .1 in the network)
         for device in devices:
             device_type = device.device_type or ''
             if device.ip_address.endswith('.1') or 'router' in device_type.lower():
                 router_device = device
                 break
-        
+
         # If no explicit router found, use the first device as hub
         if not router_device and devices:
             router_device = devices[0]
-        
+
         # Create star topology with router at center
         if router_device:
             for device in devices:
                 if device.id != router_device.id:
-                    # Connection strength based on response time
+                    # Connection strength based on response time (use batch data)
                     strength = 1.0
-                    # Get latest response time for this device
-                    latest_data = MonitoringData.query.filter_by(device_id=device.id)\
-                                                     .order_by(MonitoringData.timestamp.desc())\
-                                                     .first()
+                    latest_data = batch_data['monitoring_data'].get(device.id)
                     if latest_data and latest_data.response_time:
                         # Lower response time = stronger connection
                         strength = max(0.1, 1.0 - (latest_data.response_time / 1000.0))
-                    
+
+                    status = device_statuses[device.id]
                     edges.append({
                         'source': str(router_device.id),
                         'target': str(device.id),
                         'strength': strength,
-                        'color': '#28a745' if device.status == 'up' else '#dc3545'
+                        'color': '#28a745' if status == 'up' else '#dc3545'
                     })
         
         # Add some subnet-based connections for more realistic topology

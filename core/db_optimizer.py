@@ -325,7 +325,16 @@ class DatabaseIndexManager:
             
             # Composite indexes for common queries
             'CREATE INDEX IF NOT EXISTS idx_device_monitoring ON devices(id, is_monitored) WHERE is_monitored = 1',
-            'CREATE INDEX IF NOT EXISTS idx_active_alerts ON alerts(device_id, resolved) WHERE resolved = 0'
+            'CREATE INDEX IF NOT EXISTS idx_active_alerts ON alerts(device_id, resolved) WHERE resolved = 0',
+
+            # BandwidthData indexes (for "latest bandwidth per device" queries)
+            'CREATE INDEX IF NOT EXISTS idx_bandwidth_device_timestamp ON bandwidth_data(device_id, timestamp DESC)',
+
+            # PerformanceMetrics indexes (for "latest metrics per device" queries)
+            'CREATE INDEX IF NOT EXISTS idx_performance_device_timestamp ON performance_metrics(device_id, timestamp DESC)',
+
+            # Composite index for monitored device status checks
+            'CREATE INDEX IF NOT EXISTS idx_devices_monitored_last_seen ON devices(is_monitored, last_seen DESC)'
         ]
         
         try:
