@@ -1,4 +1,5 @@
 import logging
+import threading
 from typing import Dict, Any, Set, Optional, Callable
 from flask_socketio import SocketIO, emit, join_room, leave_room
 from flask import request
@@ -35,6 +36,15 @@ class WebSocketManager:
         }
         
         logger.info(f"WebSocketManager initialized with max_connections_per_client={max_connections_per_client}")
+
+        # Start periodic cleanup thread
+        self._cleanup_thread = threading.Thread(
+            target=self._periodic_cleanup_loop,
+            daemon=True,
+            name="WebSocketCleanup"
+        )
+        self._cleanup_running = True
+        self._cleanup_thread.start()
         
     def register_handlers(self):
         """Register core WebSocket event handlers."""
@@ -213,8 +223,63 @@ class WebSocketManager:
         for session_id in stale_sessions:
             logger.info(f"Cleaning up stale session {session_id}")
             self.disconnect_client(session_id)
-            
+
         return len(stale_sessions)
+
+    def cleanup_stale_rate_limits(self, max_age_minutes: int = 10):
+        """Clean up stale rate limit entries for disconnected sessions."""
+        now = datetime.now()
+        stale_threshold = timedelta(minutes=max_age_minutes)
+
+        # Find stale entries (sessions no longer connected)
+        stale_sessions = []
+        for session_id in list(self.message_reset_time.keys()):
+            if session_id not in self.session_info:
+                # Session disconnected, check if entry is old enough to remove
+                reset_time = self.message_reset_time.get(session_id)
+                if reset_time and now - reset_time > stale_threshold:
+                    stale_sessions.append(session_id)
+
+        # Clean up stale entries
+        for session_id in stale_sessions:
+            self.message_counts.pop(session_id, None)
+            self.message_reset_time.pop(session_id, None)
+
+        if stale_sessions:
+            logger.debug(f"Cleaned up {len(stale_sessions)} stale rate limit entries")
+
+        return len(stale_sessions)
+
+    def _periodic_cleanup_loop(self):
+        """Background thread that runs periodic cleanup tasks."""
+        logger.info("WebSocket cleanup thread started")
+
+        while self._cleanup_running:
+            try:
+                # Run cleanup every 5 minutes
+                time.sleep(300)
+
+                if not self._cleanup_running:
+                    break
+
+                # Clean up stale connections (24 hours old)
+                stale_connections = self.cleanup_stale_connections(max_age_hours=24)
+
+                # Clean up stale rate limit entries (10 minutes old)
+                stale_rate_limits = self.cleanup_stale_rate_limits(max_age_minutes=10)
+
+                if stale_connections > 0 or stale_rate_limits > 0:
+                    logger.info(f"Cleanup complete: {stale_connections} stale connections, "
+                               f"{stale_rate_limits} stale rate limits")
+
+            except Exception as e:
+                logger.error(f"Error in cleanup thread: {e}")
+
+        logger.info("WebSocket cleanup thread stopped")
+
+    def stop_cleanup(self):
+        """Stop the periodic cleanup thread."""
+        self._cleanup_running = False
         
     def register_monitoring_events(self, monitor, alert_manager):
         """Register monitoring-specific WebSocket events."""

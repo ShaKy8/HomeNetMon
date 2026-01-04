@@ -1,60 +1,37 @@
 """
 Caching layer for expensive database queries and computations.
+
+This module now uses UnifiedCache from services/unified_cache.py as its backend,
+providing a single consolidated caching layer across the application.
 """
 
 import logging
-import pickle
-import json
 import time
 import hashlib
-from typing import Any, Dict, Optional, Callable, Union, Tuple, List
+from typing import Any, Dict, Optional, Callable, List
 from functools import wraps
-from datetime import datetime, timedelta
 from threading import Lock
-import weakref
+
+# Use UnifiedCache as the backend for all caching
+from services.unified_cache import UnifiedCache, get_cache as get_unified_cache
 
 logger = logging.getLogger(__name__)
 
-class CacheEntry:
-    """Represents a cached entry with metadata."""
-    
-    def __init__(self, value: Any, ttl: int, created_at: float = None):
-        self.value = value
-        self.ttl = ttl
-        self.created_at = created_at or time.time()
-        self.access_count = 0
-        self.last_accessed = self.created_at
-        
-    def is_expired(self) -> bool:
-        """Check if the cache entry has expired."""
-        if self.ttl <= 0:
-            return False  # Never expires
-        return time.time() - self.created_at > self.ttl
-        
-    def touch(self):
-        """Update access statistics."""
-        self.access_count += 1
-        self.last_accessed = time.time()
-
 class InMemoryCache:
-    """High-performance in-memory cache with TTL and LRU eviction."""
-    
+    """
+    Cache wrapper that delegates to UnifiedCache.
+
+    This class provides backward compatibility while using the consolidated
+    UnifiedCache backend from services/unified_cache.py.
+    """
+
     def __init__(self, max_size: int = 10000, default_ttl: int = 300):
         self.max_size = max_size
         self.default_ttl = default_ttl
-        self.cache: Dict[str, CacheEntry] = {}
-        self.lock = Lock()
-        
-        # Statistics
-        self.stats = {
-            'hits': 0,
-            'misses': 0,
-            'sets': 0,
-            'deletes': 0,
-            'evictions': 0,
-            'expired': 0
-        }
-        
+        # Use the global unified cache as the backend
+        self._backend = get_unified_cache()
+        self.lock = Lock()  # Keep for compatibility
+
     def _generate_key(self, key: Any) -> str:
         """Generate a string key from any hashable object."""
         if isinstance(key, str):
@@ -65,95 +42,39 @@ class InMemoryCache:
             # Hash complex objects
             key_str = str(key)
             return hashlib.md5(key_str.encode()).hexdigest()
-            
+
     def get(self, key: Any) -> Optional[Any]:
         """Get a value from the cache."""
         str_key = self._generate_key(key)
-        
-        with self.lock:
-            if str_key in self.cache:
-                entry = self.cache[str_key]
-                
-                if entry.is_expired():
-                    del self.cache[str_key]
-                    self.stats['expired'] += 1
-                    self.stats['misses'] += 1
-                    return None
-                    
-                entry.touch()
-                self.stats['hits'] += 1
-                return entry.value
-                
-            self.stats['misses'] += 1
-            return None
-            
+        return self._backend.get(str_key)
+
     def set(self, key: Any, value: Any, ttl: Optional[int] = None) -> None:
         """Set a value in the cache."""
         str_key = self._generate_key(key)
         ttl = ttl if ttl is not None else self.default_ttl
-        
-        with self.lock:
-            # Check if we need to evict entries
-            if len(self.cache) >= self.max_size and str_key not in self.cache:
-                self._evict_lru()
-                
-            self.cache[str_key] = CacheEntry(value, ttl)
-            self.stats['sets'] += 1
-            
+        self._backend.set(str_key, value, ttl)
+
     def delete(self, key: Any) -> bool:
         """Delete a key from the cache."""
         str_key = self._generate_key(key)
-        
-        with self.lock:
-            if str_key in self.cache:
-                del self.cache[str_key]
-                self.stats['deletes'] += 1
-                return True
-            return False
-            
+        return self._backend.delete(str_key)
+
     def clear(self) -> None:
         """Clear all entries from the cache."""
-        with self.lock:
-            self.cache.clear()
-            
-    def _evict_lru(self) -> None:
-        """Evict the least recently used entry."""
-        if not self.cache:
-            return
-            
-        # Find LRU entry
-        lru_key = min(self.cache.keys(), key=lambda k: self.cache[k].last_accessed)
-        del self.cache[lru_key]
-        self.stats['evictions'] += 1
-        
+        self._backend.clear()
+
     def cleanup_expired(self) -> int:
-        """Remove expired entries and return count of removed entries."""
-        expired_keys = []
-        
-        with self.lock:
-            current_time = time.time()
-            for key, entry in self.cache.items():
-                if entry.is_expired():
-                    expired_keys.append(key)
-                    
-            for key in expired_keys:
-                del self.cache[key]
-                
-        self.stats['expired'] += len(expired_keys)
-        return len(expired_keys)
-        
+        """Remove expired entries - handled automatically by UnifiedCache."""
+        # UnifiedCache handles TTL automatically, no manual cleanup needed
+        return 0
+
     def get_stats(self) -> Dict[str, Any]:
         """Get cache statistics."""
-        with self.lock:
-            total_requests = self.stats['hits'] + self.stats['misses']
-            hit_rate = (self.stats['hits'] / total_requests * 100) if total_requests else 0
-            
-            return {
-                **self.stats,
-                'size': len(self.cache),
-                'max_size': self.max_size,
-                'hit_rate_percent': round(hit_rate, 2)
-            }
+        stats = self._backend.get_stats()
+        # Add backward-compatible fields
+        if 'hit_rate' in stats:
+            stats['hit_rate_percent'] = stats['hit_rate']
+        return stats
 
 class QueryResultCache:
     """Specialized cache for database query results."""
@@ -354,29 +275,27 @@ def setup_cache_cleanup():
 def get_cache_health() -> Dict[str, Any]:
     """Get overall cache system health."""
     stats = global_cache.get_stats()
-    
+
     health_status = "healthy"
     issues = []
-    
-    # Check hit rate
-    if stats['hit_rate_percent'] < 50:
+
+    # Check hit rate (support both old and new stat formats)
+    hit_rate = stats.get('hit_rate_percent', stats.get('hit_rate', 0))
+    if hit_rate < 50:
         health_status = "degraded"
         issues.append("Low cache hit rate")
-        
+
     # Check cache utilization
-    utilization = (stats['size'] / stats['max_size']) * 100
+    size = stats.get('size', 0)
+    max_size = stats.get('max_size', 1)  # Avoid division by zero
+    utilization = (size / max_size * 100) if max_size > 0 else 0
     if utilization > 90:
         health_status = "degraded"
         issues.append("High cache utilization")
-        
-    # Check eviction rate
-    if stats['evictions'] > stats['sets'] * 0.1:
-        health_status = "degraded"
-        issues.append("High eviction rate")
-        
+
     return {
         'status': health_status,
         'issues': issues,
         'statistics': stats,
-        'utilization_percent': round(utilization, 2) if stats['max_size'] > 0 else 0
+        'utilization_percent': round(utilization, 2)
     }

@@ -200,69 +200,35 @@ def cached_query(ttl=30, key_prefix="", invalidate_on_change=True):
     return decorator
 
 def get_cached_device_list(app_context_func) -> List[Dict[str, Any]]:
-    """Get cached list of all devices with their latest status"""
-    
+    """Get cached list of all devices with their latest status - N+1 OPTIMIZED"""
+
     @cached_query(ttl=60, key_prefix="devices_", invalidate_on_change=True)  # 1-minute cache for production
     def _get_device_list():
-        from models import Device, MonitoringData, Alert, db
-        from sqlalchemy import func, desc
-        from datetime import datetime, timedelta
+        from models import Device, db
 
         with app_context_func():
-            # Get all devices efficiently with optimized query
-            devices_query = db.session.query(Device).all()
-            logger.info(f"=== CACHE MISS: Retrieved {len(devices_query)} devices from database ===")
-            logger.info(f"Sample IPs: {[d.ip_address for d in devices_query[:10]]}")
-            
-            # TODO: Re-add monitoring data and alerts in a separate optimization phase
-            # For now, just return basic device data to fix the NOC display issue
-            
-            # Convert to serializable format
+            # Use batch query method to eliminate N+1 queries
+            # This fetches all devices + monitoring data + alert counts in 3 queries total
+            device_results = Device.get_all_with_batch_data(
+                query=Device.query,
+                include_uptime=True
+            )
+
+            logger.info(f"=== CACHE MISS: Retrieved {len(device_results)} devices with batch data ===")
+
+            # Convert to serializable format using fast method
             device_list = []
-            current_time = datetime.utcnow()
-            
-            for device in devices_query:
-                # Simplified - no complex monitoring data lookup for now
-                response_time = None
-                last_monitoring = None
-                alert_count = 0
-                # Calculate status efficiently based on last_seen timestamp
-                status = 'unknown'
-                if device.last_seen:
-                    threshold = current_time - timedelta(seconds=900)  # 15-minute threshold (ping interval + buffer)
-                    if device.last_seen >= threshold:
-                        # Device was seen recently, consider it up
-                        # TODO: Add proper response time checking in future optimization
-                        status = 'up'
-                    else:
-                        status = 'down'
-                else:
-                    status = 'unknown'
-                
-                device_data = {
-                    'id': device.id,
-                    'ip_address': device.ip_address,
-                    'mac_address': device.mac_address,
-                    'hostname': device.hostname,
-                    'vendor': device.vendor,
-                    'custom_name': device.custom_name,
-                    'display_name': device.custom_name or device.hostname or device.ip_address,
-                    'device_type': device.device_type,
-                    'device_group': device.device_group,
-                    'is_monitored': device.is_monitored,
-                    'status': status,
-                    'latest_response_time': response_time,
-                    'last_seen': device.last_seen.isoformat() + 'Z' if device.last_seen else None,
-                    'active_alerts': alert_count,
-                    'uptime_percentage': device.uptime_percentage(),
-                    'created_at': device.created_at.isoformat() + 'Z',
-                    'updated_at': device.updated_at.isoformat() + 'Z' if device.updated_at else None
-                }
+            for device, monitoring_data, alert_count, uptime_pct in device_results:
+                device_data = device.to_dict_fast(
+                    monitoring_data=monitoring_data,
+                    alert_count=alert_count,
+                    uptime_pct=uptime_pct
+                )
                 device_list.append(device_data)
 
             logger.info(f"=== Returning {len(device_list)} devices from cache function ===")
             return device_list
-    
+
     return _get_device_list()
 
 def get_cached_monitoring_summary(app_context_func) -> Dict[str, Any]:

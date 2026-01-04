@@ -40,8 +40,8 @@ class Device(db.Model):
     is_monitored = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
-    last_seen = db.Column(db.DateTime)
-    
+    last_seen = db.Column(db.DateTime, index=True)  # Index for status checks and sorting
+
     # Relationships
     monitoring_data = db.relationship('MonitoringData', backref='device', cascade='all, delete-orphan', lazy=True)
     alerts = db.relationship('Alert', backref='device', cascade='all, delete-orphan', lazy=True)
@@ -478,6 +478,141 @@ class Device(db.Model):
             'last_seen': (self.last_seen.isoformat() + 'Z') if self.last_seen else None,
         }
 
+    def to_dict_fast(self, monitoring_data=None, alert_count=0, uptime_pct=None):
+        """
+        Fast serialization that uses pre-fetched data instead of per-device queries.
+        Use with batch_get_device_data() for N+1 query elimination.
+        """
+        # Calculate status from last_seen without additional queries
+        status = 'unknown'
+        if self.last_seen:
+            threshold = datetime.utcnow() - timedelta(seconds=900)
+            if self.last_seen >= threshold:
+                # Check for warning state from pre-fetched monitoring data
+                if monitoring_data and monitoring_data.response_time is not None:
+                    if monitoring_data.response_time > 1000:
+                        status = 'warning'
+                    else:
+                        status = 'up'
+                else:
+                    status = 'up'
+            else:
+                status = 'down'
+
+        return {
+            'id': self.id,
+            'ip_address': self.ip_address,
+            'mac_address': self.mac_address,
+            'hostname': self.hostname,
+            'vendor': self.vendor,
+            'custom_name': self.custom_name,
+            'device_type': self.device_type,
+            'device_group': self.device_group,
+            'room_location': self.room_location,
+            'device_priority': self.device_priority,
+            'display_name': self.display_name,
+            'is_monitored': self.is_monitored,
+            'status': status,
+            'uptime_percentage': uptime_pct if uptime_pct is not None else 0,
+            'active_alerts': alert_count,
+            'latest_response_time': monitoring_data.response_time if monitoring_data else None,
+            'latest_check': monitoring_data.timestamp.isoformat() + 'Z' if monitoring_data else None,
+            'created_at': (self.created_at.isoformat() + 'Z') if self.created_at else None,
+            'updated_at': (self.updated_at.isoformat() + 'Z') if self.updated_at else None,
+            'last_seen': (self.last_seen.isoformat() + 'Z') if self.last_seen else None,
+        }
+
+    @classmethod
+    def batch_get_device_data(cls, device_ids, include_uptime=False, uptime_days=7):
+        """
+        Batch fetch all related data for multiple devices in minimal queries.
+        Returns dict with monitoring_data, alert_counts, and optionally uptime_percentages.
+
+        This eliminates N+1 queries by fetching all data upfront.
+        """
+        from sqlalchemy import func, and_
+
+        result = {
+            'monitoring_data': {},  # device_id -> MonitoringData
+            'alert_counts': {},     # device_id -> count
+            'uptime_percentages': {}  # device_id -> percentage (if include_uptime=True)
+        }
+
+        if not device_ids:
+            return result
+
+        # 1. Get latest monitoring data for all devices in ONE query
+        latest_monitoring_subquery = db.session.query(
+            MonitoringData.device_id,
+            func.max(MonitoringData.timestamp).label('max_timestamp')
+        ).filter(MonitoringData.device_id.in_(device_ids)).group_by(MonitoringData.device_id).subquery()
+
+        latest_monitoring = db.session.query(MonitoringData).join(
+            latest_monitoring_subquery,
+            and_(
+                MonitoringData.device_id == latest_monitoring_subquery.c.device_id,
+                MonitoringData.timestamp == latest_monitoring_subquery.c.max_timestamp
+            )
+        ).all()
+
+        result['monitoring_data'] = {md.device_id: md for md in latest_monitoring}
+
+        # 2. Get active alert counts for all devices in ONE query
+        alert_counts = db.session.query(
+            Alert.device_id,
+            func.count(Alert.id).label('count')
+        ).filter(
+            Alert.device_id.in_(device_ids),
+            Alert.resolved == False
+        ).group_by(Alert.device_id).all()
+
+        result['alert_counts'] = {ac.device_id: ac.count for ac in alert_counts}
+
+        # 3. Calculate uptime percentages if requested (requires more data)
+        if include_uptime:
+            cutoff = datetime.utcnow() - timedelta(days=uptime_days)
+
+            # Get success/failure counts per device in ONE query
+            uptime_stats = db.session.query(
+                MonitoringData.device_id,
+                func.count(MonitoringData.id).label('total'),
+                func.count(MonitoringData.response_time).label('successful')
+            ).filter(
+                MonitoringData.device_id.in_(device_ids),
+                MonitoringData.timestamp >= cutoff
+            ).group_by(MonitoringData.device_id).all()
+
+            for stat in uptime_stats:
+                if stat.total > 0:
+                    pct = (stat.successful / stat.total) * 100
+                    result['uptime_percentages'][stat.device_id] = round(pct, 2)
+
+        return result
+
+    @classmethod
+    def get_all_with_batch_data(cls, query=None, include_uptime=False):
+        """
+        Get devices with all related data pre-fetched.
+        Returns list of (device, monitoring_data, alert_count, uptime_pct) tuples.
+        """
+        if query is None:
+            query = cls.query
+
+        devices = query.all()
+        device_ids = [d.id for d in devices]
+
+        batch_data = cls.batch_get_device_data(device_ids, include_uptime=include_uptime)
+
+        results = []
+        for device in devices:
+            monitoring_data = batch_data['monitoring_data'].get(device.id)
+            alert_count = batch_data['alert_counts'].get(device.id, 0)
+            uptime_pct = batch_data['uptime_percentages'].get(device.id, 0) if include_uptime else None
+            results.append((device, monitoring_data, alert_count, uptime_pct))
+
+        return results
+
+
 class DeviceIpHistory(db.Model):
     """Track IP address changes for devices over time"""
     __tablename__ = 'device_ip_history'
@@ -721,6 +856,9 @@ db.Index('idx_alert_severity_resolved', Alert.severity, Alert.resolved)  # For q
 db.Index('idx_alert_acknowledged_resolved', Alert.acknowledged, Alert.resolved)  # For queries like: unacknowledged alerts
 db.Index('idx_alert_type_resolved', Alert.alert_type, Alert.resolved)  # For queries like: device_down alerts that are active
 db.Index('idx_alert_device_type_resolved', Alert.device_id, Alert.alert_type, Alert.resolved)  # For complex device queries
+
+# Composite indexes for common monitoring data query patterns
+db.Index('idx_monitoring_device_timestamp', MonitoringData.device_id, MonitoringData.timestamp.desc())  # For "latest data per device" queries
 
 class Configuration(db.Model):
     __tablename__ = 'configuration'

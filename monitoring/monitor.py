@@ -38,7 +38,8 @@ class DeviceMonitor:
                     return Configuration.get_value(key, str(default))
             else:
                 return Configuration.get_value(key, str(default))
-        except:
+        except Exception as e:
+            logger.debug(f"Failed to get config value '{key}', using default '{default}': {e}")
             return str(default)
         
     def ping_device(self, device):
@@ -188,8 +189,9 @@ class DeviceMonitor:
                     try:
                         from services.query_cache import invalidate_device_cache
                         invalidate_device_cache()
-                    except Exception:
-                        pass  # Don't let cache issues break monitoring
+                    except Exception as e:
+                        # Don't let cache issues break monitoring, but log for debugging
+                        logger.debug(f"Cache invalidation failed (non-critical): {e}")
                     
                     # Check for status changes and trigger rule engine
                     current_status = device_obj.status

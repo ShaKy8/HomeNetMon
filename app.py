@@ -77,6 +77,14 @@ def create_app():
         logger.info("Security middleware initialized with enhanced debugging")
     except ImportError:
         logger.warning("Security middleware not available - CSRF protection disabled")
+
+    # Initialize centralized error handler for standardized API error responses
+    try:
+        from core.error_handler import global_error_handler
+        global_error_handler.init_app(app)
+        logger.info("Centralized error handler initialized")
+    except ImportError:
+        logger.warning("Error handler not available - using default Flask error handling")
     
     # Initialize SocketIO for real-time updates - Allow local network access
     # Allow any origin from local networks for home network monitoring

@@ -18,16 +18,15 @@ class SecurityMiddleware:
         self.csrf_tokens: Dict[str, float] = {}  # token -> expiration_timestamp
         self.csrf_token_lifetime = 3600  # 1 hour lifetime for tokens
         self.csrf_exempt_routes: Set[str] = {
-            '/api/health',  # Health check endpoint
+            '/api/health',  # Health check endpoint (read-only)
             '/api/auth/login',  # Login endpoint needs to work without token
             '/api/csrf-token',  # CSRF token refresh endpoint
-            '/api/monitoring/alerts',  # Alerts data endpoint
-            '/api/devices/scan',  # Network scan endpoint (temporary for testing)
-            '/api/devices/scan-now',  # Alternative scan endpoint to bypass browser cache
             '/login',  # Web login page
             '/test-login',  # Test login route for debugging
             '/favicon.ico',  # Static resources
             '/static/service-worker.js'  # Service worker
+            # NOTE: /api/devices/scan and /api/monitoring/alerts are NOT exempt
+            # Frontend MUST send CSRF tokens for these endpoints
         }
         
         # Security configuration
@@ -219,10 +218,6 @@ class SecurityMiddleware:
         """Verify CSRF token from request."""
         # Skip CSRF check for exempt routes
         if request.endpoint in self.csrf_exempt_routes or request.path in self.csrf_exempt_routes:
-            return True
-
-        # Special handling for alerts endpoints that include alert IDs in the path
-        if request.path.startswith('/api/monitoring/alerts'):
             return True
 
         # Get token from header or form data

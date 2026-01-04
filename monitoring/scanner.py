@@ -327,14 +327,22 @@ class NetworkScanner:
             import socket
             hostname = socket.gethostbyaddr(ip)[0]
             return hostname
-        except:
+        except socket.herror:
+            # Host not found - this is expected for many IPs
             return None
-    
+        except socket.gaierror as e:
+            logger.debug(f"DNS resolution failed for {ip}: {e}")
+            return None
+        except Exception as e:
+            logger.warning(f"Unexpected error resolving hostname for {ip}: {e}")
+            return None
+
     def get_mac_vendor(self, mac):
         """Get vendor information from MAC address"""
         try:
             return self.mac_parser.get_manuf(mac)
-        except:
+        except Exception as e:
+            logger.debug(f"Failed to get vendor for MAC {mac}: {e}")
             return None
     
     def classify_device_type(self, device_info):

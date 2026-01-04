@@ -168,11 +168,10 @@ class CSRFHandler {
     requiresCSRFToken(method, url = '') {
         const upperMethod = (method || 'GET').toUpperCase();
 
-        // URL-based exemptions for specific endpoints
+        // URL-based exemptions for specific endpoints (read-only or token endpoints only)
         const exemptPaths = [
-            '/api/monitoring/alerts',
-            '/api/health',
-            '/api/csrf-token'
+            '/api/health',      // Read-only health check
+            '/api/csrf-token'   // Token refresh endpoint
         ];
 
         // Check if URL matches any exempt path
@@ -180,6 +179,7 @@ class CSRFHandler {
             return false;
         }
 
+        // CSRF token required for all state-changing methods
         return ['POST', 'PUT', 'PATCH', 'DELETE'].includes(upperMethod);
     }
 
