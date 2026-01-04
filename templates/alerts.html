@@ -494,8 +494,6 @@
 
 {% block extra_js %}
 <script>
-console.log('🔔 Alerts page loaded');
-
 class AlertsManager {
     constructor() {
         this.alerts = [];
@@ -519,7 +517,7 @@ class AlertsManager {
     }
 
     debug(message, data = null) {
-        if (this.debugMode || console.time) { // Always log in development
+        if (this.debugMode) {
             const timestamp = new Date().toISOString();
             console.log(`[AlertsManager ${timestamp}] ${message}`, data || '');
         }

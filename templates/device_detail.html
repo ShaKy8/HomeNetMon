@@ -635,22 +635,55 @@ function formatDate(dateString) {
     return new Date(dateString).toLocaleString();
 }
 
+function showToast(message, type = 'info') {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '1055';
+        document.body.appendChild(toastContainer);
+    }
+
+    const typeMap = { 'success': 'success', 'error': 'danger', 'warning': 'warning', 'info': 'primary' };
+    const bgClass = typeMap[type] || 'primary';
+
+    const toastEl = document.createElement('div');
+    toastEl.className = `toast align-items-center text-bg-${bgClass} border-0`;
+    toastEl.setAttribute('role', 'alert');
+    toastEl.setAttribute('aria-live', 'assertive');
+    toastEl.setAttribute('aria-atomic', 'true');
+
+    const toastBody = document.createElement('div');
+    toastBody.className = 'd-flex';
+    toastBody.innerHTML = `
+        <div class="toast-body"></div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    `;
+    toastBody.querySelector('.toast-body').textContent = message;
+    toastEl.appendChild(toastBody);
+    toastContainer.appendChild(toastEl);
+
+    const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+    toast.show();
+    toastEl.addEventListener('hidden.bs.toast', () => toastEl.remove());
+}
+
 function showError(message) {
-    // You can implement a toast notification system here
-    alert('Error: ' + message);
+    showToast(message, 'error');
 }
 
 function showSuccess(message) {
-    // You can implement a toast notification system here
-    alert('Success: ' + message);
+    showToast(message, 'success');
 }
 
 function showGlobalLoading(message) {
-    console.log('Loading:', message);
+    // Loading state handled by UI elements
 }
 
 function hideGlobalLoading() {
-    console.log('Loading complete');
+    // Loading state handled by UI elements
 }
 </script>
 {% endblock %}

@@ -15,6 +15,19 @@ let filters = {
     sortBy: 'name'
 };
 
+// Utility: Debounce function for performance
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', function() {
     initializeSocket();
@@ -108,10 +121,13 @@ function initializeSocket() {
 
 // Event Listeners Setup
 function setupEventListeners() {
-    // Search
-    document.getElementById('device-search').addEventListener('input', function(e) {
-        filters.search = e.target.value.toLowerCase();
+    // Search with debounce for performance (300ms delay)
+    const debouncedSearch = debounce(function(searchValue) {
+        filters.search = searchValue.toLowerCase();
         filterAndDisplayDevices();
+    }, 300);
+    document.getElementById('device-search').addEventListener('input', function(e) {
+        debouncedSearch(e.target.value);
     });
 
     // View Toggle
@@ -648,7 +664,52 @@ function completeScanProgress(devicesFound = 0, newDevices = 0) {
 }
 
 function showNotification(message, type = 'info') {
-    // You can implement a toast notification system here
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toast-container');
+    if (!toastContainer) {
+        toastContainer = document.createElement('div');
+        toastContainer.id = 'toast-container';
+        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
+        toastContainer.style.zIndex = '1055';
+        document.body.appendChild(toastContainer);
+    }
+
+    // Map type to Bootstrap color class
+    const typeMap = {
+        'success': 'success',
+        'error': 'danger',
+        'warning': 'warning',
+        'info': 'primary'
+    };
+    const bgClass = typeMap[type] || 'primary';
+
+    // Create toast element with escaped message
+    const toastEl = document.createElement('div');
+    toastEl.className = `toast align-items-center text-bg-${bgClass} border-0`;
+    toastEl.setAttribute('role', 'alert');
+    toastEl.setAttribute('aria-live', 'assertive');
+    toastEl.setAttribute('aria-atomic', 'true');
+
+    const toastBody = document.createElement('div');
+    toastBody.className = 'd-flex';
+    toastBody.innerHTML = `
+        <div class="toast-body"></div>
+        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
+    `;
+    // Set message text safely (prevents XSS)
+    toastBody.querySelector('.toast-body').textContent = message;
+    toastEl.appendChild(toastBody);
+
+    toastContainer.appendChild(toastEl);
+
+    // Initialize and show toast using Bootstrap
+    const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
+    toast.show();
+
+    // Remove toast element after it's hidden
+    toastEl.addEventListener('hidden.bs.toast', function() {
+        toastEl.remove();
+    });
 }
 
 // Scan status indicator functions
