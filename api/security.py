@@ -235,7 +235,21 @@ def get_network_security_overview():
         
         # Get all monitored devices
         devices = Device.query.filter_by(is_monitored=True).all()
-        
+        device_ids = [d.id for d in devices]
+
+        # Batch fetch all security scans for all devices to prevent N+1 queries
+        from collections import defaultdict
+        all_scans = db.session.query(SecurityScan).filter(
+            SecurityScan.device_id.in_(device_ids),
+            SecurityScan.scanned_at >= start_time,
+            SecurityScan.state == 'open'
+        ).all()
+
+        # Group scans by device_id
+        scans_by_device = defaultdict(list)
+        for scan in all_scans:
+            scans_by_device[scan.device_id].append(scan)
+
         network_data = {
             'total_devices': len(devices),
             'scanned_devices': 0,
@@ -244,15 +258,11 @@ def get_network_security_overview():
             'high_risk_devices': 0,
             'devices': []
         }
-        
+
         for device in devices:
-            # Get recent scans for this device
-            scans = db.session.query(SecurityScan).filter(
-                SecurityScan.device_id == device.id,
-                SecurityScan.scanned_at >= start_time,
-                SecurityScan.state == 'open'
-            ).all()
-            
+            # Get scans for this device from pre-fetched data
+            scans = scans_by_device.get(device.id, [])
+
             if scans:
                 network_data['scanned_devices'] += 1
                 

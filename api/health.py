@@ -321,8 +321,10 @@ def get_recent_network_activity(limit=50):
             .order_by(Device.created_at.desc())\
             .limit(10).all()
         
-        # Get recent alerts
+        # Get recent alerts with eager loading to prevent N+1 queries
+        from sqlalchemy.orm import joinedload
         recent_alerts = Alert.query\
+            .options(joinedload(Alert.device))\
             .filter(Alert.created_at >= datetime.utcnow() - timedelta(days=1))\
             .order_by(Alert.created_at.desc())\
             .limit(20).all()

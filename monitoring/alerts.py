@@ -244,8 +244,9 @@ class AlertManager:
                 threshold_minutes = self.alert_thresholds['device_down_minutes_critical']
                 recent_time = datetime.utcnow() - timedelta(minutes=threshold_minutes // 2)
                 
-                # Find active device down alerts
-                active_down_alerts = Alert.query.filter(
+                # Find active device down alerts with eager loading to prevent N+1 queries
+                from sqlalchemy.orm import joinedload
+                active_down_alerts = Alert.query.options(joinedload(Alert.device)).filter(
                     Alert.alert_type == 'device_down',
                     Alert.resolved == False
                 ).all()
@@ -311,7 +312,9 @@ class AlertManager:
                 recent_time = datetime.utcnow() - timedelta(minutes=5)  # If seen in last 5 minutes, resolve alert
                 
                 # Find active device down alerts where device is now responding
-                active_down_alerts = Alert.query.filter(
+                # Use eager loading to prevent N+1 queries
+                from sqlalchemy.orm import joinedload
+                active_down_alerts = Alert.query.options(joinedload(Alert.device)).filter(
                     Alert.alert_type == 'device_down',
                     Alert.resolved == False
                 ).all()
@@ -329,7 +332,7 @@ class AlertManager:
                 threshold_ms = self.alert_thresholds['high_latency_ms']
                 cutoff_time = datetime.utcnow() - timedelta(minutes=5)  # Check last 5 minutes
                 
-                active_latency_alerts = Alert.query.filter(
+                active_latency_alerts = Alert.query.options(joinedload(Alert.device)).filter(
                     Alert.alert_type == 'high_latency',
                     Alert.resolved == False
                 ).all()

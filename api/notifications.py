@@ -78,8 +78,11 @@ def get_notification_stats():
         hours = request.args.get('hours', type=int, default=24)
         cutoff = datetime.utcnow() - timedelta(hours=hours)
         
-        # Get all notifications in time range
-        notifications = NotificationHistory.query.filter(
+        # Get all notifications in time range with eager loading to prevent N+1 queries
+        from sqlalchemy.orm import joinedload
+        notifications = NotificationHistory.query.options(
+            joinedload(NotificationHistory.device)
+        ).filter(
             NotificationHistory.sent_at >= cutoff
         ).all()
         

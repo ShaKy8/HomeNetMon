@@ -912,17 +912,18 @@ def create_app():
             if websocket_optimizer:
                 alert_data = websocket_optimizer.get_optimized_alert_data()
             else:
-                # Fallback to original method with N+1 query issue
+                # Fallback method with eager loading to prevent N+1 queries
                 from models import Alert
-                active_alerts = Alert.query.filter_by(resolved=False).all()
-                
+                from sqlalchemy.orm import joinedload
+                active_alerts = Alert.query.options(joinedload(Alert.device)).filter_by(resolved=False).all()
+
                 alert_data = []
                 for alert in active_alerts:
                     alert_data.append({
                         'id': alert.id,
                         'device_id': alert.device_id,
-                        'device_name': alert.device.display_name,
-                        'device_ip': alert.device.ip_address,
+                        'device_name': alert.device.display_name if alert.device else 'Unknown',
+                        'device_ip': alert.device.ip_address if alert.device else None,
                         'alert_type': alert.alert_type,
                         'severity': alert.severity,
                         'message': alert.message,

@@ -45,8 +45,11 @@ def get_anomaly_alerts():
         
         start_time = datetime.utcnow() - timedelta(hours=hours)
         
-        # Query anomaly alerts
-        alerts = db.session.query(Alert).filter(
+        # Query anomaly alerts with eager loading to prevent N+1 queries
+        from sqlalchemy.orm import joinedload
+        alerts = db.session.query(Alert).options(
+            joinedload(Alert.device)
+        ).filter(
             Alert.alert_type.like('anomaly_%'),
             Alert.created_at >= start_time
         ).order_by(

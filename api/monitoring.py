@@ -630,7 +630,8 @@ def resolve_alert(alert_id):
 def delete_alert(alert_id):
     """Delete a specific alert"""
     try:
-        alert = Alert.query.get_or_404(alert_id)
+        from sqlalchemy.orm import joinedload
+        alert = Alert.query.options(joinedload(Alert.device)).get_or_404(alert_id)
         
         # Store alert info for response
         alert_info = {
@@ -2121,7 +2122,8 @@ def get_active_suppressions():
 def get_alert_timeline(alert_id):
     """Get timeline for a specific alert"""
     try:
-        alert = Alert.query.get_or_404(alert_id)
+        from sqlalchemy.orm import joinedload
+        alert = Alert.query.options(joinedload(Alert.device)).get_or_404(alert_id)
         
         timeline = []
         
@@ -2371,8 +2373,9 @@ def get_recent_activity():
         # Get recent device status changes
         one_hour_ago = datetime.utcnow() - timedelta(hours=1)
         
-        # Get recent alerts
-        recent_alerts = Alert.query.filter(
+        # Get recent alerts with eager loading to prevent N+1 queries
+        from sqlalchemy.orm import joinedload
+        recent_alerts = Alert.query.options(joinedload(Alert.device)).filter(
             Alert.created_at >= one_hour_ago
         ).order_by(Alert.created_at.desc()).limit(limit).all()
         
