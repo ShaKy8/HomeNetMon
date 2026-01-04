@@ -1,9 +1,11 @@
+import logging
 from datetime import datetime, timedelta
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event
 from werkzeug.security import generate_password_hash, check_password_hash
 import json
 import secrets
+logger = logging.getLogger(__name__)
 
 # Import performance cache decorators
 try:
@@ -1351,7 +1353,8 @@ class AutomationRule(db.Model):
         """Parse condition JSON into a Python object"""
         try:
             return json.loads(self.condition_json) if self.condition_json else {}
-        except:
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.debug(f"Error parsing condition JSON: {e}")
             return {}
     
     @conditions.setter
@@ -1364,7 +1367,8 @@ class AutomationRule(db.Model):
         """Parse action JSON into a Python object"""
         try:
             return json.loads(self.action_json) if self.action_json else {}
-        except:
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.debug(f"Error parsing action JSON: {e}")
             return {}
     
     @actions.setter
@@ -1448,7 +1452,8 @@ class RuleExecution(db.Model):
         """Parse trigger context JSON"""
         try:
             return json.loads(self.trigger_context) if self.trigger_context else {}
-        except:
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.debug(f"Error parsing trigger context JSON: {e}")
             return {}
     
     @trigger_data.setter
@@ -1461,7 +1466,8 @@ class RuleExecution(db.Model):
         """Parse action results JSON"""
         try:
             return json.loads(self.action_results) if self.action_results else {}
-        except:
+        except (json.JSONDecodeError, TypeError) as e:
+            logger.debug(f"Error parsing action results JSON: {e}")
             return {}
     
     @results.setter
@@ -2459,7 +2465,7 @@ def invalidate_monitoring_data_cache(mapper, connection, target):
     """Invalidate device cache when monitoring data changes"""
     try:
         cache_invalidator.invalidate_device_cache(target.device_id)
-    except:
+    except Exception:
         pass  # Silently fail if cache service not available
 
 @event.listens_for(Alert, 'after_insert')
@@ -2469,7 +2475,7 @@ def invalidate_alert_cache(mapper, connection, target):
     """Invalidate device cache when alerts change"""
     try:
         cache_invalidator.invalidate_device_cache(target.device_id)
-    except:
+    except Exception:
         pass  # Silently fail if cache service not available
 
 @event.listens_for(PerformanceMetrics, 'after_insert')
@@ -2478,5 +2484,5 @@ def invalidate_performance_cache(mapper, connection, target):
     """Invalidate device cache when performance metrics change"""
     try:
         cache_invalidator.invalidate_device_cache(target.device_id)
-    except:
+    except Exception:
         pass  # Silently fail if cache service not available

@@ -779,16 +779,34 @@ def create_app():
     
     @socketio.on('update_configuration')
     def handle_configuration_update(data):
-        """Handle configuration update via WebSocket"""
+        """Handle configuration update via WebSocket with validation and logging"""
         try:
+            # Get client information for logging
+            client_sid = request.sid
+            client_ip = request.environ.get('REMOTE_ADDR', 'unknown')
+            
             key = data.get('key')
             value = data.get('value')
             description = data.get('description')
             user = data.get('user', 'websocket_user')
             
+            # Basic validation for key and value
             if not key or value is None:
+                logger.warning(f"Configuration update rejected: missing key/value from {client_ip} (session: {client_sid})")
                 emit('configuration_error', {'error': 'Key and value are required'})
                 return
+            
+            # Validate user parameter (sanitize to prevent injection)
+            if user:
+                # Allow alphanumeric, underscore, hyphen, dot, and @ for email-like identifiers
+                import re
+                if not re.match(r'^[a-zA-Z0-9_\-\.@]{1,100}$', str(user)):
+                    logger.warning(f"Configuration update rejected: invalid user parameter from {client_ip} (session: {client_sid})")
+                    emit('configuration_error', {'error': 'Invalid user parameter'})
+                    return
+            
+            # Log configuration change attempt
+            logger.info(f"Configuration update request: key='{key}' by user='{user}' from IP={client_ip} (session: {client_sid})")
             
             # Use configuration service to update
             success, message = configuration_service.set_configuration(
@@ -800,6 +818,7 @@ def create_app():
             )
             
             if success:
+                logger.info(f"Configuration updated successfully: key='{key}' by user='{user}' from IP={client_ip}")
                 emit('configuration_update_success', {
                     'key': key,
                     'value': value,
@@ -813,9 +832,11 @@ def create_app():
                     'timestamp': datetime.utcnow().isoformat()
                 })
             else:
+                logger.warning(f"Configuration update failed: key='{key}' reason='{message}' from IP={client_ip}")
                 emit('configuration_error', {'error': message})
                 
         except Exception as e:
+            logger.error(f"Error in configuration update handler: {e}")
             emit('configuration_error', {'error': str(e)})
     
     @socketio.on('request_health_update')

@@ -560,11 +560,14 @@
     {% endblock %}
 </head>
 <body>
+    <!-- Skip to main content link for accessibility -->
+    <a href="#main-content" class="visually-hidden-focusable">Skip to main content</a>
+
     <!-- Include Shared Navigation -->
     {% include 'components/navbar.html' %}
 
     <!-- Main Content -->
-    <main class="{% block main_class %}container{% endblock %}">
+    <main id="main-content" class="{% block main_class %}container{% endblock %}">
         {% block content %}
         {% endblock %}
     </main>

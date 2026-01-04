@@ -60,7 +60,7 @@
                 <div class="input-group">
                     <input class="form-control" type="search" id="global-search"
                            placeholder="Search devices..." aria-label="Search">
-                    <button class="btn btn-outline-light" type="button" id="search-btn">
+                    <button class="btn btn-outline-light" type="button" id="search-btn" aria-label="Search">
                         <i class="bi bi-search"></i>
                     </button>
                 </div>
@@ -68,12 +68,12 @@
 
             <ul class="navbar-nav">
                 <li class="nav-item me-2">
-                    <a class="btn btn-outline-light btn-sm" href="{{ url_for('about') }}" title="About HomeNetMon">
+                    <a class="btn btn-outline-light btn-sm" href="{{ url_for('about') }}" title="About HomeNetMon" aria-label="About HomeNetMon">
                         <i class="bi bi-info-circle"></i>
                     </a>
                 </li>
                 <li class="nav-item me-3">
-                    <button class="btn btn-outline-light btn-sm" id="shortcuts-help-btn" title="Keyboard Shortcuts (?)">
+                    <button class="btn btn-outline-light btn-sm" id="shortcuts-help-btn" title="Keyboard Shortcuts (?)" aria-label="Keyboard shortcuts">
                         <i class="bi bi-question-circle"></i>
                     </button>
                 </li>
@@ -81,7 +81,7 @@
                     <div class="d-flex align-items-center">
                         <i class="bi bi-sun-fill text-warning me-2"></i>
                         <label class="theme-toggle">
-                            <input type="checkbox" id="theme-toggle">
+                            <input type="checkbox" id="theme-toggle" aria-label="Toggle dark mode">
                             <span class="theme-slider"></span>
                         </label>
                         <i class="bi bi-moon-fill text-info ms-2"></i>
@@ -98,6 +98,47 @@
         </div>
     </div>
 </nav>
+
+<!-- Keyboard Shortcuts Modal -->
+<div class="modal fade" id="keyboardShortcutsModal" tabindex="-1" aria-labelledby="keyboardShortcutsModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="keyboardShortcutsModalLabel">
+                    <i class="bi bi-keyboard"></i> Keyboard Shortcuts
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="table-responsive">
+                    <table class="table table-sm">
+                        <tbody>
+                            <tr>
+                                <td><kbd>/</kbd></td>
+                                <td>Focus search</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>Ctrl</kbd> + <kbd>R</kbd></td>
+                                <td>Refresh dashboard</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>Ctrl</kbd> + <kbd>N</kbd></td>
+                                <td>Scan network</td>
+                            </tr>
+                            <tr>
+                                <td><kbd>Escape</kbd></td>
+                                <td>Clear search</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 
 <style>
 /* Theme Toggle Styles */
@@ -218,12 +259,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Keyboard shortcuts help
     document.getElementById('shortcuts-help-btn').addEventListener('click', function() {
-        // You can implement a modal or tooltip here
-        alert('Keyboard Shortcuts:\n\n' +
-              '/ - Focus search\n' +
-              'Ctrl+R - Refresh dashboard\n' +
-              'Ctrl+N - Scan network\n' +
-              'Escape - Clear search');
+        const modal = new bootstrap.Modal(document.getElementById('keyboardShortcutsModal'));
+        modal.show();
     });
 
     // Load alerts count for badge

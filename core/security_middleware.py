@@ -1,4 +1,5 @@
 import logging
+import os
 import secrets
 import hashlib
 import re
@@ -12,7 +13,7 @@ logger = logging.getLogger(__name__)
 
 class SecurityMiddleware:
     """Security middleware for Flask applications."""
-    
+
     def __init__(self, app: Flask = None):
         self.app = app
         self.csrf_tokens: Dict[str, float] = {}  # token -> expiration_timestamp
@@ -28,7 +29,7 @@ class SecurityMiddleware:
             # NOTE: /api/devices/scan and /api/monitoring/alerts are NOT exempt
             # Frontend MUST send CSRF tokens for these endpoints
         }
-        
+
         # Security configuration
         self.config = {
             'enable_csrf': True,  # ENABLED for production security
@@ -40,29 +41,29 @@ class SecurityMiddleware:
             'strict_transport_security_max_age': 31536000,  # 1 year
             'content_security_policy': "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.socket.io; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net data:; img-src 'self' data: https:;"
         }
-        
+
         if app:
             self.init_app(app)
-            
+
     def init_app(self, app: Flask):
         """Initialize security middleware with Flask app."""
         self.app = app
-        
+
         # Set maximum content length
         app.config['MAX_CONTENT_LENGTH'] = self.config['max_content_length']
-        
+
         # Register before_request handlers
         app.before_request(self._before_request)
-        
+
         # Register after_request handlers
         app.after_request(self._after_request)
-        
+
         # Register error handlers
         app.errorhandler(400)(self._handle_bad_request)
         app.errorhandler(413)(self._handle_payload_too_large)
-        
+
         logger.info("Security middleware initialized")
-        
+
     def _before_request(self):
         """Run security checks before each request."""
 
@@ -95,38 +96,46 @@ class SecurityMiddleware:
                 return validation_error
 
         logger.debug(f"Security checks passed for {request.path}")
-                
+
     def _after_request(self, response):
         """Add security headers to response."""
         if self.config['enable_security_headers']:
             # HSTS (HTTP Strict Transport Security)
             response.headers['Strict-Transport-Security'] = f"max-age={self.config['strict_transport_security_max_age']}; includeSubDomains"
-            
+
             # X-Content-Type-Options
             response.headers['X-Content-Type-Options'] = 'nosniff'
-            
+
             # X-Frame-Options
             response.headers['X-Frame-Options'] = 'DENY'
-            
+
             # X-XSS-Protection
             response.headers['X-XSS-Protection'] = '1; mode=block'
-            
+
             # Content-Security-Policy
             response.headers['Content-Security-Policy'] = self.config['content_security_policy']
-            
+
             # Referrer-Policy
             response.headers['Referrer-Policy'] = 'strict-origin-when-cross-origin'
-            
+
             # Permissions-Policy
             response.headers['Permissions-Policy'] = 'geolocation=(), microphone=(), camera=()'
-            
+
             # Generate CSRF token for GET requests
             if self.config['enable_csrf'] and request.method == 'GET':
                 csrf_token = self._generate_csrf_token()
-                response.set_cookie('csrf_token', csrf_token, secure=False, httponly=False, samesite='Strict')
-                
+                # Use environment variable to determine HTTPS mode, default to False for development
+                https_enabled = os.environ.get('HTTPS_ENABLED', 'false').lower() in ('true', '1', 'yes')
+                response.set_cookie(
+                    'csrf_token',
+                    csrf_token,
+                    secure=https_enabled,
+                    httponly=True,
+                    samesite='Strict'
+                )
+
         return response
-        
+
     def _is_safe_content_type(self, content_type: str) -> bool:
         """Check if content type is safe."""
         safe_types = [
@@ -136,12 +145,12 @@ class SecurityMiddleware:
             'text/plain',
             'text/html'
         ]
-        
+
         for safe_type in safe_types:
             if content_type.startswith(safe_type):
                 return True
         return False
-        
+
     def _generate_csrf_token(self) -> str:
         """Generate a new CSRF token with expiration."""
         token = secrets.token_urlsafe(32)
@@ -193,7 +202,7 @@ class SecurityMiddleware:
                 return False
 
         return False
-        
+
     def _validate_input(self) -> Optional[tuple]:
         """Validate request input for common security issues."""
         # Validate query parameters
@@ -220,7 +229,7 @@ class SecurityMiddleware:
                     return jsonify({'error': validation_error}), 400
 
         return None
-        
+
     def _contains_malicious_pattern(self, value: str) -> bool:
         """Check if value contains potentially malicious patterns."""
         # SQL injection patterns
@@ -230,7 +239,7 @@ class SecurityMiddleware:
             r"(\bOR\b\s*\d+\s*=\s*\d+)",
             r"(\bAND\b\s*\d+\s*=\s*\d+)"
         ]
-        
+
         # XSS patterns
         xss_patterns = [
             r"<script[^>]*>.*?</script>",
@@ -239,7 +248,7 @@ class SecurityMiddleware:
             r"<iframe[^>]*>",
             r"<object[^>]*>"
         ]
-        
+
         # Command injection patterns
         cmd_patterns = [
             r"[;&|`$()]",
@@ -247,20 +256,20 @@ class SecurityMiddleware:
             r"/etc/passwd",
             r"/bin/sh"
         ]
-        
+
         all_patterns = sql_patterns + xss_patterns + cmd_patterns
-        
+
         for pattern in all_patterns:
             if re.search(pattern, value, re.IGNORECASE):
                 return True
-                
+
         return False
 
     def _validate_json_data(self, data: Any, depth: int = 0) -> Optional[str]:
         """Recursively validate JSON data."""
         if depth > 10:  # Prevent deep recursion
             return "JSON structure too deep"
-            
+
         if isinstance(data, dict):
             for key, value in data.items():
                 if self._contains_malicious_pattern(str(key)):
@@ -268,29 +277,29 @@ class SecurityMiddleware:
                 error = self._validate_json_data(value, depth + 1)
                 if error:
                     return error
-                    
+
         elif isinstance(data, list):
             for item in data:
                 error = self._validate_json_data(item, depth + 1)
                 if error:
                     return error
-                    
+
         elif isinstance(data, str):
             if self._contains_malicious_pattern(data):
                 return "Invalid string value detected"
-                
+
         return None
-        
+
     def _handle_bad_request(self, error):
         """Handle bad request errors."""
         logger.warning(f"Bad request: {error}")
         return jsonify({'error': 'Bad request'}), 400
-        
+
     def _handle_payload_too_large(self, error):
         """Handle payload too large errors."""
         logger.warning(f"Payload too large: {error}")
         return jsonify({'error': 'Request payload too large'}), 413
-        
+
     def validate_ip_address(self, ip: str) -> bool:
         """Validate IP address format."""
         try:
@@ -298,37 +307,37 @@ class SecurityMiddleware:
             return True
         except ValueError:
             return False
-            
+
     def validate_hostname(self, hostname: str) -> bool:
         """Validate hostname format."""
         if len(hostname) > 255:
             return False
-            
+
         # Hostname regex pattern
         pattern = r"^(?!-)(?:[a-zA-Z0-9-]{1,63}(?<!-)\.)*[a-zA-Z0-9-]{1,63}(?<!-)$"
         return bool(re.match(pattern, hostname))
-        
+
     def sanitize_filename(self, filename: str) -> str:
         """Sanitize filename to prevent directory traversal."""
         # Remove path separators and null bytes
         filename = filename.replace('/', '').replace('\\', '').replace('\x00', '')
-        
+
         # Remove leading dots
         while filename.startswith('.'):
             filename = filename[1:]
-            
+
         # Limit filename length
         if len(filename) > 255:
             name, ext = filename.rsplit('.', 1) if '.' in filename else (filename, '')
             filename = name[:250] + '.' + ext if ext else name[:255]
-            
+
         return filename or 'unnamed'
-        
+
     def add_csrf_exempt(self, route: str):
         """Add a route to CSRF exemption list."""
         self.csrf_exempt_routes.add(route)
         logger.debug(f"Added CSRF exemption for route: {route}")
-        
+
     def remove_csrf_exempt(self, route: str):
         """Remove a route from CSRF exemption list."""
         self.csrf_exempt_routes.discard(route)

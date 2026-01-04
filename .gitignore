@@ -101,6 +101,8 @@ celerybeat.pid
 .env.development
 .env.test
 .env.production
+.env.prod
+.env.prod.template
 .venv
 env/
 venv/
