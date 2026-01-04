@@ -366,6 +366,7 @@
 {% endblock %}
 
 {% block extra_js %}
+<script>
 // Load system information
 document.addEventListener('DOMContentLoaded', function() {
     loadSystemInfo();
@@ -411,4 +412,5 @@ function setDefaultValues() {
         if (elem) elem.textContent = 'Unavailable';
     });
 }
+</script>
 {% endblock %}
