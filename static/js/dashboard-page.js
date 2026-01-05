@@ -28,6 +28,10 @@ function debounce(func, wait) {
     };
 }
 
+// Page Visibility API state
+let pollingInterval = null;
+let isPageVisible = true;
+
 // Initialize on DOM ready
 document.addEventListener('DOMContentLoaded', function() {
     initializeSocket();
@@ -46,9 +50,43 @@ document.addEventListener('DOMContentLoaded', function() {
         toggleAdvancedPanel();
     }
 
-    // Auto-refresh every 30 seconds
-    setInterval(loadDevices, 30000);
+    // Set up polling with Page Visibility API
+    startPolling();
+    setupPageVisibilityHandling();
 });
+
+// Start polling interval
+function startPolling() {
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+    }
+    // Auto-refresh every 30 seconds when page is visible
+    pollingInterval = setInterval(loadDevices, 30000);
+}
+
+// Stop polling interval
+function stopPolling() {
+    if (pollingInterval) {
+        clearInterval(pollingInterval);
+        pollingInterval = null;
+    }
+}
+
+// Handle page visibility changes
+function setupPageVisibilityHandling() {
+    document.addEventListener('visibilitychange', function() {
+        if (document.hidden) {
+            // Page is hidden - pause polling
+            isPageVisible = false;
+            stopPolling();
+        } else {
+            // Page is visible - resume polling and refresh immediately
+            isPageVisible = true;
+            loadDevices(); // Refresh data immediately when tab becomes visible
+            startPolling();
+        }
+    });
+}
 
 // Socket.IO initialization
 function initializeSocket() {
@@ -188,7 +226,7 @@ async function loadDevices() {
         devicesData = data.devices || [];
         updateStats();
         filterAndDisplayDevices();
-        document.getElementById('loading-devices').style.display = 'none';
+        document.getElementById('loading-devices').classList.add('hidden');
     } catch (error) {
         document.getElementById('loading-devices').innerHTML =
             '<p class="text-danger">Error loading devices: ' + error.message + '</p>';
@@ -287,8 +325,12 @@ function filterAndDisplayDevices() {
     }
 
     // Show/hide no devices message
-    document.getElementById('no-devices').style.display =
-        filtered.length === 0 ? 'block' : 'none';
+    const noDevicesElement = document.getElementById('no-devices');
+    if (filtered.length === 0) {
+        noDevicesElement.classList.remove('hidden');
+    } else {
+        noDevicesElement.classList.add('hidden');
+    }
 }
 
 // Display devices in grid view
@@ -381,7 +423,8 @@ function switchToGridView() {
     document.getElementById('grid-view').classList.add('active');
     document.getElementById('table-view').classList.remove('active');
     document.getElementById('devices-grid-view').style.display = 'grid';
-    document.getElementById('devices-table-view').style.display = 'none';
+    document.getElementById('devices-grid-view').classList.remove('hidden');
+    document.getElementById('devices-table-view').classList.add('hidden');
     document.getElementById('view-info').textContent = 'Grid View';
     localStorage.setItem('deviceView', 'grid');
     filterAndDisplayDevices();
@@ -392,7 +435,8 @@ function switchToTableView() {
     document.getElementById('table-view').classList.add('active');
     document.getElementById('grid-view').classList.remove('active');
     document.getElementById('devices-table-view').style.display = 'block';
-    document.getElementById('devices-grid-view').style.display = 'none';
+    document.getElementById('devices-table-view').classList.remove('hidden');
+    document.getElementById('devices-grid-view').classList.add('hidden');
     document.getElementById('view-info').textContent = 'Table View';
     localStorage.setItem('deviceView', 'table');
     filterAndDisplayDevices();
@@ -517,7 +561,7 @@ async function scanNetwork() {
 
 function showScanProgress() {
     const container = document.getElementById('scan-progress-container');
-    container.style.display = 'block';
+    container.classList.remove('hidden');
 
     // Reset progress
     scanProgressValue = 0;
@@ -613,7 +657,7 @@ function formatTime(seconds) {
 
 function closeScanProgress() {
     const container = document.getElementById('scan-progress-container');
-    container.style.display = 'none';
+    container.classList.add('hidden');
 
     // Clear timers
     if (scanTimer) {
@@ -716,6 +760,7 @@ function showNotification(message, type = 'info') {
 function showScanStatus() {
     const statusElement = document.getElementById('scan-status');
     if (statusElement) {
+        statusElement.classList.remove('hidden');
         statusElement.style.display = 'flex';
     }
 }
@@ -723,7 +768,7 @@ function showScanStatus() {
 function hideScanStatus() {
     const statusElement = document.getElementById('scan-status');
     if (statusElement) {
-        statusElement.style.display = 'none';
+        statusElement.classList.add('hidden');
     }
 }
 

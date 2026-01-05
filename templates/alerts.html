@@ -461,12 +461,12 @@
     </div>
 
     <!-- Alerts Grid -->
-    <div id="alerts-grid" class="alerts-grid" style="display: none;">
+    <div id="alerts-grid" class="alerts-grid hidden">
         <!-- Alert cards will be dynamically inserted here -->
     </div>
 
     <!-- No Alerts State -->
-    <div id="no-alerts-state" class="empty-state" style="display: none;">
+    <div id="no-alerts-state" class="empty-state hidden">
         <i class="bi bi-shield-check"></i>
         <h3>No Alerts</h3>
         <p>Your network is running smoothly! No alerts to display.</p>
@@ -477,7 +477,7 @@
     </div>
 
     <!-- Error State -->
-    <div id="error-state" class="empty-state" style="display: none;">
+    <div id="error-state" class="empty-state hidden">
         <i class="bi bi-exclamation-circle"></i>
         <h3>Error Loading Alerts</h3>
         <p id="error-message">Unable to load alerts. Please try again.</p>
@@ -718,12 +718,12 @@ class AlertsManager {
         const errorState = document.getElementById('error-state');
 
         if (show) {
-            loadingState.style.display = 'block';
-            alertsGrid.style.display = 'none';
-            noAlertsState.style.display = 'none';
-            errorState.style.display = 'none';
+            loadingState.classList.remove('hidden');
+            alertsGrid.classList.add('hidden');
+            noAlertsState.classList.add('hidden');
+            errorState.classList.add('hidden');
         } else {
-            loadingState.style.display = 'none';
+            loadingState.classList.add('hidden');
         }
     }
 
@@ -734,10 +734,10 @@ class AlertsManager {
         const errorState = document.getElementById('error-state');
         const errorMessage = document.getElementById('error-message');
 
-        loadingState.style.display = 'none';
-        alertsGrid.style.display = 'none';
-        noAlertsState.style.display = 'none';
-        errorState.style.display = 'block';
+        loadingState.classList.add('hidden');
+        alertsGrid.classList.add('hidden');
+        noAlertsState.classList.add('hidden');
+        errorState.classList.remove('hidden');
 
         if (errorMessage) {
             errorMessage.textContent = message;
@@ -811,16 +811,17 @@ class AlertsManager {
         const errorState = document.getElementById('error-state');
 
         // Hide all states first
-        loadingState.style.display = 'none';
-        errorState.style.display = 'none';
+        loadingState.classList.add('hidden');
+        errorState.classList.add('hidden');
 
         if (this.filteredAlerts.length === 0) {
-            alertsGrid.style.display = 'none';
-            noAlertsState.style.display = 'block';
+            alertsGrid.classList.add('hidden');
+            noAlertsState.classList.remove('hidden');
             return;
         }
 
-        noAlertsState.style.display = 'none';
+        noAlertsState.classList.add('hidden');
+        alertsGrid.classList.remove('hidden');
         alertsGrid.style.display = 'grid';
 
         alertsGrid.innerHTML = this.filteredAlerts.map(alert => this.renderAlertCard(alert)).join('');

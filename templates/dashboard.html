@@ -496,7 +496,7 @@
         <button class="btn-modern" id="scan-network">
             <i class="bi bi-radar"></i> Scan Network
         </button>
-        <div class="scan-status" id="scan-status" style="display: none;">
+        <div class="scan-status hidden" id="scan-status">
             <i class="bi bi-arrow-repeat spin"></i>
             <span>Scanning network...</span>
         </div>
@@ -578,7 +578,7 @@
 </div>
 
 <!-- Network Scan Progress Indicator -->
-<div id="scan-progress-container" style="display: none;" role="status" aria-live="polite">
+<div id="scan-progress-container" class="hidden" role="status" aria-live="polite">
     <div class="scan-progress-card">
         <div class="scan-progress-header">
             <div class="scan-status">
@@ -644,7 +644,7 @@
         </div>
 
         <!-- Table View (hidden by default) -->
-        <div id="devices-table-view" style="display: none;">
+        <div id="devices-table-view" class="hidden">
             <table class="devices-table">
                 <thead>
                     <tr>
@@ -670,7 +670,7 @@
         </div>
 
         <!-- No Devices State -->
-        <div id="no-devices" class="text-center py-5" style="display: none;">
+        <div id="no-devices" class="text-center py-5 hidden">
             <i class="bi bi-router" style="font-size: 3rem; opacity: 0.3;"></i>
             <h5 style="margin-top: 1rem; opacity: 0.7;">No devices found</h5>
             <p style="opacity: 0.5;">Click "Scan Network" to discover devices</p>

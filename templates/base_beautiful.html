@@ -191,6 +191,8 @@
         align-items: center;
         gap: 0.5rem;
         text-decoration: none;
+        min-height: 44px;
+        min-width: 44px;
     }
 
     /* Modern Buttons - Dark theme */
@@ -486,6 +488,17 @@
         color: #d1d5db;
     }
 
+    /* Touch Target Requirements - Mobile Optimization */
+    .btn, .btn-modern, .btn-sm, button, a.btn {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
+    .view-toggle button {
+        min-height: 44px;
+        min-width: 44px;
+    }
+
     /* Responsive Design */
     @media (max-width: 768px) {
         .container {
@@ -504,7 +517,18 @@
         .btn-modern {
             padding: 0.5rem 1rem;
             font-size: 0.85rem;
+            min-height: 44px;
+            min-width: 44px;
         }
+    }
+
+    /* Visibility Utility Classes */
+    .hidden {
+        display: none !important;
+    }
+
+    .visible {
+        display: block !important;
     }
 
     /* Additional utility classes */
