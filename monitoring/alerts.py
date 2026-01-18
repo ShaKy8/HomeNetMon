@@ -38,10 +38,10 @@ class AlertManager:
         return (
             device.ip_address.endswith('.1') or  # Router/Gateway
             device.ip_address.endswith('.64') or  # Server
-            'router' in device.device_type.lower() if device.device_type else False or
-            'server' in device.device_type.lower() if device.device_type else False or
-            'nuc' in (device.hostname or '').lower() or
-            'gateway' in (device.hostname or '').lower()
+            ('router' in device.device_type.lower() if device.device_type else False) or
+            ('server' in device.device_type.lower() if device.device_type else False) or
+            ('nuc' in (device.hostname or '').lower()) or
+            ('gateway' in (device.hostname or '').lower())
         )
     
     def has_consecutive_failures(self, device, required_failures=3):

@@ -1,6 +1,7 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 from sqlalchemy import func
+from sqlalchemy.orm import joinedload
 from models import db, Device, MonitoringData, Alert, BandwidthData
 from monitoring.monitor import DeviceMonitor
 from services.pagination import paginator, create_pagination_response
@@ -179,9 +180,11 @@ def get_monitoring_data():
         if hours > 168:  # Max 7 days
             hours = 168
         
-        # Build query
+        # Build query with eager loading to avoid N+1 queries
         cutoff = datetime.utcnow() - timedelta(hours=hours)
-        query = MonitoringData.query.filter(MonitoringData.timestamp >= cutoff)
+        query = MonitoringData.query.options(
+            joinedload(MonitoringData.device)
+        ).filter(MonitoringData.timestamp >= cutoff)
         
         if device_id:
             query = query.filter(MonitoringData.device_id == device_id)
@@ -1331,13 +1334,15 @@ def get_bandwidth_data():
         if limit > 1000:  # Max 1000 records
             limit = 1000
         
-        # Build query
+        # Build query with eager loading to avoid N+1 queries
         cutoff = datetime.utcnow() - timedelta(hours=hours)
-        query = BandwidthData.query.filter(BandwidthData.timestamp >= cutoff)
-        
+        query = BandwidthData.query.options(
+            joinedload(BandwidthData.device)
+        ).filter(BandwidthData.timestamp >= cutoff)
+
         if device_id:
             query = query.filter(BandwidthData.device_id == device_id)
-        
+
         bandwidth_data = query.order_by(BandwidthData.timestamp.desc()).limit(limit).all()
         
         # Convert to dict format

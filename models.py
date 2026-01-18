@@ -615,6 +615,17 @@ class Device(db.Model):
         return results
 
 
+# Event listener to invalidate status cache when last_seen changes
+@event.listens_for(Device.last_seen, 'set')
+def invalidate_status_cache_on_last_seen_change(target, value, oldvalue, initiator):
+    """Invalidate device status cache when last_seen changes to prevent stale status."""
+    if value != oldvalue and target.id:
+        try:
+            cache_invalidator.invalidate_device_cache(target.id)
+        except Exception:
+            pass  # Don't let cache issues break the update
+
+
 class DeviceIpHistory(db.Model):
     """Track IP address changes for devices over time"""
     __tablename__ = 'device_ip_history'

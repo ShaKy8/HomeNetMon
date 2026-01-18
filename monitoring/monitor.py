@@ -66,9 +66,9 @@ class DeviceMonitor:
         # For critical infrastructure (router, servers), use more lenient settings
         is_critical_device = (
             device.ip_address.endswith('.1') or  # Router
-            'router' in device.device_type.lower() if device.device_type else False or
-            'server' in device.device_type.lower() if device.device_type else False or
-            'nuc' in device.hostname.lower() if device.hostname else False
+            ('router' in device.device_type.lower() if device.device_type else False) or
+            ('server' in device.device_type.lower() if device.device_type else False) or
+            ('nuc' in device.hostname.lower() if device.hostname else False)
         )
 
         # Override settings for critical devices
@@ -100,14 +100,14 @@ class DeviceMonitor:
                     time_match = re.search(r'time=([0-9.]+)\s*ms', result.stdout)
                     if time_match:
                         response_time_ms = float(time_match.group(1))
-                        device.last_seen = datetime.utcnow()
+                        # Note: last_seen is updated in monitor_device() inside the transaction
                         logger.debug(f"Ping successful for {device.ip_address} on attempt {attempt + 1}: {response_time_ms}ms")
                         # Record success for optimization
                         iot_optimizer.record_ping_result(device, True, response_time_ms)
                         return response_time_ms
                     else:
                         # Ping succeeded but couldn't parse time, return 0
-                        device.last_seen = datetime.utcnow()
+                        # Note: last_seen is updated in monitor_device() inside the transaction
                         logger.debug(f"Ping successful for {device.ip_address} on attempt {attempt + 1} (no time parsed)")
                         # Record success for optimization
                         iot_optimizer.record_ping_result(device, True, 0)
@@ -289,10 +289,10 @@ class DeviceMonitor:
         return (
             device.ip_address.endswith('.1') or  # Router/Gateway
             device.ip_address.endswith('.64') or  # Server
-            'router' in device.device_type.lower() if device.device_type else False or
-            'server' in device.device_type.lower() if device.device_type else False or
-            'nuc' in (device.hostname or '').lower() or
-            'gateway' in (device.hostname or '').lower()
+            ('router' in device.device_type.lower() if device.device_type else False) or
+            ('server' in device.device_type.lower() if device.device_type else False) or
+            ('nuc' in (device.hostname or '').lower()) or
+            ('gateway' in (device.hostname or '').lower())
         )
     
     def monitor_all_devices(self):
@@ -844,10 +844,11 @@ class DeviceMonitor:
         """Ping a device and return raw result for batch processing"""
         try:
             response_time = self.ping_device(device)
-            
+
             return {
                 'device_id': device.id,
-                'device': device,  # Keep reference for batch processing
+                # Don't include device object - will be re-queried in batch processing
+                # to avoid DetachedInstanceError from cross-thread object access
                 'response_time': response_time,
                 'success': response_time is not None,
                 'timestamp': datetime.utcnow()
@@ -856,7 +857,6 @@ class DeviceMonitor:
             logger.error(f"Error pinging device {device.ip_address} for batch: {e}")
             return {
                 'device_id': device.id,
-                'device': device,
                 'response_time': None,
                 'success': False,
                 'timestamp': datetime.utcnow()
@@ -865,7 +865,7 @@ class DeviceMonitor:
     def _batch_process_monitoring_results(self, ping_results):
         """
         PERFORMANCE OPTIMIZATION: Process all monitoring results in a single transaction
-        
+
         This dramatically reduces database overhead by:
         - Using a single transaction for all monitoring data inserts
         - Batch updating device last_seen timestamps
@@ -873,42 +873,55 @@ class DeviceMonitor:
         """
         if not self.app or not ping_results:
             return
-        
+
         try:
             with self.app.app_context():
                 status_changes = []
                 monitoring_records = []
                 device_updates = []
                 socketio_events = []
-                
+
+                # Bulk-query all devices by ID to avoid DetachedInstanceError
+                # This re-queries devices within the current app context/session
+                from models import Device
+                device_ids = [result['device_id'] for result in ping_results]
+                devices_by_id = {d.id: d for d in Device.query.filter(Device.id.in_(device_ids)).all()}
+
                 # Prepare batch data
                 for result in ping_results:
-                    device = result['device']
+                    device_id = result['device_id']
+                    device = devices_by_id.get(device_id)
+
+                    if not device:
+                        logger.warning(f"Device {device_id} not found in batch processing")
+                        continue
+
                     response_time = result['response_time']
                     timestamp = result['timestamp']
-                    
+
                     # Create monitoring data record
                     monitoring_records.append(MonitoringData(
-                        device_id=device.id,
+                        device_id=device_id,
                         response_time=response_time,
                         timestamp=timestamp
                     ))
-                    
+
                     # Prepare device update if ping was successful
                     if response_time is not None:
                         device_updates.append({
-                            'device_id': device.id,
+                            'device_id': device_id,
                             'last_seen': timestamp
                         })
-                    
+
                     # Calculate status for change detection and WebSocket events
-                    previous_status = device.status  # This might trigger a query, but we'll optimize
+                    # Device is now properly bound to current session
+                    previous_status = device.status
                     current_status = 'up'
                     if response_time is None:
                         current_status = 'down'
                     elif response_time > 1000:
                         current_status = 'warning'
-                    
+
                     # Track status changes for rule engine
                     if previous_status != current_status:
                         status_changes.append({
@@ -917,7 +930,7 @@ class DeviceMonitor:
                             'current_status': current_status,
                             'response_time': response_time
                         })
-                    
+
                     # Prepare WebSocket events with throttling
                     event_data = {
                         'device_id': device.id,
