@@ -752,7 +752,14 @@ class DeviceMonitor:
         try:
             if not self.socketio or not self.app:
                 return
-                
+
+            # Throttle: chart data is bandwidth-heavy and re-renders multiple charts on
+            # the client. Cap to the throttle config (default ~8s) regardless of how
+            # often monitoring cycles complete.
+            from services.websocket_throttle import websocket_throttle
+            if not websocket_throttle.should_emit_global_event('chart_data_update'):
+                return
+
             with self.app.app_context():
                 # Get device types breakdown for analytics charts
                 from collections import defaultdict

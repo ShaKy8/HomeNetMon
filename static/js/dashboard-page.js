@@ -349,7 +349,7 @@ function createDeviceCard(device) {
         : '--';
 
     return `
-        <div class="device-card" onclick="openDeviceDetails(${device.id})">
+        <div class="device-card" data-device-id="${device.id}" onclick="openDeviceDetails(${device.id})">
             <div class="device-name">
                 <span class="status-dot status-${statusClass}"></span>
                 ${name}
@@ -380,7 +380,7 @@ function createDeviceRow(device) {
     const monitoringStatus = device.monitor_enabled ? 'Enabled' : 'Disabled';
 
     return `
-        <tr>
+        <tr data-device-id="${device.id}">
             <td><span class="status-dot status-${statusClass}"></span></td>
             <td>${name}</td>
             <td style="font-family: monospace;">${device.ip_address}</td>
@@ -881,10 +881,55 @@ function exportToCSV() {
 // Socket.IO handlers
 function handleDeviceUpdate(data) {
     const index = devicesData.findIndex(d => d.id === data.id);
-    if (index !== -1) {
-        devicesData[index] = { ...devicesData[index], ...data };
-        updateStats();
+    if (index === -1) return;
+
+    const prev = devicesData[index];
+    const next = { ...prev, ...data };
+    devicesData[index] = next;
+    updateStats();
+
+    // A full re-render is only needed when list membership or sort order could change.
+    const statusChanged = prev.status !== next.status;
+    const responseChanged = prev.latest_response_time !== next.latest_response_time;
+    const lastSeenChanged = prev.last_seen !== next.last_seen;
+    const needsResort =
+        (filters.sortBy === 'status' && statusChanged) ||
+        (filters.sortBy === 'response' && responseChanged) ||
+        (filters.sortBy === 'lastseen' && lastSeenChanged);
+    const filterMembershipChanged = statusChanged && !!filters.status;
+
+    if (needsResort || filterMembershipChanged) {
         filterAndDisplayDevices();
+        return;
+    }
+
+    updateDeviceCardInPlace(next);
+}
+
+// Patch a single card/row in place without rebuilding the grid.
+function updateDeviceCardInPlace(device) {
+    const statusClass = device.status || 'unknown';
+    const responseTime = device.latest_response_time != null
+        ? `${Math.round(device.latest_response_time)}ms`
+        : '--';
+    const lastSeen = formatLastSeen(device.last_seen);
+
+    const card = document.querySelector(`.device-card[data-device-id="${device.id}"]`);
+    if (card) {
+        const dot = card.querySelector('.status-dot');
+        if (dot) dot.className = `status-dot status-${statusClass}`;
+        const stats = card.querySelectorAll('.device-stats span');
+        if (stats[0]) stats[0].innerHTML = `<i class="bi bi-lightning"></i> ${responseTime}`;
+        if (stats[1]) stats[1].innerHTML = `<i class="bi bi-clock"></i> ${lastSeen}`;
+    }
+
+    const row = document.querySelector(`tr[data-device-id="${device.id}"]`);
+    if (row) {
+        const cells = row.querySelectorAll('td');
+        const dot = cells[0] && cells[0].querySelector('.status-dot');
+        if (dot) dot.className = `status-dot status-${statusClass}`;
+        if (cells[3]) cells[3].textContent = responseTime;
+        if (cells[4]) cells[4].textContent = lastSeen;
     }
 }
 

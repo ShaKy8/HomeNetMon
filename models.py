@@ -1742,7 +1742,7 @@ class PerformanceMetrics(db.Model):
 def cleanup_old_monitoring_data(mapper, connection, target):
     from config import Config
     cutoff = datetime.utcnow() - timedelta(days=Config.DATA_RETENTION_DAYS)
-    
+
     # Delete old monitoring data
     connection.execute(
         MonitoringData.__table__.delete().where(
@@ -1750,10 +1750,46 @@ def cleanup_old_monitoring_data(mapper, connection, target):
         )
     )
 
+
+# Defense-in-depth retention for high-volume tables. ResourceMonitor performs the
+# real scheduled cleanup; these listeners ensure the tables can never grow
+# unbounded if the scheduled service stops for any reason. The sampling guard
+# keeps the per-insert cost negligible.
+import random as _retention_random
+
+
+@event.listens_for(BandwidthData, 'before_insert')
+def cleanup_old_bandwidth_data(mapper, connection, target):
+    if _retention_random.random() >= 0.001:  # ~1-in-1000 inserts triggers a sweep
+        return
+    from config import Config
+    cutoff = datetime.utcnow() - timedelta(days=Config.DATA_RETENTION_DAYS)
+    connection.execute(
+        BandwidthData.__table__.delete().where(
+            BandwidthData.__table__.c.timestamp < cutoff
+        )
+    )
+
 def init_db(app):
     db.init_app(app)
-    
+
     with app.app_context():
+        # Pin SQLite pragmas on every new connection. WAL was already active at
+        # runtime but not in code, and the others were at defaults — mmap_size=0
+        # disables memory-mapped I/O entirely, which hurts large sequential reads.
+        if db.engine.url.get_backend_name() == 'sqlite':
+            @event.listens_for(db.engine, 'connect')
+            def _set_sqlite_pragmas(dbapi_connection, _connection_record):
+                cursor = dbapi_connection.cursor()
+                try:
+                    cursor.execute("PRAGMA journal_mode=WAL")
+                    cursor.execute("PRAGMA synchronous=NORMAL")
+                    cursor.execute("PRAGMA mmap_size=268435456")
+                    cursor.execute("PRAGMA temp_store=MEMORY")
+                    cursor.execute("PRAGMA cache_size=-65536")  # ~64 MB page cache
+                finally:
+                    cursor.close()
+
         db.create_all()
         
         # Handle schema migrations

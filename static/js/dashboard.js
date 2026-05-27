@@ -224,7 +224,6 @@ function setupDashboardSocket() {
     // Listen for device updates
     HomeNetMon.socket.on('device_status_update', function(data) {
         updateDeviceCard(data);
-        updateCharts();
     });
     
     // Listen for monitoring summaries
@@ -393,14 +392,6 @@ function applyFilters() {
         
         card.style.display = visible ? '' : 'none';
     });
-}
-
-/**
- * Update charts with latest data
- */
-function updateCharts() {
-    // This would be called periodically to update charts
-    // Implementation depends on specific chart data needs
 }
 
 /**

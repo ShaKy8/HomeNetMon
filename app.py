@@ -242,7 +242,12 @@ def create_app():
     from services.memory_monitor import init_memory_monitoring
     memory_monitor = init_memory_monitoring()
     app.memory_monitor = memory_monitor
-    
+
+    # Initialize resource monitor (scheduled DB retention + system resource cleanup)
+    from services.resource_monitor import ResourceMonitor
+    resource_monitor = ResourceMonitor(app)
+    app.resource_monitor = resource_monitor
+
     # Initialize frontend resource optimization - NUCLEAR DISABLED FOR DEBUGGING
     # from services.resource_optimizer import init_resource_optimization, generate_service_worker
     # from version import __version__
@@ -347,7 +352,15 @@ def create_app():
             name='PerformanceMonitor'
         )
         performance_thread.start()
-        
+
+        # Start resource monitor (DB retention + system resource cleanup)
+        resource_monitor_thread = threading.Thread(
+            target=resource_monitor.start_monitoring,
+            daemon=True,
+            name='ResourceMonitor'
+        )
+        resource_monitor_thread.start()
+
         # Register service callbacks for configuration changes
         def register_config_callbacks():
             time.sleep(1)  # Wait for services to initialize
