@@ -2,7 +2,6 @@ import logging
 from datetime import datetime, timedelta
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event
-from werkzeug.security import generate_password_hash, check_password_hash
 import json
 import secrets
 logger = logging.getLogger(__name__)

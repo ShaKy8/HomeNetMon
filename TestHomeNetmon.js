@@ -10,7 +10,6 @@ const { test, expect } = require('@playwright/test');
 
 // Configuration
 const BASE_URL = process.env.BASE_URL || 'http://localhost:5000';
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const TEST_TIMEOUT = 30000;
 
 // Helper function to wait for network idle
@@ -29,33 +28,22 @@ async function checkElementInteractable(page, selector) {
   await expect(page.locator(selector)).toBeEnabled();
 }
 
-// Helper function to login if authentication is enabled
-async function loginIfRequired(page) {
-  try {
-    // Check if we're on a login page or if login is required
-    const loginFormExists = await page.locator('form[action*="login"]').count() > 0;
-    if (loginFormExists) {
-      await page.fill('input[name="password"]', ADMIN_PASSWORD);
-      await page.click('button[type="submit"]');
-      await page.waitForLoadState('networkidle');
-    }
-  } catch (error) {
-    // No login required or already logged in
-  }
-}
+// HomeNetMon has no authentication by design (LAN-only deployment).
+// All endpoints are accessible without login.
+async function loginIfRequired(page) { /* no-op */ }
 
 /**
  * ============================================================================
- * AUTHENTICATION TESTS
+ * APPLICATION LOAD TESTS
  * ============================================================================
  */
-test.describe('Authentication System', () => {
+test.describe('Application Load', () => {
   test('should load the application', async ({ page }) => {
     await page.goto(BASE_URL);
     await expect(page).toHaveTitle(/HomeNetMon|Network Monitor/i);
   });
 
-  test('should handle authentication if enabled', async ({ page }) => {
+  test('should serve the dashboard without authentication', async ({ page }) => {
     await page.goto(BASE_URL);
     await loginIfRequired(page);
 

@@ -28,7 +28,7 @@ module.exports = defineConfig({
   ],
 
   webServer: {
-    command: 'ADMIN_PASSWORD=admin123 HOST=0.0.0.0 DEBUG=true python app.py',
+    command: 'HOST=0.0.0.0 DEBUG=true python app.py',
     url: 'http://localhost:5000',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,

@@ -20,8 +20,8 @@ Defaults: port 5000, network `192.168.86.0/24`, SQLite at `homeNetMon.db`. Overr
 ### Tests
 ```bash
 pytest                                    # full suite (pytest.ini enforces --cov-fail-under=80)
-pytest tests/unit/test_unified_cache.py   # one file
-pytest tests/unit/test_unified_cache.py::TestMemoryCache::test_lru_eviction  # one test
+pytest tests/unit/test_constants.py       # one file
+pytest tests/unit/test_constants.py::TestConstants::test_device_types  # one test
 pytest -m unit                            # by marker (unit/integration/api/slow/network/performance/alerts/models/services)
 pytest --no-cov                           # skip coverage gate when iterating
 npx playwright test TestHomeNetmon.js     # E2E (auto-starts the Flask app; see playwright.config.js)
@@ -70,7 +70,7 @@ The security scanner is **disabled by default** because it can destabilize IoT d
 If you add a new background service, follow the same pattern: singleton with `start_monitoring()` method, instantiate in `create_app()`, attach to `app`, launch via `threading.Thread(daemon=True)` inside `start_monitoring_services()`.
 
 ### Core infrastructure (`core/`)
-Cross-cutting concerns: `security_middleware.py` (CSRF), `rate_limiter.py` (Redis-backed with in-memory fallback), `cache_layer.py` + `services/unified_cache.py` (LRU + TTL, used heavily by APIs), `db_optimizer.py` / `database_pool.py` (SQLAlchemy connection pool tuning), `websocket_manager.py` + `websocket_memory_manager.py` (fixes a known Socket.IO leak on long-lived rooms), `error_handler.py` (standardized JSON error envelopes).
+Cross-cutting concerns: `security_middleware.py` (CSRF + security headers), `rate_limiter.py` (Redis-backed with in-memory fallback), `db_optimizer.py` / `database_pool.py` (SQLAlchemy connection pool tuning), `websocket_manager.py` + `websocket_memory_manager.py` (fixes a known Socket.IO leak on long-lived rooms), `error_handler.py` (standardized JSON error envelopes). Caching lives in `services/query_cache.py` (the main one, wired in `app.py`), `services/performance_cache.py`, and `services/ultra_cache.py`.
 
 ### Models (`models.py`)
 Single ~110 KB file. Primary entities: `Device`, `DeviceIpHistory`, `MonitoringData` (high-volume time-series), `Alert`, `AlertSuppression`, `Configuration` + `ConfigurationHistory`, `BandwidthData`, `NotificationHistory`/`NotificationReceipt`, `AutomationRule`/`RuleExecution`, `EscalationRule`/`EscalationExecution`/`EscalationActionLog`, `SecurityScan`/`SecurityVulnerability`/`SecurityEvent`/`SecurityIncident`, `PerformanceMetrics`/`PerformanceSnapshot`/`PerformanceAlert`, `OptimizationRecommendation`. `init_db(app)` performs lightweight schema bootstrapping; for structural changes use the scripts in `migrations/` or the ad-hoc `*_migration.py` / `database_schema_fix.py` files at the repo root.
@@ -84,7 +84,7 @@ Server-rendered Jinja templates, Bootstrap 5, Chart.js, vanilla JS. Socket.IO em
 ## Conventions and gotchas
 
 - **Never bind to 127.0.0.1 / localhost.** `Config.HOST` defaults to `127.0.0.1` in code but `Config.validate_host_binding()` forces `0.0.0.0` because the app is useless if it can't reach the LAN. Don't undo this.
-- **No authentication.** Every endpoint is open on the LAN. Don't add auth-style assumptions; do add rate limiting and input validation. CSRF is enforced for state-changing requests via `core.security_middleware`.
+- **No authentication. Period.** Every endpoint is open to anyone on the LAN. There is no login page, no user model, no session-based access control. This is intentional — HomeNetMon is meant for trusted home/small-business networks. Don't add auth-style assumptions (`@login_required`, `g.current_user`, etc.) when extending; do add rate limiting and input validation. CSRF is enforced for state-changing requests via `core.security_middleware`.
 - **Services are singletons attached to `app`.** Don't instantiate `DeviceMonitor`, `AlertManager`, etc. a second time — reuse `current_app._monitor`, `current_app.alert_manager`, etc.
 - **Monitoring intervals are intentionally slow.** Defaults are tuned for flaky home IoT (10 min ping, 24 h scan). Don't shorten them in config defaults without a specific reason.
 - **`db.session` across threads.** Background services run in daemon threads; they must use `with app.app_context():` for DB work. Existing services already do this — copy the pattern.
