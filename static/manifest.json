@@ -1,15 +1,15 @@
 {
   "core.js": {
     "file": "bundles/core.js",
-    "hash": "7bdd7c5a"
+    "hash": "3c32a5fa"
   },
   "dashboard.js": {
     "file": "bundles/dashboard.js",
-    "hash": "f32f2efa"
+    "hash": "d6836133"
   },
   "topology.js": {
     "file": "bundles/topology.js",
-    "hash": "8d45beae"
+    "hash": "e115511c"
   },
   "core.css": {
     "file": "bundles/core.css",

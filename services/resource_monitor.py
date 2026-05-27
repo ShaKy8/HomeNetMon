@@ -277,7 +277,12 @@ class ResourceMonitor:
             logger.error(f"Error handling high CPU usage: {e}")
 
     def _delete_rows_older_than(self, table: str, column: str, cutoff: datetime, label: str) -> int:
-        """Delete rows older than `cutoff` from `table.column`. Returns rows deleted."""
+        """Delete rows older than `cutoff` from `table.column`. Returns rows deleted.
+
+        Silently skips tables that don't exist — schema variations across test
+        fixtures and partially-migrated production DBs would otherwise spam the
+        log on every cleanup pass.
+        """
         if not self.app:
             return 0
 
@@ -295,6 +300,9 @@ class ResourceMonitor:
 
             except Exception as e:
                 db.session.rollback()
+                if 'no such table' in str(e).lower():
+                    logger.debug(f"Skipping {label} cleanup: table {table} not present")
+                    return 0
                 raise DatabaseError(f"Failed to cleanup {label}: {e}")
 
     @handle_errors()
