@@ -4,273 +4,102 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-HomeNetMon is a comprehensive home network monitoring solution built with Flask, SQLAlchemy, and modern web technologies. It provides real-time device monitoring, alerting, network visualization, performance analytics, and advanced security features through a responsive web dashboard.
-The project is for home or small business use on small single-subnet networks (x.x.x.x/24).  It is not intended for corporate or enterprise use.
-
-### Key Features
-- Automatic network device discovery using ARP/nmap scanning
-- Real-time ping monitoring with configurable intervals
-- Web dashboard with real-time updates via WebSockets
-- Email and webhook alert notifications
-- Device management with custom naming and grouping
-- Historical data tracking and performance charts
-- Advanced analytics and anomaly detection
-- Performance optimization and resource monitoring
-- Security features including rate limiting and CSRF protection
-- Usage analytics and SaaS administration capabilities
-- REST API for external integrations with comprehensive security
-- Docker deployment support
-- Asset bundling and optimization for production
-- Database performance optimization and query caching
-
-## Development Setup
-
-### Prerequisites
-- Python 3.8+
-- nmap (for network scanning)
-- SQLite (for database)
-
-### Quick Start
-```bash
-# Create virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Set environment variables
-export NETWORK_RANGE="192.168.86.0/24"
-export DEBUG=true
-
-# Run development server
-python app.py
-```
-
-### Docker Development
-```bash
-# Build and run with Docker
-docker-compose up --build
-
-# View logs
-docker-compose logs -f
-```
+HomeNetMon is a Flask + SQLAlchemy + Socket.IO web app for monitoring devices on a single home/small-business subnet (`x.x.x.x/24`). It discovers devices via ARP/nmap, pings them on an interval, fires alerts, and serves a Bootstrap 5 + Chart.js dashboard with live WebSocket updates. **Not** intended for corporate/enterprise networks. There is no user authentication — the app assumes a trusted LAN.
 
 ## Common Commands
 
-### Development
-- `python app.py` - Start development server
-- `HOST=0.0.0.0 DEBUG=true python app.py` - Start with debug enabled
-- `python build_assets.py` - Bundle and minify CSS/JS assets
-- `python -m pytest` - Run tests
-- `python optimize_performance.py` - Run performance optimizations
-- `python database_performance_fix.py` - Optimize database performance
-- `docker-compose up -d` - Start services in background
-- `docker-compose logs -f` - Follow logs
+### Run the app
+```bash
+source venv/bin/activate
+HOST=0.0.0.0 DEBUG=true python app.py     # dev
+python run_http2.py                       # HTTP/2 variant
+./run_production.sh                       # production launcher
+```
+Defaults: port 5000, network `192.168.86.0/24`, SQLite at `homeNetMon.db`. Override via `.env` (see `.env.example`). The DB file in this repo is ~1 GB — do not commit changes to it.
 
-### Production Deployment
-- `./install.sh` - Automated installation on Ubuntu/Debian
-- `sudo systemctl status homeNetMon` - Check service status
-- `sudo systemctl restart homeNetMon` - Restart service
-- `sudo journalctl -u homeNetMon -f` - View service logs
+### Tests
+```bash
+pytest                                    # full suite (pytest.ini enforces --cov-fail-under=80)
+pytest tests/unit/test_unified_cache.py   # one file
+pytest tests/unit/test_unified_cache.py::TestMemoryCache::test_lru_eviction  # one test
+pytest -m unit                            # by marker (unit/integration/api/slow/network/performance/alerts/models/services)
+pytest --no-cov                           # skip coverage gate when iterating
+npx playwright test TestHomeNetmon.js     # E2E (auto-starts the Flask app; see playwright.config.js)
+```
+Test fixtures live in `tests/fixtures/factories.py` and `tests/conftest.py`.
 
-### Database Management
-- Database is SQLite-based and managed automatically
-- Data retention is configurable (default: 30 days)
-- Backup: `sqlite3 homeNetMon.db ".backup backup.db"`
+### Assets
+```bash
+python build_assets.py                    # bundle + minify CSS/JS, writes manifest for cache busting
+```
+Run this after any change in `static/css/` or `static/js/`.
+
+### Database
+```bash
+sqlite3 homeNetMon.db ".backup backup.db" # safe backup
+python database_performance_fix.py        # apply perf indexes
+python optimize_db_queries.py             # query optimization pass
+```
+
+### Production / service control
+```bash
+sudo systemctl {status,restart} homeNetMon
+sudo journalctl -u homeNetMon -f
+./install.sh                              # automated Ubuntu/Debian install
+```
 
 ## Architecture
 
-### Backend Architecture
-```
-app.py (Flask Application)
-├── models.py (SQLAlchemy Models)
-├── config.py (Configuration Management)
-├── core/ (Core Services)
-│   ├── security_middleware.py (CSRF & Security)
-│   ├── rate_limiter.py (Rate Limiting)
-│   ├── cache_layer.py (Caching System)
-│   ├── db_optimizer.py (Database Optimization)
-│   └── websocket_manager.py (WebSocket Management)
-├── monitoring/ (Background Services)
-│   ├── scanner.py (Network Discovery)
-│   ├── monitor.py (Device Monitoring)
-│   └── alerts.py (Alert Management)
-├── services/ (Business Logic)
-│   ├── query_optimizer.py (Query Optimization)
-│   ├── cdn_manager.py (CDN & Static Assets)
-│   ├── http_optimizer.py (HTTP/2 & Performance)
-│   └── resource_optimizer.py (Resource Management)
-└── api/ (Extensive REST API)
-    ├── devices.py, devices_optimized.py
-    ├── monitoring.py, performance.py
-    ├── security.py
-    ├── analytics.py, usage_analytics_api.py
-    ├── saas_admin.py, rate_limiting.py
-    └── [25+ specialized API modules]
-```
+### Composition root: `app.py` `create_app()`
+`create_app()` is large and order-sensitive. It:
+1. Loads `Config` (from `config.py`, reads `.env`), sets up logging, calls `Config.validate_host_binding()` (which **forces** binding to non-loopback for LAN access).
+2. Registers middlewares: `flask_compress`, `services.http_optimizer.HTTPOptimizer`, `services.cdn_manager.CDNManager`, `core.security_middleware.SecurityMiddleware` (CSRF), `core.error_handler.global_error_handler`, `performance_middleware.PerformanceMiddleware`.
+3. Builds Socket.IO with a custom `cors_allowed_origins_callback` that allows only RFC1918 / `.local` origins.
+4. Registers ~18 API blueprints from `api/*.py` under `/api/<name>` prefixes.
+5. Instantiates **singleton services** and attaches them to the app object as `app._scanner`, `app._monitor`, `app.alert_manager`, `app.bandwidth_monitor`, `app.speed_test_service`, `app.anomaly_detection_service`, `app.security_scanner`, `app.rule_engine_service`, `app.configuration_service`, `app.escalation_service`, `app.rate_limiter`, `app.performance_monitor`, `app.websocket_optimizer`, `app.websocket_connection_manager`, `app.query_cache`, `app.memory_monitor`, `app.socketio`. Other code reaches services via `current_app.<name>` — preserve those attribute names when refactoring.
+6. Spawns one daemon thread per long-running service (scanner, monitor, alerts, anomaly, bandwidth, rule engine, configuration, escalation, performance, optional security_scanner gated by `SECURITY_SCANNING_ENABLED=true`).
 
-### Frontend Architecture
-- Bootstrap 5 for responsive UI
-- Chart.js for data visualization
-- Socket.IO for real-time updates
-- Vanilla JavaScript (no framework dependencies)
+The security scanner is **disabled by default** because it can destabilize IoT devices on home networks.
 
-### Database Schema
-- **Device**: Store device information and metadata
-- **MonitoringData**: Historical ping/response data
-- **Alert**: Alert records and acknowledgments
-- **Configuration**: Runtime configuration storage
+### Background services (`monitoring/`, `services/`)
+- `monitoring/scanner.py` — `NetworkScanner.start_continuous_scan()` runs ARP + nmap discovery on `SCAN_INTERVAL` (default 24h — deliberately slow to avoid hammering IoT devices).
+- `monitoring/monitor.py` — `DeviceMonitor.start_monitoring()` pings all known devices every `PING_INTERVAL` (default 600s) using a thread pool capped at `MAX_WORKERS`, persists `MonitoringData`, and emits `device_status_update` / `monitoring_summary` over Socket.IO.
+- `monitoring/alerts.py` — `AlertManager` periodically calls `check_device_down_alerts`, `check_high_latency_alerts`, `check_device_recovery_alerts`; dispatches via SMTP (`SMTP_*` env) and/or webhook (`WEBHOOK_URL`).
+- `monitoring/bandwidth_monitor.py` — per-device bandwidth deltas on `BANDWIDTH_INTERVAL`.
 
-### Key Components
+If you add a new background service, follow the same pattern: singleton with `start_monitoring()` method, instantiate in `create_app()`, attach to `app`, launch via `threading.Thread(daemon=True)` inside `start_monitoring_services()`.
 
-1. **Network Scanner** (`monitoring/scanner.py`)
-   - ARP table parsing for device discovery
-   - nmap integration for detailed scanning
-   - MAC vendor lookup and device classification
+### Core infrastructure (`core/`)
+Cross-cutting concerns: `security_middleware.py` (CSRF), `rate_limiter.py` (Redis-backed with in-memory fallback), `cache_layer.py` + `services/unified_cache.py` (LRU + TTL, used heavily by APIs), `db_optimizer.py` / `database_pool.py` (SQLAlchemy connection pool tuning), `websocket_manager.py` + `websocket_memory_manager.py` (fixes a known Socket.IO leak on long-lived rooms), `error_handler.py` (standardized JSON error envelopes).
 
-2. **Device Monitor** (`monitoring/monitor.py`) 
-   - Multi-threaded ping monitoring
-   - Response time tracking and statistics
-   - Real-time WebSocket updates
+### Models (`models.py`)
+Single ~110 KB file. Primary entities: `Device`, `DeviceIpHistory`, `MonitoringData` (high-volume time-series), `Alert`, `AlertSuppression`, `Configuration` + `ConfigurationHistory`, `BandwidthData`, `NotificationHistory`/`NotificationReceipt`, `AutomationRule`/`RuleExecution`, `EscalationRule`/`EscalationExecution`/`EscalationActionLog`, `SecurityScan`/`SecurityVulnerability`/`SecurityEvent`/`SecurityIncident`, `PerformanceMetrics`/`PerformanceSnapshot`/`PerformanceAlert`, `OptimizationRecommendation`. `init_db(app)` performs lightweight schema bootstrapping; for structural changes use the scripts in `migrations/` or the ad-hoc `*_migration.py` / `database_schema_fix.py` files at the repo root.
 
-3. **Alert Manager** (`monitoring/alerts.py`)
-   - Rule-based alert generation
-   - Email and webhook notifications
-   - Alert lifecycle management
+### API layer (`api/`)
+Each module exports a Flask `Blueprint` (e.g. `devices_bp`) registered in `app.py`. URL prefix is set at registration, **not** in the blueprint, so a route `@bp.route('/<id>')` inside `api/devices.py` becomes `/api/devices/<id>`. New endpoints should follow the existing pattern: blueprint → caching decorator from `services.query_cache` where appropriate → input validation via `core.validators` / `core.validation_middleware` → standardized response via `core.error_handler` helpers.
 
-4. **Web Dashboard** (`templates/`)
-   - Real-time device status grid
-   - Individual device detail pages
-   - Configuration interface
-   - Alert management interface
+### Frontend (`templates/`, `static/`)
+Server-rendered Jinja templates, Bootstrap 5, Chart.js, vanilla JS. Socket.IO emits drive live updates — see events `device_status_update` and `monitoring_summary`. After editing CSS/JS, run `python build_assets.py` to refresh the bundles and `static/manifest.json` (the manifest powers cache-busting hashes in templates).
+
+## Conventions and gotchas
+
+- **Never bind to 127.0.0.1 / localhost.** `Config.HOST` defaults to `127.0.0.1` in code but `Config.validate_host_binding()` forces `0.0.0.0` because the app is useless if it can't reach the LAN. Don't undo this.
+- **No authentication.** Every endpoint is open on the LAN. Don't add auth-style assumptions; do add rate limiting and input validation. CSRF is enforced for state-changing requests via `core.security_middleware`.
+- **Services are singletons attached to `app`.** Don't instantiate `DeviceMonitor`, `AlertManager`, etc. a second time — reuse `current_app._monitor`, `current_app.alert_manager`, etc.
+- **Monitoring intervals are intentionally slow.** Defaults are tuned for flaky home IoT (10 min ping, 24 h scan). Don't shorten them in config defaults without a specific reason.
+- **`db.session` across threads.** Background services run in daemon threads; they must use `with app.app_context():` for DB work. Existing services already do this — copy the pattern.
+- **Coverage gate is 80%** (pytest.ini). Use `pytest --no-cov` for quick iteration, but the gate must pass before merging.
+- **`homeNetMon.db` is ~1 GB.** It's in `.gitignore` patterns but check before staging. For schema work, copy to a scratch DB first.
+- **Many root-level `*.py` files are one-shot scripts** (audits, migrations, performance reports) generated by past tasks. They are not part of the runtime — don't import from them. The runtime is `app.py` + `api/` + `core/` + `monitoring/` + `services/` + `models.py` + `config.py`.
 
 ## Configuration
 
-### Environment Variables
-Key configuration options (see `.env.example`):
-- `NETWORK_RANGE`: CIDR network to monitor
-- `PING_INTERVAL`: Monitoring frequency (seconds)
-- `SMTP_*`: Email configuration for alerts
-- `WEBHOOK_URL`: Webhook endpoint for notifications
+Read `config.py` and `.env.example` for the full list. Most-edited keys: `NETWORK_RANGE`, `PING_INTERVAL`, `SCAN_INTERVAL`, `MAX_WORKERS`, `DATA_RETENTION_DAYS`, `SMTP_*`, `WEBHOOK_URL`, `SECRET_KEY`, `DATABASE_URL` (SQLite default; PostgreSQL supported — see `migrate_to_postgresql.py` and `POSTGRESQL_MIGRATION.md`). Runtime overrides also available via the `/settings` UI, stored in the `Configuration` table.
 
-### Runtime Configuration
-- Web-based settings interface at `/settings`
-- YAML configuration file support
-- Database-stored configuration with web UI
+## Further reading
 
-## API Documentation
-
-RESTful API available at `/api/`:
-- `/api/devices` - Device management
-- `/api/monitoring` - Monitoring data and statistics  
-- `/api/config` - Configuration management
-
-WebSocket events for real-time updates:
-- `device_status_update` - Individual device status
-- `monitoring_summary` - Network-wide statistics
-
-## Security Considerations
-
-### Network Permissions
-- Requires `CAP_NET_RAW` for ping operations
-- Needs network access for scanning
-- Docker containers run as non-root user
-
-### Application Security
-- CSRF protection via security middleware
-- Comprehensive rate limiting with Redis support
-- Input validation and sanitization on all endpoints
-- SQL injection protection via SQLAlchemy ORM
-- XSS prevention through template escaping
-- Security headers and middleware
-
-## Deployment Options
-
-1. **Docker (Recommended)**
-   - Complete containerized deployment
-   - Host network mode for full scanning capability
-   - Automatic service management
-
-2. **Native Installation**
-   - Systemd service integration
-   - Nginx reverse proxy configuration
-   - Full system integration
-
-3. **Development**
-   - Direct Python execution
-   - Debug mode with hot reloading
-   - SQLite database in project directory
-
-## Testing and Quality
-
-### Code Organization
-- Modular design with clear separation of concerns
-- REST API follows OpenAPI patterns
-- Database models use SQLAlchemy best practices
-- Frontend follows responsive design principles
-
-### Error Handling
-- Comprehensive exception handling in all modules
-- Graceful degradation for network issues
-- User-friendly error messages in UI
-- Structured logging throughout application
-
-## Performance & Optimization
-
-### Asset Management
-- Frontend assets are bundled and minified via `build_assets.py`
-- Gzip and Brotli compression for static files
-- CDN integration for optimized delivery
-- Cache busting with content hashes
-
-### Database Optimization
-- Query optimization and performance profiling
-- Database indexing for common queries
-- Connection pooling and resource management
-- Query caching layer for frequently accessed data
-
-### Real-time Features
-- WebSocket connection optimization
-- Memory-efficient real-time updates
-- Connection throttling and resource management
-
-## Security Features
-
-### Rate Limiting
-- Redis-backed rate limiting (falls back to in-memory)
-- Per-endpoint and per-IP limits
-- Admin interface for rate limit management
-- Configurable limits via environment variables
-
-## Important Development Notes
-
-### Network Binding
-- **NEVER** bind to 127.0.0.1 or localhost
-- Always use 0.0.0.0 for proper network access
-- Application designed for local network access
-
-### Asset Building
-- Run `python build_assets.py` after CSS/JS changes
-- Assets are automatically compressed and optimized
-- Manifest file tracks asset versions for cache busting
-
-### Database Management
-- SQLite with extensive performance optimizations
-- Run database optimization scripts after schema changes
-- Automatic indexing and query performance monitoring
-
-### Testing and Quality
-- Comprehensive test suite
-- Performance monitoring and profiling tools
-- Database performance validation
-- Asset optimization verification
-
-## Architecture Highlights
-
-- **Modular Design**: Core services, API modules, and monitoring separated
-- **Performance-First**: Extensive caching, optimization, and profiling
-- **Security-Aware**: CSRF protection, rate limiting, input validation
-- **Production-Ready**: Asset bundling, database optimization, monitoring
-- **Scalable**: Resource management, connection optimization, caching layers
-- **Open Access**: No authentication required - designed for trusted home/small business networks
+- `README.md` — user-facing feature list and install walkthrough
+- `docs/API_REFERENCE.md`, `docs/DEPLOYMENT_GUIDE.md`, `docs/TROUBLESHOOTING_GUIDE.md`
+- `tests/QUICK_START.md` — curated test commands by feature area
+- `PHASE_2_AUDIT_REPORT.md` — recent architectural audit and recommendations
+- API docs served at `/api/docs` (Swagger) and `/api/redoc` when the app is running
