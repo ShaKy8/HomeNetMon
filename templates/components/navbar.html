@@ -321,4 +321,30 @@ document.addEventListener('keydown', function(e) {
         }
     }
 });
+
+// Dark mode toggle. CSS variants under [data-bs-theme="dark"] are already
+// defined in base_beautiful.html; we just flip the attribute on <html> and
+// persist the user's choice across reloads.
+(function() {
+    const root = document.documentElement;
+    const toggle = document.getElementById('theme-toggle');
+    const stored = localStorage.getItem('homenetmon-theme');
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initialTheme = stored || (prefersDark ? 'dark' : 'light');
+
+    function applyTheme(theme) {
+        root.setAttribute('data-bs-theme', theme);
+        if (toggle) toggle.checked = (theme === 'dark');
+    }
+
+    applyTheme(initialTheme);
+
+    if (toggle) {
+        toggle.addEventListener('change', function() {
+            const next = toggle.checked ? 'dark' : 'light';
+            localStorage.setItem('homenetmon-theme', next);
+            applyTheme(next);
+        });
+    }
+})();
 </script>

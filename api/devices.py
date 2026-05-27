@@ -1,14 +1,18 @@
-from flask import Blueprint, request, jsonify, current_app
+import csv
+import io
+import logging
+
+import ping3
+from flask import Blueprint, current_app, jsonify, request, Response
 from datetime import datetime, timedelta
+
+from api.rate_limited_endpoints import create_endpoint_limiter
+from core.error_handler import handle_errors, ValidationError, ResourceNotFoundError, DatabaseError
+from core.validators import InputValidator, validate_request
 from models import db, Device, MonitoringData, Alert, DeviceIpHistory
 from monitoring.monitor import DeviceMonitor
-from api.rate_limited_endpoints import create_endpoint_limiter
-from services.query_cache import get_cached_device_list, invalidate_device_cache
 from services.pagination import paginator, create_pagination_response
-from core.validators import InputValidator, validate_request
-from core.error_handler import handle_errors, ValidationError, ResourceNotFoundError, DatabaseError
-import logging
-import ping3
+from services.query_cache import get_cached_device_list, invalidate_device_cache
 
 # Import ultra-fast cache if available
 try:
@@ -521,6 +525,62 @@ def delete_device(device_id):
         'success': True,
         'message': 'Device deleted successfully'
     })
+
+@devices_bp.route('/<int:device_id>/history.csv', methods=['GET'])
+@create_endpoint_limiter('relaxed')
+def get_device_history_csv(device_id):
+    """Export per-device ping history as CSV.
+
+    Query params:
+        days (int, default 30, max 365): how far back to export
+        limit (int, default 100000): hard cap on rows returned
+
+    The response is a downloadable CSV with one row per monitoring sample:
+    timestamp_utc, response_time_ms, packet_loss_pct, success.
+    """
+    device = Device.query.get(device_id)
+    if not device:
+        return jsonify({'error': 'Device not found'}), 404
+
+    try:
+        days = max(1, min(int(request.args.get('days', 30)), 365))
+    except (TypeError, ValueError):
+        days = 30
+    try:
+        row_limit = max(1, min(int(request.args.get('limit', 100000)), 500000))
+    except (TypeError, ValueError):
+        row_limit = 100000
+
+    cutoff = datetime.utcnow() - timedelta(days=days)
+    rows = (MonitoringData.query
+            .filter(MonitoringData.device_id == device_id,
+                    MonitoringData.timestamp >= cutoff)
+            .order_by(MonitoringData.timestamp.asc())
+            .limit(row_limit)
+            .all())
+
+    buf = io.StringIO()
+    writer = csv.writer(buf)
+    writer.writerow(['timestamp_utc', 'response_time_ms', 'packet_loss_pct', 'success'])
+    for r in rows:
+        writer.writerow([
+            r.timestamp.isoformat() if r.timestamp else '',
+            f"{r.response_time:.2f}" if r.response_time is not None else '',
+            f"{r.packet_loss:.2f}" if r.packet_loss is not None else '',
+            '1' if r.response_time is not None else '0',
+        ])
+
+    safe_name = (device.display_name or device.ip_address or f'device-{device_id}').replace('/', '-').replace(' ', '_')
+    filename = f"{safe_name}_history_{days}d.csv"
+    return Response(
+        buf.getvalue(),
+        mimetype='text/csv',
+        headers={
+            'Content-Disposition': f'attachment; filename="{filename}"',
+            'X-Row-Count': str(len(rows)),
+        },
+    )
+
 
 @devices_bp.route('/<int:device_id>/ip-history', methods=['GET'])
 @create_endpoint_limiter('relaxed')

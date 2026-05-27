@@ -443,6 +443,53 @@ This is an automated message from HomeNetMon.
             logger.error(f"Error sending webhook alert: {e}")
             return False
 
+    def send_discord_alert(self, alert):
+        """Send alert via Discord webhook.
+
+        Configured via the ``discord_webhook_url`` runtime setting (Settings UI
+        or ``Configuration.set_value``). Best-effort; logs and returns False on
+        any failure so a Discord outage never blocks the dispatch chain.
+        """
+        try:
+            webhook_url = Configuration.get_value('discord_webhook_url', '').strip()
+            if not webhook_url:
+                logger.debug("No Discord webhook URL configured, skipping Discord alert")
+                return False
+
+            colors = {
+                'critical': 0xE74C3C,  # red
+                'warning':  0xF39C12,  # orange
+                'info':     0x3498DB,  # blue
+            }
+            embed = {
+                'title': f"{alert.severity.title()}: {alert.alert_type.replace('_', ' ').title()}",
+                'description': alert.message,
+                'color': colors.get(alert.severity, 0x95A5A6),
+                'timestamp': alert.created_at.isoformat() + 'Z',
+                'fields': [
+                    {'name': 'Device', 'value': alert.device.display_name, 'inline': True},
+                    {'name': 'IP',     'value': alert.device.ip_address,   'inline': True},
+                ],
+                'footer': {'text': f"HomeNetMon · alert #{alert.id}"},
+            }
+            response = requests.post(
+                webhook_url,
+                json={'embeds': [embed]},
+                timeout=Config.WEBHOOK_TIMEOUT,
+            )
+            # Discord returns 204 No Content on success.
+            if response.status_code in (200, 204):
+                logger.info(f"Discord alert sent for {alert.device.display_name}")
+                return True
+            logger.error(
+                f"Discord alert failed with status {response.status_code}: "
+                f"{response.text[:200]}"
+            )
+            return False
+        except Exception as e:
+            logger.error(f"Error sending Discord alert: {e}")
+            return False
+
     def send_alert_notifications(self, alert):
         """Send all configured alert notifications"""
         try:
@@ -450,6 +497,7 @@ This is an automated message from HomeNetMon.
             email_enabled = Configuration.get_value('alert_email_enabled', 'false').lower() == 'true'
             webhook_enabled = Configuration.get_value('alert_webhook_enabled', 'false').lower() == 'true'
             push_enabled = Configuration.get_value('push_notifications_enabled', 'false').lower() == 'true'
+            discord_enabled = Configuration.get_value('alert_discord_enabled', 'false').lower() == 'true'
 
             if email_enabled:
                 self.send_email_alert(alert)
@@ -459,6 +507,9 @@ This is an automated message from HomeNetMon.
 
             if push_enabled:
                 self.send_push_notification(alert)
+
+            if discord_enabled:
+                self.send_discord_alert(alert)
 
         except Exception as e:
             logger.error(f"Error sending alert notifications: {e}")
@@ -932,11 +983,19 @@ This is an automated message from HomeNetMon.
                     }
                 ]
 
-                # Create suppression rules if they don't exist
+                # Filter to columns that actually exist on the model. Some seed
+                # rules above declare fields like `alert_subtype`,
+                # `rate_limit_window_minutes`, `duplicate_window_hours` etc. that
+                # were aspirational suppression features never implemented. Passing
+                # them to the constructor raises TypeError and prevents ANY rule
+                # from being seeded.
+                valid_columns = set(AlertSuppression.__table__.columns.keys())
+
                 for suppression_data in default_suppressions:
                     existing = AlertSuppression.query.filter_by(name=suppression_data['name']).first()
                     if not existing:
-                        suppression = AlertSuppression(**suppression_data)
+                        filtered = {k: v for k, v in suppression_data.items() if k in valid_columns}
+                        suppression = AlertSuppression(**filtered)
                         db.session.add(suppression)
                         logger.info(f"Created default suppression rule: {suppression_data['name']}")
 
