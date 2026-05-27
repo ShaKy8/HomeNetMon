@@ -25,7 +25,7 @@ class UserPreferences {
         };
         this.preferences = this.load();
     }
-    
+
     load() {
         try {
             const stored = localStorage.getItem(this.storageKey);
@@ -37,23 +37,23 @@ class UserPreferences {
         }
         return { ...this.defaults };
     }
-    
+
     save() {
         try {
             localStorage.setItem(this.storageKey, JSON.stringify(this.preferences));
         } catch (error) {
         }
     }
-    
+
     get(key) {
         return this.preferences[key] ?? this.defaults[key];
     }
-    
+
     set(key, value) {
         this.preferences[key] = value;
         this.save();
     }
-    
+
     reset() {
         this.preferences = { ...this.defaults };
         this.save();
@@ -75,37 +75,37 @@ document.addEventListener('DOMContentLoaded', function() {
  */
 function initializeDashboard() {
     if (Dashboard.initialized) return;
-    
+
     // Initialize charts if Chart.js is available
     if (typeof Chart !== 'undefined') {
         initializeCharts();
     }
-    
+
     // Initialize device grid handlers
     initializeDeviceGrid();
-    
+
     // Initialize filter handlers
     initializeFilters();
-    
+
     // Set up dashboard-specific socket handlers
     setupDashboardSocket();
-    
+
     // Initialize performance metrics toggle
     initializePerformanceToggle();
-    
+
     // Apply saved user preferences
     applyUserPreferences();
-    
+
     // Initialize preference saving for filters
     initializeFilterPreferences();
-    
+
     // Show initial loading state
     setTimeout(() => {
         if (window.skeletonManager) {
             window.skeletonManager.showLoadingState(800);
         }
     }, 100);
-    
+
     Dashboard.initialized = true;
 }
 
@@ -140,7 +140,7 @@ function initializeCharts() {
             }
         });
     }
-    
+
     // Response Time Chart
     const responseTimeCanvas = document.getElementById('responseTimeChart');
     if (responseTimeCanvas) {
@@ -175,7 +175,7 @@ function initializeCharts() {
 function initializeDeviceGrid() {
     const deviceGrid = document.querySelector('[data-device-grid]');
     if (!deviceGrid) return;
-    
+
     // Device card click handlers
     deviceGrid.addEventListener('click', function(e) {
         const deviceCard = e.target.closest('[data-device-card]');
@@ -186,7 +186,7 @@ function initializeDeviceGrid() {
             }
         }
     });
-    
+
     // Quick action handlers
     deviceGrid.addEventListener('click', function(e) {
         const quickAction = e.target.closest('[data-quick-action]');
@@ -194,7 +194,7 @@ function initializeDeviceGrid() {
             e.stopPropagation();
             const action = quickAction.getAttribute('data-quick-action');
             const deviceId = quickAction.closest('[data-device-card]')?.getAttribute('data-device-id');
-            
+
             if (action && deviceId) {
                 handleQuickAction(action, deviceId);
             }
@@ -207,7 +207,7 @@ function initializeDeviceGrid() {
  */
 function initializeFilters() {
     const filters = document.querySelectorAll('[data-filter]');
-    
+
     filters.forEach(filter => {
         filter.addEventListener('change', function() {
             applyFilters();
@@ -220,18 +220,18 @@ function initializeFilters() {
  */
 function setupDashboardSocket() {
     if (!HomeNetMon.socket) return;
-    
+
     // Listen for device updates
     HomeNetMon.socket.on('device_status_update', function(data) {
         updateDeviceCard(data);
     });
-    
+
     // Listen for monitoring summaries
     HomeNetMon.socket.on('monitoring_summary', function(data) {
         updateNetworkChart(data);
         updateQuickStats(data);
     });
-    
+
     // Join dashboard updates room
     HomeNetMon.socket.emit('join', 'updates_device_status');
     HomeNetMon.socket.emit('join', 'updates_monitoring_summary');
@@ -242,29 +242,29 @@ function setupDashboardSocket() {
  */
 function updateDeviceCard(data) {
     if (!data || !data.device_id) return;
-    
+
     const deviceCard = document.querySelector(`[data-device-card][data-device-id="${data.device_id}"]`);
     if (!deviceCard) return;
-    
+
     // Update status badge
     const statusBadge = deviceCard.querySelector('[data-device-status]');
     if (statusBadge) {
         statusBadge.className = `badge badge-${getStatusColor(data.status)}`;
         statusBadge.textContent = data.status.toUpperCase();
     }
-    
+
     // Update response time
     const responseTimeEl = deviceCard.querySelector('[data-device-response-time]');
     if (responseTimeEl) {
         responseTimeEl.textContent = data.response_time ? `${data.response_time}ms` : 'N/A';
     }
-    
+
     // Update last seen
     const lastSeenEl = deviceCard.querySelector('[data-device-last-seen]');
     if (lastSeenEl && data.timestamp) {
         lastSeenEl.textContent = formatTimestamp(data.timestamp);
     }
-    
+
     // Update card background based on status
     deviceCard.className = deviceCard.className.replace(/border-\w+/, `border-${getStatusColor(data.status)}`);
 }
@@ -274,7 +274,7 @@ function updateDeviceCard(data) {
  */
 function updateNetworkChart(data) {
     if (!Dashboard.charts.network || !data) return;
-    
+
     const chart = Dashboard.charts.network;
     chart.data.datasets[0].data = [
         data.devices_up || 0,
@@ -289,14 +289,14 @@ function updateNetworkChart(data) {
  */
 function updateQuickStats(data) {
     if (!data) return;
-    
+
     const statElements = [
         { key: 'total_devices', selector: '[data-quick-stat="total_devices"]' },
         { key: 'devices_up', selector: '[data-quick-stat="devices_up"]' },
         { key: 'devices_down', selector: '[data-quick-stat="devices_down"]' },
         { key: 'active_alerts', selector: '[data-quick-stat="active_alerts"]' }
     ];
-    
+
     statElements.forEach(stat => {
         const element = document.querySelector(stat.selector);
         if (element) {
@@ -328,7 +328,7 @@ function handleQuickAction(action, deviceId) {
  */
 function performDevicePing(deviceId) {
     if (!HomeNetMon.apiCall) return;
-    
+
     HomeNetMon.apiCall(`/devices/${deviceId}/ping`, { method: 'POST' })
         .then(response => {
             showToast('Ping initiated', 'success');
@@ -343,7 +343,7 @@ function performDevicePing(deviceId) {
  */
 function toggleDeviceMonitoring(deviceId) {
     if (!HomeNetMon.apiCall) return;
-    
+
     HomeNetMon.apiCall(`/devices/${deviceId}/toggle-monitoring`, { method: 'POST' })
         .then(response => {
             showToast('Monitoring setting updated', 'success');
@@ -360,12 +360,12 @@ function applyFilters() {
     const statusFilter = document.querySelector('[data-filter="status"]')?.value;
     const typeFilter = document.querySelector('[data-filter="type"]')?.value;
     const groupFilter = document.querySelector('[data-filter="group"]')?.value;
-    
+
     const deviceCards = document.querySelectorAll('[data-device-card]');
-    
+
     deviceCards.forEach(card => {
         let visible = true;
-        
+
         // Apply status filter
         if (statusFilter && statusFilter !== 'all') {
             const deviceStatus = card.getAttribute('data-device-status');
@@ -373,7 +373,7 @@ function applyFilters() {
                 visible = false;
             }
         }
-        
+
         // Apply type filter
         if (typeFilter && typeFilter !== 'all') {
             const deviceType = card.getAttribute('data-device-type');
@@ -381,7 +381,7 @@ function applyFilters() {
                 visible = false;
             }
         }
-        
+
         // Apply group filter
         if (groupFilter && groupFilter !== 'all') {
             const deviceGroup = card.getAttribute('data-device-group');
@@ -389,7 +389,7 @@ function applyFilters() {
                 visible = false;
             }
         }
-        
+
         card.style.display = visible ? '' : 'none';
     });
 }
@@ -415,9 +415,9 @@ function showToast(message, type = 'info', duration = 4000, options = {}) {
         toast.className = `alert alert-${type === 'success' ? 'success' : type === 'error' ? 'danger' : 'info'} toast-notification`;
         toast.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
         toast.textContent = message;
-        
+
         document.body.appendChild(toast);
-        
+
         setTimeout(() => {
             toast.remove();
         }, duration || 3000);
@@ -455,25 +455,25 @@ function formatTimestamp(timestamp) {
 function initializePerformanceToggle() {
     const toggleBtn = document.getElementById('toggle-metrics-btn');
     const sidebar = document.getElementById('performance-metrics-sidebar');
-    
+
     if (!toggleBtn || !sidebar) return;
-    
+
     // Load saved preference
     const showMetrics = window.userPrefs.get('showPerformanceMetrics');
-    
+
     // Set initial state
     updateMetricsVisibility(showMetrics);
-    
+
     // Add click handler
     toggleBtn.addEventListener('click', function() {
         const isVisible = sidebar.style.display !== 'none';
         const newState = !isVisible;
-        
+
         updateMetricsVisibility(newState);
-        
+
         // Save preference
         window.userPrefs.set('showPerformanceMetrics', newState);
-        
+
         // Show feedback
         showToast(`Performance metrics ${newState ? 'shown' : 'hidden'}`, 'info');
     });
@@ -486,12 +486,12 @@ function updateMetricsVisibility(show) {
     const toggleBtn = document.getElementById('toggle-metrics-btn');
     const sidebar = document.getElementById('performance-metrics-sidebar');
     const parentRow = sidebar.parentElement;
-    
+
     if (show) {
         sidebar.style.display = 'block';
         toggleBtn.querySelector('span').textContent = 'Hide Metrics';
         toggleBtn.querySelector('i').className = 'bi bi-eye-slash me-2';
-        
+
         // Adjust main content column width - find the network topology div
         const mainContent = parentRow.querySelector('.col-lg-8');
         if (mainContent) {
@@ -501,7 +501,7 @@ function updateMetricsVisibility(show) {
         sidebar.style.display = 'none';
         toggleBtn.querySelector('span').textContent = 'Show Metrics';
         toggleBtn.querySelector('i').className = 'bi bi-bar-chart me-2';
-        
+
         // Expand main content to full width
         const mainContent = parentRow.querySelector('.col-lg-8');
         if (mainContent) {
@@ -518,11 +518,11 @@ function applyUserPreferences() {
     const filterType = document.getElementById('filter-type');
     const filterGroup = document.getElementById('filter-group');
     const filterStatus = document.getElementById('filter-status');
-    
+
     if (filterType) filterType.value = window.userPrefs.get('filterType');
     if (filterGroup) filterGroup.value = window.userPrefs.get('filterGroup');
     if (filterStatus) filterStatus.value = window.userPrefs.get('filterStatus');
-    
+
     // Apply view mode preference if available
     const viewMode = window.userPrefs.get('viewMode');
     if (viewMode && window.currentView !== undefined) {
@@ -537,19 +537,19 @@ function initializeFilterPreferences() {
     const filterType = document.getElementById('filter-type');
     const filterGroup = document.getElementById('filter-group');
     const filterStatus = document.getElementById('filter-status');
-    
+
     if (filterType) {
         filterType.addEventListener('change', function() {
             window.userPrefs.set('filterType', this.value);
         });
     }
-    
+
     if (filterGroup) {
         filterGroup.addEventListener('change', function() {
             window.userPrefs.set('filterGroup', this.value);
         });
     }
-    
+
     if (filterStatus) {
         filterStatus.addEventListener('change', function() {
             window.userPrefs.set('filterStatus', this.value);
@@ -567,19 +567,19 @@ class SkeletonManager {
         this.dataVisualizationsContainer = document.getElementById('data-visualizations');
         this.statusSummaryContainer = document.getElementById('status-summary');
     }
-    
+
     showSkeletons(options = {}) {
         const { showPerformance = true } = options;
-        
+
         if (this.skeletonContainer) {
             this.skeletonContainer.style.display = 'block';
         }
-        
+
         // Show/hide performance skeleton based on preference
         if (this.performanceSkeleton) {
             this.performanceSkeleton.style.display = showPerformance ? 'block' : 'none';
         }
-        
+
         // Hide real content
         if (this.dataVisualizationsContainer) {
             this.dataVisualizationsContainer.style.display = 'none';
@@ -588,12 +588,12 @@ class SkeletonManager {
             this.statusSummaryContainer.style.display = 'none';
         }
     }
-    
+
     hideSkeletons() {
         if (this.skeletonContainer) {
             this.skeletonContainer.style.display = 'none';
         }
-        
+
         // Show real content with animation
         if (this.dataVisualizationsContainer) {
             this.dataVisualizationsContainer.style.display = 'block';
@@ -604,11 +604,11 @@ class SkeletonManager {
             this.statusSummaryContainer.classList.add('fade-in');
         }
     }
-    
+
     showLoadingState(duration = 1500) {
         const showPerformance = window.userPrefs.get('showPerformanceMetrics');
         this.showSkeletons({ showPerformance });
-        
+
         setTimeout(() => {
             this.hideSkeletons();
         }, duration);
@@ -628,7 +628,7 @@ class ToastManager {
         this.container = this.createContainer();
         this.toastId = 0;
     }
-    
+
     createContainer() {
         let container = document.getElementById('toast-container');
         if (!container) {
@@ -640,35 +640,35 @@ class ToastManager {
         }
         return container;
     }
-    
+
     show(message, type = 'info', duration = 4000, options = {}) {
         const { persistent = false, actions = [] } = options;
-        
+
         // Remove oldest toast if we've reached the limit
         if (this.toasts.length >= this.maxToasts) {
             const oldestToast = this.toasts.shift();
             this.removeToast(oldestToast, false);
         }
-        
+
         const toast = this.createToast(message, type, duration, persistent, actions);
         this.toasts.push(toast);
         this.container.appendChild(toast.element);
-        
+
         // Animate in
         setTimeout(() => {
             toast.element.classList.add('show');
         }, 10);
-        
+
         // Auto-dismiss if not persistent
         if (!persistent && duration > 0) {
             toast.timeoutId = setTimeout(() => {
                 this.removeToast(toast);
             }, duration);
         }
-        
+
         return toast;
     }
-    
+
     createToast(message, type, duration, persistent, actions) {
         const toastId = `toast-${++this.toastId}`;
         const iconMap = {
@@ -678,7 +678,7 @@ class ToastManager {
             'info': 'info-circle-fill',
             'danger': 'x-circle-fill'
         };
-        
+
         const colorMap = {
             'success': 'success',
             'error': 'danger',
@@ -686,24 +686,24 @@ class ToastManager {
             'info': 'primary',
             'danger': 'danger'
         };
-        
+
         const icon = iconMap[type] || iconMap.info;
         const color = colorMap[type] || colorMap.info;
-        
+
         const element = document.createElement('div');
         element.id = toastId;
         element.className = `toast fade`;
         element.setAttribute('role', 'alert');
         element.setAttribute('aria-live', 'assertive');
         element.setAttribute('aria-atomic', 'true');
-        
+
         let actionsHtml = '';
         if (actions.length > 0) {
-            actionsHtml = actions.map(action => 
+            actionsHtml = actions.map(action =>
                 `<button type="button" class="btn btn-sm btn-outline-${color} me-2" onclick="${action.onClick}">${action.text}</button>`
             ).join('');
         }
-        
+
         element.innerHTML = `
             <div class="toast-header bg-${color} text-white">
                 <i class="bi bi-${icon} me-2"></i>
@@ -716,7 +716,7 @@ class ToastManager {
                 ${actionsHtml ? `<div class="toast-actions">${actionsHtml}</div>` : ''}
             </div>
         `;
-        
+
         const toast = {
             id: toastId,
             element: element,
@@ -724,10 +724,10 @@ class ToastManager {
             persistent: persistent,
             timeoutId: null
         };
-        
+
         return toast;
     }
-    
+
     getTypeTitle(type) {
         const titles = {
             'success': 'Success',
@@ -738,21 +738,21 @@ class ToastManager {
         };
         return titles[type] || 'Notification';
     }
-    
+
     removeToast(toast, animate = true) {
         if (!toast || !toast.element) return;
-        
+
         // Clear timeout if exists
         if (toast.timeoutId) {
             clearTimeout(toast.timeoutId);
         }
-        
+
         // Remove from array
         const index = this.toasts.findIndex(t => t.id === toast.id);
         if (index > -1) {
             this.toasts.splice(index, 1);
         }
-        
+
         // Animate out and remove
         if (animate) {
             toast.element.classList.remove('show');
@@ -765,14 +765,14 @@ class ToastManager {
             toast.element.remove();
         }
     }
-    
+
     dismissToast(toastId) {
         const toast = this.toasts.find(t => t.id === toastId);
         if (toast) {
             this.removeToast(toast);
         }
     }
-    
+
     clear() {
         this.toasts.forEach(toast => this.removeToast(toast, false));
         this.toasts = [];
@@ -824,43 +824,43 @@ class KeyboardShortcuts {
                 handler: () => this.handleEscape()
             }
         };
-        
+
         this.isEnabled = true;
         this.helpVisible = false;
         this.init();
     }
-    
+
     init() {
         document.addEventListener('keydown', (event) => {
             this.handleKeydown(event);
         });
-        
+
         // Add visual indicators to buttons
         this.addShortcutIndicators();
     }
-    
+
     handleKeydown(event) {
         // Don't trigger shortcuts when typing in form fields
         if (this.shouldIgnoreShortcut(event)) {
             return;
         }
-        
+
         const key = event.key.toLowerCase();
         const shortcut = this.shortcuts[key];
-        
+
         if (shortcut && this.isEnabled) {
             event.preventDefault();
             shortcut.handler();
             this.showShortcutFeedback(shortcut.description);
         }
     }
-    
+
     shouldIgnoreShortcut(event) {
         // Ignore if modifier keys are pressed (except for specific combinations)
         if (event.ctrlKey || event.altKey || event.metaKey) {
             return true;
         }
-        
+
         // Ignore if focus is on form elements
         const activeElement = document.activeElement;
         if (activeElement) {
@@ -870,10 +870,10 @@ class KeyboardShortcuts {
                 return true;
             }
         }
-        
+
         return false;
     }
-    
+
     refreshDashboard() {
         const refreshBtn = document.getElementById('refresh-btn');
         if (refreshBtn) {
@@ -886,12 +886,12 @@ class KeyboardShortcuts {
             window.toastManager.show('Dashboard refreshed', 'info', 2000);
         }
     }
-    
+
     toggleFilters() {
         // Look for filter panels or buttons to toggle
         const filterSection = document.querySelector('.search-filter-section');
         const filterToggleBtn = document.querySelector('[data-bs-toggle="collapse"][data-bs-target*="filter"]');
-        
+
         if (filterToggleBtn) {
             filterToggleBtn.click();
         } else if (filterSection) {
@@ -902,7 +902,7 @@ class KeyboardShortcuts {
             window.toastManager.show('Filter panel not found', 'warning', 2000);
         }
     }
-    
+
     toggleView() {
         const toggleBtn = document.getElementById('toggle-metrics-btn');
         if (toggleBtn) {
@@ -911,7 +911,7 @@ class KeyboardShortcuts {
             window.toastManager.show('View toggle not available', 'warning', 2000);
         }
     }
-    
+
     startScan() {
         const scanBtn = document.getElementById('scan-btn');
         if (scanBtn) {
@@ -920,11 +920,11 @@ class KeyboardShortcuts {
             window.toastManager.show('Network scan not available', 'warning', 2000);
         }
     }
-    
+
     openPerformanceDashboard() {
         window.location.href = '/performance-dashboard';
     }
-    
+
     handleEscape() {
         // Close any open modals
         const modals = document.querySelectorAll('.modal.show');
@@ -934,34 +934,34 @@ class KeyboardShortcuts {
                 bootstrapModal.hide();
             }
         });
-        
+
         // Hide help if visible
         if (this.helpVisible) {
             this.hideHelp();
         }
-        
+
         // Close any dropdowns
         const dropdowns = document.querySelectorAll('.dropdown-menu.show');
         dropdowns.forEach(dropdown => {
             dropdown.classList.remove('show');
         });
     }
-    
+
     showHelp() {
         if (this.helpVisible) {
             this.hideHelp();
             return;
         }
-        
+
         const helpContent = Object.entries(this.shortcuts)
             .filter(([key]) => key !== 'escape') // Don't show escape in help
-            .map(([key, shortcut]) => 
+            .map(([key, shortcut]) =>
                 `<div class="d-flex justify-content-between align-items-center mb-2">
                     <span>${shortcut.description}</span>
                     <kbd class="kbd-shortcut">${key.toUpperCase()}</kbd>
                 </div>`
             ).join('');
-            
+
         const helpToast = window.toastManager.show(
             `<div class="keyboard-shortcuts-help">
                 <h6 class="mb-3">Keyboard Shortcuts</h6>
@@ -972,11 +972,11 @@ class KeyboardShortcuts {
             0, // Don't auto-dismiss
             { persistent: true }
         );
-        
+
         this.helpVisible = true;
         this.currentHelpToast = helpToast;
     }
-    
+
     hideHelp() {
         if (this.currentHelpToast) {
             window.toastManager.removeToast(this.currentHelpToast);
@@ -984,7 +984,7 @@ class KeyboardShortcuts {
             this.currentHelpToast = null;
         }
     }
-    
+
     addShortcutIndicators() {
         // Add keyboard shortcut hints to buttons
         const buttonMappings = {
@@ -992,19 +992,19 @@ class KeyboardShortcuts {
             'scan-btn': 'S',
             'toggle-metrics-btn': 'V'
         };
-        
+
         Object.entries(buttonMappings).forEach(([buttonId, key]) => {
             const button = document.getElementById(buttonId);
             if (button) {
                 const currentTitle = button.getAttribute('title') || '';
                 button.setAttribute('title', `${currentTitle} (${key})`.trim());
-                
+
                 // Add visual keyboard indicator
                 const keyIndicator = document.createElement('small');
                 keyIndicator.className = 'keyboard-hint ms-1';
                 keyIndicator.textContent = key;
                 keyIndicator.style.cssText = 'opacity: 0.7; font-size: 0.75rem;';
-                
+
                 // Only add if not already present
                 if (!button.querySelector('.keyboard-hint')) {
                     button.appendChild(keyIndicator);
@@ -1012,7 +1012,7 @@ class KeyboardShortcuts {
             }
         });
     }
-    
+
     showShortcutFeedback(description) {
         // Brief visual feedback when shortcut is used
         const feedback = document.createElement('div');
@@ -1032,14 +1032,14 @@ class KeyboardShortcuts {
             transition: opacity 0.2s ease;
         `;
         feedback.textContent = description;
-        
+
         document.body.appendChild(feedback);
-        
+
         // Animate in
         setTimeout(() => {
             feedback.style.opacity = '1';
         }, 10);
-        
+
         // Remove after delay
         setTimeout(() => {
             feedback.style.opacity = '0';
@@ -1048,11 +1048,11 @@ class KeyboardShortcuts {
             }, 200);
         }, 1500);
     }
-    
+
     enable() {
         this.isEnabled = true;
     }
-    
+
     disable() {
         this.isEnabled = false;
     }
@@ -1073,14 +1073,14 @@ function renderDeviceGrid(devices) {
     const noDevicesState = document.getElementById('no-devices-state');
     const loadingIndicator = document.getElementById('loading-indicator');
     const deviceCountSummary = document.getElementById('device-count-summary');
-    
+
     if (!devicesGrid) return;
-    
+
     // Hide loading indicator
     if (loadingIndicator) {
         loadingIndicator.style.display = 'none';
     }
-    
+
     // Update device count summary
     if (deviceCountSummary) {
         const totalDevices = devices.length;
@@ -1088,7 +1088,7 @@ function renderDeviceGrid(devices) {
         const offlineDevices = devices.filter(d => d.status === 'down').length;
         deviceCountSummary.textContent = `${totalDevices} devices total • ${onlineDevices} online • ${offlineDevices} offline`;
     }
-    
+
     if (!devices || devices.length === 0) {
         devicesGrid.style.display = 'none';
         if (noDevicesState) {
@@ -1096,16 +1096,16 @@ function renderDeviceGrid(devices) {
         }
         return;
     }
-    
+
     // Show grid and hide empty state
     devicesGrid.style.display = 'block';
     if (noDevicesState) {
         noDevicesState.style.display = 'none';
     }
-    
+
     // Clear existing content
     devicesGrid.innerHTML = '';
-    
+
     // Create device cards
     devices.forEach((device, index) => {
         const deviceCard = createDeviceCard(device);
@@ -1120,38 +1120,38 @@ function renderDeviceGrid(devices) {
 function createDeviceCard(device) {
     const colDiv = document.createElement('div');
     colDiv.className = 'col-sm-6 col-md-4 col-lg-3 col-xl-2';
-    
+
     const cardDiv = document.createElement('div');
     cardDiv.className = `card device-card status-${device.status || 'unknown'} fade-in`;
     cardDiv.setAttribute('data-device-id', device.id);
     cardDiv.setAttribute('data-device-status', device.status || 'unknown');
     cardDiv.style.cursor = 'pointer';
-    
+
     // Status colors for the stripe
     const statusColors = {
         'up': '#28a745',
-        'down': '#dc3545', 
+        'down': '#dc3545',
         'warning': '#ffc107',
         'unknown': '#6c757d'
     };
     cardDiv.style.setProperty('--status-color', statusColors[device.status] || statusColors.unknown);
-    
+
     const cardBody = document.createElement('div');
     cardBody.className = 'card-body';
-    
+
     // Device name and IP
     const deviceName = document.createElement('div');
     deviceName.className = 'device-name';
     deviceName.textContent = device.display_name || device.hostname || 'Unknown Device';
-    
+
     const deviceIp = document.createElement('div');
     deviceIp.className = 'device-ip';
     deviceIp.textContent = device.ip_address || 'No IP';
-    
+
     // Device stats
     const deviceStats = document.createElement('div');
     deviceStats.className = 'device-stats';
-    
+
     const responseTime = document.createElement('div');
     responseTime.className = 'response-time';
     if (device.avg_response_time && device.avg_response_time > 0) {
@@ -1159,14 +1159,14 @@ function createDeviceCard(device) {
     } else {
         responseTime.innerHTML = `<i class="bi bi-question-circle"></i> No data`;
     }
-    
+
     const lastSeen = document.createElement('div');
     lastSeen.className = 'last-seen';
     if (device.last_seen) {
         const lastSeenDate = new Date(device.last_seen);
         const now = new Date();
         const diffMinutes = Math.floor((now - lastSeenDate) / (1000 * 60));
-        
+
         if (diffMinutes < 1) {
             lastSeen.textContent = 'Just now';
         } else if (diffMinutes < 60) {
@@ -1179,20 +1179,20 @@ function createDeviceCard(device) {
     } else {
         lastSeen.textContent = 'Never';
     }
-    
+
     deviceStats.appendChild(responseTime);
     deviceStats.appendChild(lastSeen);
-    
+
     cardBody.appendChild(deviceName);
     cardBody.appendChild(deviceIp);
     cardBody.appendChild(deviceStats);
     cardDiv.appendChild(cardBody);
-    
+
     // Add click handler for navigation to device details
     cardDiv.addEventListener('click', function() {
         window.location.href = `/device/${device.id}`;
     });
-    
+
     colDiv.appendChild(cardDiv);
     return colDiv;
 }
@@ -1203,23 +1203,23 @@ function createDeviceCard(device) {
 function filterDevices() {
     const searchTerm = document.getElementById('search-input')?.value?.toLowerCase() || '';
     const statusFilter = document.getElementById('status-filter')?.value || '';
-    
+
     const deviceCards = document.querySelectorAll('[data-device-id]');
     let visibleCount = 0;
-    
+
     deviceCards.forEach(card => {
         const deviceName = card.querySelector('.device-name')?.textContent?.toLowerCase() || '';
         const deviceIp = card.querySelector('.device-ip')?.textContent?.toLowerCase() || '';
         const deviceStatus = card.getAttribute('data-device-status') || '';
-        
-        const matchesSearch = !searchTerm || 
-            deviceName.includes(searchTerm) || 
+
+        const matchesSearch = !searchTerm ||
+            deviceName.includes(searchTerm) ||
             deviceIp.includes(searchTerm);
-        
+
         const matchesStatus = !statusFilter || deviceStatus === statusFilter;
-        
+
         const shouldShow = matchesSearch && matchesStatus;
-        
+
         const colDiv = card.parentElement;
         if (shouldShow) {
             colDiv.style.display = 'block';
@@ -1228,7 +1228,7 @@ function filterDevices() {
             colDiv.style.display = 'none';
         }
     });
-    
+
     // Update summary
     const deviceCountSummary = document.getElementById('device-count-summary');
     if (deviceCountSummary) {
@@ -1237,7 +1237,7 @@ function filterDevices() {
             deviceCountSummary.textContent = `Showing ${visibleCount} of ${totalCards} devices`;
         }
     }
-    
+
     // Show/hide empty state
     const devicesGrid = document.getElementById('devices-grid');
     const noDevicesState = document.getElementById('no-devices-state');
@@ -1263,20 +1263,20 @@ async function loadDevices() {
         if (loadingIndicator) {
             loadingIndicator.style.display = 'block';
         }
-        
+
         const response = await fetch('/api/devices');
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
         }
-        
+
         const devices = await response.json();
         renderDeviceGrid(devices);
-        
+
         // Initialize filter handlers after devices are loaded
         const searchInput = document.getElementById('search-input');
         const statusFilter = document.getElementById('status-filter');
         const searchClear = document.getElementById('search-clear');
-        
+
         if (searchInput) {
             searchInput.addEventListener('input', filterDevices);
             searchInput.addEventListener('input', function() {
@@ -1285,11 +1285,11 @@ async function loadDevices() {
                 }
             });
         }
-        
+
         if (statusFilter) {
             statusFilter.addEventListener('change', filterDevices);
         }
-        
+
         if (searchClear) {
             searchClear.addEventListener('click', function() {
                 if (searchInput) {
@@ -1298,9 +1298,9 @@ async function loadDevices() {
                 }
             });
         }
-        
+
     } catch (error) {
-        
+
         const loadingIndicator = document.getElementById('loading-indicator');
         if (loadingIndicator) {
             loadingIndicator.innerHTML = `

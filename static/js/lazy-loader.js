@@ -28,18 +28,18 @@ class LazyLoader {
             const script = document.createElement('script');
             script.src = url;
             script.async = true;
-            
+
             script.onload = () => {
                 this.loadedLibraries.add(name);
                 this.loadingPromises.delete(name);
                 resolve();
             };
-            
+
             script.onerror = () => {
                 this.loadingPromises.delete(name);
                 reject(new Error(`Failed to load ${name}`));
             };
-            
+
             document.head.appendChild(script);
         });
 
@@ -52,9 +52,9 @@ class LazyLoader {
      */
     async loadChartJS() {
         if (window.Chart) return;
-        
+
         return this.loadScript(
-            'chartjs', 
+            'chartjs',
             'https://cdn.jsdelivr.net/npm/chart.js'
         );
     }
@@ -64,9 +64,9 @@ class LazyLoader {
      */
     async loadD3() {
         if (window.d3) return;
-        
+
         return this.loadScript(
-            'd3', 
+            'd3',
             'https://cdn.jsdelivr.net/npm/d3@7'
         );
     }
@@ -88,7 +88,7 @@ class LazyLoader {
                 default:
                     throw new Error(`Unknown library: ${library}`);
             }
-            
+
             if (typeof callback === 'function') {
                 callback();
             }
@@ -101,10 +101,10 @@ class LazyLoader {
      */
     preload() {
         // Preload Chart.js with low priority if we're likely to need it
-        if (document.querySelector('[data-needs-charts]') || 
+        if (document.querySelector('[data-needs-charts]') ||
             window.location.pathname.includes('dashboard') ||
             window.location.pathname.includes('analytics')) {
-            
+
             requestIdleCallback(() => {
                 this.loadChartJS().catch(() => {
                     // Silently fail preloading
@@ -113,9 +113,9 @@ class LazyLoader {
         }
 
         // Preload D3.js if we're on topology page
-        if (document.querySelector('[data-needs-d3]') || 
+        if (document.querySelector('[data-needs-d3]') ||
             window.location.pathname.includes('topology')) {
-            
+
             requestIdleCallback(() => {
                 this.loadD3().catch(() => {
                     // Silently fail preloading

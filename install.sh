@@ -41,7 +41,7 @@ check_root() {
         print_status "Please run as a regular user with sudo privileges."
         exit 1
     fi
-    
+
     if ! sudo -l > /dev/null 2>&1; then
         print_error "This user does not have sudo privileges!"
         exit 1
@@ -57,7 +57,7 @@ check_os() {
         print_error "Cannot determine OS version"
         exit 1
     fi
-    
+
     case $OS in
         ubuntu|debian)
             print_status "Detected OS: $OS $VER"
@@ -72,7 +72,7 @@ check_os() {
 
 install_system_dependencies() {
     print_status "Installing system dependencies..."
-    
+
     sudo apt-get update
     sudo apt-get install -y \
         python3 \
@@ -89,7 +89,7 @@ install_system_dependencies() {
         nginx \
         sqlite3 \
         libpcap-dev
-    
+
     print_success "System dependencies installed"
 }
 
@@ -105,38 +105,38 @@ create_user() {
 
 create_directories() {
     print_status "Creating directories..."
-    
+
     sudo mkdir -p $INSTALL_DIR
     sudo mkdir -p /var/log/homeNetMon
     sudo mkdir -p /etc/homeNetMon
-    
+
     sudo chown -R $SERVICE_USER:$SERVICE_USER $INSTALL_DIR
     sudo chown -R $SERVICE_USER:$SERVICE_USER /var/log/homeNetMon
     sudo chown -R $SERVICE_USER:$SERVICE_USER /etc/homeNetMon
-    
+
     print_success "Directories created"
 }
 
 install_application() {
     print_status "Installing HomeNetMon application..."
-    
+
     # Copy application files
     sudo cp -r . $INSTALL_DIR/
     sudo chown -R $SERVICE_USER:$SERVICE_USER $INSTALL_DIR
-    
+
     # Create virtual environment
     sudo -u $SERVICE_USER python3 -m venv $VENV_DIR
-    
+
     # Install Python dependencies
     sudo -u $SERVICE_USER $VENV_DIR/bin/pip install --upgrade pip
     sudo -u $SERVICE_USER $VENV_DIR/bin/pip install -r $INSTALL_DIR/requirements.txt
-    
+
     print_success "Application installed"
 }
 
 create_systemd_service() {
     print_status "Creating systemd service..."
-    
+
     sudo tee /etc/systemd/system/homeNetMon.service > /dev/null << EOF
 [Unit]
 Description=HomeNetMon - Home Network Monitoring Service
@@ -182,27 +182,27 @@ SyslogIdentifier=homeNetMon
 [Install]
 WantedBy=multi-user.target
 EOF
-    
+
     sudo systemctl daemon-reload
     sudo systemctl enable homeNetMon.service
-    
+
     print_success "Systemd service created"
 }
 
 create_nginx_config() {
     print_status "Creating nginx configuration..."
-    
+
     sudo tee /etc/nginx/sites-available/homeNetMon > /dev/null << 'EOF'
 server {
     listen 80;
     server_name homeNetMon homeNetMon.local localhost;
-    
+
     # Security headers
     add_header X-Frame-Options DENY;
     add_header X-Content-Type-Options nosniff;
     add_header X-XSS-Protection "1; mode=block";
     add_header Referrer-Policy strict-origin-when-cross-origin;
-    
+
     # Proxy to Flask application
     location / {
         proxy_pass http://127.0.0.1:5000;
@@ -210,40 +210,40 @@ server {
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
         proxy_set_header X-Forwarded-Proto $scheme;
-        
+
         # WebSocket support
         proxy_http_version 1.1;
         proxy_set_header Upgrade $http_upgrade;
         proxy_set_header Connection "upgrade";
-        
+
         # Timeouts
         proxy_connect_timeout 60s;
         proxy_send_timeout 60s;
         proxy_read_timeout 60s;
     }
-    
+
     # Static files (optional optimization)
     location /static {
         proxy_pass http://127.0.0.1:5000;
         expires 1d;
         add_header Cache-Control "public, immutable";
     }
-    
+
     # Health check
     location /health {
         proxy_pass http://127.0.0.1:5000;
         access_log off;
     }
-    
+
     # Logging
     access_log /var/log/nginx/homeNetMon.access.log;
     error_log /var/log/nginx/homeNetMon.error.log;
 }
 EOF
-    
+
     # Enable the site
     sudo ln -sf /etc/nginx/sites-available/homeNetMon /etc/nginx/sites-enabled/homeNetMon
-    
+
     # Test nginx configuration
     if sudo nginx -t; then
         print_success "Nginx configuration created"
@@ -254,7 +254,7 @@ EOF
 
 create_configuration() {
     print_status "Creating default configuration..."
-    
+
     sudo -u $SERVICE_USER tee /etc/homeNetMon/config.yaml > /dev/null << EOF
 # HomeNetMon Configuration File
 # You can modify these settings via the web interface
@@ -284,7 +284,7 @@ alerts:
     use_tls: true
     from_email: ""
     to_emails: []
-  
+
   webhook:
     enabled: false
     url: ""
@@ -294,22 +294,22 @@ logging:
   level: "INFO"
   file: "/var/log/homeNetMon/homeNetMon.log"
 EOF
-    
+
     print_success "Default configuration created"
 }
 
 start_services() {
     print_status "Starting services..."
-    
+
     # Start HomeNetMon service
     sudo systemctl start homeNetMon.service
-    
+
     # Restart nginx
     sudo systemctl restart nginx
-    
+
     # Wait a moment for service to start
     sleep 3
-    
+
     # Check service status
     if sudo systemctl is-active --quiet homeNetMon.service; then
         print_success "HomeNetMon service started successfully"
@@ -347,12 +347,12 @@ show_completion_message() {
 main() {
     echo "=== HomeNetMon Installation Script ==="
     echo
-    
+
     check_root
     check_os
-    
+
     print_status "Starting installation..."
-    
+
     install_system_dependencies
     create_user
     create_directories
@@ -360,7 +360,7 @@ main() {
     create_systemd_service
     create_nginx_config
     create_configuration
-    
+
     if start_services; then
         show_completion_message
     else

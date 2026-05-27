@@ -13,7 +13,7 @@ spec:
     requests:
       storage: 10Gi
   storageClassName: fast-ssd
-  
+
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -30,7 +30,7 @@ spec:
     requests:
       storage: 5Gi
   storageClassName: fast-ssd
-  
+
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
@@ -47,7 +47,7 @@ spec:
     requests:
       storage: 20Gi
   storageClassName: standard
-  
+
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim

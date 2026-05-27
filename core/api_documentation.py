@@ -18,26 +18,26 @@ OPENAPI_TEMPLATE = {
         "title": "HomeNetMon API",
         "description": """
         # HomeNetMon Network Monitoring API
-        
-        A comprehensive network monitoring solution providing real-time device monitoring, 
+
+        A comprehensive network monitoring solution providing real-time device monitoring,
         alerting, and performance analytics.
-        
+
         ## Features
         - Real-time device monitoring and status tracking
         - Automated network discovery and device management
         - Alert management and notifications
         - Performance monitoring and analytics
         - WebSocket support for real-time updates
-        
+
         ## Authentication
         This API uses JWT (JSON Web Token) authentication. Include the token in the Authorization header:
         ```
         Authorization: Bearer <your-jwt-token>
         ```
-        
+
         ## Error Handling
         All errors follow a standardized format with error codes and detailed messages.
-        
+
         ## Rate Limiting
         API endpoints are rate limited. Check response headers for current limits.
         """,
@@ -374,79 +374,79 @@ COMMON_SCHEMAS = {
 
 class APIDocumentation:
     """Manages API documentation generation and serving."""
-    
+
     def __init__(self, app: Optional[Flask] = None):
         self.app = app
         self.spec = OPENAPI_TEMPLATE.copy()
         self.spec["components"]["schemas"].update(COMMON_SCHEMAS)
-        
+
         if app:
             self.init_app(app)
-            
+
     def init_app(self, app: Flask):
         """Initialize API documentation with Flask app."""
         self.app = app
-        
+
         # Create documentation blueprint
         docs_bp = Blueprint('api_docs', __name__)
-        
+
         @docs_bp.route('/openapi.json')
         def openapi_spec():
             """Serve OpenAPI specification."""
             return jsonify(self.spec)
-            
+
         @docs_bp.route('/docs')
         def swagger_ui():
             """Serve Swagger UI."""
             return render_template_string(SWAGGER_UI_TEMPLATE)
-            
+
         @docs_bp.route('/redoc')
         def redoc_ui():
             """Serve ReDoc UI."""
             return render_template_string(REDOC_UI_TEMPLATE)
-            
+
         app.register_blueprint(docs_bp, url_prefix='/api')
-        
+
         logger.info("API documentation initialized")
-        
+
     def add_path(self, path: str, method: str, operation: Dict[str, Any]):
         """Add a path operation to the OpenAPI spec."""
         if "paths" not in self.spec:
             self.spec["paths"] = {}
-            
+
         if path not in self.spec["paths"]:
             self.spec["paths"][path] = {}
-            
+
         self.spec["paths"][path][method.lower()] = operation
-        
+
     def add_schema(self, name: str, schema: Dict[str, Any]):
         """Add a schema to the OpenAPI spec."""
         self.spec["components"]["schemas"][name] = schema
-        
+
     def generate_schema_from_marshmallow(self, schema_class: Type[Schema]) -> Dict[str, Any]:
         """Generate OpenAPI schema from Marshmallow schema."""
         # This is a simplified conversion - in practice you'd use a library like marshmallow-dataclass
         schema_instance = schema_class()
         properties = {}
         required = []
-        
+
         for field_name, field in schema_instance.fields.items():
             field_type = self._marshmallow_to_openapi_type(field)
             properties[field_name] = field_type
-            
+
             if field.required:
                 required.append(field_name)
-                
+
         result = {
             "type": "object",
             "properties": properties
         }
-        
+
         if required:
             result["required"] = required
-            
+
         return result
-        
+
     def _marshmallow_to_openapi_type(self, field) -> Dict[str, Any]:
         """Convert Marshmallow field to OpenAPI type."""
         from marshmallow import fields  # noqa: F811 - intentionally shadows flask_restx.fields locally
@@ -470,7 +470,7 @@ class APIDocumentation:
             return {"type": "string"}
 
 # Auto-documentation decorator
-def document_endpoint(summary: str, description: str = None, 
+def document_endpoint(summary: str, description: str = None,
                      responses: Dict[int, Dict[str, Any]] = None,
                      parameters: List[Dict[str, Any]] = None,
                      request_body: Dict[str, Any] = None,
@@ -563,7 +563,7 @@ DEVICE_API_PATHS = {
                     "schema": {"type": "integer", "minimum": 1, "default": 1}
                 },
                 {
-                    "name": "per_page", 
+                    "name": "per_page",
                     "in": "query",
                     "description": "Items per page",
                     "required": False,
@@ -612,7 +612,7 @@ DEVICE_API_PATHS = {
                                 "hostname": {"type": "string", "nullable": True},
                                 "custom_name": {"type": "string", "nullable": True},
                                 "device_type": {
-                                    "type": "string", 
+                                    "type": "string",
                                     "enum": ["router", "computer", "phone", "iot", "server", "other"],
                                     "nullable": True
                                 }

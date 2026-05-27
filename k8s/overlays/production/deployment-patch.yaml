@@ -52,7 +52,7 @@ spec:
           value: "100"
         - name: QUEUE_SIZE
           value: "1000"
-        
+
         # Production resource limits
         resources:
           requests:
@@ -61,7 +61,7 @@ spec:
           limits:
             memory: "2Gi"
             cpu: "1000m"
-            
+
         # Production health checks
         livenessProbe:
           httpGet:
@@ -73,7 +73,7 @@ spec:
           timeoutSeconds: 10
           failureThreshold: 3
           successThreshold: 1
-          
+
         readinessProbe:
           httpGet:
             path: /ready
@@ -84,7 +84,7 @@ spec:
           timeoutSeconds: 5
           failureThreshold: 3
           successThreshold: 1
-          
+
         startupProbe:
           httpGet:
             path: /health
@@ -95,7 +95,7 @@ spec:
           timeoutSeconds: 5
           failureThreshold: 18
           successThreshold: 1
-          
+
         # Security context for production
         securityContext:
           allowPrivilegeEscalation: false
@@ -109,7 +109,7 @@ spec:
             - NET_ADMIN
             drop:
             - ALL
-            
+
         # Volume mounts optimized for production
         volumeMounts:
         - name: data
@@ -120,7 +120,7 @@ spec:
           mountPath: /tmp
         - name: cache
           mountPath: /app/cache
-          
+
       # Production nginx sidecar
       - name: nginx
         env:
@@ -130,7 +130,7 @@ spec:
           value: "1024"
         - name: NGINX_KEEPALIVE_TIMEOUT
           value: "65"
-        
+
         resources:
           requests:
             memory: "128Mi"
@@ -138,7 +138,7 @@ spec:
           limits:
             memory: "256Mi"
             cpu: "200m"
-            
+
         securityContext:
           allowPrivilegeEscalation: false
           readOnlyRootFilesystem: true
@@ -148,12 +148,12 @@ spec:
           capabilities:
             drop:
             - ALL
-            
+
       volumes:
       - name: cache
         emptyDir:
           sizeLimit: 1Gi
-          
+
       # Production affinity rules
       affinity:
         podAntiAffinity:
@@ -174,7 +174,7 @@ spec:
                 operator: In
                 values:
                 - compute-optimized
-                
+
       # Production tolerations
       tolerations:
       - key: "homenetmon.io/dedicated"

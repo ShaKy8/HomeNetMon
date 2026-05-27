@@ -27,7 +27,7 @@ class CommandType(Enum):
 
 class SecureExecutor:
     """Secure command executor with validation and sanitization."""
-    
+
     # Whitelisted commands and their allowed arguments
     COMMAND_WHITELIST = {
         CommandType.PING: {
@@ -85,27 +85,27 @@ class SecureExecutor:
             'validate_target': None
         }
     }
-    
+
     def __init__(self, timeout: int = 30, max_output_size: int = 1024 * 1024):
         """Initialize secure executor.
-        
+
         Args:
             timeout: Maximum execution time in seconds
             max_output_size: Maximum output size in bytes
         """
         self.timeout = timeout
         self.max_output_size = max_output_size
-        
+
     def execute(self, command_type: CommandType, target: Optional[str] = None,
                 args: Optional[List[str]] = None, timeout: Optional[int] = None) -> Tuple[bool, str, str]:
         """Execute a command securely.
-        
+
         Args:
             command_type: Type of command to execute
             target: Target IP, hostname, or network (if required)
             args: Additional arguments for the command
             timeout: Command timeout (overrides default)
-            
+
         Returns:
             Tuple of (success, stdout, stderr)
         """
@@ -114,34 +114,34 @@ class SecureExecutor:
             if command_type not in self.COMMAND_WHITELIST:
                 logger.error(f"Command type not whitelisted: {command_type}")
                 return False, "", "Command not allowed"
-                
+
             cmd_config = self.COMMAND_WHITELIST[command_type]
-            
+
             # Validate target if required
             if cmd_config['requires_target']:
                 if not target:
                     return False, "", "Target required for this command"
-                    
+
                 if not self._validate_target(target, cmd_config['validate_target']):
                     return False, "", f"Invalid target: {target}"
-                    
+
             # Build command
             cmd = [cmd_config['command']]
-            
+
             # Add validated arguments
             if args:
                 validated_args = self._validate_arguments(args, cmd_config['allowed_args'])
                 if validated_args is None:
                     return False, "", "Invalid arguments provided"
                 cmd.extend(validated_args)
-                
+
             # Add target if required
             if target and cmd_config['requires_target']:
                 cmd.append(target)
-                
+
             # Execute command
             logger.debug(f"Executing secure command: {' '.join(cmd)}")
-            
+
             result = subprocess.run(
                 cmd,
                 capture_output=True,
@@ -150,33 +150,33 @@ class SecureExecutor:
                 check=False,
                 shell=False
             )
-            
+
             # Truncate output if too large
             stdout = result.stdout
             stderr = result.stderr
-            
+
             if len(stdout) > self.max_output_size:
                 stdout = stdout[:self.max_output_size] + "\n[Output truncated]"
             if len(stderr) > self.max_output_size:
                 stderr = stderr[:self.max_output_size] + "\n[Error output truncated]"
-                
+
             success = result.returncode == 0
             return success, stdout, stderr
-            
+
         except subprocess.TimeoutExpired:
             logger.warning(f"Command timed out: {command_type}")
             return False, "", "Command timed out"
         except Exception as e:
             logger.error(f"Command execution error: {e}")
             return False, "", str(e)
-            
+
     def _validate_target(self, target: str, validation_type: str) -> bool:
         """Validate target based on type.
-        
+
         Args:
             target: Target to validate
             validation_type: Type of validation to perform
-            
+
         Returns:
             True if valid, False otherwise
         """
@@ -193,7 +193,7 @@ class SecureExecutor:
         else:
             logger.error(f"Unknown validation type: {validation_type}")
             return False
-            
+
     def _is_valid_ip(self, ip: str) -> bool:
         """Check if string is a valid IP address."""
         try:
@@ -201,7 +201,7 @@ class SecureExecutor:
             return True
         except ValueError:
             return False
-            
+
     def _is_valid_network(self, network: str) -> bool:
         """Check if string is a valid network in CIDR notation."""
         try:
@@ -209,43 +209,43 @@ class SecureExecutor:
             return True
         except ValueError:
             return False
-            
+
     def _is_valid_hostname(self, hostname: str) -> bool:
         """Check if string is a valid hostname."""
         if len(hostname) > 255:
             return False
-            
+
         # Remove port if present
         if ':' in hostname:
             hostname = hostname.split(':')[0]
-            
+
         # Hostname regex pattern
         pattern = r"^(?!-)(?:[a-zA-Z0-9-]{1,63}(?<!-)\.)*[a-zA-Z0-9-]{1,63}(?<!-)$"
         return bool(re.match(pattern, hostname))
-        
+
     def _validate_arguments(self, args: List[str], allowed_args: List[str]) -> Optional[List[str]]:
         """Validate command arguments against whitelist.
-        
+
         Args:
             args: Arguments to validate
             allowed_args: List of allowed argument patterns
-            
+
         Returns:
             Validated arguments or None if invalid
         """
         validated = []
-        
+
         i = 0
         while i < len(args):
             arg = args[i]
-            
+
             # Check if argument is allowed
             allowed = False
             for allowed_arg in allowed_args:
                 if arg.startswith(allowed_arg):
                     allowed = True
                     validated.append(arg)
-                    
+
                     # Check if this argument expects a value
                     if arg in allowed_args and i + 1 < len(args):
                         # Validate the value (basic sanitization)
@@ -254,45 +254,45 @@ class SecureExecutor:
                             validated.append(value)
                             i += 1
                     break
-                    
+
             if not allowed:
                 logger.warning(f"Argument not allowed: {arg}")
                 return None
-                
+
             i += 1
-            
+
         return validated
-        
+
     def _is_safe_value(self, value: str) -> bool:
         """Check if a value is safe (no command injection attempts)."""
         # Reject values with shell metacharacters
         dangerous_chars = ['|', ';', '&', '$', '`', '(', ')', '<', '>', '\n', '\r', '\\']
-        
+
         for char in dangerous_chars:
             if char in value:
                 logger.warning(f"Dangerous character detected in value: {value}")
                 return False
-                
+
         # Reject values that look like command substitution
         if '$(' in value or '`' in value:
             logger.warning(f"Command substitution attempt detected: {value}")
             return False
-            
+
         # Reject values with null bytes
         if '\x00' in value:
             logger.warning(f"Null byte detected in value: {value}")
             return False
-            
+
         return True
-        
+
     def ping(self, target: str, count: int = 1, timeout: int = 1) -> Tuple[bool, float]:
         """Execute a secure ping command.
-        
+
         Args:
             target: IP address or hostname to ping
             count: Number of pings to send
             timeout: Timeout in seconds
-            
+
         Returns:
             Tuple of (success, average_response_time_ms)
         """
@@ -301,10 +301,10 @@ class SecureExecutor:
             target=target,
             args=['-c', str(count), '-W', str(timeout)]
         )
-        
+
         if not success:
             return False, 0.0
-            
+
         # Parse average response time from output
         avg_time = 0.0
         for line in stdout.split('\n'):
@@ -314,15 +314,15 @@ class SecureExecutor:
                 if match:
                     avg_time = float(match.group(1))
                     break
-                    
+
         return True, avg_time
-        
+
     def scan_network(self, network: str) -> List[str]:
         """Execute a secure network scan.
-        
+
         Args:
             network: Network to scan in CIDR notation
-            
+
         Returns:
             List of discovered IP addresses
         """
@@ -331,23 +331,23 @@ class SecureExecutor:
             target=network,
             args=['-g', '-a', '-q']
         )
-        
+
         if not success:
             logger.warning(f"Network scan failed: {stderr}")
             return []
-            
+
         # Parse IP addresses from output
         ips = []
         for line in stdout.split('\n'):
             line = line.strip()
             if self._is_valid_ip(line):
                 ips.append(line)
-                
+
         return ips
-        
+
     def get_arp_table(self) -> List[Dict[str, str]]:
         """Get ARP table entries securely.
-        
+
         Returns:
             List of ARP entries with IP and MAC addresses
         """
@@ -355,24 +355,24 @@ class SecureExecutor:
             CommandType.ARP,
             args=['-a']
         )
-        
+
         if not success:
             logger.warning(f"Failed to get ARP table: {stderr}")
             return []
-            
+
         # Parse ARP entries
         entries = []
         for line in stdout.split('\n'):
             # Match IP and MAC address patterns
             ip_match = re.search(r'(\d+\.\d+\.\d+\.\d+)', line)
             mac_match = re.search(r'([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}', line)
-            
+
             if ip_match and mac_match:
                 entries.append({
                     'ip': ip_match.group(0),
                     'mac': mac_match.group(0).upper()
                 })
-                
+
         return entries
 
 

@@ -219,7 +219,7 @@ body.offline .card-header {
         width: auto;
         max-width: none;
     }
-    
+
     .pwa-notification {
         top: 10px;
         left: 10px;
@@ -228,18 +228,18 @@ body.offline .card-header {
         max-width: none;
         transform: translateY(-100px);
     }
-    
+
     .pwa-notification.show {
         transform: translateY(0);
     }
-    
+
     .connection-status {
         top: 60px;
         right: 10px;
         font-size: 0.7rem;
         padding: 4px 8px;
     }
-    
+
     /* Mobile-specific offline styles */
     body.offline .navbar-toggler {
         border-color: var(--bs-warning);
@@ -253,11 +253,11 @@ body.offline .card-header {
         padding-top: env(safe-area-inset-top);
         padding-bottom: env(safe-area-inset-bottom);
     }
-    
+
     .navbar {
         padding-top: calc(env(safe-area-inset-top) / 2);
     }
-    
+
     /* Hide browser-specific elements when in PWA mode */
     .browser-only {
         display: none !important;
@@ -278,24 +278,24 @@ body.offline .card-header {
         color: white;
         border-left-color: var(--bs-primary);
     }
-    
+
     .notification-content strong {
         color: white;
     }
-    
+
     .notification-content span {
         color: var(--bs-gray-300);
     }
-    
+
     .notification-close {
         color: var(--bs-gray-400);
     }
-    
+
     .notification-close:hover {
         background-color: var(--bs-gray-700);
         color: var(--bs-gray-200);
     }
-    
+
     .install-prompt {
         background: var(--bs-gray-800);
         color: white;
@@ -400,7 +400,7 @@ body.offline .card-header {
     .pwa-only {
         display: block !important;
     }
-    
+
     .no-pwa {
         display: none !important;
     }
@@ -413,13 +413,13 @@ body.offline .card-header {
         min-width: 44px;
         padding: 12px 16px;
     }
-    
+
     .btn-sm {
         min-height: 36px;
         min-width: 36px;
         padding: 8px 12px;
     }
-    
+
     .form-control {
         min-height: 44px;
         padding: 12px 16px;
@@ -465,7 +465,7 @@ body.offline .card-header {
     .pwa-notification {
         border: 2px solid currentColor;
     }
-    
+
     .install-prompt {
         border: 2px solid white;
     }
@@ -479,7 +479,7 @@ body.offline .card-header {
         transition: none;
         animation: none;
     }
-    
+
     .loading-offline::after,
     .spinner {
         animation: none;

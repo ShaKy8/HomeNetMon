@@ -8,7 +8,7 @@
 CREATE INDEX IF NOT EXISTS idx_devices_ip_address ON devices(ip_address);
 
 -- Status computation optimization (used heavily in API)
-CREATE INDEX IF NOT EXISTS idx_devices_last_seen_monitored ON devices(last_seen, is_monitored) 
+CREATE INDEX IF NOT EXISTS idx_devices_last_seen_monitored ON devices(last_seen, is_monitored)
 WHERE is_monitored = 1;
 
 -- Device filtering indexes
@@ -16,10 +16,10 @@ CREATE INDEX IF NOT EXISTS idx_devices_type_monitored ON devices(device_type, is
 CREATE INDEX IF NOT EXISTS idx_devices_group_monitored ON devices(device_group, is_monitored);
 
 -- Network range filtering (if using IP range queries)
-CREATE INDEX IF NOT EXISTS idx_devices_ip_range ON devices(ip_address) 
+CREATE INDEX IF NOT EXISTS idx_devices_ip_range ON devices(ip_address)
 WHERE is_monitored = 1;
 
--- 2. CRITICAL: MonitoringData table indexes  
+-- 2. CRITICAL: MonitoringData table indexes
 -- These are essential for the API performance issues we observed
 
 -- Latest monitoring data per device (most critical for API performance)
@@ -94,7 +94,7 @@ ANALYZE;
 -- SELECT d.*, (SELECT response_time FROM monitoring_data WHERE device_id = d.id ORDER BY timestamp DESC LIMIT 1) as latest_response
 -- FROM devices d WHERE is_monitored = 1 ORDER BY ip_address;
 
--- Test 2: Alert counts per device (should be <5ms) 
+-- Test 2: Alert counts per device (should be <5ms)
 -- SELECT device_id, COUNT(*) FROM alerts WHERE resolved = 0 GROUP BY device_id;
 
 -- Test 3: Latest monitoring data (should be <10ms)

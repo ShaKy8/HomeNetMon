@@ -93,10 +93,10 @@ class HTMLSanitizer {
      */
     sanitizeElement(element) {
         const children = Array.from(element.children);
-        
+
         for (const child of children) {
             const tagName = child.tagName.toLowerCase();
-            
+
             // Remove disallowed tags
             if (!this.allowedTags[tagName]) {
                 child.remove();
@@ -125,7 +125,7 @@ class HTMLSanitizer {
             const attrValue = attr.value.toLowerCase();
 
             // Remove dangerous attributes
-            if (this.dangerousAttributes.some(dangerous => 
+            if (this.dangerousAttributes.some(dangerous =>
                 attrName.includes(dangerous) || attrValue.includes(dangerous))) {
                 element.removeAttribute(attr.name);
                 continue;
@@ -194,7 +194,7 @@ class HTMLSanitizer {
         // Remove dangerous protocols
         const dangerousProtocols = ['javascript:', 'vbscript:', 'data:', 'file:'];
         const lowerUrl = url.toLowerCase().trim();
-        
+
         if (dangerousProtocols.some(protocol => lowerUrl.startsWith(protocol))) {
             return null;
         }
@@ -230,13 +230,13 @@ class HTMLSanitizer {
      */
     createBuilder() {
         return {
-            div: (content, className = '') => 
+            div: (content, className = '') =>
                 `<div class="${this.escapeHtml(className)}">${this.sanitize(content)}</div>`,
-            span: (content, className = '') => 
+            span: (content, className = '') =>
                 `<span class="${this.escapeHtml(className)}">${this.sanitize(content)}</span>`,
-            p: (content, className = '') => 
+            p: (content, className = '') =>
                 `<p class="${this.escapeHtml(className)}">${this.sanitize(content)}</p>`,
-            button: (content, className = '', type = 'button') => 
+            button: (content, className = '', type = 'button') =>
                 `<button type="${this.escapeHtml(type)}" class="${this.escapeHtml(className)}">${this.sanitize(content)}</button>`,
             link: (text, href, className = '') => {
                 const safeHref = this.sanitizeUrl(href);
@@ -252,20 +252,20 @@ class HTMLSanitizer {
 // Create global instance
 if (typeof window !== 'undefined') {
     window.htmlSanitizer = new HTMLSanitizer();
-    
+
     // Create convenient global functions
     window.safeHTML = (element, html) => window.htmlSanitizer.setHTML(element, html);
     window.safeText = (element, text) => window.htmlSanitizer.setText(element, text);
     window.escapeHTML = (text) => window.htmlSanitizer.escapeHtml(text);
     window.sanitizeHTML = (html) => window.htmlSanitizer.sanitize(html);
-    
+
     // Template literal for safe HTML
     window.html = (strings, ...values) => window.htmlSanitizer.html(strings, ...values);
-    
+
     // Override console functions to warn about unsafe innerHTML usage
     if (window.location.hostname !== 'localhost' && !window.location.hostname.startsWith('192.168.')) {
         const originalInnerHTML = Object.getOwnPropertyDescriptor(Element.prototype, 'innerHTML');
-        
+
         Object.defineProperty(Element.prototype, 'innerHTML', {
             set: function(value) {
                 return originalInnerHTML.set.call(this, value);

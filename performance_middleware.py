@@ -13,25 +13,25 @@ class PerformanceMiddleware:
         self.app = app
         if app is not None:
             self.init_app(app)
-    
+
     def init_app(self, app):
         # Register middleware hooks
         app.before_request(self.before_request)
         app.after_request(self.after_request)
-        
+
         # Enable compression wrapper for better performance
         app.wsgi_app = self.add_gzip_compression(app.wsgi_app)
-    
+
     def before_request(self):
         """Before request processing"""
         # Track request start time for performance monitoring
         request.start_time = time.time()
-        
+
         # Add security headers that might help with caching
         if request.endpoint and request.endpoint.startswith('static'):
             # Static files - enable aggressive caching
             pass
-    
+
     def after_request(self, response):
         """After request processing - add performance headers"""
         try:
@@ -39,11 +39,11 @@ class PerformanceMiddleware:
             if hasattr(request, 'start_time'):
                 processing_time = time.time() - request.start_time
                 response.headers['X-Response-Time'] = f"{processing_time:.3f}s"
-            
+
             # Security headers
             response.headers['X-Content-Type-Options'] = 'nosniff'
             response.headers['X-Frame-Options'] = 'SAMEORIGIN'
-            
+
             # Generate ETag for cacheable responses
             if response.status_code == 200 and request.method == 'GET':
                 # Only generate ETag if response is not in direct passthrough mode
@@ -52,12 +52,12 @@ class PerformanceMiddleware:
                     data = response.get_data(as_text=False)
                     etag = hashlib.md5(data).hexdigest()
                     response.headers['ETag'] = f'"{etag}"'
-                    
+
                     # Check If-None-Match header
                     if request.headers.get('If-None-Match') == f'"{etag}"':
                         response.status_code = 304
                         response.set_data(b'')
-            
+
             # Cache control for different content types
             if request.endpoint:
                 if request.endpoint == 'static':
@@ -77,7 +77,7 @@ class PerformanceMiddleware:
                 else:
                     # HTML pages - cache with revalidation
                     response.headers['Cache-Control'] = 'private, max-age=60, must-revalidate'
-            
+
             # Enable HTTP/2 server push hints for critical resources (disabled due to preload warnings)
             # The browser is complaining about preload resources not being used quickly enough
             # and crossorigin mismatch issues. Disabling for now to improve user experience.
@@ -89,12 +89,12 @@ class PerformanceMiddleware:
                     '<https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css>; rel=preload; as=style; crossorigin=anonymous',
                 ]
                 response.headers['Link'] = ', '.join(critical_resources)
-            
+
         except Exception as e:
             current_app.logger.warning(f"Performance middleware error: {e}")
-        
+
         return response
-    
+
     def add_gzip_compression(self, app):
         """Add gzip compression wrapper - FIXED version"""
         def gzip_wrapper(environ, start_response):
@@ -102,7 +102,7 @@ class PerformanceMiddleware:
             stored_status = None
             stored_headers = None
             stored_exc_info = None
-            
+
             def new_start_response(status, response_headers, exc_info=None):
                 nonlocal stored_status, stored_headers, stored_exc_info
                 stored_status = status
@@ -110,26 +110,26 @@ class PerformanceMiddleware:
                 stored_exc_info = exc_info
                 # Don't call start_response yet - wait until we know if we're compressing
                 return None
-            
+
             # Capture response
             response_data = []
             app_iter = app(environ, new_start_response)
-            
+
             # Collect response data
             for data in app_iter:
                 response_data.append(data)
-            
+
             # Join all data
             full_response = b''.join(response_data)
-            
+
             # Determine if we should compress
             accept_encoding = environ.get('HTTP_ACCEPT_ENCODING', '')
             should_compress = (
-                'gzip' in accept_encoding and 
+                'gzip' in accept_encoding and
                 len(full_response) > 1024 and  # Only compress if > 1KB
                 self.should_compress(stored_headers)
             )
-            
+
             # Actually compress if appropriate
             if should_compress:
                 try:
@@ -146,14 +146,14 @@ class PerformanceMiddleware:
                 except Exception as e:
                     # Fall back to uncompressed on any error
                     current_app.logger.debug(f"Compression failed: {e}")
-            
+
             # Now call the real start_response with final headers
             start_response(stored_status, stored_headers, stored_exc_info)
-            
+
             return [full_response]
-        
+
         return gzip_wrapper
-    
+
     def should_compress(self, response_headers):
         """Check if response should be compressed"""
         content_type = None
@@ -161,20 +161,20 @@ class PerformanceMiddleware:
             if header.lower() == 'content-type':
                 content_type = value.lower()
                 break
-        
+
         if not content_type:
             return False
-        
+
         compressible_types = [
             'text/html',
-            'text/css', 
+            'text/css',
             'text/javascript',
             'application/javascript',
             'application/json',
             'application/xml',
             'text/xml'
         ]
-        
+
         return any(comp_type in content_type for comp_type in compressible_types)
 
 def add_cache_control(max_age=300):

@@ -14,7 +14,7 @@ def get_configuration_history():
     try:
         key = request.args.get('key')
         limit = int(request.args.get('limit', 50))
-        
+
         if hasattr(current_app, 'configuration_service'):
             config_service = current_app.configuration_service
             history = config_service.get_configuration_history(key=key, limit=limit)
@@ -25,19 +25,19 @@ def get_configuration_history():
         else:
             # Fallback to direct database query
             query = ConfigurationHistory.query
-            
+
             if key:
                 query = query.filter_by(config_key=key)
-            
+
             history_entries = query.order_by(
                 ConfigurationHistory.changed_at.desc()
             ).limit(limit).all()
-            
+
             return jsonify({
                 'history': [entry.to_dict() for entry in history_entries],
                 'total': len(history_entries)
             })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -47,17 +47,17 @@ def rollback_configuration():
     """Rollback configuration to previous value"""
     try:
         data = request.get_json()
-        
+
         if not data or 'key' not in data:
             return jsonify({'error': 'Configuration key is required'}), 400
-        
+
         key = data['key']
         history_id = data.get('history_id')  # Optional: rollback to specific history entry
-        
+
         if hasattr(current_app, 'configuration_service'):
             config_service = current_app.configuration_service
             success, message = config_service.rollback_configuration(key, history_id)
-            
+
             if success:
                 return jsonify({
                     'success': True,
@@ -71,7 +71,7 @@ def rollback_configuration():
                 }), 400
         else:
             return jsonify({'error': 'Configuration service not available'}), 500
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -81,17 +81,17 @@ def validate_configuration():
     """Validate configuration value without applying"""
     try:
         data = request.get_json()
-        
+
         if not data or 'key' not in data or 'value' not in data:
             return jsonify({'error': 'Key and value are required'}), 400
-        
+
         key = data['key']
         value = data['value']
-        
+
         if hasattr(current_app, 'configuration_service'):
             config_service = current_app.configuration_service
             is_valid, error_message = config_service.validate_configuration(key, value)
-            
+
             return jsonify({
                 'valid': is_valid,
                 'error': error_message if not is_valid else None,
@@ -100,7 +100,7 @@ def validate_configuration():
             })
         else:
             return jsonify({'error': 'Configuration service not available'}), 500
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -117,7 +117,7 @@ def get_configuration_backup():
             })
         else:
             return jsonify({'error': 'Configuration service not available'}), 500
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -134,7 +134,7 @@ def get_configuration_dependencies():
             })
         else:
             return jsonify({'error': 'Configuration service not available'}), 500
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -145,7 +145,7 @@ def configuration_health():
     try:
         if hasattr(current_app, 'configuration_service'):
             config_service = current_app.configuration_service
-            
+
             # Basic health checks
             health_status = {
                 'running': config_service.running,
@@ -156,7 +156,7 @@ def configuration_health():
                 'backup_entries': len(config_service._config_backup),
                 'in_memory_history': len(config_service._change_history)
             }
-            
+
             return jsonify({
                 'status': 'healthy',
                 'service': 'ConfigurationService',
@@ -167,7 +167,7 @@ def configuration_health():
                 'status': 'unavailable',
                 'error': 'Configuration service not available'
             }), 500
-        
+
     except Exception as e:
         return jsonify({
             'status': 'unhealthy',

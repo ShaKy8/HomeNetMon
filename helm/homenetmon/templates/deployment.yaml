@@ -91,7 +91,7 @@ spec:
         - name: DEBUG
           value: {{ .Values.development.debugMode | quote }}
         {{- end }}
-        
+
         # Secrets
         - name: SECRET_KEY
           valueFrom:
@@ -134,7 +134,7 @@ spec:
               name: {{ include "homenetmon.fullname" . }}-secrets
               key: SMTP_SERVER
         {{- end }}
-        
+
         # Kubernetes metadata
         - name: POD_NAME
           valueFrom:
@@ -156,7 +156,7 @@ spec:
           value: {{ .Release.Name | quote }}
         - name: CHART_VERSION
           value: {{ .Chart.Version | quote }}
-              
+
         volumeMounts:
         {{- if .Values.persistence.enabled }}
         - name: data
@@ -170,10 +170,10 @@ spec:
           mountPath: /tmp
         - name: static-files
           mountPath: /app/static-shared
-          
+
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
-          
+
         livenessProbe:
           httpGet:
             path: /health
@@ -183,7 +183,7 @@ spec:
           periodSeconds: 30
           timeoutSeconds: 10
           failureThreshold: 3
-          
+
         readinessProbe:
           httpGet:
             path: /ready
@@ -193,7 +193,7 @@ spec:
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
-          
+
         startupProbe:
           httpGet:
             path: /health
@@ -203,7 +203,7 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 5
           failureThreshold: 12
-          
+
       {{- if .Values.nginx.enabled }}
       # Nginx sidecar container
       - name: nginx
@@ -234,7 +234,7 @@ spec:
           initialDelaySeconds: 5
           periodSeconds: 5
       {{- end }}
-          
+
       volumes:
       {{- if .Values.persistence.enabled }}
       - name: data
@@ -255,7 +255,7 @@ spec:
         emptyDir: {}
       - name: tmp
         emptyDir: {}
-        
+
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

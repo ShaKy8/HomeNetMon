@@ -13,12 +13,12 @@ def get_performance_summary():
     try:
         # Query parameters
         hours = request.args.get('hours', default=24, type=int)
-        
+
         # Get performance monitor service
         from services.performance_monitor import performance_monitor
-        
+
         summary = performance_monitor.get_network_performance_summary(hours)
-        
+
         if summary:
             return jsonify(summary)
         else:
@@ -26,7 +26,7 @@ def get_performance_summary():
                 'error': 'Unable to generate performance summary',
                 'timestamp': datetime.utcnow().isoformat() + 'Z'
             }), 500
-            
+
     except Exception as e:
         return jsonify({
             'error': str(e),
@@ -45,9 +45,9 @@ def get_devices_performance():
         device_type = request.args.get('device_type', type=str)
         min_health_score = request.args.get('min_health_score', type=float)
         limit = request.args.get('limit', default=100, type=int)
-        
+
         cutoff = datetime.utcnow() - timedelta(hours=hours)
-        
+
         # Base query for latest performance metrics per device
         query = db.session.query(
             Device.id,
@@ -69,25 +69,25 @@ def get_devices_performance():
         ).filter(
             Device.is_monitored == True
         )
-        
+
         # Filter by device type if specified
         if device_type:
             query = query.filter(Device.device_type == device_type)
-        
+
         # Filter by minimum health score if specified
         if min_health_score is not None:
             query = query.filter(PerformanceMetrics.health_score >= min_health_score)
-        
+
         # Get latest performance metrics per device
         subquery = query.filter(
             PerformanceMetrics.timestamp >= cutoff
         ).distinct(Device.id).subquery()
-        
+
         # Main query with latest metrics
         main_query = db.session.query(subquery).order_by(
             desc(subquery.c.health_score) if order == 'desc' else subquery.c.health_score
         )
-        
+
         # Apply sorting
         if sort_by == 'name':
             main_query = main_query.order_by(
@@ -101,10 +101,10 @@ def get_devices_performance():
             main_query = main_query.order_by(
                 desc(subquery.c.uptime_percentage) if order == 'desc' else subquery.c.uptime_percentage
             )
-        
+
         # Apply limit
         results = main_query.limit(limit).all()
-        
+
         # Format results
         devices_performance = []
         for row in results:
@@ -128,7 +128,7 @@ def get_devices_performance():
                 'performance_status': _get_performance_status(row[5])
             }
             devices_performance.append(device_data)
-        
+
         return jsonify({
             'devices': devices_performance,
             'count': len(devices_performance),
@@ -141,7 +141,7 @@ def get_devices_performance():
             },
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         })
-        
+
     except Exception as e:
         return jsonify({
             'error': str(e),
@@ -156,21 +156,21 @@ def get_device_performance(device_id):
         # Query parameters
         hours = request.args.get('hours', default=24, type=int)
         include_raw_data = request.args.get('include_raw', default=False, type=bool)
-        
+
         # Get device
         device = Device.query.get_or_404(device_id)
-        
+
         if include_raw_data:
             # Get performance summary from device model
             performance_summary = device.get_performance_summary(hours)
-            
+
             # Get raw performance metrics
             cutoff = datetime.utcnow() - timedelta(hours=hours)
             raw_metrics = PerformanceMetrics.query.filter(
                 PerformanceMetrics.device_id == device_id,
                 PerformanceMetrics.timestamp >= cutoff
             ).order_by(PerformanceMetrics.timestamp.desc()).all()
-            
+
             return jsonify({
                 'device': {
                     'id': device.id,
@@ -187,7 +187,7 @@ def get_device_performance(device_id):
         else:
             # Get performance summary only
             performance_summary = device.get_performance_summary(hours)
-            
+
             return jsonify({
                 'device': {
                     'id': device.id,
@@ -200,7 +200,7 @@ def get_device_performance(device_id):
                 'period_hours': hours,
                 'timestamp': datetime.utcnow().isoformat() + 'Z'
             })
-        
+
     except Exception as e:
         return jsonify({
             'error': str(e),
@@ -215,21 +215,21 @@ def get_device_performance_timeline(device_id):
         # Query parameters
         hours = request.args.get('hours', default=24, type=int)
         granularity = request.args.get('granularity', default='hour', type=str)  # hour, day
-        
+
         # Get device
         device = Device.query.get_or_404(device_id)
-        
+
         cutoff = datetime.utcnow() - timedelta(hours=hours)
-        
+
         # Get performance metrics
         metrics = PerformanceMetrics.query.filter(
             PerformanceMetrics.device_id == device_id,
             PerformanceMetrics.timestamp >= cutoff
         ).order_by(PerformanceMetrics.timestamp).all()
-        
+
         # Group by time granularity
         timeline_data = []
-        
+
         if granularity == 'hour':
             # Group by hour
             hour_groups = {}
@@ -238,13 +238,13 @@ def get_device_performance_timeline(device_id):
                 if hour_key not in hour_groups:
                     hour_groups[hour_key] = []
                 hour_groups[hour_key].append(metric)
-            
+
             for hour, hour_metrics in sorted(hour_groups.items()):
                 # Calculate averages for the hour
                 health_scores = [m.health_score for m in hour_metrics if m.health_score is not None]
                 response_times = [m.avg_response_time for m in hour_metrics if m.avg_response_time is not None]
                 uptime_percentages = [m.uptime_percentage for m in hour_metrics if m.uptime_percentage is not None]
-                
+
                 timeline_data.append({
                     'timestamp': hour.isoformat() + 'Z',
                     'health_score': sum(health_scores) / len(health_scores) if health_scores else None,
@@ -252,7 +252,7 @@ def get_device_performance_timeline(device_id):
                     'uptime_percentage': sum(uptime_percentages) / len(uptime_percentages) if uptime_percentages else None,
                     'sample_count': len(hour_metrics)
                 })
-        
+
         return jsonify({
             'device': {
                 'id': device.id,
@@ -264,7 +264,7 @@ def get_device_performance_timeline(device_id):
             'granularity': granularity,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         })
-        
+
     except Exception as e:
         return jsonify({
             'error': str(e),
@@ -278,13 +278,13 @@ def get_health_scores_distribution():
     try:
         # Query parameters
         hours = request.args.get('hours', default=24, type=int)
-        
+
         cutoff = datetime.utcnow() - timedelta(hours=hours)
-        
+
         # Get latest health scores
         health_scores = db.session.execute(
             db.text("""
-                SELECT 
+                SELECT
                     d.device_type,
                     pm.health_score,
                     pm.responsiveness_score,
@@ -308,7 +308,7 @@ def get_health_scores_distribution():
             """),
             {'cutoff': cutoff}
         ).fetchall()
-        
+
         # Calculate distributions
         score_ranges = {
             'excellent': 0,  # 90-100
@@ -317,7 +317,7 @@ def get_health_scores_distribution():
             'poor': 0,       # 60-69
             'critical': 0    # 0-59
         }
-        
+
         type_scores = {}
         component_scores = {
             'responsiveness': [],
@@ -325,11 +325,11 @@ def get_health_scores_distribution():
             'efficiency': [],
             'stability': []
         }
-        
+
         for row in health_scores:
             device_type = row[0] or 'unknown'
             health_score = row[1]
-            
+
             # Overall health distribution
             if health_score >= 90:
                 score_ranges['excellent'] += 1
@@ -341,12 +341,12 @@ def get_health_scores_distribution():
                 score_ranges['poor'] += 1
             else:
                 score_ranges['critical'] += 1
-            
+
             # By device type
             if device_type not in type_scores:
                 type_scores[device_type] = []
             type_scores[device_type].append(health_score)
-            
+
             # Component scores
             if row[2] is not None:
                 component_scores['responsiveness'].append(row[2])
@@ -356,7 +356,7 @@ def get_health_scores_distribution():
                 component_scores['efficiency'].append(row[4])
             if row[5] is not None:
                 component_scores['stability'].append(row[5])
-        
+
         # Calculate averages by device type
         type_averages = {}
         for device_type, scores in type_scores.items():
@@ -366,7 +366,7 @@ def get_health_scores_distribution():
                 'min_score': min(scores),
                 'max_score': max(scores)
             }
-        
+
         # Calculate component averages
         component_averages = {}
         for component, scores in component_scores.items():
@@ -374,7 +374,7 @@ def get_health_scores_distribution():
                 component_averages[component] = round(sum(scores) / len(scores), 2)
             else:
                 component_averages[component] = 0
-        
+
         return jsonify({
             'health_score_distribution': score_ranges,
             'device_type_breakdown': type_averages,
@@ -383,7 +383,7 @@ def get_health_scores_distribution():
             'period_hours': hours,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         })
-        
+
     except Exception as e:
         return jsonify({
             'error': str(e),
@@ -399,9 +399,9 @@ def get_top_performers():
         hours = request.args.get('hours', default=24, type=int)
         limit = request.args.get('limit', default=10, type=int)
         metric = request.args.get('metric', default='health_score', type=str)
-        
+
         cutoff = datetime.utcnow() - timedelta(hours=hours)
-        
+
         # Get top performers based on specified metric
         order_column = PerformanceMetrics.health_score
         if metric == 'responsiveness':
@@ -414,7 +414,7 @@ def get_top_performers():
             order_column = PerformanceMetrics.connection_stability_score
         elif metric == 'uptime':
             order_column = PerformanceMetrics.uptime_percentage
-        
+
         # Get latest metrics per device
         top_performers = db.session.query(
             Device.id,
@@ -437,7 +437,7 @@ def get_top_performers():
         ).order_by(
             desc(order_column)
         ).limit(limit).all()
-        
+
         performers_list = []
         for row in top_performers:
             performers_list.append({
@@ -457,7 +457,7 @@ def get_top_performers():
                 'performance_grade': _get_performance_grade(row[4]),
                 'performance_status': _get_performance_status(row[4])
             })
-        
+
         return jsonify({
             'top_performers': performers_list,
             'metric': metric,
@@ -465,7 +465,7 @@ def get_top_performers():
             'limit': limit,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         })
-        
+
     except Exception as e:
         return jsonify({
             'error': str(e),
@@ -479,13 +479,13 @@ def trigger_device_performance_collection(device_id):
     try:
         # Get device
         device = Device.query.get_or_404(device_id)
-        
+
         # Get performance monitor service
         from services.performance_monitor import performance_monitor
-        
+
         # Trigger collection
         result = performance_monitor.collect_device_performance_metrics(device_id)
-        
+
         if result:
             return jsonify({
                 'success': True,
@@ -499,7 +499,7 @@ def trigger_device_performance_collection(device_id):
                 'message': f'Failed to collect performance metrics for {device.display_name}',
                 'timestamp': datetime.utcnow().isoformat() + 'Z'
             }), 500
-        
+
     except Exception as e:
         return jsonify({
             'success': False,
@@ -514,16 +514,16 @@ def trigger_all_performance_collection():
     try:
         # Get performance monitor service
         from services.performance_monitor import performance_monitor
-        
+
         # Trigger collection for all devices
         performance_monitor.collect_all_devices_performance()
-        
+
         return jsonify({
             'success': True,
             'message': 'Performance metrics collection triggered for all devices',
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         })
-        
+
     except Exception as e:
         return jsonify({
             'success': False,
@@ -577,9 +577,9 @@ def get_performance_alerts_summary():
     try:
         # Get performance monitor service
         from services.performance_monitor import performance_monitor
-        
+
         summary = performance_monitor.get_performance_alert_summary()
-        
+
         if summary:
             summary['timestamp'] = datetime.utcnow().isoformat() + 'Z'
             return jsonify(summary)
@@ -591,7 +591,7 @@ def get_performance_alerts_summary():
                 'recent_alerts': [],
                 'timestamp': datetime.utcnow().isoformat() + 'Z'
             })
-            
+
     except Exception as e:
         return jsonify({
             'error': str(e),

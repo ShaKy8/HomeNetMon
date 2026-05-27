@@ -4,12 +4,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Quota Management - HomeNetMon</title>
-    
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    
+
     <style>
         .quota-card {
             border-left: 4px solid #dee2e6;
@@ -27,11 +27,11 @@
         .quota-card.quota-critical {
             border-left-color: #6f42c1;
         }
-        
+
         .progress-bar-animated {
             animation: progress-bar-stripes 1s linear infinite;
         }
-        
+
         .metric-icon {
             width: 48px;
             height: 48px;
@@ -41,36 +41,36 @@
             border-radius: 12px;
             font-size: 24px;
         }
-        
+
         .action-buttons {
             gap: 10px;
         }
-        
+
         .quota-alert {
             border-radius: 8px;
             border: 1px solid;
             padding: 12px;
             margin-bottom: 15px;
         }
-        
+
         .quota-alert.alert-success {
             background-color: #d4edda;
             border-color: #c3e6cb;
             color: #155724;
         }
-        
+
         .quota-alert.alert-warning {
             background-color: #fff3cd;
             border-color: #ffeaa7;
             color: #856404;
         }
-        
+
         .quota-alert.alert-danger {
             background-color: #f8d7da;
             border-color: #f5c6cb;
             color: #721c24;
         }
-        
+
         .quota-summary {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             color: white;
@@ -78,14 +78,14 @@
             padding: 20px;
             margin-bottom: 30px;
         }
-        
+
         .quota-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
-        
+
         @media (max-width: 768px) {
             .quota-grid {
                 grid-template-columns: 1fr;
@@ -124,7 +124,7 @@
                             <h4 class="mb-2">Current Subscription: {{ tenant.subscription.plan.name if tenant.subscription else 'No Plan' }}</h4>
                             <p class="mb-0">
                                 {% if tenant.subscription %}
-                                    {{ tenant.subscription.plan.tier.value.title() }} tier • 
+                                    {{ tenant.subscription.plan.tier.value.title() }} tier •
                                     Billing cycle: {{ tenant.subscription.plan.billing_interval.value.title() }}
                                 {% else %}
                                     No active subscription
@@ -203,7 +203,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div class="card mt-3">
                     <div class="card-header">
                         <h5 class="mb-0">Billing Information</h5>
@@ -212,10 +212,10 @@
                         {% if tenant.subscription %}
                             <p><strong>Next billing:</strong><br>
                             {{ tenant.subscription.current_period_end.strftime('%B %d, %Y') if tenant.subscription.current_period_end else 'N/A' }}</p>
-                            
+
                             <p><strong>Days remaining:</strong><br>
                             {{ tenant.subscription.days_until_renewal if tenant.subscription.days_until_renewal else 'N/A' }} days</p>
-                            
+
                             {% if tenant.subscription.cancel_at_period_end %}
                                 <div class="alert alert-warning">
                                     <i class="fas fa-exclamation-triangle me-2"></i>
@@ -311,7 +311,7 @@
                         </div>
                         <div class="mb-3">
                             <label for="justification" class="form-label">Justification</label>
-                            <textarea class="form-control" id="justification" rows="3" required 
+                            <textarea class="form-control" id="justification" rows="3" required
                                       placeholder="Please explain why you need this quota increase..."></textarea>
                         </div>
                     </form>
@@ -327,7 +327,7 @@
     </div>
 
     <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-none" 
+    <div id="loadingOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-none"
          style="background: rgba(255,255,255,0.8); z-index: 9999;">
         <div class="d-flex justify-content-center align-items-center h-100">
             <div class="spinner-border text-primary" role="status">
@@ -350,7 +350,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             loadQuotaData();
             initializeChart();
-            
+
             // Set up period change listeners
             document.querySelectorAll('input[name="historyPeriod"]').forEach(radio => {
                 radio.addEventListener('change', function() {
@@ -390,22 +390,22 @@
 
         async function loadQuotaData() {
             showLoading(true);
-            
+
             try {
                 const response = await fetch('/api/analytics/quota-status');
-                
+
                 if (!response.ok) {
                     throw new Error('Failed to load quota data');
                 }
-                
+
                 const data = await response.json();
                 currentQuotaData = data.data;
-                
+
                 updateQuotaDisplay(currentQuotaData);
                 updateQuotaAlerts(currentQuotaData);
                 updateQuotaTable(currentQuotaData);
                 loadUsageHistory(7); // Load 7 days by default
-                
+
             } catch (error) {
                 console.error('Error loading quota data:', error);
                 showError('Failed to load quota information');
@@ -417,14 +417,14 @@
         function updateQuotaDisplay(quotaData) {
             const grid = document.getElementById('quotaGrid');
             grid.innerHTML = '';
-            
+
             let totalUsagePercentage = 0;
             let metricCount = 0;
 
             Object.entries(quotaData).forEach(([metric, data]) => {
                 totalUsagePercentage += data.percentage_used;
                 metricCount++;
-                
+
                 const card = createQuotaCard(metric, data);
                 grid.appendChild(card);
             });
@@ -436,12 +436,12 @@
 
         function createQuotaCard(metric, data) {
             const div = document.createElement('div');
-            
+
             let statusClass = 'quota-ok';
             let statusIcon = 'check-circle';
             let statusText = 'OK';
             let progressClass = 'bg-success';
-            
+
             if (data.percentage_used >= 100) {
                 statusClass = 'quota-critical';
                 statusIcon = 'exclamation-triangle';
@@ -485,14 +485,14 @@
                                 <i class="fas fa-${statusIcon} text-${progressClass.replace('bg-', '')}"></i>
                             </div>
                         </div>
-                        
+
                         <div class="mb-3">
                             <div class="d-flex justify-content-between mb-1">
                                 <span class="h5 mb-0">${formatNumber(data.current_usage)}</span>
                                 <span class="text-muted">/ ${formatNumber(data.quota)}</span>
                             </div>
                             <div class="progress" style="height: 8px;">
-                                <div class="progress-bar ${progressClass}" 
+                                <div class="progress-bar ${progressClass}"
                                      style="width: ${Math.min(data.percentage_used, 100)}%"></div>
                             </div>
                             <div class="d-flex justify-content-between mt-1">
@@ -500,30 +500,30 @@
                                 <small class="text-muted">${formatNumber(data.remaining)} remaining</small>
                             </div>
                         </div>
-                        
+
                         ${data.overage > 0 ? `
                             <div class="alert alert-warning alert-sm mb-2">
                                 <i class="fas fa-exclamation-triangle me-2"></i>
                                 Overage: ${formatNumber(data.overage)} units
                             </div>
                         ` : ''}
-                        
+
                         <div class="text-center">
                             <span class="badge ${progressClass.replace('bg-', 'bg-')}">${statusText}</span>
                         </div>
                     </div>
                 </div>
             `;
-            
+
             return div.firstElementChild;
         }
 
         function updateQuotaAlerts(quotaData) {
             const alertsContainer = document.getElementById('quotaAlerts');
             alertsContainer.innerHTML = '';
-            
+
             const alerts = [];
-            
+
             Object.entries(quotaData).forEach(([metric, data]) => {
                 if (data.percentage_used >= 100) {
                     alerts.push({
@@ -539,7 +539,7 @@
                     });
                 }
             });
-            
+
             if (alerts.length === 0) {
                 alertsContainer.innerHTML = `
                     <div class="quota-alert alert-success">
@@ -567,7 +567,7 @@
 
             Object.entries(quotaData).forEach(([metric, data]) => {
                 const row = tbody.insertRow();
-                
+
                 row.innerHTML = `
                     <td>${formatMetricName(metric)}</td>
                     <td>${formatNumber(data.current_usage)}</td>
@@ -596,14 +596,14 @@
         async function loadUsageHistory(days) {
             try {
                 const response = await fetch(`/api/analytics/usage?aggregation=day&days=${days}`);
-                
+
                 if (!response.ok) {
                     throw new Error('Failed to load usage history');
                 }
-                
+
                 const data = await response.json();
                 updateUsageChart(data.data);
-                
+
             } catch (error) {
                 console.error('Error loading usage history:', error);
             }
@@ -614,7 +614,7 @@
 
             const data = analyticsData.aggregated_data;
             const labels = data.map(d => d.timestamp);
-            
+
             // Get all metrics from data
             const metrics = new Set();
             data.forEach(d => {
@@ -627,7 +627,7 @@
                     '#007bff', '#28a745', '#ffc107', '#dc3545',
                     '#6f42c1', '#17a2b8', '#fd7e14', '#e83e8c'
                 ];
-                
+
                 return {
                     label: formatMetricName(metric),
                     data: values,
@@ -696,7 +696,7 @@
             if (metric) {
                 document.getElementById('quotaMetric').value = metric;
             }
-            
+
             const modal = new bootstrap.Modal(document.getElementById('quotaRequestModal'));
             modal.show();
         }
@@ -707,16 +707,16 @@
                 form.reportValidity();
                 return;
             }
-            
+
             const formData = {
                 metric: document.getElementById('quotaMetric').value,
                 increase: document.getElementById('requestedIncrease').value,
                 justification: document.getElementById('justification').value
             };
-            
+
             // Submit request (would integrate with your ticketing system)
             console.log('Quota request:', formData);
-            
+
             // Close modal and show success
             bootstrap.Modal.getInstance(document.getElementById('quotaRequestModal')).hide();
             alert('Quota increase request submitted successfully!');

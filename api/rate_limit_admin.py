@@ -20,9 +20,9 @@ def get_rate_limit_status():
     try:
         if not hasattr(current_app, 'rate_limiter'):
             return jsonify({'error': 'Rate limiter not available'}), 503
-        
+
         rate_limiter = current_app.rate_limiter
-        
+
         # Get basic status
         backend = 'memory'
         try:
@@ -32,24 +32,24 @@ def get_rate_limit_status():
                 backend = 'memory'  # MemoryStorage doesn't have storage_uri attribute
         except:
             backend = 'memory'
-            
+
         status = {
             'enabled': True,
             'backend': backend,
             'trusted_ips': list(rate_limiter.trusted_ips),
             'timestamp': datetime.utcnow().isoformat()
         }
-        
+
         # Get rate limit status for current client
         identifier = rate_limiter._get_identifier()
         rate_status = rate_limiter.get_rate_limit_status(identifier)
-        
+
         return jsonify({
             'success': True,
             'status': status,
             'current_client': rate_status
         })
-        
+
     except Exception as e:
         logger.error(f"Error getting rate limit status: {e}")
         return jsonify({'error': str(e)}), 500
@@ -81,12 +81,12 @@ def get_configured_limits():
             'default_limits': "1000 per hour, 100 per minute (for unspecified endpoints)",
             'timestamp': datetime.utcnow().isoformat()
         }
-        
+
         return jsonify({
             'success': True,
             'limits': limits_info
         })
-        
+
     except Exception as e:
         logger.error(f"Error getting rate limit configuration: {e}")
         return jsonify({'error': str(e)}), 500
@@ -98,17 +98,17 @@ def get_rate_limit_stats():
     try:
         if not hasattr(current_app, 'rate_limiter'):
             return jsonify({'error': 'Rate limiter not available'}), 503
-        
+
         rate_limiter = current_app.rate_limiter
         hours = int(request.args.get('hours', 24))
-        
+
         stats = rate_limiter.get_abuse_stats(hours)
-        
+
         return jsonify({
             'success': True,
             'stats': stats
         })
-        
+
     except Exception as e:
         logger.error(f"Error getting rate limit stats: {e}")
         return jsonify({'error': str(e)}), 500
@@ -120,10 +120,10 @@ def reset_rate_limits(identifier):
     try:
         if not hasattr(current_app, 'rate_limiter'):
             return jsonify({'error': 'Rate limiter not available'}), 503
-        
+
         rate_limiter = current_app.rate_limiter
         success = rate_limiter.reset_limits(identifier)
-        
+
         if success:
             return jsonify({
                 'success': True,
@@ -132,7 +132,7 @@ def reset_rate_limits(identifier):
             })
         else:
             return jsonify({'error': 'Failed to reset rate limits'}), 500
-            
+
     except Exception as e:
         logger.error(f"Error resetting rate limits: {e}")
         return jsonify({'error': str(e)}), 500
@@ -149,6 +149,6 @@ def test_rate_limiting():
             'timestamp': datetime.utcnow().isoformat(),
             'note': 'Make multiple requests to test rate limiting'
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500

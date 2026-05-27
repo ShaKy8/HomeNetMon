@@ -4,19 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Devices - HomeNetMon</title>
-    
+
     <!-- PWA Manifest -->
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    
+
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#0f0f23">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="HomeNetMon">
-    
+
     <!-- Socket.IO -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    
+
 <style>
 /* Reset and Modern Foundation */
 * {
@@ -43,7 +43,7 @@ body::before {
     left: 0;
     width: 100%;
     height: 100%;
-    background: 
+    background:
         radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
         radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
         radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
@@ -455,19 +455,19 @@ body::before {
     .container {
         padding: 1rem;
     }
-    
+
     .devices-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .stats-grid {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .controls-bar {
         flex-direction: column;
     }
-    
+
     .search-box {
         min-width: 100%;
     }
@@ -576,20 +576,20 @@ document.addEventListener('DOMContentLoaded', function() {
 function initializeSocket() {
     try {
         socket = io();
-        
+
         socket.on('connect', function() {
             console.log('Connected to server');
         });
-        
+
         socket.on('connect_error', function(error) {
             console.warn('Socket.IO connection failed:', error);
             console.log('Real-time updates disabled - page will still function');
         });
-        
+
         socket.on('disconnect', function(reason) {
             console.log('Socket.IO disconnected:', reason);
         });
-        
+
         socket.on('device_status_update', function(data) {
             updateDeviceStatus(data);
         });
@@ -603,20 +603,20 @@ function initializeSocket() {
 async function loadDevices() {
     try {
         showLoading(true);
-        
+
         const response = await fetch('/api/devices');
         if (!response.ok) {
             const errorText = await response.text();
             throw new Error(`API Error ${response.status}: ${errorText || response.statusText}`);
         }
-        
+
         const data = await response.json();
-        
+
         // Validate response format
         if (!data) {
             throw new Error('Empty response from API');
         }
-        
+
         // Handle different response formats
         if (Array.isArray(data)) {
             allDevices = data;
@@ -625,17 +625,17 @@ async function loadDevices() {
         } else {
             throw new Error(`Invalid API response format: ${JSON.stringify(data).substring(0, 100)}...`);
         }
-        
+
         console.log(`Loaded ${allDevices.length} devices successfully`);
         updateStats();
         applyFilters();
         showLoading(false);
-        
+
     } catch (error) {
         console.error('Error loading devices:', error);
         showToast(`Failed to load devices: ${error.message}`, 'error');
         showLoading(false);
-        
+
         // Provide fallback empty state
         allDevices = [];
         updateStats();
@@ -649,7 +649,7 @@ function updateStats() {
     const online = allDevices.filter(d => d.status === 'up').length;
     const offline = allDevices.filter(d => d.status === 'down').length;
     const monitored = allDevices.filter(d => d.is_monitored).length;
-    
+
     document.getElementById('total-devices').textContent = total;
     document.getElementById('online-devices').textContent = online;
     document.getElementById('offline-devices').textContent = offline;
@@ -668,21 +668,21 @@ function applyFilters() {
         } else if (currentFilter === 'monitored') {
             matchesFilter = device.is_monitored;
         }
-        
+
         // Apply search
         let matchesSearch = true;
         if (searchTerm) {
             const search = searchTerm.toLowerCase();
-            matchesSearch = 
+            matchesSearch =
                 (device.display_name || '').toLowerCase().includes(search) ||
                 (device.ip_address || '').toLowerCase().includes(search) ||
                 (device.hostname || '').toLowerCase().includes(search) ||
                 (device.device_type || '').toLowerCase().includes(search);
         }
-        
+
         return matchesFilter && matchesSearch;
     });
-    
+
     renderDevices();
 }
 
@@ -690,15 +690,15 @@ function applyFilters() {
 function renderDevices() {
     const grid = document.getElementById('devices-grid');
     const emptyState = document.getElementById('empty-state');
-    
+
     if (filteredDevices.length === 0) {
         grid.innerHTML = '';
         emptyState.style.display = 'block';
         return;
     }
-    
+
     emptyState.style.display = 'none';
-    
+
     grid.innerHTML = filteredDevices.map(device => `
         <div class="device-card" data-device-id="${device.id}">
             <div class="device-header">
@@ -745,15 +745,15 @@ function getDeviceType(device) {
 // Get last seen display string
 function getLastSeen(lastSeen) {
     if (!lastSeen) return 'Never';
-    
+
     const date = new Date(lastSeen + 'Z');
     const now = new Date();
     const diff = now - date;
-    
+
     const minutes = Math.floor(diff / 60000);
     const hours = Math.floor(diff / 3600000);
     const days = Math.floor(diff / 86400000);
-    
+
     if (minutes < 1) return 'Just now';
     if (minutes < 60) return `${minutes}m ago`;
     if (hours < 24) return `${hours}h ago`;
@@ -768,7 +768,7 @@ function setupEventListeners() {
         searchTerm = e.target.value;
         applyFilters();
     });
-    
+
     // Filter buttons
     document.querySelectorAll('.filter-btn').forEach(btn => {
         btn.addEventListener('click', (e) => {
@@ -799,7 +799,7 @@ async function toggleMonitoring(deviceId, enable) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ is_monitored: enable })
         });
-        
+
         if (response.ok) {
             showToast(`Monitoring ${enable ? 'enabled' : 'disabled'}`, 'success');
             loadDevices(); // Reload to show changes
@@ -842,11 +842,11 @@ function showToast(message, type = 'info') {
     const toast = document.createElement('div');
     toast.className = `toast ${type}`;
     toast.textContent = message;
-    
+
     document.body.appendChild(toast);
-    
+
     setTimeout(() => toast.classList.add('show'), 100);
-    
+
     setTimeout(() => {
         toast.classList.remove('show');
         setTimeout(() => toast.remove(), 300);

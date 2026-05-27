@@ -57,16 +57,16 @@ add_cron_job() {
     local schedule="$1"
     local job_type="$2"
     local job_description="$3"
-    
+
     local cron_command="$PYTHON_PATH $BACKUP_SCRIPT --type $job_type --config $BACKUP_CONFIG --compress"
     local cron_job="$schedule cd $SCRIPT_DIR && $cron_command >> $SCRIPT_DIR/logs/backup_cron.log 2>&1"
-    
+
     # Check if cron job already exists
     if crontab -l 2>/dev/null | grep -F "$BACKUP_SCRIPT" | grep -q "$job_type"; then
         echo -e "${YELLOW}⚠️  Cron job for $job_description already exists${NC}"
         return
     fi
-    
+
     # Add cron job
     (crontab -l 2>/dev/null; echo "$cron_job") | crontab -
     echo -e "${GREEN}✅ Added cron job: $job_description${NC}"
@@ -110,11 +110,11 @@ case $choice in
         echo "  Weekly on Sunday at 3 AM: 0 3 * * 0"
         echo ""
         read -p "Enter cron schedule for full backups (or press Enter to skip): " full_schedule
-        
+
         if [ ! -z "$full_schedule" ]; then
             add_cron_job "$full_schedule" "full" "Custom full backup"
         fi
-        
+
         echo ""
         echo "Incremental backup schedule examples:"
         echo "  Every hour: 0 * * * *"
@@ -122,7 +122,7 @@ case $choice in
         echo "  Every 30 minutes: */30 * * * *"
         echo ""
         read -p "Enter cron schedule for incremental backups (or press Enter to skip): " inc_schedule
-        
+
         if [ ! -z "$inc_schedule" ]; then
             add_cron_job "$inc_schedule" "incremental" "Custom incremental backup"
         fi
@@ -195,24 +195,24 @@ LAST_BACKUP=$(find "$BACKUP_DIR" -name "homeNetMon_*" -mtime -1 | head -1)
 
 if [ -z "$LAST_BACKUP" ]; then
     echo "❌ WARNING: No recent backups found in the last 24 hours"
-    
+
     # Check log file for errors
     if [ -f "$LOG_FILE" ]; then
         echo "Recent log entries:"
         tail -20 "$LOG_FILE"
     fi
-    
+
     exit 1
 else
     BACKUP_FILE=$(basename "$LAST_BACKUP")
     BACKUP_TIME=$(stat -c %y "$LAST_BACKUP")
     BACKUP_SIZE=$(stat -c %s "$LAST_BACKUP" | numfmt --to=iec)
-    
+
     echo "✅ Recent backup found:"
     echo "   File: $BACKUP_FILE"
     echo "   Time: $BACKUP_TIME"
     echo "   Size: $BACKUP_SIZE"
-    
+
     exit 0
 fi
 EOF

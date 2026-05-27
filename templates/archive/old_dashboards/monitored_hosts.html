@@ -18,18 +18,18 @@
                     </h1>
                     <p class="text-muted mb-0 fs-6">Monitor the health and status of your network devices</p>
                 </div>
-                
+
                 <!-- Primary Actions -->
                 <div class="d-flex gap-2 align-items-center">
                     <button class="btn btn-primary btn-lg" onclick="refreshMonitoredHosts()" title="Refresh monitored hosts">
                         <i class="bi bi-arrow-clockwise"></i> <span class="d-none d-md-inline">Refresh</span>
                     </button>
-                    
+
                     <!-- Auto-refresh toggle -->
                     <button class="btn btn-outline-warning" onclick="toggleAutoRefresh()" id="auto-refresh-btn" title="Resume auto-refresh">
                         <i class="bi bi-play-circle"></i> <span class="d-none d-md-inline">Resume</span>
                     </button>
-                    
+
                     <!-- Advanced Actions Dropdown -->
                     <div class="dropdown">
                         <button class="btn btn-outline-secondary dropdown-toggle" type="button" id="advanced-actions" data-bs-toggle="dropdown" aria-expanded="false" title="More actions">
@@ -250,7 +250,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Smart Monitoring Presets -->
             <div class="row mb-4">
                 <div class="col-12">
@@ -300,8 +300,8 @@
                     <div class="search-box-enhanced position-relative">
                         <div class="search-input-wrapper">
                             <i class="bi bi-search search-icon"></i>
-                            <input type="text" class="form-control form-control-lg ps-5" id="host-search" 
-                                   placeholder="🔍 Find devices... (try 'living room', 'cameras', or 'offline')" 
+                            <input type="text" class="form-control form-control-lg ps-5" id="host-search"
+                                   placeholder="🔍 Find devices... (try 'living room', 'cameras', or 'offline')"
                                    aria-label="Smart device search" onkeyup="debouncedFilter()" autocomplete="off">
                             <button class="btn btn-link search-clear" id="clear-search" style="display: none;" onclick="clearSearch()">
                                 <i class="bi bi-x-circle"></i>
@@ -316,7 +316,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Smart Category Filter -->
                 <div class="col-md-4">
                     <div class="category-filter-enhanced">
@@ -330,14 +330,14 @@
                         </select>
                     </div>
                 </div>
-                
+
                 <!-- View Options -->
                 <div class="col-md-1">
                     <button class="btn btn-outline-secondary btn-lg" id="toggle-host-view" onclick="toggleViewMode()" title="Toggle view">
                         <i class="bi bi-grid"></i>
                     </button>
                     <div class="dropdown d-inline-block">
-                        <button class="btn btn-outline-info btn-lg dropdown-toggle w-100" 
+                        <button class="btn btn-outline-info btn-lg dropdown-toggle w-100"
                                 data-bs-toggle="dropdown" aria-expanded="false" title="View options">
                             <i class="bi bi-layout-three-columns"></i>
                         </button>
@@ -404,25 +404,25 @@
                                         <tr role="row">
                                             <th width="80" scope="col" class="sortable enhanced-th" onclick="sortTable('status')" tabindex="0" role="columnheader" aria-sort="none">
                                                 <div class="th-content">
-                                                    <i class="bi bi-activity me-2"></i>Status 
+                                                    <i class="bi bi-activity me-2"></i>Status
                                                     <i class="bi bi-arrow-down-up sort-indicator"></i>
                                                 </div>
                                             </th>
                                             <th scope="col" class="sortable enhanced-th" onclick="sortTable('name')" tabindex="0" role="columnheader" aria-sort="none">
                                                 <div class="th-content">
-                                                    <i class="bi bi-device-hdd me-2"></i>Device 
+                                                    <i class="bi bi-device-hdd me-2"></i>Device
                                                     <i class="bi bi-arrow-down-up sort-indicator"></i>
                                                 </div>
                                             </th>
                                             <th scope="col" class="sortable enhanced-th" onclick="sortTable('room')" tabindex="0" role="columnheader" aria-sort="none">
                                                 <div class="th-content">
-                                                    <i class="bi bi-house me-2"></i>Location 
+                                                    <i class="bi bi-house me-2"></i>Location
                                                     <i class="bi bi-arrow-down-up sort-indicator"></i>
                                                 </div>
                                             </th>
                                             <th scope="col" class="sortable enhanced-th" onclick="sortTable('last_seen')" tabindex="0" role="columnheader" aria-sort="none">
                                                 <div class="th-content">
-                                                    <i class="bi bi-clock me-2"></i>Last Seen 
+                                                    <i class="bi bi-clock me-2"></i>Last Seen
                                                     <i class="bi bi-arrow-down-up sort-indicator"></i>
                                                 </div>
                                             </th>
@@ -757,20 +757,20 @@
 }
 
 .status-indicator-large.up, .status-indicator-small.up { background-color: #28a745; }
-.status-indicator-large.down, .status-indicator-small.down { 
-    background-color: #dc3545; 
+.status-indicator-large.down, .status-indicator-small.down {
+    background-color: #dc3545;
     animation: criticalPulse 1.5s infinite;
 }
 .status-indicator-large.warning, .status-indicator-small.warning { background-color: #ffc107; }
 .status-indicator-large.unknown, .status-indicator-small.unknown { background-color: #6c757d; }
 
 @keyframes heroStatusPulse {
-    0%, 100% { 
-        opacity: 1; 
+    0%, 100% {
+        opacity: 1;
         transform: scale(1);
         box-shadow: 0 4px 20px rgba(40, 167, 69, 0.3);
     }
-    50% { 
+    50% {
         opacity: 0.9;
         transform: scale(1.05);
         box-shadow: 0 8px 30px rgba(40, 167, 69, 0.5);
@@ -778,12 +778,12 @@
 }
 
 @keyframes heroStatusDanger {
-    0%, 100% { 
+    0%, 100% {
         opacity: 1;
         transform: scale(1);
         box-shadow: 0 4px 20px rgba(220, 53, 69, 0.4);
     }
-    50% { 
+    50% {
         opacity: 0.8;
         transform: scale(1.1);
         box-shadow: 0 8px 35px rgba(220, 53, 69, 0.6);
@@ -796,11 +796,11 @@
 }
 
 @keyframes criticalPulse {
-    0%, 100% { 
+    0%, 100% {
         opacity: 1;
         transform: scale(1);
     }
-    50% { 
+    50% {
         opacity: 0.6;
         transform: scale(1.1);
     }
@@ -926,15 +926,15 @@
 }
 
 @keyframes rowChanged {
-    0% { 
+    0% {
         background-color: rgba(255, 193, 7, 0.1);
         transform: scale(1);
     }
-    50% { 
+    50% {
         background-color: rgba(255, 193, 7, 0.2);
         transform: scale(1.01);
     }
-    100% { 
+    100% {
         background-color: transparent;
         transform: scale(1);
     }
@@ -1008,58 +1008,58 @@
     #table-view {
         display: none !important;
     }
-    
+
     #card-view {
         display: block !important;
     }
-    
+
     /* Mobile-optimized cards */
     .host-card {
         padding: 1rem;
         margin-bottom: 1rem;
         border-radius: 12px;
     }
-    
+
     .device-name-large {
         font-size: 1.1rem;
     }
-    
+
     .performance-grid {
         grid-template-columns: 1fr;
         gap: 0.75rem;
     }
-    
+
     .status-row {
         padding: 0.75rem;
         margin: 0.75rem 0;
     }
-    
+
     /* Larger touch targets */
     .btn-sm {
         min-height: 44px;
         min-width: 44px;
     }
-    
+
     /* Better spacing on mobile */
     .gap-2 { gap: 1rem !important; }
     .gap-3 { gap: 1.5rem !important; }
-    
+
     /* Improved mobile search */
     .search-box .form-control {
         font-size: 16px; /* Prevents zoom on iOS */
         min-height: 48px;
     }
-    
+
     /* Mobile status cards */
     .status-card .card-body {
         padding: 1rem 0.75rem;
     }
-    
+
     /* Simplified mobile header */
     .d-none.d-md-inline, .d-none.d-md-flex {
         display: none !important;
     }
-    
+
     /* Enhanced host cards */
     .host-card {
         margin-bottom: 1rem;
@@ -1070,27 +1070,27 @@
         border: 2px solid transparent;
         transition: all 0.3s ease;
     }
-    
+
     .host-card:hover {
         border-color: #007bff;
         transform: translateY(-4px);
         box-shadow: 0 8px 25px rgba(0,123,255,0.15);
     }
-    
+
     .host-card-header {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
         margin-bottom: 1rem;
     }
-    
+
     .device-name-large {
         font-size: 1.25rem;
         font-weight: 600;
         color: #2c3e50;
         margin: 0;
     }
-    
+
     .device-type-badge {
         background: linear-gradient(135deg, #f8f9fa, #e9ecef);
         border: 1px solid #dee2e6;
@@ -1100,7 +1100,7 @@
         font-size: 0.75rem;
         font-weight: 500;
     }
-    
+
     .status-row {
         display: flex;
         align-items: center;
@@ -1110,14 +1110,14 @@
         border-radius: 12px;
         margin: 1rem 0;
     }
-    
+
     .performance-grid {
         display: grid;
         grid-template-columns: 1fr 1fr;
         gap: 1rem;
         margin-top: 1rem;
     }
-    
+
     .performance-metric {
         text-align: center;
         padding: 0.75rem;
@@ -1125,33 +1125,33 @@
         border-radius: 8px;
         border: 1px solid rgba(0,123,255,0.1);
     }
-    
+
     .metric-value {
         font-size: 1.1rem;
         font-weight: 600;
         color: #007bff;
     }
-    
+
     .metric-label {
         font-size: 0.75rem;
         color: #6c757d;
         margin-top: 0.25rem;
     }
-    
+
     .mobile-device-header {
         display: flex;
         justify-content: space-between;
         align-items: flex-start;
         margin-bottom: 0.75rem;
     }
-    
+
     .mobile-device-status {
         display: flex;
         align-items: center;
         gap: 0.5rem;
         margin-bottom: 0.5rem;
     }
-    
+
     .mobile-device-metrics {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -1163,8 +1163,8 @@
 }
 
 /* Improved focus states for accessibility */
-.btn:focus, 
-.form-control:focus, 
+.btn:focus,
+.form-control:focus,
 .form-select:focus {
     box-shadow: 0 0 0 3px rgba(13, 110, 253, 0.25);
     border-color: #86b7fe;
@@ -1188,7 +1188,7 @@
         border-width: 3px;
         border-color: #000;
     }
-    
+
     .table {
         border-width: 2px;
     }
@@ -1212,12 +1212,12 @@
     .loading-skeleton {
         background: linear-gradient(90deg, #2d3748 25%, #4a5568 50%, #2d3748 75%);
     }
-    
+
     .status-indicator-large, .status-indicator-small {
         border-color: #2d3748;
         box-shadow: 0 0 0 1px rgba(255,255,255,0.1);
     }
-    
+
     .table tbody tr:hover {
         background-color: rgba(255, 255, 255, 0.05);
     }
@@ -1483,21 +1483,21 @@ const virtualDOM = {
     currentRows: new Map(),
     pendingUpdates: new Map(),
     updateTimer: null,
-    
+
     scheduleUpdate(deviceId, data) {
         this.pendingUpdates.set(deviceId, data);
         if (!this.updateTimer) {
             this.updateTimer = requestAnimationFrame(() => this.applyUpdates());
         }
     },
-    
+
     applyUpdates() {
         const tbody = document.getElementById('hosts-tbody');
         if (!tbody) {
             this.updateTimer = null;
             return;
         }
-        
+
         this.pendingUpdates.forEach((data, deviceId) => {
             const existingRow = tbody.querySelector(`tr[data-device-id="${deviceId}"]`);
             if (existingRow) {
@@ -1509,56 +1509,56 @@ const virtualDOM = {
                 tbody.appendChild(newRow);
             }
         });
-        
+
         this.pendingUpdates.clear();
         this.updateTimer = null;
     },
-    
+
     updateRowCells(row, data) {
         // Only update cells that have changed
         const statusCell = row.querySelector('.status-cell');
         const lastSeenCell = row.querySelector('.last-seen');
         const responseTimeCell = row.querySelector('.response-time');
-        
+
         if (statusCell && data.status !== statusCell.dataset.status) {
             statusCell.innerHTML = this.getStatusHTML(data.status);
             statusCell.dataset.status = data.status;
             row.classList.add('status-changed');
             setTimeout(() => row.classList.remove('status-changed'), 2000);
         }
-        
+
         if (lastSeenCell && data.last_seen) {
             lastSeenCell.textContent = this.formatLastSeen(data.last_seen);
         }
-        
+
         if (responseTimeCell && data.avg_response_time !== undefined) {
             responseTimeCell.textContent = `${data.avg_response_time.toFixed(1)}ms`;
         }
     },
-    
+
     createRow(data) {
         const tr = document.createElement('tr');
         tr.dataset.deviceId = data.id;
         tr.innerHTML = this.getRowHTML(data);
         return tr;
     },
-    
+
     getStatusHTML(status) {
         return `<span class="status-indicator-large ${status}" title="${homeStatusLabels[status] || 'Unknown'}"></span>`;
     },
-    
+
     formatLastSeen(lastSeen) {
         if (!lastSeen) return 'Never';
         const date = new Date(lastSeen);
         const now = new Date();
         const diff = Math.floor((now - date) / 1000);
-        
+
         if (diff < 60) return 'Just now';
         if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
         if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
         return date.toLocaleDateString();
     },
-    
+
     getRowHTML(data) {
         // Generate full row HTML for new rows
         return `
@@ -1570,8 +1570,8 @@ const virtualDOM = {
             <td class="last-seen">${this.formatLastSeen(data.last_seen)}</td>
             <td class="text-center">
                 <div class="form-check form-switch">
-                    <input class="form-check-input" type="checkbox" 
-                           ${data.is_monitored ? 'checked' : ''} 
+                    <input class="form-check-input" type="checkbox"
+                           ${data.is_monitored ? 'checked' : ''}
                            onchange="toggleMonitoring(${data.id}, this.checked)">
                 </div>
             </td>
@@ -1601,14 +1601,14 @@ function debounce(func, wait) {
 const searchIndex = {
     deviceMap: new Map(),
     searchTerms: new Map(),
-    
+
     build(devices) {
         this.deviceMap.clear();
         this.searchTerms.clear();
-        
+
         devices.forEach(device => {
             this.deviceMap.set(device.id, device);
-            
+
             // Pre-compute searchable terms
             const terms = [
                 device.name,
@@ -1621,23 +1621,23 @@ const searchIndex = {
                 device.location,
                 device.device_type
             ].filter(Boolean).map(t => t.toLowerCase());
-            
+
             this.searchTerms.set(device.id, terms.join(' '));
         });
     },
-    
+
     search(query) {
         if (!query) return Array.from(this.deviceMap.values());
-        
+
         const lowerQuery = query.toLowerCase();
         const results = [];
-        
+
         this.searchTerms.forEach((terms, deviceId) => {
             if (terms.includes(lowerQuery)) {
                 results.push(this.deviceMap.get(deviceId));
             }
         });
-        
+
         return results;
     }
 };
@@ -1646,14 +1646,14 @@ const searchIndex = {
 const updateBatcher = {
     updates: [],
     timer: null,
-    
+
     add(update) {
         this.updates.push(update);
         if (!this.timer) {
             this.timer = requestAnimationFrame(() => this.flush());
         }
     },
-    
+
     flush() {
         const updates = this.updates.splice(0);
         updates.forEach(update => {
@@ -1663,7 +1663,7 @@ const updateBatcher = {
                 virtualDOM.scheduleUpdate(update.id, update);
             }
         });
-        
+
         // Update summary without full re-render
         updateQuickStatusSummary();
         this.timer = null;
@@ -1678,7 +1678,7 @@ const debouncedFilter = debounce(function() {
 // Simplified status system for home users
 const statusColors = {
     'up': 'success',
-    'down': 'danger', 
+    'down': 'danger',
     'warning': 'warning',
     'unknown': 'secondary'
 };
@@ -1722,7 +1722,7 @@ function hideAdvancedFilters() {
 function toggleBulkMode() {
     bulkSelectionMode = !bulkSelectionMode;
     const controls = document.getElementById('bulk-selection-controls');
-    
+
     if (bulkSelectionMode) {
         controls.style.display = 'flex';
         controls.classList.add('fade-in');
@@ -1738,7 +1738,7 @@ function toggleBulkMode() {
 function updateTableForBulkMode(enabled) {
     const checkboxes = document.querySelectorAll('.device-checkbox');
     const selectAllCheckbox = document.getElementById('select-all');
-    
+
     if (enabled) {
         checkboxes.forEach(cb => cb.style.display = 'block');
         if (selectAllCheckbox) selectAllCheckbox.style.display = 'block';
@@ -1750,11 +1750,11 @@ function updateTableForBulkMode(enabled) {
 
 function toggleViewMode() {
     currentView = currentView === 'table' ? 'card' : 'table';
-    
+
     const tableView = document.getElementById('table-view');
     const cardView = document.getElementById('card-view');
     const toggleButton = document.getElementById('toggle-host-view');
-    
+
     if (currentView === 'card') {
         tableView.style.display = 'none';
         cardView.style.display = 'block';
@@ -1777,14 +1777,14 @@ function setLoadingState(isLoading, message = 'Loading monitored hosts...') {
     const tableView = document.getElementById('table-view');
     const cardView = document.getElementById('card-view');
     const emptyState = document.getElementById('empty-state');
-    
+
     if (isLoading) {
         loadingIndicator.style.display = 'block';
         tableView.style.display = 'none';
         cardView.style.display = 'none';
         emptyState.style.display = 'none';
         if (loadingText) loadingText.textContent = message;
-        
+
         // Announce to screen readers
         loadingIndicator.setAttribute('aria-label', message);
     } else {
@@ -1810,18 +1810,18 @@ function updateQuickStatusSummary() {
     const onlineCount = document.getElementById('quick-online');
     const offlineCount = document.getElementById('quick-offline');
     const filteredCountHeader = document.getElementById('filtered-count-header');
-    
+
     if (!monitoredHosts || !monitoredHosts.length) return;
-    
+
     const total = monitoredHosts.length;
     const online = monitoredHosts.filter(h => h.status === 'up').length;
     const offline = monitoredHosts.filter(h => h.status === 'down').length;
-    
+
     // Update hero status indicator
     const healthPercentage = total > 0 ? (online / total) * 100 : 0;
     let statusClass = 'up';
     let statusMessage = 'All Systems Healthy';
-    
+
     if (healthPercentage < 70) {
         statusClass = 'down';
         statusMessage = 'Network Issues Detected';
@@ -1829,17 +1829,17 @@ function updateQuickStatusSummary() {
         statusClass = 'warning';
         statusMessage = 'Some Issues Detected';
     }
-    
+
     if (indicator) {
         indicator.className = `status-indicator-hero ${statusClass}`;
         indicator.title = `${healthPercentage.toFixed(0)}% network health`;
     }
-    
+
     // Update hero summary
     if (heroSummary) {
         heroSummary.textContent = statusMessage;
     }
-    
+
     // Update summary text with animation
     if (summary) {
         const newText = `${online}/${total}`;
@@ -1851,7 +1851,7 @@ function updateQuickStatusSummary() {
             }, 150);
         }
     }
-    
+
     if (onlineCount) {
         animateCountUpdate(onlineCount, online);
     }
@@ -1897,19 +1897,19 @@ function showCustomPresetModal() {
     alert('Custom preset configuration coming soon! You can manually enable/disable monitoring for individual devices using the toggle switches in the table.');
 }
 
-// Show search suggestions on focus  
+// Show search suggestions on focus
 document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('host-search');
     const clearButton = document.getElementById('clear-search');
     const suggestions = document.getElementById('search-suggestions');
-    
+
     if (searchInput && clearButton && suggestions) {
         searchInput.addEventListener('focus', function() {
             if (!this.value) {
                 suggestions.style.display = 'block';
             }
         });
-        
+
         searchInput.addEventListener('input', function() {
             if (this.value) {
                 clearButton.style.display = 'block';
@@ -1919,7 +1919,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 suggestions.style.display = 'block';
             }
         });
-        
+
         searchInput.addEventListener('blur', function() {
             setTimeout(() => {
                 suggestions.style.display = 'none';
@@ -1940,41 +1940,41 @@ async function loadMonitoredHosts() {
         }
         const data = await response.json();
         console.log('Loaded devices:', data.devices ? data.devices.length : 0);
-        
+
         if (data.devices) {
             allDevices = data.devices || [];
-            
+
             // Build search index for fast filtering
             searchIndex.build(allDevices);
-            
+
             // Update counts
             const monitoredDevices = allDevices.filter(d => d.is_monitored);
             const notMonitoredDevices = allDevices.filter(d => !d.is_monitored);
-            
+
             // Update DOM elements with null checks
             const monitoredCountEl = document.getElementById('monitored-count');
             const notMonitoredCountEl = document.getElementById('not-monitored-count');
             const allCountEl = document.getElementById('all-count');
-            
+
             if (monitoredCountEl) monitoredCountEl.textContent = monitoredDevices.length;
             if (notMonitoredCountEl) notMonitoredCountEl.textContent = notMonitoredDevices.length;
             if (allCountEl) allCountEl.textContent = allDevices.length;
-            
+
             // Update cameras only count
             const cameraDevices = allDevices.filter(d => getDeviceCategory(d) === 'cameras');
             const camerasCountEl = document.getElementById('cameras-only-count');
             if (camerasCountEl) camerasCountEl.textContent = cameraDevices.length;
-            
+
             // Apply monitoring filter
             applyMonitoringFilter();
-            
+
             // Update status information
             updateStatusCards();
             updateQuickStatusSummary();
-            
+
             // Apply filters and render the view
             filterHosts(); // This will render the appropriate view
-            
+
             // Clear loading state after everything is done
             setLoadingState(false);
         } else {
@@ -2004,17 +2004,17 @@ function updateStatusCards() {
 // Set monitoring filter mode
 function setMonitoringFilter(mode) {
     monitoringFilterMode = mode;
-    
+
     // Update button states
     document.querySelectorAll('#filter-monitored, #filter-not-monitored, #filter-all').forEach(btn => {
         btn.classList.remove('active', 'btn-outline-primary');
         btn.classList.add('btn-outline-secondary');
     });
-    
+
     const activeBtn = document.getElementById('filter-' + mode.replace('not-monitored', 'not-monitored'));
     activeBtn.classList.remove('btn-outline-secondary');
     activeBtn.classList.add('btn-outline-primary', 'active');
-    
+
     applyMonitoringFilter();
     filterHosts();
 }
@@ -2038,20 +2038,20 @@ function applyMonitoringFilter() {
 // Set device category filter mode
 function setDeviceCategoryFilter(category) {
     categoryFilterMode = category;
-    
+
     // Reset dropdown category filter to avoid conflicts
     const categoryDropdown = document.getElementById('category-filter');
     if (categoryDropdown) categoryDropdown.value = '';
-    
+
     // Update button states
     document.getElementById('filter-cameras-only').classList.remove('active', 'btn-outline-info');
     document.getElementById('filter-cameras-only').classList.add('btn-outline-secondary');
-    
+
     if (category === 'cameras') {
         document.getElementById('filter-cameras-only').classList.remove('btn-outline-secondary');
         document.getElementById('filter-cameras-only').classList.add('btn-outline-info', 'active');
     }
-    
+
     applyMonitoringFilter();
     filterHosts();
 }
@@ -2069,31 +2069,31 @@ function getDeviceCategory(device) {
     const type = (device.device_type || '').toLowerCase();
     const hostname = (device.hostname || '').toLowerCase();
     const displayName = (device.display_name || '').toLowerCase();
-    
+
     // Infrastructure
-    if (type === 'router' || hostname.includes('router') || hostname.includes('switch') || 
+    if (type === 'router' || hostname.includes('router') || hostname.includes('switch') ||
         hostname.includes('gateway') || hostname.includes('nest-wifi')) {
         return 'infrastructure';
     }
-    
+
     // Cameras
-    if (type === 'camera' || hostname.includes('cam') || hostname.includes('ring') || 
+    if (type === 'camera' || hostname.includes('cam') || hostname.includes('ring') ||
         hostname.includes('wyze') || displayName.includes('cam')) {
         return 'cameras';
     }
-    
+
     // Smart Home
-    if (type === 'smart_home' || type === 'iot' || hostname.includes('sonos') || 
+    if (type === 'smart_home' || type === 'iot' || hostname.includes('sonos') ||
         hostname.includes('nest') || hostname.includes('google') || hostname.includes('litter')) {
         return 'smart_home';
     }
-    
+
     // Personal Devices
-    if (type === 'phone' || type === 'apple' || type === 'computer' || 
+    if (type === 'phone' || type === 'apple' || type === 'computer' ||
         hostname.includes('phone') || hostname.includes('watch') || hostname.includes('macbook')) {
         return 'personal';
     }
-    
+
     return 'other';
 }
 
@@ -2130,14 +2130,14 @@ function filterHosts() {
         const friendlyName = getFriendlyDeviceName(host).toLowerCase();
         const deviceType = getSimpleDeviceType(host).toLowerCase();
         const locationInfo = getDeviceLocationInfo(host).toLowerCase();
-        
-        const matchesSearch = !searchTerm || 
+
+        const matchesSearch = !searchTerm ||
             friendlyName.includes(searchTerm) ||
             host.ip_address.toLowerCase().includes(searchTerm) ||
             deviceType.includes(searchTerm) ||
             locationInfo.includes(searchTerm) ||
             (host.hostname && host.hostname.toLowerCase().includes(searchTerm));
-        
+
         const matchesCategory = !categoryFilter || getDeviceCategory(host) === categoryFilter;
         const matchesCategoryFilter = !categoryFilterMode || getDeviceCategory(host) === categoryFilterMode;
 
@@ -2152,11 +2152,11 @@ function filterHosts() {
     }
 }
 
-// Simplified home-friendly table renderer  
+// Simplified home-friendly table renderer
 function renderHostsTable() {
     const tbody = document.getElementById('hosts-tbody');
     const filteredCount = document.getElementById('filtered-count');
-    
+
     filteredCount.textContent = filteredHosts.length;
 
     if (filteredHosts.length === 0) {
@@ -2172,11 +2172,11 @@ function renderHostsTable() {
         const locationInfo = getDeviceLocationInfo(host);
 
         return `
-            <tr data-device-id="${host.id}" role="row" tabindex="0" 
+            <tr data-device-id="${host.id}" role="row" tabindex="0"
                 onclick="viewDevice(${host.id})" class="device-row">
                 <td role="gridcell" class="text-center">
                     <div class="d-flex align-items-center justify-content-center">
-                        <span class="status-indicator-large ${host.status} me-2" 
+                        <span class="status-indicator-large ${host.status} me-2"
                               title="${statusLabel}"
                               aria-label="${friendlyName} is ${statusLabel}"></span>
                         <span class="small fw-medium text-${statusClass}">${statusLabel}</span>
@@ -2223,8 +2223,8 @@ function renderHostsTable() {
                 <td role="gridcell" class="text-center">
                     <div class="monitoring-toggle">
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" 
-                                   ${host.is_monitored ? 'checked' : ''} 
+                            <input class="form-check-input" type="checkbox"
+                                   ${host.is_monitored ? 'checked' : ''}
                                    onchange="event.stopPropagation(); toggleMonitoring(${host.id}, this.checked)"
                                    title="Toggle monitoring for ${friendlyName}">
                             <label class="form-check-label small text-muted">
@@ -2235,13 +2235,13 @@ function renderHostsTable() {
                 </td>
                 <td role="gridcell">
                     <div class="quick-actions d-flex gap-1">
-                        <button class="btn btn-sm btn-outline-primary" 
-                                onclick="event.stopPropagation(); viewDevice(${host.id})" 
+                        <button class="btn btn-sm btn-outline-primary"
+                                onclick="event.stopPropagation(); viewDevice(${host.id})"
                                 title="View ${friendlyName} details">
                             <i class="bi bi-eye"></i>
                         </button>
                         <div class="dropdown">
-                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle" 
+                            <button class="btn btn-sm btn-outline-secondary dropdown-toggle"
                                     onclick="event.stopPropagation();"
                                     data-bs-toggle="dropdown" aria-expanded="false"
                                     title="Quick settings">
@@ -2290,7 +2290,7 @@ function renderHostsTable() {
 // Simplified home-friendly card view renderer
 function renderHostsCards() {
     const container = document.getElementById('hosts-cards-container');
-    
+
     if (filteredHosts.length === 0) {
         setLoadingState(false);
         return;
@@ -2306,7 +2306,7 @@ function renderHostsCards() {
 
         return `
             <div class="col-md-6 col-lg-4 mb-3">
-                <div class="host-card card" 
+                <div class="host-card card"
                      data-device-id="${host.id}"
                      onclick="viewDevice(${host.id})">
                     <div class="card-body">
@@ -2319,33 +2319,33 @@ function renderHostsCards() {
                                 </div>
                             </div>
                             <div class="text-end">
-                                <span class="status-indicator-large ${host.status} mb-1" 
+                                <span class="status-indicator-large ${host.status} mb-1"
                                       title="${statusLabel}"></span>
                                 <div class="small text-${statusClass} fw-medium">${statusLabel}</div>
                             </div>
                         </div>
-                        
+
                         <div class="mb-3">
                             <div class="small text-muted mb-1">Location</div>
                             <div><code class="small">${host.ip_address}</code></div>
                             <small class="text-muted">${locationInfo}</small>
                         </div>
-                        
+
                         <div class="mb-3">
                             <div class="small text-muted mb-1">Last Seen</div>
                             <div class="small">${lastSeen}</div>
                         </div>
-                        
+
                         <div class="d-flex justify-content-between align-items-center">
                             <div class="form-check form-switch">
-                                <input class="form-check-input" type="checkbox" 
-                                       ${host.is_monitored ? 'checked' : ''} 
+                                <input class="form-check-input" type="checkbox"
+                                       ${host.is_monitored ? 'checked' : ''}
                                        onchange="event.stopPropagation(); toggleMonitoring(${host.id}, this.checked)"
                                        title="Monitor ${friendlyName}">
                                 <label class="form-check-label small">Monitor</label>
                             </div>
-                            <button class="btn btn-outline-primary btn-sm" 
-                                    onclick="event.stopPropagation(); viewDevice(${host.id})" 
+                            <button class="btn btn-outline-primary btn-sm"
+                                    onclick="event.stopPropagation(); viewDevice(${host.id})"
                                     title="View ${friendlyName} details">
                                 <i class="bi bi-eye me-1"></i>Details
                             </button>
@@ -2361,11 +2361,11 @@ function renderHostsCards() {
 function toggleSelectAll() {
     const selectAll = document.getElementById('select-all');
     const checkboxes = document.querySelectorAll('.device-checkbox');
-    
+
     checkboxes.forEach(checkbox => {
         checkbox.checked = selectAll.checked;
     });
-    
+
     updateSelectedCount();
 }
 
@@ -2383,7 +2383,7 @@ async function toggleMonitoring(deviceId, enabled) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ is_monitored: enabled })
         });
-        
+
         if (response.ok) {
             showToast(`Monitoring ${enabled ? 'enabled' : 'disabled'} for device`, 'success');
             // Update local data
@@ -2406,7 +2406,7 @@ async function applyMonitoringPreset(preset) {
     const devices = [...allDevices];
     let devicesToEnable = [];
     let devicesToDisable = [];
-    
+
     switch(preset) {
         case 'security':
             // Enable cameras and infrastructure
@@ -2419,7 +2419,7 @@ async function applyMonitoringPreset(preset) {
                 }
             });
             break;
-            
+
         case 'infrastructure':
             // Only infrastructure
             devices.forEach(device => {
@@ -2431,7 +2431,7 @@ async function applyMonitoringPreset(preset) {
                 }
             });
             break;
-            
+
         case 'minimal':
             // Only routers/gateways
             devices.forEach(device => {
@@ -2442,7 +2442,7 @@ async function applyMonitoringPreset(preset) {
                 }
             });
             break;
-            
+
         case 'none':
             // Disable all
             devices.forEach(device => {
@@ -2450,25 +2450,25 @@ async function applyMonitoringPreset(preset) {
             });
             break;
     }
-    
+
     // Apply changes
     try {
         showToast(`Applying ${preset} monitoring preset...`, 'info');
-        
+
         // Enable devices
         for (const deviceId of devicesToEnable) {
             await updateMonitoringStatus(deviceId, true, false);
         }
-        
+
         // Disable devices
         for (const deviceId of devicesToDisable) {
             await updateMonitoringStatus(deviceId, false, false);
         }
-        
+
         // Reload to show changes
         await loadMonitoredHosts();
         showToast(`Applied ${preset} monitoring preset successfully!`, 'success');
-        
+
     } catch (error) {
         showToast(`Failed to apply preset: ${error.message}`, 'error');
     }
@@ -2481,11 +2481,11 @@ async function updateMonitoringStatus(deviceId, isMonitored, updateUI = true) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ is_monitored: isMonitored })
     });
-    
+
     if (!response.ok) {
         throw new Error(`Failed to update device ${deviceId}`);
     }
-    
+
     if (updateUI) {
         await loadMonitoredHosts();
     }
@@ -2540,7 +2540,7 @@ async function setDevicePriority(deviceId, priority) {
         if (response.ok) {
             const priorityLabels = {
                 'critical': 'Critical',
-                'important': 'Important', 
+                'important': 'Important',
                 'normal': 'Normal',
                 'optional': 'Optional'
             };
@@ -2559,10 +2559,10 @@ async function setDevicePriority(deviceId, priority) {
 function sortTable(field) {
     const direction = (currentSort.field === field && currentSort.direction === 'asc') ? 'desc' : 'asc';
     currentSort = { field, direction };
-    
+
     filteredHosts.sort((a, b) => {
         let valueA, valueB;
-        
+
         switch(field) {
             case 'status':
                 // Priority order: critical -> important -> normal -> optional for offline devices
@@ -2571,7 +2571,7 @@ function sortTable(field) {
                 const priorityB = getDevicePriorityInfo(b);
                 const statusA = statusPriority[a.status] || 0;
                 const statusB = statusPriority[b.status] || 0;
-                
+
                 // If same status, sort by priority (critical devices first)
                 if (statusA === statusB) {
                     const devicePriorityOrder = { 'critical': 4, 'important': 3, 'normal': 2, 'optional': 1 };
@@ -2582,47 +2582,47 @@ function sortTable(field) {
                     valueB = statusB;
                 }
                 break;
-                
+
             case 'name':
                 valueA = getFriendlyDeviceName(a).toLowerCase();
                 valueB = getFriendlyDeviceName(b).toLowerCase();
                 break;
-                
+
             case 'room':
                 valueA = getDeviceLocationInfo(a).toLowerCase();
                 valueB = getDeviceLocationInfo(b).toLowerCase();
                 break;
-                
+
             case 'last_seen':
                 valueA = a.last_seen ? new Date(a.last_seen + 'Z') : new Date(0);
                 valueB = b.last_seen ? new Date(b.last_seen + 'Z') : new Date(0);
                 break;
-                
+
             case 'priority':
                 const priorityOrder = { 'critical': 4, 'important': 3, 'normal': 2, 'optional': 1 };
                 valueA = priorityOrder[a.device_priority] || 2;
                 valueB = priorityOrder[b.device_priority] || 2;
                 break;
-                
+
             default:
                 return 0;
         }
-        
+
         if (valueA < valueB) return direction === 'asc' ? -1 : 1;
         if (valueA > valueB) return direction === 'asc' ? 1 : -1;
         return 0;
     });
-    
+
     // Update sort indicators
     document.querySelectorAll('.sort-indicator').forEach(indicator => {
         indicator.className = 'bi bi-arrow-down-up sort-indicator';
     });
-    
+
     const currentHeader = document.querySelector(`th[onclick="sortTable('${field}')"] .sort-indicator`);
     if (currentHeader) {
         currentHeader.className = `bi bi-arrow-${direction === 'asc' ? 'up' : 'down'} sort-indicator`;
     }
-    
+
     // Re-render with sorted data
     if (currentView === 'card') {
         renderHostsCards();
@@ -2636,7 +2636,7 @@ function sortTable(field) {
 
 function setViewMode(mode) {
     currentView = mode;
-    
+
     switch(mode) {
         case 'list':
             renderHostsTable();
@@ -2648,21 +2648,21 @@ function setViewMode(mode) {
             renderHostsGroupedByPriority();
             break;
     }
-    
+
     showToast(`View changed to ${mode} mode`, 'info');
 }
 
 function renderHostsGroupedByRoom() {
     const tbody = document.getElementById('hosts-tbody');
     const filteredCount = document.getElementById('filtered-count');
-    
+
     filteredCount.textContent = filteredHosts.length;
-    
+
     if (filteredHosts.length === 0) {
         setLoadingState(false);
         return;
     }
-    
+
     // Group devices by room
     const roomGroups = {};
     filteredHosts.forEach(host => {
@@ -2672,19 +2672,19 @@ function renderHostsGroupedByRoom() {
         }
         roomGroups[room].push(host);
     });
-    
+
     // Sort rooms alphabetically, with "Unassigned" last
     const sortedRooms = Object.keys(roomGroups).sort((a, b) => {
         if (a === 'Unassigned') return 1;
         if (b === 'Unassigned') return -1;
         return a.localeCompare(b);
     });
-    
+
     let html = '';
     sortedRooms.forEach(room => {
         const devices = roomGroups[room];
         const roomIcon = getRoomIcon(room);
-        
+
         // Room header
         html += `
             <tr class="room-header">
@@ -2694,7 +2694,7 @@ function renderHostsGroupedByRoom() {
                 </td>
             </tr>
         `;
-        
+
         // Room devices
         devices.forEach(host => {
             const statusLabel = homeStatusLabels[host.status] || 'Unknown';
@@ -2702,7 +2702,7 @@ function renderHostsGroupedByRoom() {
             const friendlyName = getFriendlyDeviceName(host);
             const lastSeen = getSimpleTimeAgo(host.last_seen);
             const priorityInfo = getDevicePriorityInfo(host);
-            
+
             html += `
                 <tr data-device-id="${host.id}" onclick="viewDevice(${host.id})" class="device-row">
                     <td class="text-center">
@@ -2716,7 +2716,7 @@ function renderHostsGroupedByRoom() {
                                 <div class="device-name fw-bold">${friendlyName}</div>
                                 <div class="device-meta d-flex align-items-center gap-2">
                                     <span class="device-type text-muted small">${getSimpleDeviceType(host)}</span>
-                                    ${priorityInfo.label !== 'Normal' ? 
+                                    ${priorityInfo.label !== 'Normal' ?
                                         `<span class="badge bg-${priorityInfo.class} badge-sm">
                                             <i class="bi bi-${priorityInfo.icon} me-1"></i>${priorityInfo.label}
                                         </span>` : ''}
@@ -2732,16 +2732,16 @@ function renderHostsGroupedByRoom() {
                     </td>
                     <td class="text-center">
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" 
-                                   ${host.is_monitored ? 'checked' : ''} 
+                            <input class="form-check-input" type="checkbox"
+                                   ${host.is_monitored ? 'checked' : ''}
                                    onchange="event.stopPropagation(); toggleMonitoring(${host.id}, this.checked)"
                                    title="Monitor ${friendlyName}">
                             <label class="form-check-label small">${host.is_monitored ? 'On' : 'Off'}</label>
                         </div>
                     </td>
                     <td>
-                        <button class="btn btn-sm btn-outline-primary" 
-                                onclick="event.stopPropagation(); viewDevice(${host.id})" 
+                        <button class="btn btn-sm btn-outline-primary"
+                                onclick="event.stopPropagation(); viewDevice(${host.id})"
                                 title="View ${friendlyName} details">
                             <i class="bi bi-eye"></i>
                         </button>
@@ -2750,21 +2750,21 @@ function renderHostsGroupedByRoom() {
             `;
         });
     });
-    
+
     tbody.innerHTML = html;
 }
 
 function renderHostsGroupedByPriority() {
     const tbody = document.getElementById('hosts-tbody');
     const filteredCount = document.getElementById('filtered-count');
-    
+
     filteredCount.textContent = filteredHosts.length;
-    
+
     if (filteredHosts.length === 0) {
         setLoadingState(false);
         return;
     }
-    
+
     // Group devices by priority
     const priorityGroups = {};
     filteredHosts.forEach(host => {
@@ -2774,16 +2774,16 @@ function renderHostsGroupedByPriority() {
         }
         priorityGroups[priority].push(host);
     });
-    
+
     // Sort priorities by importance
     const priorityOrder = ['critical', 'important', 'normal', 'optional'];
     const sortedPriorities = priorityOrder.filter(p => priorityGroups[p]);
-    
+
     let html = '';
     sortedPriorities.forEach(priority => {
         const devices = priorityGroups[priority];
         const priorityInfo = getDevicePriorityInfo({ device_priority: priority });
-        
+
         // Priority header
         html += `
             <tr class="priority-header">
@@ -2793,7 +2793,7 @@ function renderHostsGroupedByPriority() {
                 </td>
             </tr>
         `;
-        
+
         // Priority devices
         devices.forEach(host => {
             const statusLabel = homeStatusLabels[host.status] || 'Unknown';
@@ -2801,7 +2801,7 @@ function renderHostsGroupedByPriority() {
             const friendlyName = getFriendlyDeviceName(host);
             const lastSeen = getSimpleTimeAgo(host.last_seen);
             const locationInfo = getDeviceLocationInfo(host);
-            
+
             html += `
                 <tr data-device-id="${host.id}" onclick="viewDevice(${host.id})" class="device-row">
                     <td class="text-center">
@@ -2831,16 +2831,16 @@ function renderHostsGroupedByPriority() {
                     </td>
                     <td class="text-center">
                         <div class="form-check form-switch">
-                            <input class="form-check-input" type="checkbox" 
-                                   ${host.is_monitored ? 'checked' : ''} 
+                            <input class="form-check-input" type="checkbox"
+                                   ${host.is_monitored ? 'checked' : ''}
                                    onchange="event.stopPropagation(); toggleMonitoring(${host.id}, this.checked)"
                                    title="Monitor ${friendlyName}">
                             <label class="form-check-label small">${host.is_monitored ? 'On' : 'Off'}</label>
                         </div>
                     </td>
                     <td>
-                        <button class="btn btn-sm btn-outline-primary" 
-                                onclick="event.stopPropagation(); viewDevice(${host.id})" 
+                        <button class="btn btn-sm btn-outline-primary"
+                                onclick="event.stopPropagation(); viewDevice(${host.id})"
                                 title="View ${friendlyName} details">
                             <i class="bi bi-eye"></i>
                         </button>
@@ -2849,7 +2849,7 @@ function renderHostsGroupedByPriority() {
             `;
         });
     });
-    
+
     tbody.innerHTML = html;
 }
 
@@ -2858,7 +2858,7 @@ function exportMonitoredHosts() {
     const csv = [
         ['Name', 'Hostname', 'IP Address', 'MAC Address', 'Vendor', 'Status', 'Device Type', 'Last Seen', 'Response Time', 'Uptime %', 'Alerts', 'Monitoring Enabled']
     ];
-    
+
     filteredHosts.forEach(host => {
         csv.push([
             host.display_name,
@@ -2875,7 +2875,7 @@ function exportMonitoredHosts() {
             host.is_monitored ? 'Yes' : 'No'
         ]);
     });
-    
+
     const csvContent = csv.map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = window.URL.createObjectURL(blob);
@@ -2886,7 +2886,7 @@ function exportMonitoredHosts() {
     a.click();
     document.body.removeChild(a);
     window.URL.revokeObjectURL(url);
-    
+
     showToast('Monitored hosts exported to CSV', 'success');
 }
 
@@ -2898,12 +2898,12 @@ function exportDetailedReport() {
         [''],
         ['Device Name', 'Display Name', 'Hostname', 'IP Address', 'MAC Address', 'Vendor', 'Status', 'Device Type', 'Room/Location', 'Last Seen', 'Response Time (ms)', 'Uptime %', 'Active Alerts', 'Monitoring', 'First Discovered', 'Total Checks', 'Successful Checks']
     ];
-    
+
     // Include all devices, not just monitored
     allDevices.forEach(device => {
         const displayName = device.display_name || device.hostname || device.mac_address || 'Unknown Device';
         const uptime = device.total_checks > 0 ? ((device.successful_checks / device.total_checks) * 100).toFixed(1) : 'N/A';
-        
+
         csv.push([
             device.name || '',
             displayName,
@@ -2924,7 +2924,7 @@ function exportDetailedReport() {
             device.successful_checks || 0
         ]);
     });
-    
+
     // Add summary statistics
     csv.push(['']);
     csv.push(['Summary Statistics']);
@@ -2933,7 +2933,7 @@ function exportDetailedReport() {
     csv.push(['Online Devices', allDevices.filter(d => d.status === 'up').length]);
     csv.push(['Offline Devices', allDevices.filter(d => d.status === 'down').length]);
     csv.push(['Report Generated', new Date().toLocaleString()]);
-    
+
     const csvContent = csv.map(row => row.join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const url = URL.createObjectURL(blob);
@@ -2942,7 +2942,7 @@ function exportDetailedReport() {
     a.download = `homenetmon-detailed-report-${timestamp}.csv`;
     a.click();
     URL.revokeObjectURL(url);
-    
+
     showToast('Detailed report exported to CSV', 'success');
 }
 
@@ -2957,22 +2957,22 @@ function bulkDisableMonitoring() {
 
 async function bulkUpdateMonitoring(enabled) {
     const selectedIds = Array.from(document.querySelectorAll('.device-checkbox:checked')).map(cb => parseInt(cb.value));
-    
+
     if (selectedIds.length === 0) {
         showToast('No devices selected', 'warning');
         return;
     }
-    
+
     try {
         const response = await fetch('/api/devices/bulk-update', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ 
+            body: JSON.stringify({
                 device_ids: selectedIds,
-                is_monitored: enabled 
+                is_monitored: enabled
             })
         });
-        
+
         if (response.ok) {
             showToast(`Monitoring ${enabled ? 'enabled' : 'disabled'} for ${selectedIds.length} devices`, 'success');
             bootstrap.Modal.getInstance(document.getElementById('bulkMonitoringModal')).hide();
@@ -2987,19 +2987,19 @@ async function bulkUpdateMonitoring(enabled) {
 
 async function bulkPingDevices() {
     const selectedIds = Array.from(document.querySelectorAll('.device-checkbox:checked')).map(cb => parseInt(cb.value));
-    
+
     if (selectedIds.length === 0) {
         showToast('No devices selected', 'warning');
         return;
     }
-    
+
     try {
         const response = await fetch('/api/devices/bulk-ping', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ device_ids: selectedIds })
         });
-        
+
         if (response.ok) {
             showToast(`Pinging ${selectedIds.length} devices...`, 'info');
             bootstrap.Modal.getInstance(document.getElementById('bulkMonitoringModal')).hide();
@@ -3037,17 +3037,17 @@ if (typeof socket !== 'undefined') {
             if (existingDevice) {
                 Object.assign(existingDevice, device);
             }
-            
+
             // Also update monitored hosts if applicable
             const existingHost = monitoredHosts.find(h => h.id === device.id);
             if (existingHost) {
                 Object.assign(existingHost, device);
             }
-            
+
             // Add to batch updater for efficient DOM updates
             updateBatcher.add(device);
         });
-        
+
         // Update status cards without full re-render
         updateStatusCards();
     });
@@ -3060,10 +3060,10 @@ function getFriendlyDeviceName(device) {
     if (device.display_name && !device.display_name.match(/^192\.168\./)) {
         return device.display_name;
     }
-    
+
     if (device.hostname) {
         const hostname = device.hostname.toLowerCase();
-        
+
         // Replace common technical prefixes with friendly names
         if (hostname.includes('ring-')) return hostname.replace('ring-', 'Ring ').replace('.lan', '');
         if (hostname.includes('nest-')) return hostname.replace('nest-', 'Nest ').replace('.lan', '');
@@ -3075,11 +3075,11 @@ function getFriendlyDeviceName(device) {
         if (hostname.includes('macbook')) return 'MacBook';
         if (hostname.includes('iphone')) return 'iPhone';
         if (hostname.includes('ipad')) return 'iPad';
-        
+
         // Clean up and capitalize
         return hostname.replace('.lan', '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
     }
-    
+
     return device.ip_address;
 }
 
@@ -3087,7 +3087,7 @@ function getSimpleDeviceType(device) {
     const category = getDeviceCategory(device);
     const type = (device.device_type || '').toLowerCase();
     const hostname = (device.hostname || '').toLowerCase();
-    
+
     // More specific types for home users
     if (hostname.includes('ring')) return 'Security Camera';
     if (hostname.includes('wyze')) return 'Smart Camera';
@@ -3100,7 +3100,7 @@ function getSimpleDeviceType(device) {
     if (hostname.includes('ipad')) return 'Tablet';
     if (hostname.includes('watch')) return 'Smart Watch';
     if (hostname.includes('google')) return 'Smart Assistant';
-    
+
     // Fallback to category
     const categoryLabels = {
         'infrastructure': 'Network Device',
@@ -3109,7 +3109,7 @@ function getSimpleDeviceType(device) {
         'personal': 'Personal Device',
         'other': 'Device'
     };
-    
+
     return categoryLabels[category] || 'Network Device';
 }
 
@@ -3118,7 +3118,7 @@ function getDeviceLocationInfo(device) {
     if (device.room_location) {
         return device.room_location;
     }
-    
+
     // Try to infer location from hostname patterns
     const hostname = (device.hostname || '').toLowerCase();
     if (hostname.includes('kitchen')) return 'Kitchen';
@@ -3129,12 +3129,12 @@ function getDeviceLocationInfo(device) {
     if (hostname.includes('basement')) return 'Basement';
     if (hostname.includes('upstairs')) return 'Upstairs';
     if (hostname.includes('downstairs')) return 'Downstairs';
-    
+
     // Fallback to vendor info or default
     if (device.vendor && device.vendor !== 'Unknown Vendor') {
         return device.vendor;
     }
-    
+
     return 'Unassigned';
 }
 
@@ -3146,7 +3146,7 @@ function getDevicePriorityInfo(device) {
         'normal': { label: 'Normal', class: 'info', icon: 'circle' },
         'optional': { label: 'Optional', class: 'secondary', icon: 'dash-circle' }
     };
-    
+
     return priorityLabels[priority] || priorityLabels['normal'];
 }
 
@@ -3169,32 +3169,32 @@ function getRoomIcon(room) {
         'network closet': '🔧',
         'unassigned': '📍'
     };
-    
+
     return roomIcons[room?.toLowerCase()] || '📍';
 }
 
 function getSimpleTimeAgo(timestamp) {
     if (!timestamp) return 'Never seen';
-    
+
     const now = new Date();
     const past = new Date(timestamp + 'Z');
     const diffMs = now - past;
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
-    
+
     if (diffMins < 5) return 'Just now';
     if (diffMins < 60) return `${diffMins} min ago`;
     if (diffHours < 24) return `${diffHours} hours ago`;
     if (diffDays < 7) return `${diffDays} days ago`;
-    
+
     return 'Over a week ago';
 }
 
 // Utility functions for enhanced UX (kept for backward compatibility)
 function getResponseTimeDisplay(responseTime) {
     if (!responseTime) return { html: '<span class="text-muted">-</span>', text: '-' };
-    
+
     let className, badgeClass;
     if (responseTime < 50) {
         className = 'text-success';
@@ -3209,7 +3209,7 @@ function getResponseTimeDisplay(responseTime) {
         className = 'text-danger';
         badgeClass = 'response-time-poor';
     }
-    
+
     const text = `${responseTime}ms`;
     return {
         html: `<span class="response-time-badge ${badgeClass}">${text}</span>`,
@@ -3229,13 +3229,13 @@ function formatUptimePercentage(uptime) {
     if (uptime === null || uptime === undefined || isNaN(uptime)) {
         return '-';
     }
-    
+
     // Ensure it's a number
     const uptimeNum = parseFloat(uptime);
     if (isNaN(uptimeNum)) {
         return '-';
     }
-    
+
     return `${uptimeNum.toFixed(1)}%`;
 }
 
@@ -3248,19 +3248,19 @@ function getAlertBadge(alertCount) {
 
 function getTimeAgo(timestamp) {
     if (!timestamp) return 'Never';
-    
+
     const now = new Date();
     const past = new Date(timestamp + 'Z');
     const diffMs = now - past;
     const diffMins = Math.floor(diffMs / 60000);
     const diffHours = Math.floor(diffMins / 60);
     const diffDays = Math.floor(diffHours / 24);
-    
+
     if (diffMins < 1) return 'Just now';
     if (diffMins < 60) return `${diffMins}m ago`;
     if (diffHours < 24) return `${diffHours}h ago`;
     if (diffDays < 7) return `${diffDays}d ago`;
-    
+
     return past.toLocaleDateString();
 }
 
@@ -3321,7 +3321,7 @@ function showToast(message, type = 'info', duration = 5000) {
         toastContainer.style.zIndex = '1060';
         document.body.appendChild(toastContainer);
     }
-    
+
     // Create toast element
     const toastId = 'toast-' + Date.now();
     const toastHTML = `
@@ -3339,14 +3339,14 @@ function showToast(message, type = 'info', duration = 5000) {
             </div>
         </div>
     `;
-    
+
     toastContainer.insertAdjacentHTML('beforeend', toastHTML);
-    
+
     // Initialize and show toast
     const toastElement = document.getElementById(toastId);
     const toast = new bootstrap.Toast(toastElement);
     toast.show();
-    
+
     // Auto-hide after duration
     setTimeout(() => {
         toast.hide();
@@ -3371,7 +3371,7 @@ function getToastTitle(type) {
     const titles = {
         'success': 'Success',
         'error': 'Error',
-        'warning': 'Warning', 
+        'warning': 'Warning',
         'info': 'Information',
         'danger': 'Error'
     };
@@ -3383,7 +3383,7 @@ async function quickPing(deviceId) {
     try {
         const host = monitoredHosts.find(h => h.id === deviceId);
         showToast(`Pinging ${host ? host.display_name : 'device'}...`, 'info', 2000);
-        
+
         const response = await fetch(`/api/devices/${deviceId}/ping`, { method: 'POST' });
         if (response.ok) {
             const row = document.querySelector(`tr[data-device-id="${deviceId}"]`);
@@ -3403,19 +3403,19 @@ function updateDeviceStatus(deviceData) {
     if (device) {
         const oldStatus = device.status;
         Object.assign(device, deviceData);
-        
+
         // Show notification for significant status changes
         if (oldStatus !== deviceData.status && (oldStatus === 'down' || deviceData.status === 'down')) {
             const statusMessages = {
                 'up': '✅ Online',
-                'down': '❌ Offline', 
+                'down': '❌ Offline',
                 'warning': '⚠️ Warning',
                 'unknown': '❓ Unknown'
             };
-            showToast(`${device.display_name} is now ${statusMessages[deviceData.status]}`, 
+            showToast(`${device.display_name} is now ${statusMessages[deviceData.status]}`,
                      deviceData.status === 'up' ? 'success' : 'warning', 3000);
         }
-        
+
         // Update displays
         updateStatusCards();
         updateQuickStatusSummary();
@@ -3429,7 +3429,7 @@ document.addEventListener('DOMContentLoaded', function() {
     if (window.innerWidth < 768) {
         currentView = 'card';
     }
-    
+
     // Progressive disclosure event listeners
     document.getElementById('show-detailed-status')?.addEventListener('click', showDetailedStatus);
     document.getElementById('hide-detailed-status')?.addEventListener('click', hideDetailedStatus);
@@ -3443,43 +3443,43 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('toggle-host-view')?.addEventListener('click', toggleViewMode);
     document.getElementById('clear-host-filters')?.addEventListener('click', clearAllFilters);
     document.getElementById('clear-host-selection')?.addEventListener('click', clearSelection);
-    
+
     // Load initial data
     loadMonitoredHosts();
-    
+
     // Auto-refresh management
     let autoRefreshEnabled = false;
     let autoRefreshInterval = null;
-    
+
     function startAutoRefresh() {
         if (autoRefreshInterval) {
             clearInterval(autoRefreshInterval);
         }
-        
+
         autoRefreshInterval = setInterval(() => {
             if (autoRefreshEnabled && !document.hidden) {
                 // Check if user is actively editing
                 const activeElement = document.activeElement;
                 const isEditing = activeElement && (
-                    activeElement.tagName === 'INPUT' || 
-                    activeElement.tagName === 'SELECT' || 
+                    activeElement.tagName === 'INPUT' ||
+                    activeElement.tagName === 'SELECT' ||
                     activeElement.tagName === 'TEXTAREA' ||
                     activeElement.contentEditable === 'true'
                 );
-                
+
                 if (!isEditing) {
                     loadMonitoredHosts();
                 }
             }
         }, 30000);
     }
-    
+
     function toggleAutoRefresh() {
         autoRefreshEnabled = !autoRefreshEnabled;
         const btn = document.getElementById('auto-refresh-btn');
         const icon = btn.querySelector('i');
         const text = btn.querySelector('span');
-        
+
         if (autoRefreshEnabled) {
             icon.className = 'bi bi-pause-circle';
             text.textContent = 'Pause';
@@ -3491,13 +3491,13 @@ document.addEventListener('DOMContentLoaded', function() {
             btn.title = 'Resume auto-refresh';
             btn.className = 'btn btn-outline-warning';
         }
-        
+
         showToast(autoRefreshEnabled ? 'Auto-refresh resumed' : 'Auto-refresh paused', 'info');
     }
-    
+
     // Start auto-refresh interval (disabled by default)
     startAutoRefresh();
-    
+
     // Note: Visibility change auto-refresh has been disabled to prevent interruptions
 });
 </script>

@@ -19,12 +19,12 @@ def get_security_status():
             'suspicious_ports': list(security_scanner.suspicious_ports.keys()),
             'last_scan': 'unknown'  # Could be enhanced with actual last scan time
         }
-        
+
         return jsonify({
             'success': True,
             'status': status
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -34,19 +34,19 @@ def get_security_summary():
     """Get security summary statistics"""
     try:
         hours = request.args.get('hours', default=24, type=int)
-        
+
         # Cap at 30 days
         if hours > 720:
             hours = 720
-        
+
         summary = security_scanner.get_security_summary(hours)
-        
+
         return jsonify({
             'success': True,
             'summary': summary,
             'period_hours': hours
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -57,15 +57,15 @@ def get_security_alerts():
     try:
         hours = request.args.get('hours', default=24, type=int)
         limit = request.args.get('limit', default=50, type=int)
-        
+
         # Cap limits
         if hours > 720:
             hours = 720
         if limit > 100:
             limit = 100
-        
+
         start_time = datetime.utcnow() - timedelta(hours=hours)
-        
+
         # Query security alerts
         alerts = db.session.query(Alert).filter(
             Alert.alert_type.like('security_%'),
@@ -73,14 +73,14 @@ def get_security_alerts():
         ).order_by(
             Alert.created_at.desc()
         ).limit(limit).all()
-        
+
         alerts_data = []
         for alert in alerts:
             try:
                 metadata = json.loads(alert.metadata or '{}')
             except:
                 metadata = {}
-            
+
             alert_data = {
                 'id': alert.id,
                 'device_id': alert.device_id,
@@ -97,14 +97,14 @@ def get_security_alerts():
                 'acknowledged_at': alert.acknowledged_at.isoformat() + 'Z' if alert.acknowledged_at else None
             }
             alerts_data.append(alert_data)
-        
+
         return jsonify({
             'success': True,
             'alerts': alerts_data,
             'count': len(alerts_data),
             'period_hours': hours
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -116,36 +116,36 @@ def get_scan_results():
         device_id = request.args.get('device_id', type=int)
         hours = request.args.get('hours', default=24, type=int)
         limit = request.args.get('limit', default=100, type=int)
-        
+
         # Cap limits
         if hours > 720:
             hours = 720
         if limit > 500:
             limit = 500
-        
+
         start_time = datetime.utcnow() - timedelta(hours=hours)
-        
+
         # Build query
         query = db.session.query(SecurityScan).filter(
             SecurityScan.scanned_at >= start_time
         )
-        
+
         if device_id:
             query = query.filter(SecurityScan.device_id == device_id)
-        
+
         scans = query.order_by(
             SecurityScan.scanned_at.desc()
         ).limit(limit).all()
-        
+
         scans_data = [scan.to_dict() for scan in scans]
-        
+
         return jsonify({
             'success': True,
             'scans': scans_data,
             'count': len(scans_data),
             'period_hours': hours
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -155,9 +155,9 @@ def scan_device(device_id):
     """Manually trigger a security scan for a specific device"""
     try:
         result = security_scanner.manual_scan_device(device_id)
-        
+
         return jsonify(result)
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -169,10 +169,10 @@ def get_device_ports(device_id):
         device = Device.query.get(device_id)
         if not device:
             return jsonify({'error': 'Device not found'}), 404
-        
+
         hours = request.args.get('hours', default=24, type=int)
         start_time = datetime.utcnow() - timedelta(hours=hours)
-        
+
         # Get recent scan results for this device
         scans = db.session.query(SecurityScan).filter(
             SecurityScan.device_id == device_id,
@@ -181,10 +181,10 @@ def get_device_ports(device_id):
         ).order_by(
             SecurityScan.port
         ).all()
-        
+
         ports_data = []
         total_risk_score = 0
-        
+
         for scan in scans:
             port_info = {
                 'port': scan.port,
@@ -197,10 +197,10 @@ def get_device_ports(device_id):
             }
             ports_data.append(port_info)
             total_risk_score += scan.risk_score
-        
+
         # Calculate average risk score
         avg_risk_score = total_risk_score / len(ports_data) if ports_data else 0
-        
+
         # Determine overall security status
         if avg_risk_score >= 7:
             security_status = 'critical'
@@ -210,7 +210,7 @@ def get_device_ports(device_id):
             security_status = 'medium'
         else:
             security_status = 'low'
-        
+
         return jsonify({
             'success': True,
             'device_id': device_id,
@@ -221,7 +221,7 @@ def get_device_ports(device_id):
             'security_status': security_status,
             'period_hours': hours
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -232,7 +232,7 @@ def get_network_security_overview():
     try:
         hours = request.args.get('hours', default=24, type=int)
         start_time = datetime.utcnow() - timedelta(hours=hours)
-        
+
         # Get all monitored devices
         devices = Device.query.filter_by(is_monitored=True).all()
         device_ids = [d.id for d in devices]
@@ -265,16 +265,16 @@ def get_network_security_overview():
 
             if scans:
                 network_data['scanned_devices'] += 1
-                
+
                 open_ports = len(scans)
                 if open_ports > 0:
                     network_data['devices_with_open_ports'] += 1
                     network_data['total_open_ports'] += open_ports
-                
+
                 # Calculate device risk
                 total_risk = sum(scan.risk_score for scan in scans)
                 avg_risk = total_risk / open_ports if open_ports > 0 else 0
-                
+
                 if avg_risk >= 6:
                     network_data['high_risk_devices'] += 1
                     security_status = 'high'
@@ -282,7 +282,7 @@ def get_network_security_overview():
                     security_status = 'medium'
                 else:
                     security_status = 'low'
-                
+
                 device_info = {
                     'id': device.id,
                     'name': device.display_name,
@@ -293,13 +293,13 @@ def get_network_security_overview():
                     'services': list(set(scan.service for scan in scans))
                 }
                 network_data['devices'].append(device_info)
-        
+
         return jsonify({
             'success': True,
             'network_overview': network_data,
             'period_hours': hours
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -310,7 +310,7 @@ def run_network_scan():
     try:
         # Start the background security scan
         result = security_scanner.start_background_scan()
-        
+
         if result['success']:
             return jsonify({
                 'success': True,
@@ -322,7 +322,7 @@ def run_network_scan():
                 'success': False,
                 'error': result['error']
             }), 400
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -389,13 +389,13 @@ def get_risk_assessment():
     try:
         hours = request.args.get('hours', default=168, type=int)  # Default 7 days
         start_time = datetime.utcnow() - timedelta(hours=hours)
-        
+
         # Get all security alerts in the time period
         security_alerts = db.session.query(Alert).filter(
             Alert.alert_type.like('security_%'),
             Alert.created_at >= start_time
         ).all()
-        
+
         # Analyze risk trends
         risk_data = {
             'overall_risk_level': 'low',
@@ -406,7 +406,7 @@ def get_risk_assessment():
             'low_risk_issues': 0,
             'recommendations': []
         }
-        
+
         for alert in security_alerts:
             if alert.severity == 'critical':
                 risk_data['critical_issues'] += 1
@@ -420,7 +420,7 @@ def get_risk_assessment():
             else:
                 risk_data['low_risk_issues'] += 1
                 risk_data['risk_score'] += 1
-        
+
         # Determine overall risk level
         if risk_data['critical_issues'] > 0 or risk_data['risk_score'] > 50:
             risk_data['overall_risk_level'] = 'critical'
@@ -428,13 +428,13 @@ def get_risk_assessment():
             risk_data['overall_risk_level'] = 'high'
         elif risk_data['medium_risk_issues'] > 5 or risk_data['risk_score'] > 15:
             risk_data['overall_risk_level'] = 'medium'
-        
+
         # Generate recommendations
         if risk_data['critical_issues'] > 0:
             risk_data['recommendations'].append("Immediate attention required: Critical security issues detected")
         if risk_data['high_risk_issues'] > 0:
             risk_data['recommendations'].append("Review and secure high-risk services")
-        
+
         # Add more specific recommendations based on common issues
         risk_data['recommendations'].extend([
             "Enable automatic security scanning",
@@ -442,12 +442,12 @@ def get_risk_assessment():
             "Consider using a network firewall",
             "Monitor for unauthorized devices"
         ])
-        
+
         return jsonify({
             'success': True,
             'risk_assessment': risk_data,
             'period_hours': hours
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500

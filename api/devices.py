@@ -46,7 +46,7 @@ def get_devices():
             status = None
         monitored_only = InputValidator.validate_boolean(request.args.get('monitored', 'false'))
         network_filter = InputValidator.validate_boolean(request.args.get('network_filter', 'false'))  # Changed default to false
-        
+
         # PERFORMANCE OPTIMIZATION: Use cached device list for massive speed improvement
         try:
             devices_data = get_cached_device_list(current_app.app_context)
@@ -55,25 +55,25 @@ def get_devices():
             logger.warning(f"Cache failed, falling back to database query: {e}")
             # Fallback to original query if cache fails
             return get_devices_fallback(group, device_type, status, monitored_only, network_filter)
-        
+
         # Apply client-side filtering to cached data (much faster than DB queries)
         filtered_devices = devices_data
-        
-        # Apply network range filtering if requested  
+
+        # Apply network range filtering if requested
         if network_filter:
             from api.monitoring import is_device_in_network_range, get_current_network_range
             network_range = get_current_network_range()
             filtered_devices = [d for d in filtered_devices if is_device_in_network_range(d['ip_address'], network_range)]
-        
+
         if group:
             filtered_devices = [d for d in filtered_devices if d.get('device_group') == group]
-        
+
         if device_type:
             filtered_devices = [d for d in filtered_devices if d.get('device_type') == device_type]
-        
+
         if monitored_only:
             filtered_devices = [d for d in filtered_devices if d.get('is_monitored')]
-        
+
         if status:
             filtered_devices = [d for d in filtered_devices if d.get('status') == status]
 
@@ -86,7 +86,7 @@ def get_devices():
         except:
             # Fallback to string sorting if IP parsing fails
             filtered_devices.sort(key=lambda x: x['ip_address'])
-        
+
         # Only apply pagination if explicitly requested
         if 'page' in request.args or 'per_page' in request.args:
             # Apply pagination to cached results
@@ -95,11 +95,11 @@ def get_devices():
             start = (page - 1) * per_page
             end = start + per_page
             paginated_devices = filtered_devices[start:end]
-            
+
             # Calculate pagination metadata
             import math
             pages = math.ceil(total / per_page)
-            
+
             response = {
                 'success': True,
                 'devices': paginated_devices,
@@ -127,7 +127,7 @@ def get_devices():
             response_cache.set(cache_key, response)
 
         return jsonify(response)
-        
+
     except Exception as e:
         logger.error(f"Error in cached get_devices: {e}")
         # Fallback to non-cached version
@@ -245,7 +245,7 @@ def get_devices_fallback(group=None, device_type=None, status=None, monitored_on
                 uptime_pct=None  # Skip uptime in fallback for speed
             )
             devices_data.append(device_dict)
-        
+
         # Return response with optional pagination
         if use_pagination and pagination_result:
             return jsonify({
@@ -268,7 +268,7 @@ def get_devices_fallback(group=None, device_type=None, status=None, monitored_on
                 'total': len(devices_data),
                 'cached': False
             })
-        
+
     except Exception as e:
         logger.error(f"Error in fallback get_devices: {e}")
         return jsonify({'error': str(e)}), 500
@@ -279,23 +279,23 @@ def get_device(device_id):
     """Get specific device details"""
     try:
         device = Device.query.get_or_404(device_id)
-        
+
         device_dict = device.to_dict()
-        
+
         # Add recent monitoring data (last 24 hours)
         cutoff = datetime.utcnow() - timedelta(hours=24)
         monitoring_data = MonitoringData.query.filter(
             MonitoringData.device_id == device_id,
             MonitoringData.timestamp >= cutoff
         ).order_by(MonitoringData.timestamp.desc()).limit(100).all()
-        
+
         device_dict['monitoring_history'] = [data.to_dict() for data in monitoring_data]
-        
+
         # Add recent alerts
         recent_alerts = Alert.query.filter_by(device_id=device_id)\
                                   .order_by(Alert.created_at.desc())\
                                   .limit(10).all()
-        
+
         device_dict['alerts'] = [alert.to_dict() for alert in recent_alerts]
 
         # PERFORMANCE OPTIMIZATION: Calculate statistics efficiently using direct SQL
@@ -305,7 +305,7 @@ def get_device(device_id):
         now = datetime.utcnow()
         cutoff_24h = now - timedelta(hours=24)
         cutoff_7d = now - timedelta(days=7)
-        
+
         # Get 24h statistics
         stats_24h_raw = db.session.query(
             func.count(MonitoringData.id).label('total_checks'),
@@ -318,7 +318,7 @@ def get_device(device_id):
             MonitoringData.device_id == device_id,
             MonitoringData.timestamp >= cutoff_24h
         ).first()
-        
+
         # Get 7d statistics
         stats_7d_raw = db.session.query(
             func.count(MonitoringData.id).label('total_checks'),
@@ -331,7 +331,7 @@ def get_device(device_id):
             MonitoringData.device_id == device_id,
             MonitoringData.timestamp >= cutoff_7d
         ).first()
-        
+
         # Format statistics
         def format_stats(raw_stats):
             if not raw_stats or raw_stats.total_checks == 0:
@@ -344,11 +344,11 @@ def get_device(device_id):
                     'max_response_time': None,
                     'avg_packet_loss': 0.0
                 }
-            
+
             successful = raw_stats.successful_checks or 0
             total = raw_stats.total_checks or 0
             uptime_percentage = (successful / total * 100) if total > 0 else 0.0
-            
+
             return {
                 'total_checks': total,
                 'successful_checks': successful,
@@ -358,17 +358,17 @@ def get_device(device_id):
                 'max_response_time': round(float(raw_stats.max_response_time), 2) if raw_stats.max_response_time else None,
                 'avg_packet_loss': round(float(raw_stats.avg_packet_loss), 2) if raw_stats.avg_packet_loss else 0.0
             }
-        
+
         device_dict['statistics'] = {
             '24h': format_stats(stats_24h_raw),
             '7d': format_stats(stats_7d_raw)
         }
-        
+
         return jsonify({
             'success': True,
             'device': device_dict
         })
-        
+
     except Exception as e:
         if '404 Not Found' in str(e):
             return jsonify({'error': 'Device not found'}), 404
@@ -554,17 +554,17 @@ def track_ip_change(device_id, old_ip, new_ip, source='auto_discovery', notes=No
     """Utility function to track IP address changes"""
     try:
         # DeviceIpHistory already imported at module level
-        
+
         # Don't create duplicate records for the same change
         existing = DeviceIpHistory.query.filter_by(
             device_id=device_id,
             new_ip_address=new_ip
         ).order_by(DeviceIpHistory.change_detected_at.desc()).first()
-        
+
         # If the most recent record already has this IP, don't duplicate
         if existing and existing.new_ip_address == new_ip:
             return existing
-            
+
         # Create new history record
         history_record = DeviceIpHistory(
             device_id=device_id,
@@ -573,13 +573,13 @@ def track_ip_change(device_id, old_ip, new_ip, source='auto_discovery', notes=No
             change_source=source,
             notes=notes
         )
-        
+
         db.session.add(history_record)
         db.session.commit()
-        
+
         logger.info(f"Tracked IP change for device {device_id}: {old_ip} -> {new_ip} (source: {source})")
         return history_record
-        
+
     except Exception as e:
         logger.error(f"Failed to track IP change: {e}")
         return None
@@ -629,15 +629,15 @@ def ping_all_devices():
     import subprocess
     import re
     import ipaddress
-    
+
     # Get all monitored devices
     devices = Device.query.filter_by(is_monitored=True).all()
-    
+
     if not devices:
         return jsonify({'error': 'No monitored devices found'}), 404
-    
+
     results = []
-    
+
     # Ping each device
     for device in devices:
         # SECURITY: Validate IP address to prevent command injection
@@ -654,18 +654,18 @@ def ping_all_devices():
                 'error': 'Invalid IP address format'
             })
             continue
-        
+
         cmd = ['ping', '-c', '1', '-W', '3', device.ip_address]
         try:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=5, shell=False)
             success = result.returncode == 0
             response_time = None
-            
+
             if success:
                 time_match = re.search(r'time=([0-9.]+)\s*ms', result.stdout)
                 response_time = float(time_match.group(1)) if time_match else 0.0
                 device.last_seen = datetime.utcnow()
-            
+
             results.append({
                 'device_id': device.id,
                 'ip_address': device.ip_address,
@@ -673,7 +673,7 @@ def ping_all_devices():
                 'response_time': response_time,
                 'success': success
             })
-            
+
         except subprocess.TimeoutExpired:
             logger.warning(f"Ping timeout for device {device.id}: {device.ip_address}")
             results.append({
@@ -694,17 +694,17 @@ def ping_all_devices():
                 'success': False,
                 'error': str(e)
             })
-    
+
     # Commit all database updates
     try:
         db.session.commit()
     except Exception:
         db.session.rollback()
-    
+
     # Calculate summary
     successful = sum(1 for r in results if r['success'])
     total = len(results)
-    
+
     return jsonify({
         'success': True,
         'devices_pinged': total,
@@ -727,14 +727,14 @@ def get_device_groups():
                           .filter(Device.device_group.isnot(None))\
                           .distinct()\
                           .all()
-        
+
         group_list = [group[0] for group in groups if group[0]]
-        
+
         return jsonify({
             'success': True,
             'groups': sorted(group_list)
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -747,14 +747,14 @@ def get_device_types():
                          .filter(Device.device_type.isnot(None))\
                          .distinct()\
                          .all()
-        
+
         type_list = [type_item[0] for type_item in types if type_item[0]]
-        
+
         return jsonify({
             'success': True,
             'types': sorted(type_list)
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -769,10 +769,10 @@ def test_ping(ip):
             ipaddress.ip_address(ip)
         except ValueError:
             return jsonify({'error': 'Invalid IP address'}), 400
-        
+
         # Use ping3 for consistent behavior
         response_time = ping3.ping(ip, timeout=3)
-        
+
         if response_time is not None:
             return jsonify({
                 'success': True,
@@ -787,7 +787,7 @@ def test_ping(ip):
                 'response_time': None,
                 'reachable': False
             })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -865,14 +865,14 @@ def get_devices_summary():
         # 'down' if it has data but none successful in the monitoring window
         # 'unknown' if no monitoring data exists
         cutoff_time = datetime.utcnow() - timedelta(seconds=900)  # 15 minutes
-        
+
         # Get latest monitoring data timestamp for each device
         latest_monitoring_subquery = db.session.query(
             MonitoringData.device_id,
             func.max(MonitoringData.timestamp).label('latest_timestamp'),
             func.count(MonitoringData.id).label('total_monitoring_records')
         ).group_by(MonitoringData.device_id).subquery()
-        
+
         # Get latest monitoring data with response times
         latest_data_subquery = db.session.query(
             MonitoringData.device_id,
@@ -885,7 +885,7 @@ def get_devices_summary():
                 MonitoringData.timestamp == latest_monitoring_subquery.c.latest_timestamp
             )
         ).subquery()
-        
+
         # Count devices by calculated status with fallback to device.status field
         # First check monitoring data, then fall back to device.status if no recent data
         status_query = db.session.query(
@@ -935,28 +935,28 @@ def get_devices_summary():
             latest_data_subquery,
             Device.id == latest_data_subquery.c.device_id
         ).first()
-        
+
         # Get device type counts efficiently
         type_counts_query = db.session.query(
             func.coalesce(Device.device_type, 'unknown').label('device_type'),
             func.count(Device.id).label('count')
         ).group_by(Device.device_type).all()
-        
+
         type_counts = {row.device_type: row.count for row in type_counts_query}
-        
+
         # Get active alerts count
         active_alerts = Alert.query.filter_by(resolved=False).count()
-        
+
         # Extract values with defaults
         total_devices = status_query.total_devices or 0
         devices_up = status_query.devices_up or 0
         devices_down = status_query.devices_down or 0
         devices_unknown = status_query.devices_unknown or 0
         monitored_devices = status_query.monitored_devices or 0
-        
+
         # Calculate uptime percentage
         uptime_percentage = round((devices_up / total_devices) * 100, 1) if total_devices > 0 else 0
-        
+
         return jsonify({
             'success': True,
             'summary': {
@@ -970,7 +970,7 @@ def get_devices_summary():
                 'device_types': type_counts
             }
         })
-        
+
     except Exception as e:
         logger.error(f"Error getting device summary: {e}")
         return jsonify({'error': str(e)}), 500
@@ -984,17 +984,17 @@ def get_monitored_devices():
         devices = Device.query.filter_by(is_monitored=True)\
                              .order_by(Device.ip_address)\
                              .all()
-        
+
         # PERFORMANCE OPTIMIZATION: Batch load monitoring data and alerts to avoid N+1 queries
         device_ids = [d.id for d in devices]
-        
+
         # Get latest monitoring data for all devices in one query
         from sqlalchemy import func, and_
         subquery = db.session.query(
             MonitoringData.device_id,
             func.max(MonitoringData.timestamp).label('max_timestamp')
         ).filter(MonitoringData.device_id.in_(device_ids)).group_by(MonitoringData.device_id).subquery()
-        
+
         latest_monitoring = db.session.query(MonitoringData).join(
             subquery,
             and_(
@@ -1002,10 +1002,10 @@ def get_monitored_devices():
                 MonitoringData.timestamp == subquery.c.max_timestamp
             )
         ).all()
-        
+
         # Create lookup dict for O(1) access
         monitoring_lookup = {md.device_id: md for md in latest_monitoring}
-        
+
         # Get active alerts count for all devices in one query
         alert_counts = db.session.query(
             Alert.device_id,
@@ -1014,31 +1014,31 @@ def get_monitored_devices():
             Alert.device_id.in_(device_ids),
             Alert.resolved == False
         ).group_by(Alert.device_id).all()
-        
+
         # Create lookup dict for O(1) access
         alerts_lookup = {ac.device_id: ac.count for ac in alert_counts}
-        
+
         # Convert to dict format with additional monitoring data
         devices_data = []
         for device in devices:
             device_dict = device.to_dict()
-            
+
             # Add latest monitoring data from lookup
             latest_data = monitoring_lookup.get(device.id)
             device_dict['latest_response_time'] = latest_data.response_time if latest_data else None
             device_dict['latest_check'] = latest_data.timestamp.isoformat() if latest_data else None
-            
+
             # Add active alerts count from lookup
             device_dict['active_alerts'] = alerts_lookup.get(device.id, 0)
-            
+
             devices_data.append(device_dict)
-        
+
         return jsonify({
             'success': True,
             'devices': devices_data,
             'count': len(devices_data)
         })
-        
+
     except Exception as e:
         logger.error(f"Error getting monitored devices: {e}")
         return jsonify({

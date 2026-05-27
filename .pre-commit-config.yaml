@@ -1,0 +1,32 @@
+# Run `pip install pre-commit && pre-commit install` once after cloning to
+# enable these hooks locally. They are also enforced in CI (.github/workflows/ci.yml).
+
+repos:
+  # Ruff: lint + import sort. Format is opt-in (see pyproject.toml) — too much
+  # churn to enforce on an existing codebase. Run `ruff format .` manually if
+  # you want formatting on touched files.
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.14
+    hooks:
+      - id: ruff
+        args: [--fix]
+
+  # Built-in sanity checks. The python-syntax check is the one that would have
+  # caught the literal-`\n` corruption of services/resource_monitor.py.
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-ast            # parses every .py — catches syntax errors
+      - id: check-merge-conflict
+      - id: check-yaml
+        args: [--allow-multiple-documents]  # k8s manifests bundle multiple docs via ---
+        exclude: '^helm/'                   # helm chart templates use Go-template syntax, not pure YAML
+      - id: check-json
+      - id: check-toml
+      - id: end-of-file-fixer
+        exclude: '^(static/bundles/|production_data/|logs/|node_modules/)'
+      - id: trailing-whitespace
+        exclude: '^(static/bundles/|production_data/|logs/|node_modules/|.*\.md$)'
+      - id: detect-private-key
+      - id: check-added-large-files
+        args: [--maxkb=1024]  # block accidental commits of >1 MB files (catches db/log/cache slips)

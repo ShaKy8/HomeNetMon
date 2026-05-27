@@ -314,20 +314,20 @@
     .device-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .quick-stats {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .filter-row {
         flex-direction: column;
         align-items: stretch;
     }
-    
+
     .filter-group {
         min-width: auto;
     }
-    
+
     .quick-stat-value {
         font-size: 2rem;
     }
@@ -337,12 +337,12 @@
     .quick-stats {
         grid-template-columns: 1fr;
     }
-    
+
     .device-metrics {
         flex-direction: column;
         gap: 0.5rem;
     }
-    
+
     .dashboard-filters {
         padding: 0.75rem;
     }

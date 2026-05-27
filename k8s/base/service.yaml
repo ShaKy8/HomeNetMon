@@ -21,7 +21,7 @@ spec:
   selector:
     app.kubernetes.io/name: homenetmon
     app.kubernetes.io/component: application
-    
+
 ---
 apiVersion: v1
 kind: Service
@@ -43,7 +43,7 @@ spec:
   selector:
     app.kubernetes.io/name: homenetmon
     app.kubernetes.io/component: application
-    
+
 ---
 apiVersion: v1
 kind: Service

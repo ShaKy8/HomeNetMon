@@ -76,7 +76,7 @@ class CSRFHandler {
     // Intercept fetch requests to automatically add CSRF token
     setupFetchInterceptor() {
         const originalFetch = window.fetch;
-        
+
         window.fetch = (url, options = {}) => {
             // Only add CSRF token for same-origin requests
             if (this.isSameOrigin(url)) {
@@ -118,12 +118,12 @@ class CSRFHandler {
     isSameOrigin(url) {
         // Check if URL is same-origin
         if (!url) return true;
-        
+
         // Relative URLs are same-origin
         if (url.startsWith('/') || !url.includes('://')) {
             return true;
         }
-        
+
         // Check if absolute URL matches current origin
         try {
             const urlObj = new URL(url);
@@ -167,7 +167,7 @@ class CSRFHandler {
             // Remove existing CSRF token fields
             const existingTokens = form.querySelectorAll(`input[name="${this.tokenName}"]`);
             existingTokens.forEach(input => input.remove());
-            
+
             // Add new CSRF token field
             const tokenInput = document.createElement('input');
             tokenInput.type = 'hidden';
@@ -196,11 +196,11 @@ class CSRFHandler {
     getHeaders(additionalHeaders = {}) {
         const token = this.getToken();
         const headers = { ...additionalHeaders };
-        
+
         if (token) {
             headers[this.headerName] = token;
         }
-        
+
         return headers;
     }
 
@@ -240,7 +240,7 @@ class CSRFHandler {
 // Initialize global CSRF handler
 if (typeof window !== 'undefined') {
     window.csrfHandler = new CSRFHandler();
-    
+
     // Setup forms when DOM is ready
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
@@ -249,7 +249,7 @@ if (typeof window !== 'undefined') {
     } else {
         window.csrfHandler.setupForms();
     }
-    
+
     // Expose utility functions globally
     window.getCSRFToken = () => window.csrfHandler.getToken();
     window.getCSRFHeaders = (headers) => window.csrfHandler.getHeaders(headers);

@@ -84,7 +84,7 @@ spec:
       perTryTimeout: 10s
       retryOn: 5xx,reset,connect-failure,refused-stream
     timeout: 30s
-    
+
   # WebSocket routes
   - match:
     - uri:
@@ -95,7 +95,7 @@ spec:
         port:
           number: 80
     timeout: 3600s
-    
+
   # Static assets with caching
   - match:
     - uri:
@@ -109,7 +109,7 @@ spec:
       response:
         add:
           cache-control: "public, max-age=31536000"
-          
+
   # Health checks
   - match:
     - uri:
@@ -122,7 +122,7 @@ spec:
         port:
           number: 80
     timeout: 5s
-    
+
   # Main application routes
   - match:
     - uri:
@@ -144,7 +144,7 @@ spec:
       attempts: 2
       perTryTimeout: 15s
     timeout: 30s
-    
+
 ---
 apiVersion: networking.istio.io/v1beta1
 kind: DestinationRule

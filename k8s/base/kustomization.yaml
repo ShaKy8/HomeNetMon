@@ -47,7 +47,7 @@ images:
 # Resource name prefix
 namePrefix: ""
 
-# Resource name suffix  
+# Resource name suffix
 nameSuffix: ""
 
 # ConfigMap generator for dynamic config
@@ -65,7 +65,7 @@ secretGenerator:
   type: Opaque
   literals:
   - INSTANCE_ID=$(uuidgen)
-  
+
 # Patches for common modifications
 patchesStrategicMerge:
 - |-

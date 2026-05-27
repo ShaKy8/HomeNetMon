@@ -9,11 +9,11 @@
     <div class="card performance-overview-card">
         <div class="card-header d-flex justify-content-between align-items-center">
             <h6 class="card-title mb-0">
-                <i class="bi bi-speedometer2 text-primary"></i> 
+                <i class="bi bi-speedometer2 text-primary"></i>
                 Network Performance
             </h6>
             <div class="d-flex gap-2">
-                <button class="btn btn-sm btn-outline-secondary refresh-performance-widget" 
+                <button class="btn btn-sm btn-outline-secondary refresh-performance-widget"
                         data-widget-id="{{ widget_id }}" title="Refresh">
                     <i class="bi bi-arrow-clockwise"></i>
                 </button>
@@ -37,7 +37,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <!-- Network Uptime -->
                 <div class="col-6">
                     <div class="metric-card">
@@ -56,7 +56,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Performance Status Indicators -->
             <div class="performance-status-indicators mt-3">
                 <div class="row g-2">
@@ -86,7 +86,7 @@
                     </div>
                 </div>
             </div>
-            
+
             <!-- Mini Performance Chart (for medium/large widgets) -->
             {% if widget_size in ['medium', 'large'] %}
             <div class="mini-performance-chart mt-3">
@@ -102,11 +102,11 @@
                 </div>
             </div>
             {% endif %}
-            
+
             <!-- Last Updated -->
             <div class="widget-footer mt-2">
                 <small class="text-muted">
-                    <i class="bi bi-clock"></i> 
+                    <i class="bi bi-clock"></i>
                     Last updated: <span id="{{ widget_id }}-last-updated">--</span>
                 </small>
             </div>
@@ -257,12 +257,12 @@ function initializePerformanceWidget(widgetId, widgetSize) {
         console.error(`Performance widget ${widgetId} not found`);
         return;
     }
-    
+
     console.log(`🔧 Initializing performance widget: ${widgetId} (${widgetSize})`);
-    
+
     // Load initial data
     loadPerformanceWidgetData(widgetId);
-    
+
     // Setup refresh button
     const refreshBtn = widget.querySelector('.refresh-performance-widget');
     if (refreshBtn) {
@@ -270,15 +270,15 @@ function initializePerformanceWidget(widgetId, widgetSize) {
             loadPerformanceWidgetData(widgetId, true);
         });
     }
-    
+
     // Create mini chart for medium/large widgets
     if (widgetSize !== 'small') {
         createPerformanceMiniChart(widgetId);
     }
-    
+
     // Setup periodic refresh (every 30 seconds)
     setInterval(() => loadPerformanceWidgetData(widgetId), 30000);
-    
+
     // Listen for global performance updates
     if (window.socket) {
         socket.on('performance_metrics_update', function(data) {
@@ -290,11 +290,11 @@ function initializePerformanceWidget(widgetId, widgetSize) {
 function loadPerformanceWidgetData(widgetId, showLoading = false) {
     const widget = document.getElementById(widgetId);
     if (!widget) return;
-    
+
     if (showLoading) {
         widget.classList.add('loading');
     }
-    
+
     fetch('/api/performance/summary?hours=1')
         .then(response => response.json())
         .then(data => {
@@ -313,51 +313,51 @@ function loadPerformanceWidgetData(widgetId, showLoading = false) {
 function updatePerformanceWidgetDisplay(widgetId, data) {
     const networkHealth = data.network_health || {};
     const deviceBreakdown = data.device_status_breakdown || {};
-    
+
     // Update health score
     const healthScore = networkHealth.avg_health_score || 0;
     document.getElementById(`${widgetId}-health-score`).textContent = healthScore.toFixed(1);
-    
+
     // Update health grade
     const gradeElement = document.getElementById(`${widgetId}-health-grade`);
     const grade = getPerformanceGrade(healthScore);
     gradeElement.textContent = grade;
     gradeElement.className = `metric-grade grade-${grade.toLowerCase().charAt(0)}`;
-    
+
     // Update uptime
     const uptime = networkHealth.avg_uptime_percentage || 0;
     document.getElementById(`${widgetId}-uptime`).textContent = uptime.toFixed(1) + '%';
     document.getElementById(`${widgetId}-uptime-bar`).style.width = uptime + '%';
-    
+
     // Update status indicators
     document.getElementById(`${widgetId}-excellent-count`).textContent = deviceBreakdown.excellent || 0;
     document.getElementById(`${widgetId}-good-count`).textContent = deviceBreakdown.good || 0;
     document.getElementById(`${widgetId}-fair-count`).textContent = deviceBreakdown.fair || 0;
     document.getElementById(`${widgetId}-poor-count`).textContent = deviceBreakdown.poor || 0;
-    
+
     // Update last updated time
-    document.getElementById(`${widgetId}-last-updated`).textContent = 
+    document.getElementById(`${widgetId}-last-updated`).textContent =
         new Date().toLocaleTimeString();
 }
 
 function createPerformanceMiniChart(widgetId) {
     const canvas = document.getElementById(`${widgetId}-mini-chart`);
     if (!canvas) return;
-    
+
     const ctx = canvas.getContext('2d');
-    
+
     // Generate sample performance trend data (last 6 hours)
     const labels = [];
     const healthData = [];
     const now = new Date();
-    
+
     for (let i = 5; i >= 0; i--) {
         const time = new Date(now.getTime() - i * 60 * 60 * 1000);
         labels.push(time.getHours() + ':00');
         // Sample health scores with slight variation
         healthData.push(88 + Math.random() * 8);
     }
-    
+
     // Create mini chart
     const chart = new Chart(ctx, {
         type: 'line',
@@ -392,7 +392,7 @@ function createPerformanceMiniChart(widgetId) {
                 x: {
                     display: true,
                     grid: { display: false },
-                    ticks: { 
+                    ticks: {
                         font: { size: 10 },
                         maxTicksLimit: 4
                     }
@@ -408,7 +408,7 @@ function createPerformanceMiniChart(widgetId) {
             }
         }
     });
-    
+
     // Store chart instance for updates
     window[`${widgetId}_chart`] = chart;
 }

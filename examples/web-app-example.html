@@ -361,7 +361,7 @@
         <div id="login-screen" style="display: none;">
             <div class="login-form">
                 <h2 style="text-align: center; margin-bottom: 32px; color: #2563eb;">HomeNetMon Login</h2>
-                
+
                 <div class="form-group">
                     <label for="server-url">Server URL (optional)</label>
                     <input type="text" id="server-url" placeholder="https://your-homenetmon-server.com">
@@ -568,7 +568,7 @@
 
                     // Load devices
                     const response = await this.sdk.getDevices({ includeMetrics: true });
-                    
+
                     if (response.success) {
                         this.devices = response.devices;
                         this.updateStats();
@@ -604,7 +604,7 @@
 
             renderDevices() {
                 const grid = document.getElementById('device-grid');
-                
+
                 if (this.devices.length === 0) {
                     grid.innerHTML = '<div style="grid-column: 1/-1; text-align: center; padding: 40px; color: #6b7280;">No devices found</div>';
                     return;
@@ -616,9 +616,9 @@
                             <div class="device-name">${device.display_name}</div>
                             <div class="device-status ${device.status}"></div>
                         </div>
-                        
+
                         <div class="device-ip">${device.ip_address}</div>
-                        
+
                         <div class="device-metrics">
                             <div class="device-metric">
                                 <div class="value">${device.uptime_percentage}%</div>
@@ -635,7 +635,7 @@
                                 </div>
                             ` : ''}
                         </div>
-                        
+
                         <div class="device-actions">
                             <button class="btn btn-secondary" onclick="app.pingDevice(${device.id})">
                                 Ping
@@ -668,7 +668,7 @@
             async pingDevice(deviceId) {
                 try {
                     const response = await this.sdk.pingDevice(deviceId);
-                    
+
                     if (response.success) {
                         this.showNotification(response.message || 'Ping sent successfully', 'success');
                     } else {
@@ -683,7 +683,7 @@
             async viewDevice(deviceId) {
                 try {
                     const response = await this.sdk.getDevice(deviceId, { hours: 24 });
-                    
+
                     if (response.success) {
                         // In a real app, this would open a modal or navigate to a details page
                         alert(`Device: ${response.device.display_name}\nStatus: ${response.device.status}\nLast seen: ${response.device.last_seen || 'Never'}`);

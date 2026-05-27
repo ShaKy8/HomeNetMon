@@ -29,11 +29,11 @@ def get_memory_stats():
     """Get memory usage statistics"""
     try:
         from services.memory_monitor import get_memory_stats, memory_monitor
-        
+
         current_stats = get_memory_stats()
         trend_data = memory_monitor.get_memory_trend(30)  # Last 30 minutes
         cleanup_stats = memory_monitor.get_cleanup_statistics()
-        
+
         return jsonify({
             'current': {
                 'total_mb': current_stats.total_mb,
@@ -58,10 +58,10 @@ def get_thread_stats():
     """Get thread pool statistics"""
     try:
         from services.thread_pool_manager import thread_pool_manager
-        
+
         all_stats = thread_pool_manager.get_all_stats()
         system_resources = thread_pool_manager.get_system_resource_summary()
-        
+
         return jsonify({
             'thread_pools': all_stats,
             'system_resources': system_resources,
@@ -77,7 +77,7 @@ def get_websocket_stats():
     """Get WebSocket optimizer statistics"""
     try:
         from services.websocket_optimizer import websocket_optimizer
-        
+
         if websocket_optimizer:
             stats = websocket_optimizer.get_batch_update_summary()
             return jsonify({
@@ -100,7 +100,7 @@ def get_resource_stats():
     """Get frontend resource optimization statistics"""
     try:
         from services.resource_optimizer import get_resource_bundle_info
-        
+
         bundle_info = get_resource_bundle_info()
         return jsonify({
             'bundles': bundle_info,
@@ -121,13 +121,13 @@ def get_performance_overview():
         from services.thread_pool_manager import thread_pool_manager
         from services.websocket_optimizer import websocket_optimizer
         from services.resource_optimizer import get_resource_bundle_info
-        
+
         # Cache metrics
         try:
             cache_metrics = get_cache_performance_metrics()
         except:
             cache_metrics = {'error': 'Cache metrics unavailable'}
-        
+
         # Memory metrics
         try:
             memory_stats = get_memory_stats()
@@ -139,7 +139,7 @@ def get_performance_overview():
             }
         except:
             memory_data = {'error': 'Memory metrics unavailable'}
-        
+
         # Thread pool metrics
         try:
             thread_stats = thread_pool_manager.get_all_stats()
@@ -147,19 +147,19 @@ def get_performance_overview():
         except:
             thread_stats = {}
             system_resources = {'error': 'Thread metrics unavailable'}
-        
+
         # WebSocket metrics
         try:
             ws_stats = websocket_optimizer.get_batch_update_summary() if websocket_optimizer else {}
         except:
             ws_stats = {'error': 'WebSocket metrics unavailable'}
-        
+
         # Resource bundle metrics
         try:
             resource_stats = get_resource_bundle_info()
         except:
             resource_stats = {'error': 'Resource metrics unavailable'}
-        
+
         # Calculate overall performance score
         performance_score = calculate_performance_score({
             'cache': cache_metrics,
@@ -167,7 +167,7 @@ def get_performance_overview():
             'system': system_resources,
             'threads': thread_stats
         })
-        
+
         return jsonify({
             'performance_score': performance_score,
             'cache': cache_metrics,
@@ -185,7 +185,7 @@ def get_performance_overview():
                 'resource_bundling': not resource_stats.get('error')
             }
         })
-        
+
     except Exception as e:
         logger.error(f"Error getting performance overview: {e}")
         return jsonify({'error': str(e)}), 500
@@ -196,9 +196,9 @@ def clear_cache():
     """Clear performance cache"""
     try:
         from services.performance_cache import performance_cache
-        
+
         cache_type = request.json.get('type', 'all') if request.json else 'all'
-        
+
         if cache_type == 'all':
             performance_cache.clear()
             message = "Cleared entire performance cache"
@@ -206,13 +206,13 @@ def clear_cache():
             # Clear specific patterns
             performance_cache.invalidate(pattern=cache_type)
             message = f"Cleared cache entries matching pattern: {cache_type}"
-        
+
         return jsonify({
             'success': True,
             'message': message,
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         })
-        
+
     except Exception as e:
         logger.error(f"Error clearing cache: {e}")
         return jsonify({'error': str(e)}), 500
@@ -223,18 +223,18 @@ def trigger_memory_cleanup():
     """Trigger manual memory cleanup"""
     try:
         from services.memory_monitor import memory_monitor
-        
+
         severity = request.json.get('severity', 'normal') if request.json else 'normal'
-        
+
         # Trigger cleanup
         memory_monitor.force_cleanup(severity)
-        
+
         return jsonify({
             'success': True,
             'message': f'Triggered {severity} memory cleanup',
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         })
-        
+
     except Exception as e:
         logger.error(f"Error triggering memory cleanup: {e}")
         return jsonify({'error': str(e)}), 500
@@ -245,16 +245,16 @@ def optimize_thread_pools():
     """Optimize thread pool configurations"""
     try:
         from services.thread_pool_manager import thread_pool_manager
-        
+
         # Trigger thread pool optimization
         thread_pool_manager.optimize_pools_for_workload()
-        
+
         return jsonify({
             'success': True,
             'message': 'Optimized thread pool configurations',
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         })
-        
+
     except Exception as e:
         logger.error(f"Error optimizing thread pools: {e}")
         return jsonify({'error': str(e)}), 500
@@ -265,11 +265,11 @@ def rebuild_resource_bundles():
     """Rebuild frontend resource bundles"""
     try:
         from services.resource_optimizer import resource_bundler
-        
+
         if resource_bundler:
             # Preload bundles to rebuild them
             resource_bundler.preload_bundles()
-            
+
             return jsonify({
                 'success': True,
                 'message': 'Rebuilt resource bundles',
@@ -280,7 +280,7 @@ def rebuild_resource_bundles():
                 'success': False,
                 'error': 'Resource bundler not available'
             }), 500
-        
+
     except Exception as e:
         logger.error(f"Error rebuilding resource bundles: {e}")
         return jsonify({'error': str(e)}), 500
@@ -290,7 +290,7 @@ def calculate_performance_score(metrics: dict) -> dict:
     try:
         score = 100
         factors = []
-        
+
         # Cache performance (weight: 20%)
         cache_metrics = metrics.get('cache', {})
         if not cache_metrics.get('error') and 'cache' in cache_metrics:
@@ -300,7 +300,7 @@ def calculate_performance_score(metrics: dict) -> dict:
                 factors.append(f"Low cache hit rate: {cache_hit_rate:.1%}")
             elif cache_hit_rate >= 0.9:
                 factors.append(f"Excellent cache hit rate: {cache_hit_rate:.1%}")
-        
+
         # Memory usage (weight: 25%)
         memory_data = metrics.get('memory', {})
         if not memory_data.get('error'):
@@ -311,7 +311,7 @@ def calculate_performance_score(metrics: dict) -> dict:
             elif memory_usage > 75:
                 score -= 10
                 factors.append(f"Moderate memory usage: {memory_usage:.1f}%")
-        
+
         # System resources (weight: 25%)
         system_data = metrics.get('system', {})
         if not system_data.get('error'):
@@ -322,7 +322,7 @@ def calculate_performance_score(metrics: dict) -> dict:
             elif cpu_usage > 60:
                 score -= 8
                 factors.append(f"Moderate CPU usage: {cpu_usage:.1f}%")
-        
+
         # Thread pool efficiency (weight: 20%)
         thread_data = metrics.get('threads', {})
         if (thread_data and not isinstance(thread_data, dict)) or not thread_data.get('error'):
@@ -333,10 +333,10 @@ def calculate_performance_score(metrics: dict) -> dict:
                 if avg_active_per_pool > 8:
                     score -= 10
                     factors.append(f"High thread pool utilization: {avg_active_per_pool:.1f} avg active threads")
-        
+
         # Ensure score doesn't go below 0
         score = max(0, score)
-        
+
         # Determine grade
         if score >= 95:
             grade = 'A+'
@@ -354,14 +354,14 @@ def calculate_performance_score(metrics: dict) -> dict:
             grade = 'D'
         else:
             grade = 'F'
-        
+
         return {
             'score': score,
             'grade': grade,
             'factors': factors,
             'status': 'excellent' if score >= 90 else 'good' if score >= 75 else 'fair' if score >= 60 else 'poor'
         }
-        
+
     except Exception as e:
         logger.error(f"Error calculating performance score: {e}")
         return {

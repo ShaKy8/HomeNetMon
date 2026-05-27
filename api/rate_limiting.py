@@ -37,10 +37,10 @@ def create_rate_limit_decorator(limit_type):
                         return rate_limited_func(*args, **kwargs)
                 except Exception as e:
                     logger.error(f"Error applying rate limit {limit_type}: {e}")
-            
+
             # Fall back to calling the original function
             return f(*args, **kwargs)
-        
+
         return decorated_function
     return decorator
 
@@ -58,7 +58,7 @@ security_scan = create_rate_limit_decorator('security_scan')
 def safe_rate_limit(limit_type):
     """
     Safely apply rate limiting with fallback.
-    
+
     This decorator will apply rate limiting if the rate limiter is available,
     but won't break the application if it's not configured.
     """
@@ -73,9 +73,9 @@ def safe_rate_limit(limit_type):
                     return limit_method()(f)(*args, **kwargs)
                 except Exception as e:
                     logger.error(f"Error applying rate limit {limit_type}: {e}")
-            
+
             # Execute without rate limiting if not available
             return f(*args, **kwargs)
-        
+
         return decorated_function
     return decorator

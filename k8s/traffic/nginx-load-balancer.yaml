@@ -83,33 +83,33 @@ data:
         # Upstream backend servers
         upstream homenetmon_backend {
             least_conn;
-            
+
             # Primary application servers
             server homenetmon-app-0.homenetmon-service.homenetmon.svc.cluster.local:5000 max_fails=3 fail_timeout=30s weight=3;
             server homenetmon-app-1.homenetmon-service.homenetmon.svc.cluster.local:5000 max_fails=3 fail_timeout=30s weight=3;
             server homenetmon-app-2.homenetmon-service.homenetmon.svc.cluster.local:5000 max_fails=3 fail_timeout=30s weight=2;
-            
+
             # Health check
             keepalive 32;
         }
 
         upstream homenetmon_api {
             ip_hash;  # Session affinity for API
-            
+
             server homenetmon-app-0.homenetmon-service.homenetmon.svc.cluster.local:5000 max_fails=2 fail_timeout=15s;
             server homenetmon-app-1.homenetmon-service.homenetmon.svc.cluster.local:5000 max_fails=2 fail_timeout=15s;
             server homenetmon-app-2.homenetmon-service.homenetmon.svc.cluster.local:5000 max_fails=2 fail_timeout=15s;
-            
+
             keepalive 16;
         }
 
         upstream homenetmon_websocket {
             # Sticky sessions for WebSocket
             hash $remote_addr consistent;
-            
+
             server homenetmon-app-0.homenetmon-service.homenetmon.svc.cluster.local:5000;
             server homenetmon-app-1.homenetmon-service.homenetmon.svc.cluster.local:5000;
-            
+
             keepalive 8;
         }
 
@@ -125,7 +125,7 @@ data:
             listen 80;
             listen [::]:80;
             server_name homenetmon.local *.homenetmon.local;
-            
+
             # Redirect HTTP to HTTPS
             return 301 https://$server_name$request_uri;
         }
@@ -151,7 +151,7 @@ data:
             # WebSocket support for real-time updates
             location /socket.io/ {
                 limit_req zone=general burst=20 nodelay;
-                
+
                 proxy_pass http://homenetmon_websocket;
                 proxy_http_version 1.1;
                 proxy_set_header Upgrade $http_upgrade;
@@ -161,7 +161,7 @@ data:
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                 proxy_set_header X-Forwarded-Proto $scheme;
                 proxy_cache_bypass $http_upgrade;
-                
+
                 # WebSocket timeouts
                 proxy_connect_timeout 7d;
                 proxy_send_timeout 7d;
@@ -171,23 +171,23 @@ data:
             # API endpoints with enhanced rate limiting
             location /api/ {
                 limit_req zone=api burst=50 nodelay;
-                
+
                 # API-specific headers
                 add_header X-API-Version "v1" always;
                 add_header X-RateLimit-Limit "600" always;
                 add_header X-RateLimit-Remaining "599" always;
-                
+
                 proxy_pass http://homenetmon_api;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                 proxy_set_header X-Forwarded-Proto $scheme;
-                
+
                 # API timeouts
                 proxy_connect_timeout 30s;
                 proxy_send_timeout 60s;
                 proxy_read_timeout 60s;
-                
+
                 # Health check
                 proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
             }
@@ -195,7 +195,7 @@ data:
             # Authentication endpoints with strict rate limiting
             location ~* ^/(login|register|reset-password) {
                 limit_req zone=login burst=5 nodelay;
-                
+
                 proxy_pass http://homenetmon_backend;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
@@ -207,13 +207,13 @@ data:
             location /static/ {
                 proxy_pass http://homenetmon_backend;
                 proxy_set_header Host $host;
-                
+
                 # Aggressive caching for static assets
                 proxy_cache_valid 200 1y;
                 proxy_cache_valid 404 1m;
                 expires 1y;
                 add_header Cache-Control "public, immutable";
-                
+
                 # Compression for text assets
                 location ~* \.(css|js|html|xml|txt)$ {
                     gzip_static on;
@@ -223,18 +223,18 @@ data:
             # Main application
             location / {
                 limit_req zone=general burst=100 nodelay;
-                
+
                 proxy_pass http://homenetmon_backend;
                 proxy_set_header Host $host;
                 proxy_set_header X-Real-IP $remote_addr;
                 proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
                 proxy_set_header X-Forwarded-Proto $scheme;
-                
+
                 # Application timeouts
                 proxy_connect_timeout 10s;
                 proxy_send_timeout 30s;
                 proxy_read_timeout 30s;
-                
+
                 # Health check and failover
                 proxy_next_upstream error timeout invalid_header http_500 http_502 http_503;
             }
@@ -260,7 +260,7 @@ data:
         server {
             listen 8080;
             server_name localhost;
-            
+
             location /nginx_status {
                 stub_status on;
                 access_log off;

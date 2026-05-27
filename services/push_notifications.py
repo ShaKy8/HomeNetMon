@@ -7,14 +7,14 @@ logger = logging.getLogger(__name__)
 
 class PushNotificationService:
     """Service for sending push notifications via ntfy.sh or compatible servers"""
-    
+
     def __init__(self):
         self.enabled = Config.NTFY_ENABLED
         self.server = Config.NTFY_SERVER
         self.topic = Config.NTFY_TOPIC
         self.username = Config.NTFY_USERNAME
         self.password = Config.NTFY_PASSWORD
-        
+
     def update_config_from_database(self):
         """Update configuration from database settings"""
         try:
@@ -25,26 +25,26 @@ class PushNotificationService:
             logger.debug(f"Updated push service config: enabled={self.enabled}, topic={self.topic}, server={self.server}")
         except Exception as e:
             logger.error(f"Error updating push service config from database: {e}")
-        
+
     def is_configured(self) -> bool:
         """Check if push notifications are properly configured"""
         return (
-            self.enabled and 
-            self.topic is not None and 
+            self.enabled and
+            self.topic is not None and
             self.server is not None
         )
-    
+
     def test_connectivity(self) -> Dict[str, Any]:
         """Test network connectivity to ntfy server"""
         try:
             import socket
             from urllib.parse import urlparse
-            
+
             # Parse server URL
             parsed = urlparse(self.server)
             host = parsed.hostname or 'ntfy.sh'
             port = parsed.port or 443
-            
+
             result = {
                 'server': self.server,
                 'host': host,
@@ -55,7 +55,7 @@ class PushNotificationService:
                 'http_status': None,
                 'error': None
             }
-            
+
             # Test DNS resolution
             try:
                 socket.gethostbyname(host)
@@ -63,7 +63,7 @@ class PushNotificationService:
             except socket.gaierror as e:
                 result['error'] = f"DNS resolution failed: {e}"
                 return result
-            
+
             # Test socket connection
             try:
                 sock = socket.create_connection((host, port), timeout=5)
@@ -72,7 +72,7 @@ class PushNotificationService:
             except (socket.timeout, OSError) as e:
                 result['error'] = f"Socket connection failed: {e}"
                 return result
-            
+
             # Test HTTP request
             try:
                 response = requests.get(self.server, timeout=5)
@@ -81,9 +81,9 @@ class PushNotificationService:
             except Exception as e:
                 result['error'] = f"HTTP request failed: {e}"
                 return result
-                
+
             return result
-            
+
         except Exception as e:
             return {
                 'server': self.server,
@@ -102,7 +102,7 @@ class PushNotificationService:
         retry_count: int = 3
     ) -> bool:
         """Send a push notification
-        
+
         Args:
             title: Notification title
             message: Notification message body
@@ -110,23 +110,23 @@ class PushNotificationService:
             tags: Emoji tags (e.g., "warning,red_circle")
             click_url: URL to open when notification is clicked
             icon_url: Custom icon URL
-            
+
         Returns:
             bool: True if sent successfully, False otherwise
         """
         # Update config from database before sending
         self.update_config_from_database()
-        
+
         if not self.is_configured():
             logger.debug("Push notifications not configured, skipping")
             return False
-        
+
         # Try sending with retry logic
         for attempt in range(retry_count):
             try:
                 # Build notification URL
                 url = f"{self.server.rstrip('/')}/{self.topic}"
-                
+
                 # Build headers with proper UTF-8 encoding
                 # Ensure all header values are properly encoded for HTTP transmission
                 headers = {
@@ -134,21 +134,21 @@ class PushNotificationService:
                     "Priority": priority,
                     "Content-Type": "text/plain; charset=utf-8"
                 }
-                
+
                 if tags:
                     headers["Tags"] = tags.encode('utf-8').decode('latin-1') if any(ord(c) > 127 for c in tags) else tags
-                    
+
                 if click_url:
                     headers["Click"] = click_url
-                    
+
                 if icon_url:
                     headers["Icon"] = icon_url
-                
+
                 # Authentication if configured
                 auth = None
                 if self.username and self.password:
                     auth = (self.username, self.password)
-                
+
                 # Send notification with proper UTF-8 handling and shorter timeout
                 response = requests.post(
                     url,
@@ -157,7 +157,7 @@ class PushNotificationService:
                     auth=auth,
                     timeout=5  # Reduced timeout for faster failure detection
                 )
-                
+
                 if response.status_code == 200:
                     logger.info(f"Push notification sent successfully: {title} (attempt {attempt + 1})")
                     self._log_notification(title, message, priority, tags, 'success')
@@ -170,7 +170,7 @@ class PushNotificationService:
                         return False
                     else:
                         logger.debug(f"Push notification attempt {attempt + 1} failed: {error_msg}, retrying...")
-                        
+
             except requests.RequestException as e:
                 error_msg = str(e)
                 if "Network is unreachable" in error_msg or "Connection refused" in error_msg:
@@ -185,7 +185,7 @@ class PushNotificationService:
                     return False
                 else:
                     logger.debug(f"Push notification attempt {attempt + 1} failed: {error_msg}, retrying...")
-                    
+
             except Exception as e:
                 error_msg = str(e)
                 if attempt == retry_count - 1:  # Last attempt
@@ -194,19 +194,19 @@ class PushNotificationService:
                     return False
                 else:
                     logger.debug(f"Push notification attempt {attempt + 1} failed: {error_msg}, retrying...")
-            
+
             # Exponential backoff between retries (0.5s, 1s, 2s)
             if attempt < retry_count - 1:
                 import time
                 time.sleep(0.5 * (2 ** attempt))
-        
+
         return False
-    
+
     def send_device_down_alert(self, device_name: str, ip_address: str, dashboard_url: str = None) -> bool:
         """Send notification when a device goes down"""
         title = f"🔴 Device Offline: {device_name}"
         message = f"Device {device_name} ({ip_address}) is no longer responding to ping requests."
-        
+
         return self.send_notification(
             title=title,
             message=message,
@@ -214,12 +214,12 @@ class PushNotificationService:
             tags="warning,red_circle,rotating_light",
             click_url=dashboard_url
         )
-    
+
     def send_device_up_alert(self, device_name: str, ip_address: str, dashboard_url: str = None) -> bool:
         """Send notification when a device comes back online"""
         title = f"🟢 Device Online: {device_name}"
         message = f"Device {device_name} ({ip_address}) is back online and responding."
-        
+
         return self.send_notification(
             title=title,
             message=message,
@@ -227,13 +227,13 @@ class PushNotificationService:
             tags="white_check_mark,green_circle",
             click_url=dashboard_url
         )
-    
+
     def send_new_device_alert(self, device_name: str, ip_address: str, device_type: str = None, dashboard_url: str = None) -> bool:
         """Send notification when a new device is discovered"""
         title = f"🆕 New Device: {device_name}"
         device_type_text = f" ({device_type})" if device_type else ""
         message = f"New device discovered: {device_name} ({ip_address}){device_type_text}"
-        
+
         return self.send_notification(
             title=title,
             message=message,
@@ -241,7 +241,7 @@ class PushNotificationService:
             tags="new,blue_circle,computer",
             click_url=dashboard_url
         )
-    
+
     def send_network_scan_complete(self, new_devices: int, total_devices: int, dashboard_url: str = None) -> bool:
         """Send notification when network scan completes"""
         if new_devices > 0:
@@ -252,7 +252,7 @@ class PushNotificationService:
             title = f"🔍 Network Scan Complete"
             message = f"Network scan completed. Confirmed {total_devices} devices."
             tags = "magnifying_glass_tilted_left,blue_circle"
-        
+
         return self.send_notification(
             title=title,
             message=message,
@@ -260,12 +260,12 @@ class PushNotificationService:
             tags=tags,
             click_url=dashboard_url
         )
-    
+
     def send_high_latency_alert(self, device_name: str, ip_address: str, avg_latency: float, dashboard_url: str = None) -> bool:
         """Send notification for high latency alert"""
         title = f"⚠️ High Latency: {device_name}"
         message = f"Device {device_name} ({ip_address}) has high network latency: {avg_latency:.0f}ms average."
-        
+
         return self.send_notification(
             title=title,
             message=message,
@@ -273,22 +273,22 @@ class PushNotificationService:
             tags="warning,yellow_circle,hourglass_not_done",
             click_url=dashboard_url
         )
-    
+
     def send_anomaly_alert(self, device_name: str, ip_address: str, anomaly_type: str, message: str, severity: str = "medium", dashboard_url: str = None) -> bool:
         """Send notification for AI anomaly detection"""
         severity_emoji = {
             "low": "🔵",
-            "medium": "🟡", 
+            "medium": "🟡",
             "high": "🟠",
             "critical": "🔴"
         }.get(severity, "⚪")
-        
+
         title = f"{severity_emoji} AI Alert: {device_name}"
         full_message = f"Anomaly detected on {device_name} ({ip_address}): {message}"
-        
+
         priority = "high" if severity in ["high", "critical"] else "default"
         tags = f"robot_face,{severity}_circle,warning"
-        
+
         return self.send_notification(
             title=title,
             message=full_message,
@@ -296,17 +296,17 @@ class PushNotificationService:
             tags=tags,
             click_url=dashboard_url
         )
-    
+
     def send_security_alert(self, device_name: str, ip_address: str, vulnerability: str, risk_score: float, dashboard_url: str = None) -> bool:
         """Send notification for security vulnerability"""
         risk_emoji = "🔴" if risk_score >= 7.0 else "🟡" if risk_score >= 4.0 else "🔵"
-        
+
         title = f"{risk_emoji} Security Alert: {device_name}"
         message = f"Security issue detected on {device_name} ({ip_address}): {vulnerability} (Risk: {risk_score:.1f}/10)"
-        
+
         priority = "high" if risk_score >= 7.0 else "default"
         tags = "shield,warning,lock"
-        
+
         return self.send_notification(
             title=title,
             message=message,
@@ -314,26 +314,26 @@ class PushNotificationService:
             tags=tags,
             click_url=dashboard_url
         )
-    
+
     def send_test_notification(self) -> bool:
         """Send a test notification to verify configuration"""
         title = "🧪 HomeNetMon Test"
         message = "This is a test notification from your HomeNetMon system. If you received this, push notifications are working correctly!"
-        
+
         return self.send_notification(
             title=title,
             message=message,
             priority="default",
             tags="test_tube,white_check_mark"
         )
-    
-    def _log_notification(self, title: str, message: str, priority: str, tags: str, 
-                         delivery_status: str, error_message: str = None, 
+
+    def _log_notification(self, title: str, message: str, priority: str, tags: str,
+                         delivery_status: str, error_message: str = None,
                          device_id: int = None, notification_type: str = None):
         """Log notification to history table"""
         try:
             from models import NotificationHistory
-            
+
             # Extract notification type from title if not provided
             if not notification_type:
                 if "Device Offline" in title:
@@ -354,7 +354,7 @@ class PushNotificationService:
                     notification_type = "test"
                 else:
                     notification_type = "general"
-            
+
             NotificationHistory.log_notification(
                 device_id=device_id,
                 notification_type=notification_type,

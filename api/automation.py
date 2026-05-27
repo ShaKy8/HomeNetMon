@@ -17,30 +17,30 @@ def get_rules():
         per_page = min(int(request.args.get('per_page', 20)), 100)
         category = request.args.get('category')
         enabled = request.args.get('enabled')
-        
+
         query = AutomationRule.query
-        
+
         # Filter by category
         if category:
             query = query.filter(AutomationRule.category == category)
-        
+
         # Filter by enabled status
         if enabled is not None:
             enabled_bool = enabled.lower() == 'true'
             query = query.filter(AutomationRule.enabled == enabled_bool)
-        
+
         # Order by most recently updated
         query = query.order_by(desc(AutomationRule.updated_at))
-        
+
         # Paginate
         pagination = query.paginate(
             page=page,
             per_page=per_page,
             error_out=False
         )
-        
+
         rules = [rule.to_dict() for rule in pagination.items]
-        
+
         return jsonify({
             'rules': rules,
             'pagination': {
@@ -52,7 +52,7 @@ def get_rules():
                 'has_prev': pagination.has_prev
             }
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -62,20 +62,20 @@ def create_rule():
     """Create a new automation rule"""
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({'error': 'No data provided'}), 400
-        
+
         # Validate required fields
         if not data.get('name'):
             return jsonify({'error': 'Rule name is required'}), 400
-        
+
         if not data.get('conditions'):
             return jsonify({'error': 'Rule conditions are required'}), 400
-        
+
         if not data.get('actions'):
             return jsonify({'error': 'Rule actions are required'}), 400
-        
+
         # Create new rule
         rule = AutomationRule(
             name=data['name'],
@@ -86,19 +86,19 @@ def create_rule():
             priority=data.get('priority', 'medium'),
             category=data.get('category', 'general')
         )
-        
+
         # Set conditions and actions (using property setters)
         rule.conditions = data['conditions']
         rule.actions = data['actions']
-        
+
         db.session.add(rule)
         db.session.commit()
-        
+
         return jsonify({
             'message': 'Rule created successfully',
             'rule': rule.to_dict()
         }), 201
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -111,9 +111,9 @@ def get_rule(rule_id):
         rule = AutomationRule.query.get(rule_id)
         if not rule:
             return jsonify({'error': 'Rule not found'}), 404
-        
+
         return jsonify(rule.to_dict())
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -125,11 +125,11 @@ def update_rule(rule_id):
         rule = AutomationRule.query.get(rule_id)
         if not rule:
             return jsonify({'error': 'Rule not found'}), 404
-        
+
         data = request.get_json()
         if not data:
             return jsonify({'error': 'No data provided'}), 400
-        
+
         # Update fields
         if 'name' in data:
             rule.name = data['name']
@@ -149,15 +149,15 @@ def update_rule(rule_id):
             rule.priority = data['priority']
         if 'category' in data:
             rule.category = data['category']
-        
+
         rule.updated_at = datetime.utcnow()
         db.session.commit()
-        
+
         return jsonify({
             'message': 'Rule updated successfully',
             'rule': rule.to_dict()
         })
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -170,15 +170,15 @@ def delete_rule(rule_id):
         rule = AutomationRule.query.get(rule_id)
         if not rule:
             return jsonify({'error': 'Rule not found'}), 404
-        
+
         rule_name = rule.name
         db.session.delete(rule)
         db.session.commit()
-        
+
         return jsonify({
             'message': f'Rule "{rule_name}" deleted successfully'
         })
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -191,17 +191,17 @@ def toggle_rule(rule_id):
         rule = AutomationRule.query.get(rule_id)
         if not rule:
             return jsonify({'error': 'Rule not found'}), 404
-        
+
         rule.enabled = not rule.enabled
         rule.updated_at = datetime.utcnow()
         db.session.commit()
-        
+
         status = 'enabled' if rule.enabled else 'disabled'
         return jsonify({
             'message': f'Rule "{rule.name}" {status}',
             'enabled': rule.enabled
         })
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -212,14 +212,14 @@ def test_rule(rule_id):
     """Test a rule with sample data"""
     try:
         data = request.get_json() or {}
-        
+
         # Default test context
         test_context = {
             'event_type': data.get('event_type', 'test'),
             'device_id': data.get('device_id'),
             'execute_actions': data.get('execute_actions', False)
         }
-        
+
         # If device_id provided, get device data
         if test_context['device_id']:
             device = Device.query.get(test_context['device_id'])
@@ -232,10 +232,10 @@ def test_rule(rule_id):
                     'device_type': device.device_type,
                     'is_monitored': device.is_monitored
                 }
-        
+
         result = rule_engine_service.test_rule(rule_id, test_context)
         return jsonify(result)
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -249,35 +249,35 @@ def get_executions():
         rule_id = request.args.get('rule_id', type=int)
         success = request.args.get('success')
         hours = request.args.get('hours', type=int, default=24)
-        
+
         query = RuleExecution.query
-        
+
         # Filter by time range
         if hours:
             cutoff = datetime.utcnow() - timedelta(hours=hours)
             query = query.filter(RuleExecution.executed_at >= cutoff)
-        
+
         # Filter by rule
         if rule_id:
             query = query.filter(RuleExecution.rule_id == rule_id)
-        
+
         # Filter by success status
         if success is not None:
             success_bool = success.lower() == 'true'
             query = query.filter(RuleExecution.success == success_bool)
-        
+
         # Order by most recent first
         query = query.order_by(desc(RuleExecution.executed_at))
-        
+
         # Paginate
         pagination = query.paginate(
             page=page,
             per_page=per_page,
             error_out=False
         )
-        
+
         executions = [execution.to_dict() for execution in pagination.items]
-        
+
         return jsonify({
             'executions': executions,
             'pagination': {
@@ -289,7 +289,7 @@ def get_executions():
                 'has_prev': pagination.has_prev
             }
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -300,14 +300,14 @@ def get_automation_stats():
     try:
         hours = request.args.get('hours', type=int, default=24)
         cutoff = datetime.utcnow() - timedelta(hours=hours)
-        
+
         # Get basic rule counts
         total_rules = AutomationRule.query.count()
         enabled_rules = AutomationRule.query.filter_by(enabled=True).count()
-        
+
         # Get execution stats
         executions = RuleExecution.query.filter(RuleExecution.executed_at >= cutoff).all()
-        
+
         stats = {
             'total_rules': total_rules,
             'enabled_rules': enabled_rules,
@@ -321,45 +321,45 @@ def get_automation_stats():
             'execution_by_category': {},
             'recent_executions': []
         }
-        
+
         if executions:
             # Calculate success rate
             stats['success_rate'] = (stats['successful_executions'] / len(executions)) * 100
-            
+
             # Calculate average execution time
             execution_times = [e.execution_time_ms for e in executions if e.execution_time_ms]
             if execution_times:
                 stats['avg_execution_time_ms'] = sum(execution_times) / len(execution_times)
-            
+
             # Most active rules
             rule_counts = {}
             category_counts = {}
-            
+
             for execution in executions:
                 rule_name = execution.rule.name if execution.rule else 'Unknown'
                 rule_counts[rule_name] = rule_counts.get(rule_name, 0) + 1
-                
+
                 if execution.rule:
                     category = execution.rule.category
                     category_counts[category] = category_counts.get(category, 0) + 1
-            
+
             stats['most_active_rules'] = sorted(
                 rule_counts.items(),
                 key=lambda x: x[1],
                 reverse=True
             )[:5]
-            
+
             stats['execution_by_category'] = category_counts
-        
+
         # Recent executions (last 10)
         recent = RuleExecution.query.filter(
             RuleExecution.executed_at >= cutoff
         ).order_by(desc(RuleExecution.executed_at)).limit(10).all()
-        
+
         stats['recent_executions'] = [execution.to_dict() for execution in recent]
-        
+
         return jsonify(stats)
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -494,7 +494,7 @@ def get_rule_templates():
             ]
         }
     ]
-    
+
     return jsonify({'templates': templates})
 
 @automation_bp.route('/templates/<template_id>', methods=['POST'])
@@ -503,13 +503,13 @@ def create_rule_from_template(template_id):
     """Create a rule from a template"""
     try:
         templates = {t['id']: t for t in get_rule_templates().get_json()['templates']}
-        
+
         if template_id not in templates:
             return jsonify({'error': 'Template not found'}), 404
-        
+
         template = templates[template_id]
         data = request.get_json() or {}
-        
+
         # Create rule from template with optional customizations
         rule = AutomationRule(
             name=data.get('name', template['name']),
@@ -519,19 +519,19 @@ def create_rule_from_template(template_id):
             cooldown_minutes=data.get('cooldown_minutes', 5),
             max_executions_per_hour=data.get('max_executions_per_hour', 10)
         )
-        
+
         # Use template conditions and actions (can be overridden)
         rule.conditions = data.get('conditions', template['conditions'])
         rule.actions = data.get('actions', template['actions'])
-        
+
         db.session.add(rule)
         db.session.commit()
-        
+
         return jsonify({
             'message': f'Rule created from template "{template["name"]}"',
             'rule': rule.to_dict()
         }), 201
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500

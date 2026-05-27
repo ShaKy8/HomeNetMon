@@ -85,7 +85,7 @@ spec:
             configMapKeyRef:
               name: homenetmon-config
               key: WORKER_PROCESSES
-        
+
         # Secrets
         - name: SECRET_KEY
           valueFrom:
@@ -117,7 +117,7 @@ spec:
             secretKeyRef:
               name: homenetmon-secrets
               key: SMTP_USERNAME
-        
+
         # Kubernetes metadata
         - name: POD_NAME
           valueFrom:
@@ -135,7 +135,7 @@ spec:
           valueFrom:
             fieldRef:
               fieldPath: spec.nodeName
-              
+
         volumeMounts:
         - name: data
           mountPath: /app/data
@@ -145,7 +145,7 @@ spec:
           mountPath: /app/config
         - name: tmp
           mountPath: /tmp
-          
+
         resources:
           requests:
             memory: "512Mi"
@@ -153,7 +153,7 @@ spec:
           limits:
             memory: "1Gi"
             cpu: "1000m"
-            
+
         livenessProbe:
           httpGet:
             path: /health
@@ -163,7 +163,7 @@ spec:
           periodSeconds: 30
           timeoutSeconds: 10
           failureThreshold: 3
-          
+
         readinessProbe:
           httpGet:
             path: /ready
@@ -173,7 +173,7 @@ spec:
           periodSeconds: 10
           timeoutSeconds: 5
           failureThreshold: 3
-          
+
         startupProbe:
           httpGet:
             path: /health
@@ -183,7 +183,7 @@ spec:
           periodSeconds: 5
           timeoutSeconds: 5
           failureThreshold: 12
-          
+
       # Sidecar container for nginx reverse proxy
       - name: nginx
         image: nginx:1.24-alpine
@@ -215,7 +215,7 @@ spec:
             port: 80
           initialDelaySeconds: 5
           periodSeconds: 5
-          
+
       volumes:
       - name: data
         persistentVolumeClaim:
@@ -233,19 +233,19 @@ spec:
         emptyDir: {}
       - name: tmp
         emptyDir: {}
-        
+
       imagePullSecrets:
       - name: homenetmon-registry
-      
+
       nodeSelector:
         kubernetes.io/os: linux
-        
+
       tolerations:
       - key: "homenetmon.io/dedicated"
         operator: "Equal"
         value: "true"
         effect: "NoSchedule"
-        
+
       affinity:
         podAntiAffinity:
           preferredDuringSchedulingIgnoredDuringExecution:

@@ -36,7 +36,7 @@ spec:
           value: "1"
         - name: DEVELOPMENT_MODE
           value: "true"
-        
+
         resources:
           requests:
             memory: "256Mi"
@@ -44,32 +44,32 @@ spec:
           limits:
             memory: "512Mi"
             cpu: "500m"
-            
+
         livenessProbe:
           initialDelaySeconds: 30
           periodSeconds: 15
           timeoutSeconds: 5
           failureThreshold: 5
-          
+
         readinessProbe:
           initialDelaySeconds: 10
           periodSeconds: 5
           timeoutSeconds: 3
           failureThreshold: 3
-          
+
         # Enable development features
         ports:
         - containerPort: 5000
           name: http
         - containerPort: 5678
           name: debug
-          
+
         volumeMounts:
         - name: dev-config
           mountPath: /app/dev-config
         - name: hot-reload
           mountPath: /app/src
-          
+
       volumes:
       - name: dev-config
         configMap:

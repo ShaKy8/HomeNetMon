@@ -26,23 +26,23 @@ icon: https://raw.githubusercontent.com/homenetmon/homenetmon/main/static/icons/
 annotations:
   category: Monitoring
   licenses: MIT
-  
+
 dependencies:
 - name: redis
   version: "17.3.7"
   repository: "https://charts.bitnami.com/bitnami"
   condition: redis.enabled
-  
+
 - name: postgresql
   version: "12.1.2"
   repository: "https://charts.bitnami.com/bitnami"
   condition: postgresql.enabled
-  
+
 - name: nginx-ingress
   version: "4.4.0"
   repository: "https://kubernetes.github.io/ingress-nginx"
   condition: ingress.nginx.enabled
-  
+
 - name: cert-manager
   version: "v1.11.0"
   repository: "https://charts.jetstack.io"

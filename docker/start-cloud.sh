@@ -64,7 +64,7 @@ if [[ -n "$KUBERNETES_SERVICE_HOST" ]]; then
     export POD_NAME=${POD_NAME:-unknown}
     export POD_NAMESPACE=${POD_NAMESPACE:-default}
     export NODE_NAME=${NODE_NAME:-unknown}
-    
+
     # Add Kubernetes metadata to OpenTelemetry
     export OTEL_RESOURCE_ATTRIBUTES="${OTEL_RESOURCE_ATTRIBUTES},k8s.pod.name=${POD_NAME},k8s.namespace.name=${POD_NAMESPACE},k8s.node.name=${NODE_NAME}"
 fi
@@ -76,20 +76,20 @@ wait_for_service() {
     local service_name=$3
     local max_attempts=30
     local attempt=1
-    
+
     log "Waiting for $service_name at $host:$port..."
-    
+
     while ! nc -z "$host" "$port" 2>/dev/null; do
         if [[ $attempt -ge $max_attempts ]]; then
             error "Failed to connect to $service_name after $max_attempts attempts"
             return 1
         fi
-        
+
         log "Attempt $attempt/$max_attempts: Waiting for $service_name..."
         sleep 2
         ((attempt++))
     done
-    
+
     log "$service_name is available"
     return 0
 }
@@ -98,7 +98,7 @@ wait_for_service() {
 if [[ -n "$REDIS_URL" ]]; then
     redis_host=$(echo "$REDIS_URL" | sed -n 's|.*://[^@]*@\?\([^:]*\):.*|\1|p')
     redis_port=$(echo "$REDIS_URL" | sed -n 's|.*://[^@]*@\?[^:]*:\([0-9]*\).*|\1|p')
-    
+
     if [[ -n "$redis_host" && -n "$redis_port" ]]; then
         wait_for_service "$redis_host" "$redis_port" "Redis"
     fi
@@ -107,7 +107,7 @@ fi
 if [[ -n "$DATABASE_URL" && "$DATABASE_URL" != *"sqlite"* ]]; then
     db_host=$(echo "$DATABASE_URL" | sed -n 's|.*://[^@]*@\?\([^:]*\):.*|\1|p')
     db_port=$(echo "$DATABASE_URL" | sed -n 's|.*://[^@]*@\?[^:]*:\([0-9]*\).*|\1|p')
-    
+
     if [[ -n "$db_host" && -n "$db_port" ]]; then
         wait_for_service "$db_host" "$db_port" "Database"
     fi
@@ -134,7 +134,7 @@ fi
 if [[ "$ENABLE_TRACING" == "true" ]]; then
     log "Enabling OpenTelemetry instrumentation..."
     export OTEL_PYTHON_LOGGING_AUTO_INSTRUMENTATION_ENABLED=true
-    
+
     # Auto-instrument the application
     opentelemetry-bootstrap --action=install 2>/dev/null || true
 fi
@@ -175,18 +175,18 @@ log "Pre-flight checks completed"
 # Signal handlers for graceful shutdown
 shutdown_handler() {
     log "Received shutdown signal, gracefully stopping..."
-    
+
     # Stop background processes
     if [[ -n "$MONITOR_PID" ]]; then
         kill -TERM "$MONITOR_PID" 2>/dev/null || true
     fi
-    
+
     # Stop main application
     if [[ -n "$APP_PID" ]]; then
         kill -TERM "$APP_PID" 2>/dev/null || true
         wait "$APP_PID"
     fi
-    
+
     log "Application stopped gracefully"
     exit 0
 }
@@ -214,7 +214,7 @@ if [[ "$FLASK_ENV" == "development" ]]; then
 else
     # Production mode with Gunicorn
     log "Starting in production mode with Gunicorn"
-    
+
     # Build Gunicorn command
     gunicorn_cmd=(
         "gunicorn"
@@ -233,36 +233,36 @@ else
         "--capture-output"
         "--enable-stdio-inheritance"
     )
-    
+
     # Add graceful timeout
     gunicorn_cmd+=("--graceful-timeout" "30")
-    
+
     # Add worker management
     gunicorn_cmd+=("--worker-tmp-dir" "/dev/shm")
-    
+
     # Production optimizations
     if [[ "$FLASK_ENV" == "production" ]]; then
         gunicorn_cmd+=("--max-requests-jitter" "100")
         gunicorn_cmd+=("--worker-class" "gevent")
     fi
-    
+
     # OpenTelemetry instrumentation
     if [[ "$ENABLE_TRACING" == "true" ]]; then
         gunicorn_cmd=("opentelemetry-instrument" "${gunicorn_cmd[@]}")
     fi
-    
+
     # Add the application module
     gunicorn_cmd+=("app:app")
-    
+
     log "Starting with command: ${gunicorn_cmd[*]}"
-    
+
     # Start Gunicorn
     exec "${gunicorn_cmd[@]}" &
     APP_PID=$!
-    
+
     # Wait for application to start
     sleep 5
-    
+
     # Verify application is healthy
     if health_check; then
         log "Application started successfully and is healthy"
@@ -270,7 +270,7 @@ else
         error "Application failed health check"
         exit 1
     fi
-    
+
     # Keep the script running
     wait "$APP_PID"
 fi

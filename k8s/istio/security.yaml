@@ -57,13 +57,13 @@ spec:
     - operation:
         paths: ["/health", "/ready", "/metrics"]
         methods: ["GET"]
-  
+
   # Allow public access to main app (authentication handled by app)
   - to:
     - operation:
         paths: ["/", "/static/*", "/login", "/register"]
         methods: ["GET", "POST"]
-  
+
   # Require JWT for API access
   - from:
     - source:
@@ -72,12 +72,12 @@ spec:
     - operation:
         paths: ["/api/*"]
         methods: ["GET", "POST", "PUT", "DELETE"]
-  
+
   # Allow WebSocket connections with proper auth
   - to:
     - operation:
         paths: ["/socket.io/*"]
-  
+
   # Admin-only access
   - from:
     - source:

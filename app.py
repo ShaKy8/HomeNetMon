@@ -23,11 +23,11 @@ def create_app():
     Config.setup_logging()
     logger = logging.getLogger(__name__)
     logger.info("Starting HomeNetMon application")
-    
+
     app = Flask(__name__)
     app.config.from_object(Config)
     app.config['TEMPLATES_AUTO_RELOAD'] = True
-    
+
     # Enable compression for faster page loads (temporarily disable br due to parsing issues)
     compress = Compress(app)
     app.config['COMPRESS_ALGORITHM'] = ['gzip', 'deflate']
@@ -39,7 +39,7 @@ def create_app():
         'application/xml', 'image/svg+xml'
     ]
     logger.info("HTTP compression enabled with Brotli, gzip, and deflate")
-    
+
     # Initialize HTTP optimizer for performance and HTTP/2 support
     try:
         from services.http_optimizer import HTTPOptimizer
@@ -47,7 +47,7 @@ def create_app():
         logger.info("HTTP optimizer initialized with caching and HTTP/2 support")
     except ImportError:
         logger.warning("HTTP optimizer not available")
-    
+
     # Initialize CDN manager for static asset optimization
     try:
         from services.cdn_manager import CDNManager, setup_cdn_routes
@@ -56,13 +56,13 @@ def create_app():
         logger.info("CDN manager initialized for static asset optimization")
     except ImportError:
         logger.warning("CDN manager not available")
-    
+
     # Validate security configuration
     Config.validate_host_binding()
-    
+
     # Initialize database
     init_db(app)
-    
+
     # PERFORMANCE OPTIMIZATION: Initialize performance middleware
     try:
         from performance_middleware import PerformanceMiddleware
@@ -70,7 +70,7 @@ def create_app():
         logger.info("Performance middleware initialized")
     except ImportError:
         logger.warning("Performance middleware not available - performance optimizations disabled")
-    
+
     # SECURITY: Initialize security middleware with CSRF protection
     try:
         from core.security_middleware import SecurityMiddleware
@@ -86,7 +86,7 @@ def create_app():
         logger.info("Centralized error handler initialized")
     except ImportError:
         logger.warning("Error handler not available - using default Flask error handling")
-    
+
     # Initialize SocketIO for real-time updates - Allow local network access
     # Allow any origin from local networks for home network monitoring
     import re
@@ -107,7 +107,7 @@ def create_app():
             if re.match(pattern, origin):
                 return True
         return False
-    
+
     socketio = SocketIO(app, cors_allowed_origins=cors_allowed_origins_callback, logger=False, engineio_logger=False)
 
     # Import and register blueprints
@@ -162,31 +162,31 @@ def create_app():
     monitor = DeviceMonitor(socketio, app)
     alert_manager = AlertManager(app)
     bandwidth_monitor = BandwidthMonitor(app)
-    
+
     # Initialize speed test service
     from services.speedtest import speed_test_service
     speed_test_service.app = app
-    
+
     # Initialize anomaly detection service
     from services.anomaly_detection import anomaly_detection_service
     anomaly_detection_service.app = app
-    
+
     # Initialize security scanner service
     from services.security_scanner import security_scanner
     security_scanner.app = app
-    
+
     # Initialize rule engine service
     from services.rule_engine import rule_engine_service
     rule_engine_service.app = app
-    
+
     # Initialize configuration service
     from services.configuration_service import configuration_service
     configuration_service.app = app
-    
+
     # Initialize escalation service
     from services.escalation_service import escalation_service
     escalation_service.init_app(app)
-    
+
     # Initialize rate limiter service for production security
     try:
         from services.rate_limiter import init_rate_limiter
@@ -195,12 +195,12 @@ def create_app():
     except Exception as e:
         logger.warning(f"Rate limiter initialization failed, continuing without it: {e}")
         rate_limiter = None
-    
+
     # Initialize performance monitor service
     from services.performance_monitor import performance_monitor
     performance_monitor.app = app
     performance_monitor.set_socketio(socketio)
-    
+
 
     # Apply global rate limiting for production security
     try:
@@ -223,22 +223,22 @@ def create_app():
     app.escalation_service = escalation_service
     app.rate_limiter = rate_limiter
     app.performance_monitor = performance_monitor
-    
+
     # Initialize WebSocket optimizer for performance
     from services.websocket_optimizer import init_websocket_optimizer
     websocket_optimizer = init_websocket_optimizer(db, socketio)
     app.websocket_optimizer = websocket_optimizer
-    
+
     # Apply WebSocket memory leak fixes
     from core.websocket_memory_manager import fix_websocket_memory_leaks
     websocket_connection_manager = fix_websocket_memory_leaks(app, socketio)
     app.websocket_connection_manager = websocket_connection_manager
-    
+
     # Initialize query result caching for massive performance improvements
     from services.query_cache import init_query_cache
     query_cache = init_query_cache(app)
     app.query_cache = query_cache
-    
+
     # Initialize memory monitoring and cleanup
     from services.memory_monitor import init_memory_monitoring
     memory_monitor = init_memory_monitoring()
@@ -262,13 +262,13 @@ def create_app():
     #     #     generate_service_worker(app, __version__)
     #     # except Exception as e:
     #     #     logger.warning(f"Failed to generate service worker: {e}")
-    
+
     app.socketio = socketio
-    
+
     # Start background services in separate threads
     def start_monitoring_services():
         time.sleep(2)  # Give Flask time to fully initialize
-        
+
         # Start network scanner
         scanner_thread = threading.Thread(
             target=scanner.start_continuous_scan,
@@ -276,7 +276,7 @@ def create_app():
             name='NetworkScanner'
         )
         scanner_thread.start()
-        
+
         # Start device monitor
         monitor_thread = threading.Thread(
             target=monitor.start_monitoring,
@@ -284,7 +284,7 @@ def create_app():
             name='DeviceMonitor'
         )
         monitor_thread.start()
-        
+
         # Start alert manager
         alert_thread = threading.Thread(
             target=alert_manager.start_monitoring,
@@ -292,7 +292,7 @@ def create_app():
             name='AlertManager'
         )
         alert_thread.start()
-        
+
         # Start anomaly detection service
         anomaly_thread = threading.Thread(
             target=anomaly_detection_service.start_monitoring,
@@ -300,7 +300,7 @@ def create_app():
             name='AnomalyDetection'
         )
         anomaly_thread.start()
-        
+
         # Security scanner service - conditionally start based on environment variable
         security_enabled = os.environ.get('SECURITY_SCANNING_ENABLED', 'false').lower() == 'true'
         if security_enabled:
@@ -313,7 +313,7 @@ def create_app():
             logger.info("Security scanner enabled via SECURITY_SCANNING_ENABLED environment variable")
         else:
             logger.info("Security scanner disabled - set SECURITY_SCANNING_ENABLED=true to enable")
-        
+
         # Start bandwidth monitor
         bandwidth_thread = threading.Thread(
             target=bandwidth_monitor.start_monitoring,
@@ -321,7 +321,7 @@ def create_app():
             name='BandwidthMonitor'
         )
         bandwidth_thread.start()
-        
+
         # Start rule engine service
         rule_engine_thread = threading.Thread(
             target=rule_engine_service.start_monitoring,
@@ -329,7 +329,7 @@ def create_app():
             name='RuleEngine'
         )
         rule_engine_thread.start()
-        
+
         # Start configuration service
         configuration_thread = threading.Thread(
             target=configuration_service.start_monitoring,
@@ -337,7 +337,7 @@ def create_app():
             name='ConfigurationService'
         )
         configuration_thread.start()
-        
+
         # Start escalation service
         escalation_thread = threading.Thread(
             target=escalation_service.start_monitoring,
@@ -345,7 +345,7 @@ def create_app():
             name='EscalationService'
         )
         escalation_thread.start()
-        
+
         # Start performance monitor service
         performance_thread = threading.Thread(
             target=performance_monitor.start_monitoring,
@@ -365,41 +365,41 @@ def create_app():
         # Register service callbacks for configuration changes
         def register_config_callbacks():
             time.sleep(1)  # Wait for services to initialize
-            
+
             # Register scanner callback
             def scanner_config_callback(key, old_value, new_value):
                 if key in ['network_range', 'scan_interval']:
                     scanner.reload_config()
             configuration_service.register_service_callback('NetworkScanner', scanner_config_callback)
-            
+
             # Register monitor callback
             def monitor_config_callback(key, old_value, new_value):
                 if key in ['ping_interval', 'ping_timeout', 'max_workers']:
                     monitor.reload_config()
             configuration_service.register_service_callback('DeviceMonitor', monitor_config_callback)
-            
+
             # Register alert manager callback
             def alert_config_callback(key, old_value, new_value):
                 if key.startswith('alert_'):
                     alert_manager.reload_config()
             configuration_service.register_service_callback('AlertManager', alert_config_callback)
-            
+
             # Register bandwidth monitor callback
             def bandwidth_config_callback(key, old_value, new_value):
                 if key in ['bandwidth_interval']:
                     bandwidth_monitor.reload_config()
             configuration_service.register_service_callback('BandwidthMonitor', bandwidth_config_callback)
-            
+
             # Register performance monitor callback
             def performance_config_callback(key, old_value, new_value):
                 if key in ['performance_collection_interval', 'performance_collection_period', 'performance_retention_days']:
                     performance_monitor.reload_config()
             configuration_service.register_service_callback('PerformanceMonitor', performance_config_callback)
-        
+
         # Register callbacks in background
         callback_thread = threading.Thread(target=register_config_callbacks, daemon=True)
         callback_thread.start()
-    
+
     # Template context processor to inject version info and settings
     @app.context_processor
     def inject_version():
@@ -409,8 +409,8 @@ def create_app():
             'app_version': get_version_string(),
             'version_info': get_version_info()
         }
-    
-    @app.context_processor 
+
+    @app.context_processor
     def inject_csrf():
         """Make CSRF token available in templates"""
         def csrf_token():
@@ -445,7 +445,7 @@ def create_app():
             # Get dashboard title setting
             dashboard_title_config = Configuration.query.filter_by(key='dashboard_title').first()
             dashboard_title = dashboard_title_config.value if dashboard_title_config else 'Home Network Dashboard'
-            
+
             return {
                 'dashboard_title': dashboard_title
             }
@@ -454,7 +454,7 @@ def create_app():
             return {
                 'dashboard_title': 'Home Network Dashboard'
             }
-    
+
     # Start services in background
     services_thread = threading.Thread(target=start_monitoring_services, daemon=True)
     services_thread.start()
@@ -479,12 +479,12 @@ def create_app():
             # Get dashboard title setting
             dashboard_title_config = Configuration.query.filter_by(key='dashboard_title').first()
             dashboard_title = dashboard_title_config.value if dashboard_title_config else 'Home Network Monitor'
-            
+
             return render_template('dashboard.html', dashboard_title=dashboard_title)
         except Exception as e:
             # Fallback if database isn't available
             return render_template('dashboard.html', dashboard_title='Home Network Monitor')
-    
+
     @app.route('/dashboard/full')
     def dashboard_full():
         """Full featured dashboard with device grid and detailed monitoring"""
@@ -498,94 +498,94 @@ def create_app():
         except Exception as e:
             # Fallback if database isn't available
             return render_template('dashboard.html', dashboard_title='Home Network Monitor')
-    
+
     @app.route('/favicon.ico')
     def favicon():
         """Serve favicon from static folder"""
         return send_from_directory(app.static_folder, 'favicon.ico', mimetype='image/vnd.microsoft.icon')
-    
+
     @app.route('/device/<int:device_id>')
     def device_detail(device_id):
         return render_template('device_detail.html', device_id=device_id)
-    
+
     @app.route('/settings')
     def settings():
         return render_template('settings.html')
-    
+
     @app.route('/alerts')
     def alerts():
         return render_template('alerts.html')
-    
+
     @app.route('/notifications')
     def notifications():
         # Redirect to alerts page - notifications functionality consolidated there
         return redirect(url_for('alerts'))
-    
+
     @app.route('/notifications/analytics')
     def notification_analytics():
         """Advanced notification analytics dashboard"""
         return render_template('notification_analytics.html')
-    
+
     @app.route('/analytics')
     def analytics():
         return render_template('analytics.html')
-    
+
     @app.route('/performance-dashboard')
     def performance_dashboard():
         """Real-time performance monitoring dashboard"""
         return render_template('performance_dashboard.html')
-    
+
     @app.route('/ai-dashboard')
     def ai_dashboard():
         return render_template('ai_dashboard.html')
-    
+
     @app.route('/security-dashboard')
     def security_dashboard():
         """Redirect old security-dashboard URL to new security URL for consistency"""
         return redirect(url_for('security'), code=301)
-    
+
     # Health overview functionality has been merged into the main dashboard
-    
+
     @app.route('/system-info')
     def system_info():
         return render_template('system_info.html')
-    
+
     @app.route('/about')
     def about():
         """About HomeNetMon - System information and credits"""
         return render_template('about.html')
-    
+
     @app.route('/monitored-hosts')
     def monitored_hosts():
         """Redirect to unified dashboard - all device management now in one place"""
         return redirect(url_for('dashboard'))
-    
+
     @app.route('/devices')
     def devices():
         """Redirect to unified dashboard - all device management now in one place"""
         return redirect(url_for('dashboard'))
-    
+
     @app.route('/noc')
     def noc_view():
         """Redirect old noc URL to new full-view URL for consistency"""
         return redirect(url_for('full_view'), code=301)
-    
+
     # Redirect routes for common URL variations (underscored URLs redirect to hyphenated ones)
     @app.route('/ai_dashboard')
     def ai_dashboard_underscore_redirect():
         return redirect(url_for('ai_dashboard'))
-    
+
     @app.route('/security_dashboard')
     def security_dashboard_underscore_redirect():
         return redirect(url_for('security'))
-    
+
     # Health overview redirect removed - functionality now in main dashboard
-    
+
     @app.route('/topology')
     def topology():
         """Redirect old topology URL to new network-map URL for consistency"""
         return redirect(url_for('network_map'), code=301)
-    
+
     # New standardized routes with proper URLs
     @app.route('/network-map')
     def network_map():
@@ -594,7 +594,7 @@ def create_app():
             return render_template('topology.html')
         except Exception as e:
             return f'<html><body><h1>Template Error</h1><p>{str(e)}</p></body></html>', 500
-    
+
     @app.route('/security')
     def security():
         """Security dashboard with standardized URL"""
@@ -602,43 +602,43 @@ def create_app():
             return render_template('security.html')
         except Exception as e:
             return f'<html><body><h1>Template Error</h1><p>{str(e)}</p></body></html>', 500
-    
+
     @app.route('/test-debug')
     def test_debug():
         """Test route to debug route registration"""
         return "Route registration test successful"
-    
+
     @app.route('/full-view')
     def full_view():
         """Network Operations Center - Full-screen monitoring dashboard with standardized URL"""
         return render_template('noc_view.html')
-    
+
     # Note: Backward compatibility redirects are handled by the existing routes above
-    
+
     @app.route('/escalation-rules')
     def escalation_rules():
         """Escalation rules management page"""
         return render_template('escalation_rules.html')
-    
+
     @app.route('/escalation-rules/new')
     def new_escalation_rule():
         """Create new escalation rule page"""
         return render_template('escalation_rule_form.html', rule_id=None)
-    
+
     @app.route('/escalation-rules/<int:rule_id>/edit')
     def edit_escalation_rule(rule_id):
         """Edit existing escalation rule page"""
         return render_template('escalation_rule_form.html', rule_id=rule_id)
-    
+
     @app.route('/escalation-executions')
     def escalation_executions():
         """Escalation executions monitoring page"""
         return render_template('escalation_executions.html')
-    
+
     @app.route('/test')
     def test():
         return jsonify({'message': 'Flask is working'})
-    
+
     @app.route('/debug/routes')
     def list_routes():
         routes = []
@@ -649,11 +649,11 @@ def create_app():
                 'rule': rule.rule
             })
         return jsonify({'count': len(routes), 'routes': routes})
-    
+
     @app.route('/simple-test')
     def simple_test():
         return redirect('/ai-dashboard')
-    
+
     @app.route('/traceroute-test')
     def traceroute_test():
         from services.device_control import DeviceControlService
@@ -665,11 +665,11 @@ def create_app():
             'success': result.get('success', False),
             'first_hop': result.get('hops', [{}])[0] if result.get('hops') else None
         })
-    
+
     @app.route('/static/service-worker.js')
     def service_worker():
         return app.send_static_file('service-worker.js'), 200, {'Content-Type': 'application/javascript'}
-    
+
     @app.route('/static/images/<path:filename>')
     def serve_image(filename):
         """Serve images from static/images directory"""
@@ -678,17 +678,17 @@ def create_app():
         except Exception as e:
             logger.error(f"Error serving image {filename}: {e}")
             return "Image not found", 404
-    
+
     # SocketIO events are now handled by websocket_memory_manager
     # Additional application-specific event handlers
-    
+
     @socketio.on('subscribe_to_updates')
     def handle_subscription(data):
         """Allow clients to subscribe to specific types of updates"""
         try:
             update_types = data.get('types', [])
             client_sid = request.sid
-            
+
             # Available subscription types
             available_types = [
                 'device_status',      # Device status updates
@@ -698,7 +698,7 @@ def create_app():
                 'performance',       # Performance metrics
                 'configuration'      # Configuration changes
             ]
-            
+
             # Join rooms for requested update types
             joined_rooms = []
             for update_type in update_types:
@@ -708,48 +708,48 @@ def create_app():
                     # Register with connection manager
                     if hasattr(app, 'websocket_connection_manager'):
                         app.websocket_connection_manager.subscribe_to_room(client_sid, f'updates_{update_type}')
-            
+
             emit('subscription_confirmed', {
                 'subscribed_to': joined_rooms,
                 'available_types': available_types
             })
-            
+
             logger.info(f"Client {client_sid} subscribed to: {joined_rooms}")
-            
+
         except Exception as e:
             logger.error(f"Error handling subscription: {e}")
             emit('subscription_error', {'error': str(e)})
-    
-    
+
+
     @socketio.on('unsubscribe_from_updates')
     def handle_unsubscription(data):
         """Allow clients to unsubscribe from specific types of updates"""
         try:
             update_types = data.get('types', [])
             client_sid = request.sid
-            
+
             # Leave rooms for requested update types
             left_rooms = []
             for update_type in update_types:
                 leave_room(f'updates_{update_type}')
                 left_rooms.append(update_type)
-            
+
             emit('unsubscription_confirmed', {
                 'unsubscribed_from': left_rooms
             })
-            
+
             logger.info(f"Client {client_sid} unsubscribed from: {left_rooms}")
-            
+
         except Exception as e:
             logger.error(f"Error handling unsubscription: {e}")
             emit('unsubscription_error', {'error': str(e)})
-    
+
     @socketio.on('request_device_update')
     def handle_device_update_request(data=None):
         try:
             # Check if client supports delta updates
             client_supports_delta = data and data.get('supports_delta', False)
-            
+
             # Use optimized data fetching to prevent N+1 queries
             from services.websocket_optimizer import websocket_optimizer
             if websocket_optimizer:
@@ -774,7 +774,7 @@ def create_app():
         except Exception as e:
             logger.error(f"Error in device update request: {e}")
             emit('device_update_error', {'error': str(e)})
-    
+
     @socketio.on('request_config_update')
     def handle_config_update_request():
         """Handle request for current configuration"""
@@ -790,7 +790,7 @@ def create_app():
             emit('configuration_full_update', config_data)
         except Exception as e:
             emit('configuration_error', {'error': str(e)})
-    
+
     @socketio.on('update_configuration')
     def handle_configuration_update(data):
         """Handle configuration update via WebSocket with validation and logging"""
@@ -798,18 +798,18 @@ def create_app():
             # Get client information for logging
             client_sid = request.sid
             client_ip = request.environ.get('REMOTE_ADDR', 'unknown')
-            
+
             key = data.get('key')
             value = data.get('value')
             description = data.get('description')
             user = data.get('user', 'websocket_user')
-            
+
             # Basic validation for key and value
             if not key or value is None:
                 logger.warning(f"Configuration update rejected: missing key/value from {client_ip} (session: {client_sid})")
                 emit('configuration_error', {'error': 'Key and value are required'})
                 return
-            
+
             # Validate user parameter (sanitize to prevent injection)
             if user:
                 # Allow alphanumeric, underscore, hyphen, dot, and @ for email-like identifiers
@@ -818,10 +818,10 @@ def create_app():
                     logger.warning(f"Configuration update rejected: invalid user parameter from {client_ip} (session: {client_sid})")
                     emit('configuration_error', {'error': 'Invalid user parameter'})
                     return
-            
+
             # Log configuration change attempt
             logger.info(f"Configuration update request: key='{key}' by user='{user}' from IP={client_ip} (session: {client_sid})")
-            
+
             # Use configuration service to update
             success, message = configuration_service.set_configuration(
                 key=key,
@@ -830,7 +830,7 @@ def create_app():
                 user=user,
                 validate=True
             )
-            
+
             if success:
                 logger.info(f"Configuration updated successfully: key='{key}' by user='{user}' from IP={client_ip}")
                 emit('configuration_update_success', {
@@ -848,11 +848,11 @@ def create_app():
             else:
                 logger.warning(f"Configuration update failed: key='{key}' reason='{message}' from IP={client_ip}")
                 emit('configuration_error', {'error': message})
-                
+
         except Exception as e:
             logger.error(f"Error in configuration update handler: {e}")
             emit('configuration_error', {'error': str(e)})
-    
+
     @socketio.on('request_health_update')
     def handle_health_update_request():
         """Handle request for health overview update"""
@@ -860,22 +860,22 @@ def create_app():
             from api.health import calculate_health_score, get_recent_network_activity
             from models import Device, MonitoringData, Alert
             from datetime import timedelta
-            
+
             # Get current health data
             now = datetime.utcnow()
             online_threshold = now - timedelta(minutes=10)
-            
+
             total_devices = Device.query.filter_by(is_monitored=True).count()
             devices_online = Device.query.filter(
                 Device.is_monitored == True,
                 Device.last_seen >= online_threshold
             ).count()
-            
+
             # Quick health score calculation
             health_score = calculate_health_score(
                 devices_online, total_devices, 50.0, 0, 95.0  # Simplified for real-time
             )
-            
+
             emit('health_update', {
                 'health_score': health_score,
                 'network_status': {
@@ -885,19 +885,19 @@ def create_app():
                 },
                 'timestamp': now.isoformat() + 'Z'
             })
-            
+
         except Exception as e:
             emit('health_error', {'error': str(e)})
-    
+
     @socketio.on('request_topology_update')
     def handle_topology_update_request():
         """Handle request for network topology update"""
         try:
             from models import Device
-            
+
             devices = Device.query.filter_by(is_monitored=True).all()
             online_threshold = datetime.utcnow() - timedelta(minutes=10)
-            
+
             topology_data = []
             for device in devices:
                 status = 'online' if device.last_seen and device.last_seen >= online_threshold else 'offline'
@@ -908,15 +908,15 @@ def create_app():
                     'type': device.device_type or 'unknown',
                     'status': status
                 })
-            
+
             emit('topology_update', {
                 'devices': topology_data,
                 'timestamp': datetime.utcnow().isoformat() + 'Z'
             })
-            
+
         except Exception as e:
             emit('topology_error', {'error': str(e)})
-    
+
     @socketio.on('request_alert_updates')
     def handle_alert_updates_request():
         """Handle request for real-time alert updates"""
@@ -945,16 +945,16 @@ def create_app():
                         'acknowledged': alert.acknowledged,
                         'resolved': alert.resolved
                     })
-            
+
             emit('alert_updates', {
                 'alerts': alert_data,
                 'count': len(alert_data),
                 'timestamp': datetime.utcnow().isoformat() + 'Z'
             })
-            
+
         except Exception as e:
             emit('alert_error', {'error': str(e)})
-    
+
     @socketio.on('request_chart_data')
     def handle_chart_data_request(data):
         """Handle request for specific chart data"""
@@ -962,51 +962,51 @@ def create_app():
             chart_type = data.get('type')
             device_id = data.get('device_id')
             time_range = data.get('time_range', '24h')
-            
+
             if chart_type == 'device_response_time' and device_id:
                 # Get recent response time data for a specific device
                 from models import MonitoringData
                 from datetime import timedelta
-                
+
                 hours_map = {'1h': 1, '6h': 6, '24h': 24, '7d': 168}
                 hours = hours_map.get(time_range, 24)
                 cutoff = datetime.utcnow() - timedelta(hours=hours)
-                
+
                 data_points = MonitoringData.query.filter(
                     MonitoringData.device_id == device_id,
                     MonitoringData.timestamp >= cutoff
                 ).order_by(MonitoringData.timestamp.desc()).limit(200).all()
-                
+
                 chart_data = [{
                     'timestamp': point.timestamp.isoformat(),
                     'response_time': point.response_time,
                     'device_id': point.device_id
                 } for point in reversed(data_points)]
-                
+
                 emit('chart_data_response', {
                     'type': chart_type,
                     'device_id': device_id,
                     'data': chart_data,
                     'timestamp': datetime.utcnow().isoformat()
                 })
-            
+
             elif chart_type == 'device_types':
                 # Get device types breakdown
                 from models import Device
                 from collections import defaultdict
-                
+
                 devices = Device.query.filter_by(is_monitored=True).all()
                 device_types = defaultdict(lambda: {'up': 0, 'down': 0})
-                
+
                 online_threshold = datetime.utcnow() - timedelta(minutes=10)
-                
+
                 for device in devices:
                     device_type = device.device_type or 'unknown'
                     if device.last_seen and device.last_seen >= online_threshold:
                         device_types[device_type]['up'] += 1
                     else:
                         device_types[device_type]['down'] += 1
-                
+
                 chart_data = []
                 for device_type, counts in device_types.items():
                     total = counts['up'] + counts['down']
@@ -1018,16 +1018,16 @@ def create_app():
                             'down': counts['down'],
                             'uptime_percentage': (counts['up'] / total) * 100
                         })
-                
+
                 emit('chart_data_response', {
                     'type': chart_type,
                     'data': chart_data,
                     'timestamp': datetime.utcnow().isoformat()
                 })
-            
+
         except Exception as e:
             emit('chart_data_error', {'error': str(e), 'type': chart_type})
-    
+
     @socketio.on('request_performance_summary')
     def handle_performance_summary_request():
         """Handle request for performance summary"""
@@ -1039,57 +1039,57 @@ def create_app():
                 emit('performance_error', {'error': 'Unable to generate performance summary'})
         except Exception as e:
             emit('performance_error', {'error': str(e)})
-    
+
     @socketio.on('request_device_performance')
     def handle_device_performance_request(data):
         """Handle request for device performance data"""
         try:
             device_id = data.get('device_id')
             hours = data.get('hours', 24)
-            
+
             if not device_id:
                 emit('performance_error', {'error': 'Device ID required'})
                 return
-            
+
             from models import Device
             device = Device.query.get(device_id)
             if not device:
                 emit('performance_error', {'error': 'Device not found'})
                 return
-            
+
             performance_summary = device.get_performance_summary(hours)
             emit('device_performance_response', {
                 'device_id': device_id,
                 'performance_summary': performance_summary,
                 'timestamp': datetime.utcnow().isoformat()
             })
-            
+
         except Exception as e:
             emit('performance_error', {'error': str(e)})
-    
+
     @socketio.on('subscribe_to_delta_updates')
     def handle_delta_subscription(data):
         """Handle subscription to efficient delta updates"""
         try:
             client_sid = request.sid
             update_types = data.get('types', ['devices', 'alerts'])
-            
+
             # Join rooms for delta updates
             for update_type in update_types:
                 room_name = f"delta_{update_type}"
                 join_room(room_name)
                 logger.debug(f"Client {client_sid} subscribed to delta updates: {room_name}")
-            
+
             emit('delta_subscription_confirmed', {
                 'subscribed_to': update_types,
                 'supports_delta': True,
                 'timestamp': datetime.utcnow().isoformat() + 'Z'
             })
-            
+
         except Exception as e:
             logger.error(f"Error in delta subscription: {e}")
             emit('delta_subscription_error', {'error': str(e)})
-    
+
     @socketio.on('request_performance_metrics')
     def handle_performance_metrics_request():
         """Handle request for performance metrics"""
@@ -1097,13 +1097,13 @@ def create_app():
             from services.performance_cache import get_cache_performance_metrics
             from services.memory_monitor import get_memory_stats
             from services.thread_pool_manager import thread_pool_manager
-            
+
             # Get comprehensive performance metrics
             cache_metrics = get_cache_performance_metrics()
             memory_stats = get_memory_stats()
             thread_pool_stats = thread_pool_manager.get_all_stats()
             system_resources = thread_pool_manager.get_system_resource_summary()
-            
+
             performance_data = {
                 'cache': cache_metrics,
                 'memory': {
@@ -1116,19 +1116,19 @@ def create_app():
                 'system': system_resources,
                 'timestamp': datetime.utcnow().isoformat() + 'Z'
             }
-            
+
             emit('performance_metrics_response', performance_data)
-            
+
         except Exception as e:
             logger.error(f"Error getting performance metrics: {e}")
             emit('performance_metrics_error', {'error': str(e)})
-    
+
     @socketio.on('trigger_performance_collection')
     def handle_performance_collection_trigger(data):
         """Handle manual performance collection trigger"""
         try:
             device_id = data.get('device_id') if data else None
-            
+
             if device_id:
                 # Collect for specific device
                 result = performance_monitor.collect_device_performance_metrics(device_id)
@@ -1149,10 +1149,10 @@ def create_app():
                     'message': 'Performance metrics collection triggered for all devices',
                     'timestamp': datetime.utcnow().isoformat()
                 })
-                
+
         except Exception as e:
             emit('performance_collection_error', {'error': str(e)})
-    
+
     def emit_alert_update(alert, action='created'):
         """Emit real-time alert update to all connected clients"""
         try:
@@ -1169,20 +1169,20 @@ def create_app():
                 'resolved': alert.resolved,
                 'action': action  # 'created', 'updated', 'resolved', 'acknowledged', 'deleted'
             }
-            
+
             socketio.emit('alert_update', {
                 'type': 'alert_update',
                 'alert': alert_data,
                 'action': action,
                 'timestamp': datetime.utcnow().isoformat() + 'Z'
             })
-            
+
         except Exception as e:
             logger.error(f"Error emitting alert update: {e}")
-    
+
     # Store the emit function in app context for use by alert manager
     app.emit_alert_update = emit_alert_update
-    
+
     # Error handlers
     # Comprehensive error handling
     @app.errorhandler(400)
@@ -1193,7 +1193,7 @@ def create_app():
             'message': 'The request could not be processed due to invalid data',
             'status_code': 400
         }), 400
-    
+
     @app.errorhandler(401)
     def unauthorized(error):
         return jsonify({
@@ -1201,7 +1201,7 @@ def create_app():
             'message': 'Authentication required',
             'status_code': 401
         }), 401
-    
+
     @app.errorhandler(403)
     def forbidden(error):
         return jsonify({
@@ -1209,19 +1209,19 @@ def create_app():
             'message': 'Access denied',
             'status_code': 403
         }), 403
-    
+
     @app.errorhandler(404)
     def not_found(error):
         # For static file requests, return standard 404 instead of JSON
         if request.path.startswith('/static/'):
             return f'File not found: {request.path}', 404
-        
+
         return jsonify({
             'error': 'Not Found',
             'message': 'The requested resource could not be found',
             'status_code': 404
         }), 404
-    
+
     @app.errorhandler(405)
     def method_not_allowed(error):
         return jsonify({
@@ -1229,7 +1229,7 @@ def create_app():
             'message': f'The {request.method} method is not allowed for this endpoint',
             'status_code': 405
         }), 405
-    
+
     @app.errorhandler(413)
     def payload_too_large(error):
         return jsonify({
@@ -1237,7 +1237,7 @@ def create_app():
             'message': 'The request payload exceeds the maximum allowed size',
             'status_code': 413
         }), 413
-    
+
     @app.errorhandler(429)
     def rate_limit_exceeded(error):
         return jsonify({
@@ -1245,22 +1245,22 @@ def create_app():
             'message': 'Rate limit exceeded. Please try again later',
             'status_code': 429
         }), 429
-    
+
     @app.errorhandler(500)
     def internal_error(error):
         db.session.rollback()
         logger.error(f"Internal server error: {str(error)}")
-        
+
         # For static file requests, return standard 500 instead of JSON
         if request.path.startswith('/static/'):
             return f'Internal server error serving: {request.path}', 500
-        
+
         return jsonify({
             'error': 'Internal Server Error',
             'message': 'An unexpected error occurred',
             'status_code': 500
         }), 500
-    
+
     @app.errorhandler(Exception)
     def handle_exception(error):
         """Handle unexpected exceptions"""
@@ -1271,7 +1271,7 @@ def create_app():
             'message': 'An unexpected error occurred',
             'status_code': 500
         }), 500
-    
+
     # Health check endpoint (public for monitoring)
     @app.route('/health')
     def health_check():
@@ -1295,7 +1295,7 @@ def create_app():
                 'status': 'unhealthy',
                 'error': str(e)
             }), 500
-    
+
     # Readiness check endpoint (for Kubernetes/Docker)
     @app.route('/ready')
     def readiness_check():
@@ -1303,26 +1303,26 @@ def create_app():
             # Check database connectivity
             from sqlalchemy import text
             db.session.execute(text('SELECT 1'))
-            
+
             # Check critical services are initialized
             services_ready = True
             service_status = {}
-            
+
             # Check scanner service
             if hasattr(scanner, 'is_running'):
                 service_status['scanner'] = scanner.is_running
                 services_ready = services_ready and scanner.is_running
-            
+
             # Check monitor service
             if hasattr(monitor, 'is_running'):
                 service_status['monitor'] = monitor.is_running
                 services_ready = services_ready and monitor.is_running
-                
+
             # Check if we have devices to monitor
             from models import Device
             device_count = Device.query.filter_by(is_monitored=True).count()
             service_status['devices_configured'] = device_count > 0
-            
+
             if services_ready:
                 return jsonify({
                     'status': 'ready',
@@ -1335,13 +1335,13 @@ def create_app():
                     'services': service_status,
                     'devices_monitored': device_count
                 }), 503
-                
+
         except Exception as e:
             return jsonify({
                 'status': 'not_ready',
                 'error': str(e)
             }), 503
-    
+
     # Liveness check endpoint (for Kubernetes/Docker)
     @app.route('/live')
     def liveness_check():
@@ -1351,7 +1351,7 @@ def create_app():
             'timestamp': datetime.now().isoformat(),
             'uptime_seconds': int((datetime.now() - SERVER_START_TIME).total_seconds())
         })
-    
+
     # Network topology endpoint
     @app.route('/api/monitoring/topology-test')
     def get_topology_test():
@@ -1359,24 +1359,24 @@ def create_app():
         from models import Device, MonitoringData, Alert
         try:
             devices = Device.query.filter_by(is_monitored=True).limit(10).all()
-            
+
             nodes = []
             for i, device in enumerate(devices):
                 color_map = {'up': '#28a745', 'down': '#dc3545', 'warning': '#ffc107', 'unknown': '#6c757d'}
                 icon_map = {'router': '🌐', 'computer': '💻', 'phone': '📱', 'camera': '📷', 'smart_home': '🏠', 'unknown': '❓'}
-                
+
                 # Get latest response time directly to avoid property caching issues
                 latest_data = MonitoringData.query.filter_by(device_id=device.id)\
                                                  .order_by(MonitoringData.timestamp.desc())\
                                                  .first()
                 latest_response_time = latest_data.response_time if latest_data else None
-                
-                # Get active alerts count  
+
+                # Get active alerts count
                 active_alerts = Alert.query.filter_by(device_id=device.id, resolved=False).count()
-                
+
                 # Calculate uptime percentage (method call, not property)
                 uptime_pct = device.uptime_percentage() or 0
-                
+
                 nodes.append({
                     'id': str(device.id),
                     'label': device.display_name[:15],
@@ -1390,7 +1390,7 @@ def create_app():
                     'active_alerts': active_alerts,
                     'size': 20 + uptime_pct / 5
                 })
-            
+
             # Create simple hub topology
             edges = []
             if nodes:
@@ -1402,7 +1402,7 @@ def create_app():
                         'strength': 1.0,
                         'color': '#28a745' if node['status'] == 'up' else '#dc3545'
                     })
-            
+
             return jsonify({
                 'nodes': nodes,
                 'edges': edges,
@@ -1821,12 +1821,12 @@ def create_app():
 
 if __name__ == '__main__':
     app, socketio = create_app()
-    
+
     print(f"Starting HomeNetMon on {Config.HOST}:{Config.PORT}")
     print(f"Monitoring network: {Config.NETWORK_RANGE}")
     print(f"Ping interval: {Config.PING_INTERVAL}s")
     print(f"Dashboard: http://{Config.HOST}:{Config.PORT}")
-    
+
     socketio.run(
         app,
         host=Config.HOST,

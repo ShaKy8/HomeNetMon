@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 
 class WebSocketDataOptimizer:
     """Optimizes data fetching for WebSocket handlers to prevent N+1 queries"""
-    
+
     def __init__(self, db, socketio):
         self.db = db
         self.socketio = socketio
@@ -23,13 +23,13 @@ class WebSocketDataOptimizer:
         self._last_alert_states = {}
         self._batch_update_cache = {}
         self._cache_ttl = 30  # 30 seconds
-        
+
     def get_optimized_device_data(self) -> List[Dict[str, Any]]:
         """Get device data with cached optimization - MUCH FASTER"""
         try:
             # PERFORMANCE OPTIMIZATION: Use cached device data instead of expensive queries
             from services.query_cache import get_cached_device_list
-            
+
             # Get app context from Flask
             from flask import current_app
             if current_app:
@@ -39,15 +39,15 @@ class WebSocketDataOptimizer:
             else:
                 logger.warning("No Flask app context available for cached data, falling back to database")
                 return self._get_device_data_fallback_optimized()
-                
+
         except Exception as e:
             logger.error(f"Error getting cached device data for WebSocket: {e}")
             return self._get_device_data_fallback_optimized()
-    
+
     def _get_device_data_fallback_optimized(self) -> List[Dict[str, Any]]:
         """Fallback method with optimized queries"""
         from models import Device, MonitoringData, Alert, PerformanceMetrics
-        
+
         try:
             # Single query to get all devices with their latest monitoring data
             # Using subquery to get latest monitoring data efficiently
@@ -55,7 +55,7 @@ class WebSocketDataOptimizer:
                 MonitoringData.device_id,
                 func.max(MonitoringData.timestamp).label('latest_timestamp')
             ).group_by(MonitoringData.device_id).subquery()
-            
+
             # Join devices with their latest monitoring data
             devices_with_monitoring = self.db.session.query(
                 Device,
@@ -71,7 +71,7 @@ class WebSocketDataOptimizer:
                     MonitoringData.timestamp == latest_monitoring_subquery.c.latest_timestamp
                 )
             ).all()
-            
+
             # Get alert counts in a single query
             alert_counts = dict(
                 self.db.session.query(
@@ -81,13 +81,13 @@ class WebSocketDataOptimizer:
                     Alert.resolved == False
                 ).group_by(Alert.device_id).all()
             )
-            
+
             # Get latest performance metrics in a single query
             latest_performance_subquery = self.db.session.query(
                 PerformanceMetrics.device_id,
                 func.max(PerformanceMetrics.timestamp).label('latest_perf_timestamp')
             ).group_by(PerformanceMetrics.device_id).subquery()
-            
+
             performance_data = dict(
                 self.db.session.query(
                     PerformanceMetrics.device_id,
@@ -100,49 +100,49 @@ class WebSocketDataOptimizer:
                     )
                 ).all()
             )
-            
+
             # Build optimized device data
             devices_data = []
             for device, response_time, last_monitoring in devices_with_monitoring:
                 device_data = self._build_device_data(
-                    device, 
-                    response_time, 
+                    device,
+                    response_time,
                     last_monitoring,
                     alert_counts.get(device.id, 0),
                     performance_data.get(device.id)
                 )
                 devices_data.append(device_data)
-            
+
             return devices_data
-            
+
         except Exception as e:
             logger.error(f"Error getting optimized device data: {e}")
             # Fallback to original method
             return self._get_device_data_fallback()
-    
+
     def get_device_delta_update(self) -> Dict[str, Any]:
         """Get only changed device data for delta updates"""
         current_devices = self.get_optimized_device_data()
-        
+
         delta_update = {
             'full_update': False,
             'changes': [],
             'removals': [],
             'timestamp': datetime.utcnow().isoformat() + 'Z'
         }
-        
+
         # Create current state map
         current_state = {device['id']: device for device in current_devices}
         current_device_ids = set(current_state.keys())
-        
+
         # Detect changes
         if self._last_device_states:
             last_device_ids = set(self._last_device_states.keys())
-            
+
             # Find new and updated devices
             for device_id in current_device_ids:
                 current_device = current_state[device_id]
-                
+
                 if device_id not in self._last_device_states:
                     # New device
                     delta_update['changes'].append({
@@ -158,7 +158,7 @@ class WebSocketDataOptimizer:
                             'device': current_device,
                             'changed_fields': self._get_changed_fields(last_device, current_device)
                         })
-            
+
             # Find removed devices
             for device_id in last_device_ids - current_device_ids:
                 delta_update['removals'].append(device_id)
@@ -166,20 +166,20 @@ class WebSocketDataOptimizer:
             # First time - send everything as new
             delta_update['full_update'] = True
             delta_update['changes'] = [{'type': 'new', 'device': device} for device in current_devices]
-        
+
         # Update last state
         self._last_device_states = current_state
-        
+
         # Only send delta if there are changes
         if delta_update['changes'] or delta_update['removals'] or delta_update['full_update']:
             return delta_update
-        
+
         return None
-    
+
     def get_optimized_alert_data(self) -> List[Dict[str, Any]]:
         """Get alert data with optimized queries"""
         from models import Alert, Device
-        
+
         try:
             # Single query with join to get alerts with device info
             alerts_with_devices = self.db.session.query(
@@ -194,7 +194,7 @@ class WebSocketDataOptimizer:
             ).order_by(
                 desc(Alert.created_at)
             ).all()
-            
+
             alert_data = []
             for alert, ip_address, hostname, custom_name in alerts_with_devices:
                 alert_dict = {
@@ -211,20 +211,20 @@ class WebSocketDataOptimizer:
                     'acknowledged_by': alert.acknowledged_by
                 }
                 alert_data.append(alert_dict)
-            
+
             return alert_data
-            
+
         except Exception as e:
             logger.error(f"Error getting optimized alert data: {e}")
             return []
-    
+
     def get_optimized_chart_data(self, chart_type: str, device_id: int = None, hours: int = 24) -> Dict[str, Any]:
         """Get chart data with optimized queries"""
         from models import MonitoringData, Device, PerformanceMetrics
-        
+
         try:
             cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-            
+
             if chart_type == 'response_time' and device_id:
                 # Optimized query for single device response time
                 data_points = self.db.session.query(
@@ -237,12 +237,12 @@ class WebSocketDataOptimizer:
                         MonitoringData.response_time.isnot(None)
                     )
                 ).order_by(MonitoringData.timestamp).limit(1000).all()
-                
+
                 chart_data = [{
                     'timestamp': point.timestamp.isoformat() + 'Z',
                     'value': point.response_time
                 } for point in data_points]
-                
+
             elif chart_type == 'network_overview':
                 # Optimized query for network overview
                 # Get average response time per device for the last hour
@@ -260,7 +260,7 @@ class WebSocketDataOptimizer:
                         MonitoringData.response_time.isnot(None)
                     )
                 ).group_by(Device.id).all()
-                
+
                 chart_data = []
                 for device_ip, custom_name, hostname, avg_rt, ping_count in hourly_avg:
                     chart_data.append({
@@ -269,30 +269,30 @@ class WebSocketDataOptimizer:
                         'avg_response_time': round(float(avg_rt), 2) if avg_rt else None,
                         'ping_count': ping_count
                     })
-            
+
             else:
                 chart_data = []
-            
+
             return {
                 'type': chart_type,
                 'device_id': device_id,
                 'data': chart_data,
                 'timestamp': datetime.utcnow().isoformat() + 'Z'
             }
-            
+
         except Exception as e:
             logger.error(f"Error getting optimized chart data: {e}")
             return {'type': chart_type, 'data': [], 'error': str(e)}
-    
+
     def _build_device_data(self, device, response_time, last_monitoring, alert_count, health_score):
         """Build device data dictionary with optimized field access"""
         # Calculate status without triggering additional queries
         status = self._calculate_status(device, response_time, last_monitoring)
-        
+
         # Calculate performance grade from health score
         performance_grade = self._calculate_performance_grade(health_score)
         performance_status = self._calculate_performance_status(health_score)
-        
+
         return {
             'id': device.id,
             'ip_address': device.ip_address,
@@ -314,23 +314,23 @@ class WebSocketDataOptimizer:
             'created_at': device.created_at.isoformat() + 'Z',
             'last_updated': device.last_updated.isoformat() + 'Z' if device.last_updated else None
         }
-    
+
     def _calculate_status(self, device, response_time, last_monitoring):
         """Calculate device status without additional queries"""
         if not device.last_seen:
             return 'unknown'
-        
+
         threshold = datetime.utcnow() - timedelta(seconds=600)
         if device.last_seen < threshold:
             return 'down'
-        
+
         if response_time is None:
             return 'down'
         elif response_time > 1000:
             return 'warning'
-        
+
         return 'up'
-    
+
     def _calculate_performance_grade(self, health_score):
         """Calculate performance grade from health score"""
         if health_score is None:
@@ -353,7 +353,7 @@ class WebSocketDataOptimizer:
             return 'D'
         else:
             return 'F'
-    
+
     def _calculate_performance_status(self, health_score):
         """Calculate performance status from health score"""
         if health_score is None:
@@ -368,7 +368,7 @@ class WebSocketDataOptimizer:
             return 'poor'
         else:
             return 'critical'
-    
+
     def _device_has_changed(self, old_device: Dict, new_device: Dict) -> bool:
         """Check if device data has changed significantly"""
         # Fields to check for changes
@@ -377,13 +377,13 @@ class WebSocketDataOptimizer:
             'current_health_score', 'performance_grade', 'performance_status',
             'custom_name', 'hostname', 'is_monitored'
         ]
-        
+
         for field in check_fields:
             if old_device.get(field) != new_device.get(field):
                 return True
-        
+
         return False
-    
+
     def _get_changed_fields(self, old_device: Dict, new_device: Dict) -> List[str]:
         """Get list of changed fields"""
         changed_fields = []
@@ -392,19 +392,19 @@ class WebSocketDataOptimizer:
             'current_health_score', 'performance_grade', 'performance_status',
             'custom_name', 'hostname', 'is_monitored'
         ]
-        
+
         for field in check_fields:
             if old_device.get(field) != new_device.get(field):
                 changed_fields.append(field)
-        
+
         return changed_fields
-    
+
     def _get_device_data_fallback(self):
         """Fallback method using original approach"""
         from models import Device
         devices = Device.query.all()
         return [device.to_dict() for device in devices]
-    
+
     def get_batch_update_summary(self) -> Dict[str, Any]:
         """Get summary of batch updates for monitoring"""
         return {
@@ -413,7 +413,7 @@ class WebSocketDataOptimizer:
             'last_alert_states': len(self._last_alert_states),
             'cache_ttl': self._cache_ttl
         }
-    
+
     def clear_update_cache(self):
         """Clear the update cache"""
         self._last_device_states.clear()

@@ -30,7 +30,7 @@ class ModernNotifications {
         this.container.setAttribute('role', 'region');
         this.container.setAttribute('aria-label', 'Notifications');
         this.container.setAttribute('aria-live', 'polite');
-        
+
         document.body.appendChild(this.container);
     }
 
@@ -241,7 +241,7 @@ class ModernNotifications {
                 animation: notification-shake 0.5s ease-in-out;
             }
         `;
-        
+
         document.head.appendChild(style);
     }
 
@@ -354,15 +354,15 @@ class ModernNotifications {
         // Create header
         const header = document.createElement('div');
         header.className = 'notification-header';
-        
+
         const title = document.createElement('div');
         title.className = 'notification-title';
-        
+
         // Add icon
         const iconContainer = document.createElement('span');
         iconContainer.innerHTML = this.getIcon(config.type);
         title.appendChild(iconContainer);
-        
+
         // Add title text safely
         const titleText = document.createElement('span');
         if (window.htmlSanitizer) {
@@ -371,16 +371,16 @@ class ModernNotifications {
             titleText.textContent = config.title || this.getDefaultTitle(config.type);
         }
         title.appendChild(titleText);
-        
+
         const closeBtn = document.createElement('button');
         closeBtn.className = 'notification-close';
         closeBtn.setAttribute('aria-label', 'Close notification');
         closeBtn.innerHTML = '<i class="bi bi-x"></i>';
-        
+
         header.appendChild(title);
         header.appendChild(closeBtn);
         notification.appendChild(header);
-        
+
         // Add message content if provided
         if (config.message) {
             const content = document.createElement('div');
@@ -392,13 +392,13 @@ class ModernNotifications {
             }
             notification.appendChild(content);
         }
-        
+
         // Add actions if provided
         if (config.actions && config.actions.length > 0) {
             const actionsContainer = this.buildActions(config.actions);
             notification.appendChild(actionsContainer);
         }
-        
+
         // Add progress bar if needed
         if (config.showProgress && !config.persistent) {
             const progressBar = document.createElement('div');
@@ -410,22 +410,22 @@ class ModernNotifications {
     buildActions(actions) {
         const actionsContainer = document.createElement('div');
         actionsContainer.className = 'notification-actions';
-        
+
         actions.forEach(action => {
             const btn = document.createElement('button');
             btn.className = `notification-action ${action.primary ? 'primary' : ''}`;
             btn.type = 'button';
-            
+
             // Safely set button label
             if (window.htmlSanitizer) {
                 window.htmlSanitizer.setText(btn, action.label);
             } else {
                 btn.textContent = action.label;
             }
-            
+
             actionsContainer.appendChild(btn);
         });
-        
+
         return actionsContainer;
     }
 
@@ -438,7 +438,7 @@ class ModernNotifications {
 
         progressBar.style.width = '100%';
         progressBar.style.transitionDuration = `${duration}ms`;
-        
+
         // Start the animation
         setTimeout(() => {
             progressBar.style.width = '0%';
@@ -599,13 +599,13 @@ window.showToast = function(message, type = 'info', duration = 5000) {
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', () => {
     console.log('🔔 Modern Notifications initialized!');
-    
+
     // Example usage (remove in production)
     if (window.location.hash === '#demo-notifications') {
         setTimeout(() => {
             window.modernNotifications.success('HomeNetMon dashboard loaded successfully!');
         }, 1000);
-        
+
         setTimeout(() => {
             window.modernNotifications.info('Network scan completed. Found 3 new devices.', {
                 actions: [

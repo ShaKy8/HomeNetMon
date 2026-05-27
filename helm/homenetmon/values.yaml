@@ -158,33 +158,33 @@ config:
   networkRange: "192.168.1.0/24"
   pingInterval: 60
   discoveryInterval: 300
-  
+
   # Monitoring settings
   monitoringEnabled: true
   realTimeUpdates: true
   maxMonitoredDevices: 1000
-  
+
   # API settings
   apiRateLimit: 1000
   apiBurstLimit: 100
   enableApiCompression: true
-  
+
   # Feature flags
   enablePushNotifications: true
   enableRemoteAccess: true
   enableAnalytics: true
   enableMultiTenancy: false
-  
+
   # Logging
   logLevel: "INFO"
   logFormat: "json"
   logRetentionDays: 30
-  
+
   # Security
   secureHeaders: true
   csrfProtection: true
   rateLimiting: true
-  
+
   # Performance
   workerProcesses: 4
   workerConnections: 1000
@@ -195,24 +195,24 @@ secrets:
   # Application secrets
   secretKey: ""  # Auto-generated if empty
   jwtSecretKey: ""  # Auto-generated if empty
-  
+
   # Database
   databasePassword: ""
-  
+
   # SMTP
   smtpPassword: ""
   smtpUsername: ""
   smtpServer: "smtp.gmail.com"
   smtpPort: "587"
-  
+
   # External integrations
   webhookSecret: ""
   notificationApiKey: ""
-  
+
   # Remote access
   vpnPsk: ""
   tunnelAuthToken: ""
-  
+
   # Encryption
   encryptionKey: ""
 

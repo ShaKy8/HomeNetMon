@@ -57,11 +57,11 @@ class NetworkScanner:
                 if (now - self._last_config_check).total_seconds() > 10:
                     self._check_config_changes()
                     self._last_config_check = now
-                
+
                 # Return cached value if available and valid
                 if key in self._config_cache:
                     return self._config_cache[key]
-                
+
                 # Load from database and cache
                 value = Configuration.get_value(key, str(default))
                 self._config_cache[key] = value
@@ -70,7 +70,7 @@ class NetworkScanner:
         except Exception as e:
             logger.error(f"Error getting config value {key}: {e}")
             return str(default)
-    
+
     def _check_config_changes(self):
         """Check for configuration changes and reload if needed"""
         try:
@@ -79,23 +79,23 @@ class NetworkScanner:
                 for key in list(self._config_cache.keys()):
                     current_version = Configuration.get_config_version(key)
                     cached_version = self._config_versions.get(key, 0)
-                    
+
                     if current_version != cached_version:
                         # Configuration changed, reload it
                         new_value = Configuration.get_value(key, self._config_cache[key])
                         old_value = self._config_cache[key]
                         self._config_cache[key] = new_value
                         self._config_versions[key] = current_version
-                        
+
                         logger.info(f"Configuration reloaded: {key} changed from '{old_value}' to '{new_value}'")
-                        
+
                         # Trigger specific actions for certain config changes
                         if key == 'network_range' and old_value != new_value:
                             self._handle_network_range_change(old_value, new_value)
-                        
+
         except Exception as e:
             logger.error(f"Error checking config changes: {e}")
-    
+
     def _handle_network_range_change(self, old_range, new_range):
         """Handle network range configuration change"""
         logger.info(f"Network range changed from {old_range} to {new_range}")
@@ -103,26 +103,26 @@ class NetworkScanner:
         if not self.is_scanning:
             logger.info("Triggering network scan with new range")
             threading.Thread(target=self.scan_network, daemon=True, name='NetworkRangeScan').start()
-    
+
     def get_adaptive_scan_interval(self):
         """Get adaptive scan interval based on network activity and time of day"""
         base_interval = int(self.get_config_value('scan_interval', Config.SCAN_INTERVAL))
-        
+
         try:
             current_hour = datetime.now().hour
-            
+
             # Reduce scanning during typical sleep hours (11 PM - 7 AM)
             if current_hour >= 23 or current_hour <= 7:
                 return base_interval * 2  # Double interval during night hours
-            
+
             # Reduce scanning during typical work hours (9 AM - 5 PM) when network is more active
             elif 9 <= current_hour <= 17:
                 return int(base_interval * 1.5)  # 1.5x interval during day
-            
+
             # Normal interval during evening hours
             else:
                 return base_interval
-                
+
         except Exception as e:
             logger.warning(f"Error calculating adaptive scan interval: {e}")
             return base_interval
@@ -134,7 +134,7 @@ class NetworkScanner:
         self._config_versions.clear()
         self._last_config_check = datetime.utcnow()
         self._check_config_changes()
-        
+
     def get_arp_table(self):
         """Parse ARP table to find active devices"""
         devices = []
@@ -150,7 +150,7 @@ class NetworkScanner:
                 except (subprocess.TimeoutExpired, FileNotFoundError):
                     logger.warning("Could not execute ARP or ip neigh command")
                     return devices
-            
+
             # Parse ARP table output
             lines = arp_output.strip().split('\n')
             for line in lines:
@@ -158,25 +158,25 @@ class NetworkScanner:
                 # or: 192.168.86.1 dev wlan0 lladdr aa:bb:cc:dd:ee:ff REACHABLE
                 ip_match = re.search(r'(\d+\.\d+\.\d+\.\d+)', line)
                 mac_match = re.search(r'([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}', line)
-                
+
                 if ip_match and mac_match:
                     ip = ip_match.group(1)
                     mac = mac_match.group(0).lower()
-                    
+
                     # Normalize MAC address format
                     mac = mac.replace('-', ':')
-                    
+
                     devices.append({
                         'ip': ip,
                         'mac': mac,
                         'source': 'arp'
                     })
-                    
+
         except Exception as e:
             logger.error(f"Error parsing ARP table: {e}")
-            
+
         return devices
-    
+
     def is_sensitive_device(self, device_info):
         """Check if device should be scanned less frequently or excluded"""
         sensitive_patterns = [
@@ -187,10 +187,10 @@ class NetworkScanner:
             # Manufacturers known for IoT devices
             'amazon', 'google', 'nest labs', 'ring inc', 'wyze labs'
         ]
-        
+
         device_name = device_info.get('hostname', '').lower()
         device_vendor = device_info.get('vendor', '').lower()
-        
+
         for pattern in sensitive_patterns:
             if pattern in device_name or pattern in device_vendor:
                 return True
@@ -203,17 +203,17 @@ class NetworkScanner:
             with self.app.app_context():
                 # Get printers and other sensitive device types
                 sensitive_types = ['printer']
-                
+
                 # Query for devices with sensitive types
                 sensitive_devices = Device.query.filter(
                     Device.device_type.in_(sensitive_types)
                 ).all()
-                
+
                 for device in sensitive_devices:
                     if device.ip_address:
                         excluded_ips.append(device.ip_address)
                         logger.debug(f"Excluding {device.device_type} device from nmap scan: {device.ip_address}")
-                
+
                 # Also check for user-configured exclusions
                 excluded_config = self.get_config_value('scan_excluded_ips', '')
                 if excluded_config:
@@ -223,21 +223,21 @@ class NetworkScanner:
                         if ip and ip not in excluded_ips:
                             excluded_ips.append(ip)
                             logger.debug(f"Excluding user-configured IP from nmap scan: {ip}")
-                            
+
         except Exception as e:
             logger.error(f"Error getting excluded device IPs: {e}")
-            
+
         return excluded_ips
-    
+
     def _get_scan_targets_excluding_ips(self, network_range, excluded_ips):
         """Generate scan targets from network range while excluding specific IPs"""
         scan_targets = []
         try:
             import ipaddress
-            
+
             # Parse the network range
             network = ipaddress.IPv4Network(network_range, strict=False)
-            
+
             # For small networks (< 50 hosts), scan individual IPs
             # For larger networks, use subnet exclusion where possible
             if network.num_addresses <= 50:
@@ -251,12 +251,12 @@ class NetworkScanner:
                 # This is less precise but more efficient for large networks
                 scan_targets.append(network_range)
                 logger.warning(f"Large network detected ({network.num_addresses} addresses), using range scan with post-processing exclusion")
-                
+
         except Exception as e:
             logger.error(f"Error processing network range exclusions: {e}")
             # Fallback to original network range
             scan_targets.append(network_range)
-            
+
         return scan_targets
 
     def nmap_scan(self, network_range):
@@ -265,10 +265,10 @@ class NetworkScanner:
         try:
             # Get list of printer IPs to exclude from nmap scanning
             excluded_ips = self._get_excluded_device_ips()
-            
+
             if excluded_ips:
                 logger.info(f"Excluding {len(excluded_ips)} sensitive devices from nmap scan: {', '.join(excluded_ips)}")
-            
+
             # If we have devices to exclude, we need to scan individual IPs or subnets
             if excluded_ips and '/' in network_range:
                 # Parse network range and exclude specific IPs
@@ -279,24 +279,24 @@ class NetworkScanner:
                 scan_hosts = ','.join(scan_targets)
             else:
                 scan_hosts = network_range
-            
+
             logger.info(f"Starting gentle nmap scan of network (excluding sensitive devices)")
-            
+
             # Use gentle nmap ping scan optimized for home networks
             # -sn: Ping scan only (no port scan)
             # -T2: Polite timing (slower but less aggressive)
             # --max-rtt-timeout 2000ms: Allow slower devices more time to respond
             # --max-retries 1: Reduce retries to minimize network traffic
             scan_result = self.nm.scan(hosts=scan_hosts, arguments='-sn -T2 --max-rtt-timeout 2000ms --max-retries 1')
-            
+
             for host in scan_result['scan']:
                 host_info = scan_result['scan'][host]
-                
+
                 # Skip excluded IPs (double-check in case they somehow got scanned)
                 if host in excluded_ips:
                     logger.debug(f"Filtering out excluded IP from nmap results: {host}")
                     continue
-                
+
                 if host_info['status']['state'] == 'up':
                     device_info = {
                         'ip': host,
@@ -305,22 +305,22 @@ class NetworkScanner:
                         'vendor': None,
                         'source': 'nmap'
                     }
-                    
+
                     # Get MAC address if available
                     if 'addresses' in host_info and 'mac' in host_info['addresses']:
                         device_info['mac'] = host_info['addresses']['mac'].lower()
-                    
+
                     # Get hostname if available
                     if host_info.get('hostnames'):
                         device_info['hostname'] = host_info['hostnames'][0]['name']
-                    
+
                     devices.append(device_info)
-                    
+
         except Exception as e:
             logger.error(f"Error during nmap scan: {e}")
-            
+
         return devices
-    
+
     def resolve_hostname(self, ip):
         """Resolve hostname for IP address"""
         try:
@@ -344,13 +344,13 @@ class NetworkScanner:
         except Exception as e:
             logger.debug(f"Failed to get vendor for MAC {mac}: {e}")
             return None
-    
+
     def classify_device_type(self, device_info):
         """Attempt to classify device type based on available information"""
         hostname = (device_info.get('hostname') or '').lower()
         vendor = (device_info.get('vendor') or '').lower()
         ip = device_info.get('ip') or ''
-        
+
         # Camera detection (highest priority)
         camera_keywords = [
             'camera', 'cam', 'ring', 'wyze', 'nest-cam', 'arlo', 'surveillance',
@@ -363,7 +363,7 @@ class NetworkScanner:
         # Ring devices often have ring- prefix or specific patterns
         if 'ring-' in hostname or 'ringspotlight' in hostname or 'ringdoorbell' in hostname:
             return 'camera'
-            
+
         # Network Infrastructure
         router_keywords = ['router', 'gateway', 'gw', 'modem', 'switch', 'access-point', 'ap']
         if any(keyword in hostname for keyword in router_keywords):
@@ -373,7 +373,7 @@ class NetworkScanner:
         # Google Nest WiFi points
         if 'nest-wifi' in hostname or 'google-wifi' in hostname:
             return 'router'
-            
+
         # Smart Home & IoT Devices
         iot_keywords = [
             'nest', 'thermostat', 'smart', 'hub', 'sensor', 'switch', 'plug',
@@ -388,8 +388,8 @@ class NetworkScanner:
         # Specific IoT device patterns
         if 'esp' in hostname or 'arduino' in hostname or 'raspberry' in hostname:
             return 'iot'
-            
-        # Apple/Mac devices  
+
+        # Apple/Mac devices
         mac_keywords = ['macbook', 'imac', 'mac.', 'macos', 'iphone', 'ipad', 'apple']
         if any(keyword in hostname for keyword in mac_keywords):
             return 'apple'
@@ -402,14 +402,14 @@ class NetworkScanner:
             apple_ouis = ['00:1b:63', '00:1f:f3', '00:23:df', '00:25:00', '3c:07:54', '4c:8d:79']
             if any(mac.startswith(oui) for oui in apple_ouis):
                 return 'apple'
-            
+
         # Mobile/Phone detection
         phone_keywords = ['android', 'phone', 'mobile', 'samsung', 'pixel', 'oneplus']
         if any(keyword in hostname for keyword in phone_keywords):
             return 'phone'
         if any(keyword in vendor for keyword in ['samsung', 'samsunge', 'lg', 'motorola', 'huawei']):
             return 'phone'
-            
+
         # Computer/Laptop detection
         computer_keywords = [
             'pc', 'laptop', 'desktop', 'workstation', 'server', 'nuc',
@@ -419,14 +419,14 @@ class NetworkScanner:
             return 'computer'
         if any(keyword in vendor for keyword in ['dell', 'hewletthp', 'hewlettp', 'lenovo', 'asus', 'microsoft']):
             return 'computer'
-            
+
         # Gaming Consoles
         gaming_keywords = ['xbox', 'playstation', 'ps4', 'ps5', 'nintendo', 'switch', 'steam']
         if any(keyword in hostname for keyword in gaming_keywords):
             return 'gaming'
         if any(keyword in vendor for keyword in ['microsoft', 'sony', 'nintendo']):
             return 'gaming'
-            
+
         # TV/Media devices
         media_keywords = ['tv', 'roku', 'appletv', 'firetv', 'nvidia-shield', 'media-player']
         if any(keyword in hostname for keyword in media_keywords):
@@ -435,7 +435,7 @@ class NetworkScanner:
             # Only classify as media if it's clearly a TV/media device
             if any(keyword in hostname for keyword in ['tv', 'roku', 'shield', 'chromecast']):
                 return 'media'
-            
+
         # Printers - Enhanced detection to catch all printer models
         printer_keywords = ['printer', 'print', 'canon', 'epson', 'brother', 'hp-printer',
                            'laserjet', 'deskjet', 'officejet', 'envy', 'pixma', 'imageclass',
@@ -448,16 +448,16 @@ class NetworkScanner:
                           'lexmark', 'ricoh', 'sharp', 'kyocera', 'konica', 'minolta']
         if any(keyword in vendor for keyword in printer_vendors):
             return 'printer'
-            
+
         # Storage/NAS
         storage_keywords = ['nas', 'storage', 'synology', 'qnap', 'drobo', 'freenas']
         if any(keyword in hostname for keyword in storage_keywords):
             return 'storage'
         if any(keyword in vendor for keyword in ['synology', 'qnap', 'drobo']):
             return 'storage'
-            
+
         return 'unknown'
-    
+
     def scan_network(self):
         """Perform complete network scan and update database"""
         logger.info("Starting network discovery scan")
@@ -482,7 +482,7 @@ class NetworkScanner:
             logger.error(f"Error getting existing devices: {e}")
             self._devices_before_scan = set()
             self._new_devices_found = []
-        
+
         try:
             # Use Flask application context for database operations
             with self.app.app_context():
@@ -501,14 +501,14 @@ class NetworkScanner:
                     nmap_devices = self.nmap_scan(network_range)
                     logger.info(f"Found {len(nmap_devices)} devices with nmap scan")
                     self._emit_scan_progress(60, 'Merging scan results...', len(nmap_devices), 0)
-                    
+
                     # Combine and deduplicate devices
                     all_devices = {}
-                    
+
                     # Add ARP devices
                     for device in arp_devices:
                         all_devices[device['ip']] = device
-                    
+
                     # Add nmap devices (may override ARP info)
                     for device in nmap_devices:
                         if device['ip'] in all_devices:
@@ -516,7 +516,7 @@ class NetworkScanner:
                             all_devices[device['ip']].update({k: v for k, v in device.items() if v})
                         else:
                             all_devices[device['ip']] = device
-                    
+
                     # Process each discovered device
                     self._emit_scan_progress(75, 'Processing discovered devices...', len(all_devices), 0)
                     for i, (ip, device_info) in enumerate(all_devices.items()):
@@ -544,7 +544,7 @@ class NetworkScanner:
 
                     # Emit final 100% completion
                     self._emit_scan_progress(100, 'Scan completed successfully!', len(all_devices), len(self._new_devices_found))
-                    
+
                 except Exception as e:
                     logger.error(f"Error during network scan: {e}")
                     # Emit error event via WebSocket
@@ -560,28 +560,28 @@ class NetworkScanner:
         finally:
             # Always clear the scanning flag when done
             self.is_scanning = False
-    
+
     def process_discovered_device(self, device_info):
         """Process a discovered device and update database using MAC-based identification"""
         try:
             ip = device_info['ip']
             mac = device_info.get('mac')
-            
+
             device = None
             ip_changed = False
             is_new_device = False
-            
+
             # MAC-based device identification (primary method)
             if mac:
                 # Look up device by MAC address first
                 device = Device.query.filter_by(mac_address=mac).first()
-                
+
                 if device:
                     # Device exists - check if IP has changed
                     if device.ip_address != ip:
                         old_ip = device.ip_address
                         logger.info(f"Device MAC {mac} IP changed: {old_ip} -> {ip}")
-                        
+
                         # Check if another device already has this IP
                         existing_device_with_ip = Device.query.filter_by(ip_address=ip).first()
 
@@ -630,44 +630,44 @@ class NetworkScanner:
                                 logger.info(f"Updated device {device.display_name} IP: {old_ip} -> {ip} (history logging failed)")
                             except Exception as ip_error:
                                 logger.error(f"Failed to update IP for device {device.id}: {ip_error}")
-                
+
             # Fallback: IP-based lookup for devices without MAC
             if not device:
                 device = Device.query.filter_by(ip_address=ip).first()
-                
+
                 # If we found a device by IP but now have a MAC, update it
                 if device and mac and not device.mac_address:
                     device.mac_address = mac
                     logger.info(f"Added MAC address {mac} to existing device {device.display_name}")
-            
+
             if device:
                 # Update existing device
                 updated = ip_changed  # IP change already counts as an update
-                
+
                 # Update MAC if we didn't have one before
                 if mac and not device.mac_address:
                     device.mac_address = mac
                     updated = True
-                
+
                 # Update hostname if provided and different
                 if device_info.get('hostname') and device.hostname != device_info['hostname']:
                     device.hostname = device_info['hostname']
                     updated = True
-                
+
                 # Resolve hostname if we don't have one
                 if not device.hostname:
                     hostname = self.resolve_hostname(ip)
                     if hostname:
                         device.hostname = hostname
                         updated = True
-                
+
                 # Get vendor info if we have MAC but no vendor
                 if device.mac_address and not device.vendor:
                     vendor = self.get_mac_vendor(device.mac_address)
                     if vendor:
                         device.vendor = vendor
                         updated = True
-                
+
                 # Classify device type if not set
                 if not device.device_type:
                     device_type = self.classify_device_type({
@@ -678,12 +678,12 @@ class NetworkScanner:
                     })
                     device.device_type = device_type
                     updated = True
-                
+
                 device.last_seen = datetime.utcnow()
-                
+
                 if updated:
                     device.updated_at = datetime.utcnow()
-                    
+
             else:
                 # Create new device
                 is_new_device = True
@@ -726,15 +726,15 @@ class NetworkScanner:
 
                 db.session.add(device)
                 db.session.flush()  # Ensure device has an ID for rule engine
-                
+
                 if mac:
                     logger.info(f"Added new device: {ip} (MAC: {mac}) ({hostname or 'unknown'})")
                 else:
                     logger.warning(f"Added new device without MAC: {ip} ({hostname or 'unknown'}) - may create duplicates")
-                
+
                 # Trigger rule engine for new device discovery
                 self._trigger_rule_engine_for_new_device(device)
-                
+
                 # Track new device for notifications (use MAC if available, otherwise IP)
                 device_key = mac if mac else ip
                 if device_key not in self._devices_before_scan:
@@ -745,7 +745,7 @@ class NetworkScanner:
                         'device_type': device_type,
                         'vendor': vendor
                     })
-            
+
             # Don't commit here - let the scan_network method handle batch commits
 
             # Log significant events
@@ -753,22 +753,22 @@ class NetworkScanner:
                 logger.info(f"Device {device.display_name} (MAC: {mac}) changed IP address")
             if is_new_device and not mac:
                 logger.warning(f"New device {device.display_name} has no MAC address - consider re-scanning")
-            
+
         except Exception as e:
             logger.error(f"Error processing device {device_info.get('ip')} (MAC: {device_info.get('mac')}): {e}")
             db.session.rollback()
-    
+
     def _send_scan_completion_notifications(self, total_devices):
         """Send push notifications for scan completion and new devices"""
         try:
             with self.app.app_context():
                 # Get dashboard URL
                 dashboard_url = f"http://{Config.HOST}:{Config.PORT}"
-                
+
                 # Send individual notifications for new devices (limit to 5 to avoid spam)
                 new_device_count = len(self._new_devices_found)
                 devices_to_notify = self._new_devices_found[:5]  # Limit to first 5
-                
+
                 for device_info in devices_to_notify:
                     device_name = device_info['hostname'] or device_info['ip']
                     success = push_service.send_new_device_alert(
@@ -779,7 +779,7 @@ class NetworkScanner:
                     )
                     if success:
                         logger.info(f"Sent new device notification for {device_name}")
-                
+
                 # Send scan completion notification
                 success = push_service.send_network_scan_complete(
                     new_devices=new_device_count,
@@ -788,7 +788,7 @@ class NetworkScanner:
                 )
                 if success:
                     logger.info(f"Sent scan completion notification: {new_device_count} new, {total_devices} total")
-                    
+
                 # If more than 5 new devices, send a summary notification
                 if new_device_count > 5:
                     summary_title = f"📱 {new_device_count - 5} More New Devices"
@@ -800,10 +800,10 @@ class NetworkScanner:
                         tags="information_source,blue_circle",
                         click_url=dashboard_url
                     )
-                    
+
         except Exception as e:
             logger.error(f"Error sending scan completion notifications: {e}")
-    
+
     def _get_push_service_config(self):
         """Update push service configuration from database"""
         try:
@@ -813,17 +813,17 @@ class NetworkScanner:
                 push_service.server = Configuration.get_value('ntfy_server', 'https://ntfy.sh')
         except Exception as e:
             logger.error(f"Error updating push service config: {e}")
-    
+
     def start_continuous_scan(self):
         """Start continuous network scanning"""
         try:
             self.is_running = True
-            
+
             logger.info("Starting continuous network scanning")
-            
+
             # Update push service configuration
             self._get_push_service_config()
-            
+
             # Perform initial scan
             self.scan_network()
         except Exception as e:
@@ -831,7 +831,7 @@ class NetworkScanner:
             import traceback
             logger.error(f"SCANNER TRACEBACK: {traceback.format_exc()}")
             return
-        
+
         # Continue scanning at adaptive intervals
         while not self._stop_event.is_set():
             try:
@@ -843,26 +843,26 @@ class NetworkScanner:
             except Exception as e:
                 logger.error(f"Error in continuous scan loop: {e}")
                 time.sleep(60)  # Wait before retrying
-        
+
         self.is_running = False
         logger.info("Network scanning stopped")
-    
+
     def stop(self):
         """Stop the network scanner"""
         logger.info("Stopping network scanner")
         self._stop_event.set()
         self.is_running = False
-    
+
     def _trigger_rule_engine_for_new_device(self, device):
         """Trigger rule engine evaluation for new device discovery"""
         try:
             # Get rule engine service from app if available
             if self.app and hasattr(self.app, 'rule_engine_service'):
                 rule_engine_service = self.app.rule_engine_service
-                
+
                 # Import here to avoid circular imports
                 from services.rule_engine import TriggerContext
-                
+
                 # Create trigger context for the new device event
                 context = TriggerContext(
                     event_type='new_device_discovered',
@@ -882,7 +882,7 @@ class NetworkScanner:
                         'scan_timestamp': datetime.utcnow().isoformat()
                     }
                 )
-                
+
                 # Evaluate rules in background thread to avoid blocking scan processing
                 import threading
                 rule_thread = threading.Thread(
@@ -892,23 +892,23 @@ class NetworkScanner:
                     name='RuleEngine-NewDevice'
                 )
                 rule_thread.start()
-                
+
                 logger.debug(f"Triggered rule engine for new device discovery: {device.display_name}")
-                
+
         except Exception as e:
             logger.error(f"Error triggering rule engine for new device: {e}")
             # Don't let rule engine errors affect scan processing
-    
+
     def _trigger_rule_engine_for_scan_completion(self, total_devices, new_devices):
         """Trigger rule engine evaluation for scan completion"""
         try:
             # Get rule engine service from app if available
             if self.app and hasattr(self.app, 'rule_engine_service'):
                 rule_engine_service = self.app.rule_engine_service
-                
+
                 # Import here to avoid circular imports
                 from services.rule_engine import TriggerContext
-                
+
                 # Create trigger context for the scan completion event
                 context = TriggerContext(
                     event_type='scan_complete',
@@ -919,7 +919,7 @@ class NetworkScanner:
                         'scan_timestamp': datetime.utcnow().isoformat()
                     }
                 )
-                
+
                 # Evaluate rules in background thread to avoid blocking scan processing
                 import threading
                 rule_thread = threading.Thread(
@@ -929,9 +929,9 @@ class NetworkScanner:
                     name='RuleEngine-ScanComplete'
                 )
                 rule_thread.start()
-                
+
                 logger.debug(f"Triggered rule engine for scan completion: {total_devices} total, {new_devices} new")
-                
+
         except Exception as e:
             logger.error(f"Error triggering rule engine for scan completion: {e}")
             # Don't let rule engine errors affect scan processing

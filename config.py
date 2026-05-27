@@ -9,40 +9,40 @@ load_dotenv()
 
 class Config:
     BASE_DIR = Path(__file__).parent.absolute()
-    
+
     # Database
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or f"sqlite:///{BASE_DIR}/homeNetMon.db"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    
+
     # Network Configuration - Home-friendly defaults
     NETWORK_RANGE = os.environ.get('NETWORK_RANGE', '192.168.86.0/24')
     PING_INTERVAL = int(os.environ.get('PING_INTERVAL', '600'))      # 10 minutes - gentle for home IoT devices
-    SCAN_INTERVAL = int(os.environ.get('SCAN_INTERVAL', '86400'))    # Daily - prevents IoT device instability  
+    SCAN_INTERVAL = int(os.environ.get('SCAN_INTERVAL', '86400'))    # Daily - prevents IoT device instability
     BANDWIDTH_INTERVAL = int(os.environ.get('BANDWIDTH_INTERVAL', '300'))  # 5 minutes - reasonable for home
-    
+
     # Monitoring Settings
     PING_TIMEOUT = float(os.environ.get('PING_TIMEOUT', '3.0'))
     MAX_WORKERS = int(os.environ.get('MAX_WORKERS', '50'))
     DATA_RETENTION_DAYS = int(os.environ.get('DATA_RETENTION_DAYS', '30'))
-    
+
     # Web Interface - Enhanced secret key validation
     SECRET_KEY = None  # Will be set after class definition
     # Default to localhost for security - use HOST env var to bind to 0.0.0.0 if needed
     HOST = os.environ.get('HOST', '127.0.0.1')
-    
+
     # Environment must be set before using it
     ENV = os.environ.get('ENV', 'development')
-    
+
     # Security settings
-    
+
     # Rate limiting defaults
     RATELIMIT_ENABLED = True
     RATELIMIT_STORAGE_URL = 'memory://'  # Use Redis in production: redis://localhost:6379
     RATELIMIT_DEFAULT = '100 per hour'
-    
+
     # File upload security
     MAX_CONTENT_LENGTH = 16 * 1024 * 1024  # 16MB max upload
-    
+
     # Database connection settings
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_pre_ping': True,
@@ -55,7 +55,7 @@ class Config:
     PORT = int(os.environ.get('PORT', '5000'))
     # Disable debug in production environment
     DEBUG = ENV != 'production' and os.environ.get('DEBUG', 'False').lower() == 'true'
-    
+
     # Ensure debug is never enabled in production
     if ENV == 'production' and DEBUG:
         import warnings
@@ -65,7 +65,7 @@ class Config:
             UserWarning
         )
         DEBUG = False
-    
+
     # Security validation for host binding
     @staticmethod
     def validate_host_binding():
@@ -78,13 +78,13 @@ class Config:
                 UserWarning,
                 stacklevel=2
             )
-    
+
     # Logging Configuration
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
     LOG_FILE = os.environ.get('LOG_FILE', 'homeNetMon.log')
     LOG_MAX_SIZE = int(os.environ.get('LOG_MAX_SIZE', '10485760'))  # 10MB
     LOG_BACKUP_COUNT = int(os.environ.get('LOG_BACKUP_COUNT', '5'))
-    
+
     # Alert Settings
     SMTP_SERVER = os.environ.get('SMTP_SERVER')
     SMTP_PORT = int(os.environ.get('SMTP_PORT', '587'))
@@ -93,11 +93,11 @@ class Config:
     SMTP_USE_TLS = os.environ.get('SMTP_USE_TLS', 'True').lower() == 'true'
     ALERT_FROM_EMAIL = os.environ.get('ALERT_FROM_EMAIL')
     ALERT_TO_EMAILS = os.environ.get('ALERT_TO_EMAILS', '').split(',') if os.environ.get('ALERT_TO_EMAILS') else []
-    
+
     # Webhook Settings
     WEBHOOK_URL = os.environ.get('WEBHOOK_URL')
     WEBHOOK_TIMEOUT = int(os.environ.get('WEBHOOK_TIMEOUT', '10'))
-    
+
     # Push Notification Settings (Ntfy)
     NTFY_TOPIC = os.environ.get('NTFY_TOPIC')
     NTFY_SERVER = os.environ.get('NTFY_SERVER', 'https://ntfy.sh')
@@ -108,19 +108,19 @@ class Config:
     # Printer Protection Settings
     EXCLUDE_PRINTERS_FROM_SECURITY_SCAN = os.environ.get('EXCLUDE_PRINTERS_FROM_SECURITY_SCAN', 'true').lower() == 'true'
     PRINTER_SAFE_MODE = os.environ.get('PRINTER_SAFE_MODE', 'true').lower() == 'true'  # Extra protection for printers
-    
+
     @classmethod
     def load_from_file(cls, config_file='config.yaml'):
         config_path = cls.BASE_DIR / config_file
         if config_path.exists():
             with open(config_path, 'r') as f:
                 config_data = yaml.safe_load(f)
-                
+
             # Update class attributes with YAML data
             for key, value in config_data.items():
                 if hasattr(cls, key.upper()):
                     setattr(cls, key.upper(), value)
-    
+
     @classmethod
     def save_to_file(cls, config_file='config.yaml'):
         config_path = cls.BASE_DIR / config_file
@@ -143,68 +143,68 @@ class Config:
             'webhook_url': cls.WEBHOOK_URL,
             'webhook_timeout': cls.WEBHOOK_TIMEOUT,
         }
-        
+
         with open(config_path, 'w') as f:
             yaml.dump(config_data, f, default_flow_style=False, indent=2)
-    
+
     @classmethod
     def setup_logging(cls):
         """Configure application logging"""
         # Create logs directory if it doesn't exist
         log_dir = cls.BASE_DIR / 'logs'
         log_dir.mkdir(exist_ok=True)
-        
+
         # Set up root logger
         root_logger = logging.getLogger()
         root_logger.setLevel(getattr(logging, cls.LOG_LEVEL))
-        
+
         # Clear existing handlers
         root_logger.handlers.clear()
-        
+
         # Console handler
         console_handler = logging.StreamHandler()
         console_handler.setLevel(logging.INFO)
-        
+
         # File handler with rotation
         log_file_path = log_dir / cls.LOG_FILE
         file_handler = logging.handlers.RotatingFileHandler(
-            log_file_path, 
-            maxBytes=cls.LOG_MAX_SIZE, 
+            log_file_path,
+            maxBytes=cls.LOG_MAX_SIZE,
             backupCount=cls.LOG_BACKUP_COUNT
         )
         file_handler.setLevel(getattr(logging, cls.LOG_LEVEL))
-        
+
         # Formatter
         formatter = logging.Formatter(
             '%(asctime)s - %(name)s - %(levelname)s - %(message)s'
         )
         console_handler.setFormatter(formatter)
         file_handler.setFormatter(formatter)
-        
+
         # Add handlers to root logger
         root_logger.addHandler(console_handler)
         root_logger.addHandler(file_handler)
-        
+
         # Set levels for specific loggers to reduce noise
         logging.getLogger('werkzeug').setLevel(logging.WARNING)
         logging.getLogger('urllib3').setLevel(logging.WARNING)
         if not cls.DEBUG:
             logging.getLogger('socketio').setLevel(logging.WARNING)
             logging.getLogger('engineio').setLevel(logging.WARNING)
-    
+
     @classmethod
     def _get_validated_secret_key(cls):
         """Get and validate secret key with security checks."""
         import secrets
         import warnings
-        
+
         secret_key = os.environ.get('SECRET_KEY')
-        
+
         # Check if secret key is provided
         if not secret_key:
             # Check if we're in production (not debug mode)
             is_production = not os.environ.get('DEBUG', 'False').lower() == 'true'
-            
+
             if is_production:
                 # Generate a secure random key for production if none provided
                 secret_key = secrets.token_urlsafe(32)
@@ -230,7 +230,7 @@ class Config:
                     "Consider using a longer, more secure key.",
                     category=UserWarning
                 )
-            
+
             # Check for common insecure values
             insecure_keys = [
                 'dev-secret-key-change-in-production',
@@ -241,7 +241,7 @@ class Config:
                 'secret_key',
                 'flask_secret_key'
             ]
-            
+
             if secret_key.lower() in [key.lower() for key in insecure_keys]:
                 if not os.environ.get('DEBUG', 'False').lower() == 'true':
                     raise ValueError(
@@ -254,7 +254,7 @@ class Config:
                         "Use a strong, random key for production.",
                         category=UserWarning
                     )
-        
+
         return secret_key
 
 # Set SECRET_KEY after class definition to avoid circular reference

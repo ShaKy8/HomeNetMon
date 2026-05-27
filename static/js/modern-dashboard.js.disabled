@@ -51,13 +51,13 @@ class ModernDashboard {
     showFABMenu() {
         const fabMenu = document.getElementById('fab-menu');
         const fab = document.getElementById('more-options-fab');
-        
+
         fabMenu.style.display = 'block';
         // Small delay to ensure display is set before animation
         setTimeout(() => {
             fabMenu.classList.add('show');
         }, 10);
-        
+
         fab.style.transform = 'rotate(45deg) scale(1.1)';
         this.fabMenuVisible = true;
     }
@@ -65,16 +65,16 @@ class ModernDashboard {
     hideFABMenu() {
         const fabMenu = document.getElementById('fab-menu');
         const fab = document.getElementById('more-options-fab');
-        
+
         fabMenu.classList.remove('show');
         fab.style.transform = 'rotate(0deg) scale(1)';
-        
+
         setTimeout(() => {
             if (!fabMenu.classList.contains('show')) {
                 fabMenu.style.display = 'none';
             }
         }, 300);
-        
+
         this.fabMenuVisible = false;
     }
 
@@ -139,13 +139,13 @@ class ModernDashboard {
 
     calculateAverageResponse() {
         if (!window.devices || window.devices.length === 0) return 'N/A';
-        
+
         const responseTimes = window.devices
             .filter(d => d.last_response_time && d.last_response_time > 0)
             .map(d => d.last_response_time);
-        
+
         if (responseTimes.length === 0) return 'N/A';
-        
+
         const avg = responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length;
         return avg < 1 ? '<1ms' : Math.round(avg) + 'ms';
     }
@@ -177,7 +177,7 @@ class ModernDashboard {
     // ===== DEVICE CARD ENHANCEMENTS =====
     setupDeviceCardEnhancements() {
         this.enhanceExistingCards();
-        
+
         // Watch for new device cards being added to the DOM
         const observer = new MutationObserver((mutations) => {
             mutations.forEach((mutation) => {
@@ -200,26 +200,26 @@ class ModernDashboard {
 
     enhanceDeviceCard(card) {
         if (!card || card.dataset.enhanced) return;
-        
+
         // Mark as enhanced to prevent double processing
         card.dataset.enhanced = 'true';
-        
+
         // Add staggered animation delay for grid layouts
         const cards = document.querySelectorAll('.device-card');
         const index = Array.from(cards).indexOf(card);
         card.style.animationDelay = `${index * 0.1}s`;
-        
+
         // Enhance status indicators with glow effects
         const statusIndicator = card.querySelector('.status-indicator');
         if (statusIndicator) {
             statusIndicator.classList.add('status-glow');
         }
-        
+
         // Add ripple effect on click
         card.addEventListener('click', (e) => {
             this.createRippleEffect(e, card);
         });
-        
+
         // Add hover sound effect (optional)
         card.addEventListener('mouseenter', () => {
             // Optional: Add subtle hover sound effect
@@ -297,10 +297,10 @@ class ModernDashboard {
 
     addLoadingShimmer(element) {
         if (element.dataset.shimmerAdded) return;
-        
+
         element.dataset.shimmerAdded = 'true';
         element.classList.add('skeleton-modern');
-        
+
         // Add shimmer overlay
         const shimmer = document.createElement('div');
         shimmer.className = 'loading-shimmer';
@@ -315,10 +315,10 @@ class ModernDashboard {
             animation: shimmer-sweep 1.5s infinite;
             pointer-events: none;
         `;
-        
+
         element.style.position = 'relative';
         element.appendChild(shimmer);
-        
+
         // Add shimmer animation if not already added
         if (!document.getElementById('shimmer-styles')) {
             const style = document.createElement('style');
@@ -345,7 +345,7 @@ class ModernDashboard {
     toggleSelectionMode() {
         const deviceCards = document.querySelectorAll('.device-card');
         const isSelectionMode = document.body.classList.contains('selection-mode');
-        
+
         if (isSelectionMode) {
             document.body.classList.remove('selection-mode');
             deviceCards.forEach(card => {
@@ -379,9 +379,9 @@ class ModernDashboard {
     toggleViewMode() {
         const container = document.querySelector('.devices-grid') || document.querySelector('[class*="devices"]');
         if (!container) return;
-        
+
         const isGridView = container.classList.contains('row');
-        
+
         if (isGridView) {
             // Switch to list view
             container.classList.remove('row');

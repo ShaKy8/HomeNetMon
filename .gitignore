@@ -176,3 +176,6 @@ database_archives/
 
 # Local configuration files
 *.local.json
+
+# Added by ggshield
+.cache_ggshield

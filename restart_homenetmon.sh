@@ -11,7 +11,7 @@ fi
 
 # Try system service with sudo
 if sudo systemctl restart homenetmon 2>/dev/null; then
-    echo "✅ System service restarted successfully" 
+    echo "✅ System service restarted successfully"
     exit 0
 fi
 

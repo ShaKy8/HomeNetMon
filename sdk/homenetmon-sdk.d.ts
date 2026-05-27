@@ -1,6 +1,6 @@
 /**
  * HomeNetMon SDK TypeScript Definitions
- * 
+ *
  * @version 1.0.0
  */
 
@@ -253,7 +253,7 @@ export interface DeltaSyncOptions {
     includeMonitoring?: boolean;
 }
 
-export type EventType = 
+export type EventType =
     | 'authenticated'
     | 'authenticationError'
     | 'logout'

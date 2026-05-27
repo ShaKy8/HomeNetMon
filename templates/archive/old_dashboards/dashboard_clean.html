@@ -240,26 +240,26 @@
     .container-fluid {
         padding: 1rem !important;
     }
-    
+
     .btn-group .btn {
         padding: 0.375rem 0.5rem;
         font-size: 0.875rem;
     }
-    
+
     .btn-group .btn .badge {
         display: none;
     }
-    
+
     /* Hide button text on mobile, keep icons only */
     .btn-group .btn {
         white-space: nowrap;
         overflow: hidden;
     }
-    
+
     .btn-group .btn:not([id="alerts-btn"]) {
         font-size: 0;
     }
-    
+
     .btn-group .btn i {
         font-size: 1rem !important;
     }
@@ -323,26 +323,26 @@ class NetworkDashboard {
     async loadDashboardData() {
         try {
             this.showLoadingState();
-            
+
             // Load dashboard data and recent activity in parallel
             const [statsResponse, alertsResponse] = await Promise.all([
                 fetch('/api/monitoring/quick-stats'),
                 fetch('/api/monitoring/alerts?limit=5')
             ]);
-            
+
             if (!statsResponse.ok) throw new Error(`Stats API: HTTP ${statsResponse.status}`);
             if (!alertsResponse.ok) throw new Error(`Alerts API: HTTP ${alertsResponse.status}`);
-            
+
             const [statsData, alertsData] = await Promise.all([
                 statsResponse.json(),
                 alertsResponse.json()
             ]);
-            
+
             this.updateDashboard(statsData);
             this.updateRecentActivity(alertsData.alerts || []);
             this.lastUpdate = new Date();
             this.updateLastUpdated();
-            
+
         } catch (error) {
             console.error('Dashboard load error:', error);
             this.showErrorState();
@@ -352,13 +352,13 @@ class NetworkDashboard {
     updateDashboard(data) {
         // Network Status
         this.updateNetworkStatus(data);
-        
+
         // Key Metrics
         this.updateDeviceMetrics(data);
-        
+
         // System Info
         this.updateSystemInfo(data);
-        
+
         // Health Badge
         this.updateHealthBadge(data);
     }
@@ -367,9 +367,9 @@ class NetworkDashboard {
         const indicator = document.getElementById('network-status-indicator');
         const icon = document.getElementById('network-status-icon');
         const text = document.getElementById('network-status-text');
-        
+
         const isHealthy = data.devices_up > 0 && data.devices_down < data.total_devices * 0.2;
-        
+
         if (isHealthy) {
             indicator.className = 'status-indicator status-healthy';
             icon.innerHTML = '<i class="bi bi-wifi text-success" style="font-size: 2rem;"></i>';
@@ -387,19 +387,19 @@ class NetworkDashboard {
         // Devices Online
         document.getElementById('devices-online').textContent = data.devices_up || 0;
         document.getElementById('devices-total').textContent = data.total_devices || 0;
-        
+
         const percentage = data.total_devices ? (data.devices_up / data.total_devices * 100) : 0;
         const progressBar = document.getElementById('devices-progress');
         progressBar.style.width = `${percentage}%`;
         progressBar.className = `progress-bar ${percentage > 80 ? 'bg-success' : percentage > 50 ? 'bg-warning' : 'bg-danger'}`;
-        
+
         // Response Time (mock - would need separate API)
         document.getElementById('avg-response-time').textContent = '12 ms';
-        
+
         // Active Alerts
         document.getElementById('active-alerts-count').textContent = data.active_alerts || 0;
         document.getElementById('alerts-count').textContent = data.active_alerts || 0;
-        
+
         // Alert summary
         const alertSummary = document.getElementById('alert-summary');
         if (data.active_alerts > 0) {
@@ -414,7 +414,7 @@ class NetworkDashboard {
     updateSystemInfo(data) {
         // System uptime (would need separate API)
         document.getElementById('system-uptime').textContent = '2d 14h';
-        
+
         // Scan status
         const scanStatus = document.getElementById('scan-status');
         if (data.live_scan_enabled) {
@@ -424,10 +424,10 @@ class NetworkDashboard {
             scanStatus.textContent = 'Inactive';
             scanStatus.className = 'text-warning fw-bold';
         }
-        
+
         // Monitored devices
         document.getElementById('monitored-devices').textContent = data.monitored_devices || data.total_devices;
-        
+
         // Network range
         document.getElementById('network-range').textContent = data.network_range || '-';
     }
@@ -435,7 +435,7 @@ class NetworkDashboard {
     updateHealthBadge(data) {
         const badge = document.getElementById('health-badge');
         const healthScore = data.total_devices ? (data.devices_up / data.total_devices) : 0;
-        
+
         if (healthScore > 0.9) {
             badge.textContent = 'Excellent';
             badge.className = 'badge bg-success';
@@ -453,7 +453,7 @@ class NetworkDashboard {
 
     updateRecentActivity(alerts) {
         const container = document.getElementById('recent-activity');
-        
+
         if (!alerts || alerts.length === 0) {
             container.innerHTML = `
                 <div class="list-group-item border-0 px-0">
@@ -469,21 +469,21 @@ class NetworkDashboard {
             `;
             return;
         }
-        
+
         const activityItems = alerts.slice(0, 5).map(alert => {
             const alertTime = new Date(alert.created_at);
             const timeAgo = this.getTimeAgo(alertTime);
             const severity = alert.severity || 'medium';
-            const icon = severity === 'high' ? 'bi-exclamation-triangle-fill text-danger' : 
-                        severity === 'medium' ? 'bi-exclamation-triangle text-warning' : 
+            const icon = severity === 'high' ? 'bi-exclamation-triangle-fill text-danger' :
+                        severity === 'medium' ? 'bi-exclamation-triangle text-warning' :
                         'bi-info-circle text-info';
-            
+
             const deviceName = alert.device_name || alert.device_hostname || `Device ${alert.device_id}`;
             const alertType = this.formatAlertType(alert.alert_type);
-            
+
             // Create clickable link to alerts page with alert ID
             const alertLink = `/alerts#alert-${alert.id}`;
-            
+
             return `
                 <a href="${alertLink}" class="list-group-item border-0 px-0 text-decoration-none activity-link">
                     <div class="d-flex align-items-center">
@@ -497,7 +497,7 @@ class NetworkDashboard {
                 </a>
             `;
         }).join('');
-        
+
         container.innerHTML = activityItems;
     }
 
@@ -521,7 +521,7 @@ class NetworkDashboard {
         const diffMins = Math.floor(diffMs / 60000);
         const diffHours = Math.floor(diffMins / 60);
         const diffDays = Math.floor(diffHours / 24);
-        
+
         if (diffMins < 1) return 'Just now';
         if (diffMins < 60) return `${diffMins}m ago`;
         if (diffHours < 24) return `${diffHours}h ago`;
@@ -542,7 +542,7 @@ class NetworkDashboard {
 
     updateLastUpdated() {
         if (this.lastUpdate) {
-            document.getElementById('last-updated').textContent = 
+            document.getElementById('last-updated').textContent =
                 `Last updated: ${this.lastUpdate.toLocaleTimeString()}`;
         }
     }

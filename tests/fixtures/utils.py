@@ -21,30 +21,30 @@ from models import db
 
 class TestDatabaseManager:
     """Helper class for managing test database state."""
-    
+
     @staticmethod
     def clear_all_tables(session):
         """Clear all data from all tables."""
         # Get all table names
         tables = [
             'performance_metrics',
-            'monitoring_data', 
+            'monitoring_data',
             'alerts',
             'devices',
             'configurations'
         ]
-        
+
         # Delete in reverse order to handle foreign keys
         for table in tables:
             session.execute(f"DELETE FROM {table}")
         session.commit()
-    
+
     @staticmethod
     def get_table_count(session, table_name):
         """Get the number of records in a table."""
         result = session.execute(f"SELECT COUNT(*) FROM {table_name}")
         return result.scalar()
-    
+
     @staticmethod
     def create_test_schema(app):
         """Create the test database schema."""
@@ -54,14 +54,14 @@ class TestDatabaseManager:
 
 class APITestHelper:
     """Helper class for API testing."""
-    
+
     @staticmethod
     def assert_json_response(response, status_code=200):
         """Assert that response is JSON with expected status code."""
         assert response.status_code == status_code
         assert response.content_type == 'application/json'
         return response.get_json()
-    
+
     @staticmethod
     def assert_success_response(response, message_contains=None):
         """Assert that response indicates success."""
@@ -69,7 +69,7 @@ class APITestHelper:
         if message_contains:
             assert message_contains in data.get('message', '')
         return data
-    
+
     @staticmethod
     def assert_error_response(response, status_code=400, error_contains=None):
         """Assert that response indicates an error."""
@@ -78,15 +78,15 @@ class APITestHelper:
         if error_contains:
             assert error_contains in data['error']
         return data
-    
+
     @staticmethod
     def post_json(client, url, data, **kwargs):
         """Make a POST request with JSON data."""
-        return client.post(url, 
+        return client.post(url,
                           data=json.dumps(data),
                           content_type='application/json',
                           **kwargs)
-    
+
     @staticmethod
     def put_json(client, url, data, **kwargs):
         """Make a PUT request with JSON data."""
@@ -98,18 +98,18 @@ class APITestHelper:
 
 class MockHelper:
     """Helper class for creating and managing mocks."""
-    
+
     @staticmethod
     def create_mock_nmap_result(hosts_data):
         """
         Create a mock nmap result.
-        
+
         Args:
             hosts_data: List of dicts with 'ip', 'mac', 'vendor', 'hostname'
         """
         mock_nm = MagicMock()
         mock_nm.all_hosts.return_value = [host['ip'] for host in hosts_data]
-        
+
         def getitem_side_effect(ip):
             host_data = next((h for h in hosts_data if h['ip'] == ip), None)
             if host_data:
@@ -122,23 +122,23 @@ class MockHelper:
                     'hostnames': [{'name': host_data.get('hostname', 'unknown'), 'type': 'PTR'}]
                 }
             return {}
-        
+
         mock_nm.__getitem__.side_effect = getitem_side_effect
         return mock_nm
-    
+
     @staticmethod
     def create_mock_ping_responses(ip_responses):
         """
         Create a mock ping function that returns different responses for different IPs.
-        
+
         Args:
             ip_responses: Dict mapping IP addresses to response times (or None for timeout)
         """
         def mock_ping(ip, timeout=None):
             return ip_responses.get(ip, None)
-        
+
         return mock_ping
-    
+
     @staticmethod
     @contextmanager
     def mock_external_services():
@@ -147,19 +147,19 @@ class MockHelper:
              patch('ping3.ping') as mock_ping, \
              patch('smtplib.SMTP') as mock_smtp, \
              patch('requests.post') as mock_requests:
-            
+
             # Configure default behaviors
             mock_nmap_instance = MagicMock()
             mock_nmap.return_value = mock_nmap_instance
             mock_ping.return_value = 0.025  # 25ms default
-            
+
             mock_smtp_instance = MagicMock()
             mock_smtp.return_value = mock_smtp_instance
-            
+
             mock_response = MagicMock()
             mock_response.status_code = 200
             mock_requests.return_value = mock_response
-            
+
             yield {
                 'nmap': mock_nmap_instance,
                 'ping': mock_ping,
@@ -170,35 +170,35 @@ class MockHelper:
 
 class TimeHelper:
     """Helper class for time-related test utilities."""
-    
+
     @staticmethod
     def create_time_series(start_time, count, interval_minutes=5):
         """Create a series of timestamps for testing."""
         timestamps = []
         current_time = start_time
-        
+
         for i in range(count):
             timestamps.append(current_time)
             current_time += timedelta(minutes=interval_minutes)
-        
+
         return timestamps
-    
+
     @staticmethod
     def wait_for_condition(condition_func, timeout_seconds=5, check_interval=0.1):
         """Wait for a condition to become true, with timeout."""
         start_time = time.time()
-        
+
         while time.time() - start_time < timeout_seconds:
             if condition_func():
                 return True
             time.sleep(check_interval)
-        
+
         return False
 
 
 class PerformanceTestHelper:
     """Helper class for performance-related tests."""
-    
+
     @staticmethod
     def create_health_score_test_data():
         """Create test data for health score calculations."""
@@ -229,13 +229,13 @@ class PerformanceTestHelper:
                 'stability_score': 92.0
             }
         }
-    
+
     @staticmethod
     def assert_health_score_range(score, min_score=0, max_score=100):
         """Assert that a health score is within valid range."""
         assert isinstance(score, (int, float)), f"Health score must be numeric, got {type(score)}"
         assert min_score <= score <= max_score, f"Health score {score} not in range [{min_score}, {max_score}]"
-    
+
     @staticmethod
     def assert_performance_grade(grade):
         """Assert that a performance grade is valid."""
@@ -245,7 +245,7 @@ class PerformanceTestHelper:
 
 class AlertTestHelper:
     """Helper class for alert-related tests."""
-    
+
     @staticmethod
     def create_alert_test_scenarios():
         """Create various alert test scenarios."""
@@ -272,12 +272,12 @@ class AlertTestHelper:
             'performance_warning': {
                 'alert_type': 'performance',
                 'alert_subtype': 'performance_warning',
-                'severity': 'warning', 
+                'severity': 'warning',
                 'message': 'Device performance is below normal',
                 'should_notify': False
             }
         }
-    
+
     @staticmethod
     def assert_alert_properties(alert, expected_type, expected_severity):
         """Assert alert has expected properties."""
@@ -290,24 +290,24 @@ class AlertTestHelper:
 
 class WebSocketTestHelper:
     """Helper class for WebSocket testing."""
-    
+
     @staticmethod
     def create_mock_socketio():
         """Create a mock SocketIO instance for testing."""
         mock_socketio = MagicMock()
         mock_socketio.emit.return_value = None
         return mock_socketio
-    
+
     @staticmethod
     def assert_socketio_emit_called(mock_socketio, event_name, data_contains=None):
         """Assert that socketio.emit was called with expected event."""
         mock_socketio.emit.assert_called()
-        
+
         # Check if the event name was used in any call
         calls = mock_socketio.emit.call_args_list
         event_found = any(call[0][0] == event_name for call in calls if call[0])
         assert event_found, f"Event '{event_name}' was not emitted"
-        
+
         if data_contains:
             # Check if data contains expected content
             for call in calls:
@@ -327,7 +327,7 @@ def assert_device_properties(device, expected_ip=None, expected_type=None):
     assert device.ip_address is not None
     assert device.created_at is not None
     assert device.updated_at is not None
-    
+
     if expected_ip:
         assert device.ip_address == expected_ip
     if expected_type:
@@ -339,7 +339,7 @@ def assert_monitoring_data_properties(monitoring_data, expected_device_id=None):
     assert monitoring_data.id is not None
     assert monitoring_data.device_id is not None
     assert monitoring_data.timestamp is not None
-    
+
     if expected_device_id:
         assert monitoring_data.device_id == expected_device_id
 
@@ -350,10 +350,10 @@ def assert_performance_metrics_properties(performance_metrics, expected_device_i
     assert performance_metrics.device_id is not None
     assert performance_metrics.timestamp is not None
     assert performance_metrics.health_score is not None
-    
+
     # Health scores should be in valid range
     PerformanceTestHelper.assert_health_score_range(performance_metrics.health_score)
-    
+
     if expected_device_id:
         assert performance_metrics.device_id == expected_device_id
 
@@ -365,7 +365,7 @@ def get_sample_network_scan_result():
     return [
         {
             'ip': '192.168.1.1',
-            'mac': '00:11:22:33:44:01', 
+            'mac': '00:11:22:33:44:01',
             'vendor': 'Router Corp',
             'hostname': 'home-router'
         },

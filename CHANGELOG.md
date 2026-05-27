@@ -39,4 +39,3 @@ All notable changes to HomeNetMon will be documented in this file.
 
 ### Other Changes
 - ce152f6 Remove GitHub Actions workflows due to permission restrictions
-

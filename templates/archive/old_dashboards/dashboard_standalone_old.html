@@ -4,23 +4,23 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Network Overview - HomeNetMon</title>
-    
+
     <!-- PWA Manifest -->
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    
+
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#0f0f23">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="HomeNetMon">
-    
+
     <!-- PWA Icons -->
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
     <link rel="icon" type="image/png" sizes="192x192" href="{{ url_for('static', filename='icons/icon-192x192.png') }}">
-    
+
     <!-- Socket.IO -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
-    
+
 <style>
 /* Reset and Modern Foundation */
 * {
@@ -114,7 +114,7 @@ body::before {
     left: 0;
     width: 100%;
     height: 100%;
-    background: 
+    background:
         radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
         radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
         radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
@@ -160,7 +160,7 @@ body::before {
 /* Main Grid Layout */
 .main-grid {
     display: grid;
-    grid-template-areas: 
+    grid-template-areas:
         "health metrics metrics"
         "activity activity charts";
     grid-template-columns: 400px 1fr 1fr;
@@ -396,7 +396,7 @@ body::before {
 /* Responsive Design */
 @media (max-width: 1200px) {
     .main-grid {
-        grid-template-areas: 
+        grid-template-areas:
             "health health"
             "metrics metrics"
             "activity charts";
@@ -408,20 +408,20 @@ body::before {
     .dashboard {
         padding: 1rem;
     }
-    
+
     .main-grid {
-        grid-template-areas: 
+        grid-template-areas:
             "health"
             "metrics"
             "activity"
             "charts";
         grid-template-columns: 1fr;
     }
-    
+
     .charts-section {
         grid-template-columns: 1fr;
     }
-    
+
     .metrics-section {
         grid-template-columns: repeat(2, 1fr);
     }
@@ -474,7 +474,7 @@ body::before {
                 <div class="health-ring">
                     <svg width="180" height="180">
                         <circle cx="90" cy="90" r="80" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8"/>
-                        <circle cx="90" cy="90" r="80" fill="none" stroke="url(#healthGradient)" 
+                        <circle cx="90" cy="90" r="80" fill="none" stroke="url(#healthGradient)"
                                 stroke-width="8" stroke-linecap="round"
                                 stroke-dasharray="502" stroke-dashoffset="502" id="health-ring">
                         </circle>
@@ -500,21 +500,21 @@ body::before {
                 <div class="metric-value" id="devices-online">--</div>
                 <div class="metric-label">Devices Online</div>
             </div>
-            
+
             <div class="metric-card uptime fade-in">
                 <div class="metric-icon">⏱️</div>
                 <div class="metric-trend trend-neutral" id="uptime-trend">→</div>
                 <div class="metric-value" id="network-uptime">--</div>
                 <div class="metric-label">Network Uptime</div>
             </div>
-            
+
             <div class="metric-card response fade-in">
                 <div class="metric-icon">⚡</div>
                 <div class="metric-trend trend-neutral" id="response-trend">→</div>
                 <div class="metric-value" id="avg-response">--</div>
                 <div class="metric-label">Response Time</div>
             </div>
-            
+
             <div class="metric-card alerts fade-in">
                 <div class="metric-icon">🚨</div>
                 <div class="metric-trend trend-neutral" id="alerts-trend">→</div>
@@ -562,11 +562,11 @@ document.addEventListener('DOMContentLoaded', function() {
 // Socket.IO connection
 function initializeSocket() {
     socket = io();
-    
+
     socket.on('connect', function() {
         console.log('Connected to server');
     });
-    
+
     socket.on('dashboard_update', function(data) {
         updateDashboard(data);
     });
@@ -595,7 +595,7 @@ function updateDashboard(data) {
 
     // Calculate and update health score
     updateHealthScore(data);
-    
+
     // Load recent activity
     loadRecentActivity();
 }
@@ -604,7 +604,7 @@ function updateDashboard(data) {
 function updateHealthScore(data) {
     let score = 100;
     const responseTime = data.avg_response_time || 0;
-    
+
     // Parse uptime - handle both string percentage and number formats
     let uptime = 100;
     if (data.network_uptime) {
@@ -614,9 +614,9 @@ function updateHealthScore(data) {
             uptime = data.network_uptime;
         }
     }
-    
+
     const alerts = data.active_alerts || 0;
-    
+
     // Calculate health score with proper validation
     score = Math.min(100, Math.max(0, uptime));
     if (responseTime > 100) score -= 5;
@@ -624,17 +624,17 @@ function updateHealthScore(data) {
     if (responseTime > 500) score -= 20;
     score -= Math.min(alerts * 0.1, 20); // Reduced alert penalty since there are 459 alerts
     score = Math.max(0, Math.round(score));
-    
+
     // Animate score
     animateValue('health-score', lastHealthScore, score, 1000);
     lastHealthScore = score;
-    
+
     // Update ring
     const ring = document.getElementById('health-ring');
     const circumference = 2 * Math.PI * 80;
     const offset = circumference - (score / 100) * circumference;
     ring.style.strokeDashoffset = offset;
-    
+
     // Update status
     const healthStatus = document.getElementById('health-status');
     if (score >= 90) {
@@ -659,21 +659,21 @@ function animateValue(elementId, start, end, duration) {
     const minTimer = 50;
     let stepTime = Math.abs(Math.floor(duration / range));
     stepTime = Math.max(stepTime, minTimer);
-    
+
     const startTime = new Date().getTime();
     const endTime = startTime + duration;
-    
+
     function run() {
         const now = new Date().getTime();
         const remaining = Math.max((endTime - now) / duration, 0);
         const value = Math.round(end - (remaining * range));
         element.textContent = value;
-        
+
         if (value !== end) {
             requestAnimationFrame(run);
         }
     }
-    
+
     run();
 }
 
@@ -694,7 +694,7 @@ async function loadRecentActivity() {
 // Display activity feed
 function displayActivity(activities) {
     const feed = document.getElementById('activity-feed');
-    
+
     if (activities.length === 0) {
         feed.innerHTML = `
             <div class="activity-item">
@@ -710,9 +710,9 @@ function displayActivity(activities) {
 
     feed.innerHTML = activities.map(activity => {
         const time = new Date(activity.timestamp).toLocaleTimeString();
-        const dotClass = activity.type === 'device_down' ? 'error' : 
+        const dotClass = activity.type === 'device_down' ? 'error' :
                         activity.type === 'device_up' ? 'success' : 'info';
-        
+
         return `
             <div class="activity-item">
                 <div class="activity-dot ${dotClass}"></div>

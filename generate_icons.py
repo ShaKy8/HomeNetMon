@@ -30,7 +30,7 @@ main_icon_svg = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"
     <circle cx="220" cy="360" r="20" opacity="0.6"/>
     <circle cx="292" cy="360" r="20" opacity="0.6"/>
     <circle cx="372" cy="360" r="20" opacity="0.6"/>
-    
+
     <!-- Connection lines -->
     <line x1="256" y1="232" x2="180" y2="256" stroke="white" stroke-width="3" opacity="0.8"/>
     <line x1="256" y1="232" x2="332" y2="256" stroke="white" stroke-width="3" opacity="0.8"/>
@@ -38,16 +38,16 @@ main_icon_svg = '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"
     <line x1="180" y1="304" x2="220" y2="340" stroke="white" stroke-width="2" opacity="0.6"/>
     <line x1="332" y1="304" x2="292" y2="340" stroke="white" stroke-width="2" opacity="0.6"/>
     <line x1="332" y1="304" x2="372" y2="340" stroke="white" stroke-width="2" opacity="0.6"/>
-    
+
     <!-- Signal waves -->
     <path d="M 256 150 Q 226 120 196 150" stroke="white" stroke-width="3" fill="none" opacity="0.4"/>
     <path d="M 256 150 Q 286 120 316 150" stroke="white" stroke-width="3" fill="none" opacity="0.4"/>
     <path d="M 256 140 Q 216 100 176 140" stroke="white" stroke-width="2" fill="none" opacity="0.3"/>
     <path d="M 256 140 Q 296 100 336 140" stroke="white" stroke-width="2" fill="none" opacity="0.3"/>
   </g>
-  
+
   <!-- App name -->
-  <text x="256" y="460" font-family="Arial, sans-serif" font-size="32" font-weight="bold" 
+  <text x="256" y="460" font-family="Arial, sans-serif" font-size="32" font-weight="bold"
         text-anchor="middle" fill="white" opacity="0.9">HomeNetMon</text>
 </svg>'''
 
@@ -66,7 +66,7 @@ shortcut_icons = {
       <rect x="20" y="52" width="24" height="24" rx="4" fill="white" opacity="0.7"/>
       <rect x="52" y="52" width="24" height="24" rx="4" fill="white" opacity="0.5"/>
     </svg>''',
-    
+
     'topology': '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
       <rect width="96" height="96" rx="12" fill="#198754"/>
       <circle cx="48" cy="30" r="8" fill="white"/>
@@ -79,7 +79,7 @@ shortcut_icons = {
       <line x1="25" y1="61" x2="25" y2="70" stroke="white" stroke-width="1.5"/>
       <line x1="71" y1="61" x2="71" y2="70" stroke="white" stroke-width="1.5"/>
     </svg>''',
-    
+
     'alerts': '''<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96">
       <rect width="96" height="96" rx="12" fill="#dc3545"/>
       <polygon points="48,20 65,65 31,65" fill="white"/>

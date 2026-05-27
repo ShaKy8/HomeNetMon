@@ -10,10 +10,10 @@ try:
     import factory
     import factory.fuzzy
     from faker import Faker
-    
+
     # If successful, import from the original factories
     from .factories_original import *
-    
+
 except ImportError:
     # Fall back to simple factories if factory_boy is not available
     import warnings
@@ -22,5 +22,5 @@ except ImportError:
         "For full testing capabilities, install: pip install factory-boy faker",
         ImportWarning
     )
-    
+
     from .simple_factories import *

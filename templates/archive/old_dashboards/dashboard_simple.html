@@ -39,7 +39,7 @@ body::before {
     left: 0;
     width: 100%;
     height: 100%;
-    background: 
+    background:
         radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
         radial-gradient(circle at 80% 20%, rgba(255, 119, 198, 0.3) 0%, transparent 50%),
         radial-gradient(circle at 40% 40%, rgba(120, 219, 255, 0.2) 0%, transparent 50%);
@@ -85,7 +85,7 @@ body::before {
 /* Main Grid Layout */
 .main-grid {
     display: grid;
-    grid-template-areas: 
+    grid-template-areas:
         "health metrics metrics"
         "activity activity charts";
     grid-template-columns: 400px 1fr 1fr;
@@ -431,7 +431,7 @@ body::before {
 /* Responsive Design */
 @media (max-width: 1200px) {
     .main-grid {
-        grid-template-areas: 
+        grid-template-areas:
             "health health"
             "metrics metrics"
             "activity charts";
@@ -443,30 +443,30 @@ body::before {
     .dashboard {
         padding: 1rem;
     }
-    
+
     .main-grid {
-        grid-template-areas: 
+        grid-template-areas:
             "health"
-            "metrics" 
+            "metrics"
             "activity"
             "charts";
         grid-template-columns: 1fr;
         gap: 1.5rem;
     }
-    
+
     .health-section {
         padding: 2rem 1.5rem;
     }
-    
+
     .health-ring {
         width: 140px;
         height: 140px;
     }
-    
+
     .health-score {
         font-size: 2.5rem;
     }
-    
+
     .metrics-section {
         grid-template-columns: 1fr;
     }
@@ -519,7 +519,7 @@ body::before {
                 <div class="health-ring">
                     <svg width="180" height="180">
                         <circle cx="90" cy="90" r="80" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="8"/>
-                        <circle cx="90" cy="90" r="80" fill="none" stroke="url(#healthGradient)" 
+                        <circle cx="90" cy="90" r="80" fill="none" stroke="url(#healthGradient)"
                                 stroke-width="8" stroke-linecap="round"
                                 stroke-dasharray="502" stroke-dashoffset="502" id="health-ring">
                         </circle>
@@ -708,7 +708,7 @@ async function loadDashboardData() {
         updateMetrics(summary);
         updateCharts(summary);
         updateActivityFeed(activity);
-        
+
     } catch (error) {
         console.error('Dashboard error:', error);
     }
@@ -719,29 +719,29 @@ function updateHealthScore(data) {
     const online = data.devices_up || 0;
     const responseTime = data.avg_response_time || 0;
     const alerts = data.active_alerts || 0;
-    
+
     let score = 100;
     if (total > 0) {
         const upPercent = (online / total) * 100;
         score = Math.min(score, upPercent);
     }
-    
+
     if (responseTime > 100) score -= 10;
     if (responseTime > 200) score -= 10;
     if (responseTime > 500) score -= 20;
     score -= Math.min(alerts * 0.5, 30);
     score = Math.max(0, Math.round(score));
-    
+
     // Animate score
     animateValue('health-score', lastHealthScore, score, 1000);
     lastHealthScore = score;
-    
+
     // Update ring
     const ring = document.getElementById('health-ring');
     const circumference = 2 * Math.PI * 80;
     const offset = circumference - (score / 100) * circumference;
     ring.style.strokeDashoffset = offset;
-    
+
     // Update status
     const healthStatus = document.getElementById('health-status');
     if (score >= 90) {
@@ -765,16 +765,16 @@ function updateMetrics(data) {
     const online = data.devices_up || 0;
     document.getElementById('devices-online').textContent = `${online}/${total}`;
     updateTrend('devices-trend', online / total);
-    
+
     // Network Uptime
     document.getElementById('network-uptime').textContent = data.network_uptime || '99.9%';
-    
+
     // Response Time
     const avgResponse = data.avg_response_time || 0;
-    document.getElementById('avg-response').textContent = 
+    document.getElementById('avg-response').textContent =
         avgResponse < 1000 ? `${Math.round(avgResponse)}ms` : `${(avgResponse/1000).toFixed(1)}s`;
     updateTrend('response-trend', avgResponse < 100 ? 0.9 : avgResponse < 200 ? 0.7 : 0.3);
-    
+
     // Active Alerts
     const alerts = data.active_alerts || 0;
     document.getElementById('active-alerts').textContent = alerts;
@@ -807,7 +807,7 @@ function updateCharts(data) {
 
 function updateActivityFeed(data) {
     const feed = document.getElementById('activity-feed');
-    
+
     if (!data.activities || data.activities.length === 0) {
         feed.innerHTML = `
             <div class="activity-item">
@@ -820,11 +820,11 @@ function updateActivityFeed(data) {
         `;
         return;
     }
-    
+
     feed.innerHTML = data.activities.map(activity => {
         const dotClass = getDotClass(activity.type);
         const time = getRelativeTime(activity.timestamp);
-        
+
         return `
             <div class="activity-item">
                 <div class="activity-dot ${dotClass}"></div>
@@ -851,7 +851,7 @@ function getRelativeTime(timestamp) {
     const now = new Date();
     const then = new Date(timestamp);
     const diff = Math.floor((now - then) / 1000);
-    
+
     if (diff < 60) return 'Just now';
     if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
     if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
@@ -862,18 +862,18 @@ function animateValue(id, start, end, duration) {
     const element = document.getElementById(id);
     const range = end - start;
     const startTime = performance.now();
-    
+
     function updateValue(currentTime) {
         const elapsed = currentTime - startTime;
         const progress = Math.min(elapsed / duration, 1);
         const value = Math.floor(start + range * progress);
         element.textContent = value;
-        
+
         if (progress < 1) {
             requestAnimationFrame(updateValue);
         }
     }
-    
+
     requestAnimationFrame(updateValue);
 }
 
@@ -902,7 +902,7 @@ function showToast(message) {
     `;
     toast.textContent = message;
     document.body.appendChild(toast);
-    
+
     setTimeout(() => {
         toast.style.animation = 'slideOut 0.3s ease';
         setTimeout(() => toast.remove(), 300);

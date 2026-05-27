@@ -29,7 +29,7 @@ def get_system_info_endpoint():
             'error': str(e)
         }), 500
 
-@system_bp.route('/version', methods=['GET']) 
+@system_bp.route('/version', methods=['GET'])
 @create_endpoint_limiter('relaxed')
 def get_version_endpoint():
     """Get version information only"""

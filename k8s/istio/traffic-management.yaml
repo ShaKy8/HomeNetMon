@@ -146,45 +146,45 @@ spec:
                 local:
                   inline_string: |
                     const ROOT_CONTEXT_ID = "homenetmon_auth";
-                    
+
                     class RootContext {
                       constructor(rootContextId) {
                         this.rootContextId = rootContextId;
                       }
-                      
+
                       onConfigure(size) {
                         const config = JSON.parse(this.getBufferBytes(WasmBufferType.PluginConfiguration, 0, size).toString());
                         this.config = config;
                         return true;
                       }
                     }
-                    
+
                     class HttpContext {
                       constructor(rootContextId, contextId) {
                         this.rootContextId = rootContextId;
                         this.contextId = contextId;
                       }
-                      
+
                       onRequestHeaders() {
                         const path = this.getRequestHeader(":path");
                         const method = this.getRequestHeader(":method");
-                        
+
                         // Allow public endpoints
                         if (this.isPublicEndpoint(path)) {
                           return FilterHeadersStatus.Continue;
                         }
-                        
+
                         // Check authentication for protected endpoints
                         const authHeader = this.getRequestHeader("authorization");
                         if (!authHeader || !authHeader.startsWith("Bearer ")) {
                           this.sendLocalResponse(401, "Unauthorized", "Missing or invalid authorization header", []);
                           return FilterHeadersStatus.StopIteration;
                         }
-                        
+
                         // Additional JWT validation would go here
                         return FilterHeadersStatus.Continue;
                       }
-                      
+
                       isPublicEndpoint(path) {
                         const config = JSON.parse(this.getContext(ROOT_CONTEXT_ID).config);
                         return config.public_endpoints.some(endpoint => path.startsWith(endpoint));

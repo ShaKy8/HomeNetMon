@@ -4,7 +4,7 @@ kind: Kustomization
 
 metadata:
   name: homenetmon-development
-  
+
 # Base configuration
 resources:
 - ../../base

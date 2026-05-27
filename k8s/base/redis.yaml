@@ -77,7 +77,7 @@ spec:
       - name: redis-config
         configMap:
           name: homenetmon-redis-config
-          
+
 ---
 apiVersion: v1
 kind: Service
@@ -95,7 +95,7 @@ spec:
     name: redis
   selector:
     app.kubernetes.io/name: homenetmon-redis
-    
+
 ---
 apiVersion: v1
 kind: ConfigMap
@@ -112,11 +112,11 @@ data:
     port 6379
     timeout 300
     tcp-keepalive 300
-    
+
     # Memory management
     maxmemory 512mb
     maxmemory-policy allkeys-lru
-    
+
     # Persistence
     save 900 1
     save 300 10
@@ -126,14 +126,14 @@ data:
     rdbchecksum yes
     dbfilename dump.rdb
     dir /data
-    
+
     # Security
     # requirepass will be set via command line
-    
+
     # Logging
     loglevel notice
     logfile ""
-    
+
     # Client output buffer limits
     client-output-buffer-limit normal 0 0 0
     client-output-buffer-limit replica 256mb 64mb 60

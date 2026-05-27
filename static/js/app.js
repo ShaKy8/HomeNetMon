@@ -21,18 +21,18 @@ window.HomeNetMon = {
 
 // Initialize application when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
-    
+
     // Initialize Socket.IO connection
     initializeSocket();
-    
+
     // Initialize global event handlers
     initializeGlobalHandlers();
-    
+
     // Start auto-refresh if enabled
     if (HomeNetMon.config.autoRefresh) {
         startAutoRefresh();
     }
-    
+
 });
 
 /**
@@ -44,27 +44,27 @@ function initializeSocket() {
             transports: ['websocket', 'polling'],
             timeout: 20000
         });
-        
+
         HomeNetMon.socket.on('connect', function() {
             HomeNetMon.config.socketConnected = true;
             updateConnectionStatus(true);
         });
-        
+
         HomeNetMon.socket.on('disconnect', function() {
             HomeNetMon.config.socketConnected = false;
             updateConnectionStatus(false);
         });
-        
+
         // Listen for device updates
         HomeNetMon.socket.on('device_status_update', function(data) {
             updateDeviceStatus(data);
         });
-        
+
         // Listen for monitoring summaries
         HomeNetMon.socket.on('monitoring_summary', function(data) {
             updateMonitoringSummary(data);
         });
-        
+
     } catch (error) {
     }
 }
@@ -84,7 +84,7 @@ function initializeGlobalHandlers() {
             }
         }
     });
-    
+
     // Handle refresh buttons
     document.addEventListener('click', function(e) {
         if (e.target.matches('[data-refresh]')) {
@@ -110,7 +110,7 @@ function updateConnectionStatus(connected) {
  */
 function updateDeviceStatus(data) {
     if (!data || !data.device_id) return;
-    
+
     const deviceRows = document.querySelectorAll(`[data-device-id="${data.device_id}"]`);
     deviceRows.forEach(row => {
         // Update status badge
@@ -119,13 +119,13 @@ function updateDeviceStatus(data) {
             statusBadge.className = `badge bg-${getStatusColor(data.status)}`;
             statusBadge.textContent = data.status.toUpperCase();
         }
-        
+
         // Update response time
         const responseTime = row.querySelector('[data-response-time]');
         if (responseTime) {
             responseTime.textContent = data.response_time ? `${data.response_time}ms` : 'N/A';
         }
-        
+
         // Update last seen
         const lastSeen = row.querySelector('[data-last-seen]');
         if (lastSeen && data.timestamp) {
@@ -139,7 +139,7 @@ function updateDeviceStatus(data) {
  */
 function updateMonitoringSummary(data) {
     if (!data) return;
-    
+
     // Update quick stats
     const stats = [
         { key: 'total_devices', selector: '[data-stat-total-devices]' },
@@ -147,14 +147,14 @@ function updateMonitoringSummary(data) {
         { key: 'devices_down', selector: '[data-stat-devices-down]' },
         { key: 'active_alerts', selector: '[data-stat-active-alerts]' }
     ];
-    
+
     stats.forEach(stat => {
         const elements = document.querySelectorAll(stat.selector);
         elements.forEach(el => {
             el.textContent = data[stat.key] || '0';
         });
     });
-    
+
     // Update success rate if available
     if (data.success_rate !== undefined) {
         const successElements = document.querySelectorAll('[data-stat-success-rate]');
@@ -213,7 +213,7 @@ function refreshData() {
  */
 function apiCall(endpoint, options = {}) {
     const url = HomeNetMon.config.apiBase + endpoint;
-    
+
     return fetch(url, {
         headers: {
             'Content-Type': 'application/json',

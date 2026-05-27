@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Usage Analytics - HomeNetMon</title>
-    
+
     <!-- Bootstrap CSS -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Font Awesome -->
@@ -14,7 +14,7 @@
     <!-- Date picker -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    
+
     <style>
         .quota-card {
             border-left: 4px solid #dee2e6;
@@ -32,11 +32,11 @@
         .quota-card.quota-critical {
             border-left-color: #6f42c1;
         }
-        
+
         .progress-bar-animated {
             animation: progress-bar-stripes 1s linear infinite;
         }
-        
+
         .metric-icon {
             width: 48px;
             height: 48px;
@@ -46,7 +46,7 @@
             border-radius: 12px;
             font-size: 24px;
         }
-        
+
         .trend-up {
             color: #28a745;
         }
@@ -56,31 +56,31 @@
         .trend-stable {
             color: #6c757d;
         }
-        
+
         .analytics-card {
             transition: transform 0.2s;
         }
         .analytics-card:hover {
             transform: translateY(-2px);
         }
-        
+
         .chart-container {
             position: relative;
             height: 300px;
             margin-bottom: 20px;
         }
-        
+
         .stats-grid {
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
             gap: 20px;
             margin-bottom: 30px;
         }
-        
+
         .export-buttons {
             gap: 10px;
         }
-        
+
         @media (max-width: 768px) {
             .stats-grid {
                 grid-template-columns: 1fr;
@@ -275,7 +275,7 @@
     </div>
 
     <!-- Loading Overlay -->
-    <div id="loadingOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-none" 
+    <div id="loadingOverlay" class="position-fixed top-0 start-0 w-100 h-100 d-none"
          style="background: rgba(255,255,255,0.8); z-index: 9999;">
         <div class="d-flex justify-content-center align-items-center h-100">
             <div class="spinner-border text-primary" role="status">
@@ -299,7 +299,7 @@
             initializeDatePicker();
             initializeCharts();
             loadDashboardData();
-            
+
             // Set up chart type change listeners
             document.querySelectorAll('input[name="chartType"]').forEach(radio => {
                 radio.addEventListener('change', function() {
@@ -386,7 +386,7 @@
 
         async function loadDashboardData() {
             showLoading(true);
-            
+
             try {
                 // Get date range
                 const dateRange = document.getElementById('dateRange').value.split(' to ');
@@ -401,7 +401,7 @@
                     end_date: endDate,
                     aggregation: aggregation
                 });
-                
+
                 if (metric) {
                     params.append('metric_type', metric);
                 }
@@ -447,12 +447,12 @@
 
         function createQuotaCard(metric, data) {
             const div = document.createElement('div');
-            
+
             // Determine status class
             let statusClass = 'quota-ok';
             let statusIcon = 'check-circle';
             let statusText = 'OK';
-            
+
             if (data.percentage_used >= 100) {
                 statusClass = 'quota-critical';
                 statusIcon = 'exclamation-triangle';
@@ -491,14 +491,14 @@
                                 <i class="fas fa-${statusIcon} text-${statusClass.replace('quota-', '')}"></i>
                             </div>
                         </div>
-                        
+
                         <div class="mb-3">
                             <div class="d-flex justify-content-between mb-1">
                                 <span class="h5 mb-0">${formatNumber(data.current_usage)}</span>
                                 <span class="text-muted">/ ${formatNumber(data.quota)}</span>
                             </div>
                             <div class="progress" style="height: 8px;">
-                                <div class="progress-bar bg-${statusClass.replace('quota-', '')}" 
+                                <div class="progress-bar bg-${statusClass.replace('quota-', '')}"
                                      style="width: ${Math.min(data.percentage_used, 100)}%"></div>
                             </div>
                             <div class="d-flex justify-content-between mt-1">
@@ -506,21 +506,21 @@
                                 <small class="text-muted">${formatNumber(data.remaining)} remaining</small>
                             </div>
                         </div>
-                        
+
                         ${data.overage > 0 ? `
                             <div class="alert alert-warning alert-sm">
                                 <i class="fas fa-exclamation-triangle me-2"></i>
                                 Overage: ${formatNumber(data.overage)} units
                             </div>
                         ` : ''}
-                        
+
                         <div class="text-center">
                             <span class="badge bg-${statusClass.replace('quota-', '')}">${statusText}</span>
                         </div>
                     </div>
                 </div>
             `;
-            
+
             return div.firstElementChild;
         }
 
@@ -529,7 +529,7 @@
 
             const data = currentData.analytics.aggregated_data;
             const labels = data.map(d => d.timestamp);
-            
+
             // Get all metrics from data
             const metrics = new Set();
             data.forEach(d => {
@@ -542,13 +542,13 @@
                     '#007bff', '#28a745', '#ffc107', '#dc3545',
                     '#6f42c1', '#17a2b8', '#fd7e14', '#e83e8c'
                 ];
-                
+
                 return {
                     label: formatMetricName(metric),
                     data: values,
                     borderColor: colors[index % colors.length],
-                    backgroundColor: chartType === 'area' ? 
-                        colors[index % colors.length] + '20' : 
+                    backgroundColor: chartType === 'area' ?
+                        colors[index % colors.length] + '20' :
                         colors[index % colors.length],
                     fill: chartType === 'area'
                 };
@@ -563,7 +563,7 @@
         function updateQuotaChart(quotaData) {
             const labels = [];
             const data = [];
-            
+
             Object.entries(quotaData).forEach(([metric, info]) => {
                 labels.push(formatMetricName(metric));
                 data.push(info.percentage_used);
@@ -587,10 +587,10 @@
         function createTrendCard(trend) {
             const div = document.createElement('div');
             div.className = 'col-md-6 col-lg-4 mb-3';
-            
+
             const trendIcon = trend.trend_direction === 'increasing' ? 'trend-up' :
                             trend.trend_direction === 'decreasing' ? 'trend-down' : 'trend-stable';
-            
+
             const trendArrow = trend.trend_direction === 'increasing' ? 'fa-arrow-up' :
                              trend.trend_direction === 'decreasing' ? 'fa-arrow-down' : 'fa-minus';
 
@@ -617,7 +617,7 @@
                     </div>
                 </div>
             `;
-            
+
             return div;
         }
 
@@ -628,7 +628,7 @@
             Object.entries(quotaData).forEach(([metric, data]) => {
                 const row = tbody.insertRow();
                 const trend = analyticsData.trend_analysis.find(t => t.metric_type === metric);
-                
+
                 row.innerHTML = `
                     <td>${formatMetricName(metric)}</td>
                     <td>${formatNumber(data.current_usage)}</td>
@@ -641,8 +641,8 @@
                     <td>${formatNumber(data.remaining)}</td>
                     <td>
                         ${trend ? `
-                            <i class="fas fa-arrow-${trend.growth_rate > 0 ? 'up text-success' : 
-                                                   trend.growth_rate < 0 ? 'down text-danger' : 
+                            <i class="fas fa-arrow-${trend.growth_rate > 0 ? 'up text-success' :
+                                                   trend.growth_rate < 0 ? 'down text-danger' :
                                                    'right text-muted'}"></i>
                             ${Math.abs(trend.growth_rate).toFixed(1)}%
                         ` : '-'}
@@ -704,14 +704,14 @@
 
         function exportData(format) {
             if (!currentData) return;
-            
+
             // Create export data
             const exportData = {
                 timestamp: new Date().toISOString(),
                 analytics: currentData.analytics,
                 quota: currentData.quota
             };
-            
+
             if (format === 'csv') {
                 exportToCSV(exportData);
             } else if (format === 'pdf') {
@@ -739,11 +739,11 @@
         function convertToCSV(data) {
             // Simple CSV conversion
             let csv = 'Metric,Current Usage,Quota,Percentage Used,Status\n';
-            
+
             Object.entries(data.quota).forEach(([metric, info]) => {
                 csv += `${formatMetricName(metric)},${info.current_usage},${info.quota},${info.percentage_used}%,${getStatusText(info.percentage_used, info.is_over_quota)}\n`;
             });
-            
+
             return csv;
         }
 

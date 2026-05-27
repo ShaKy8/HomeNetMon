@@ -358,7 +358,7 @@
             loadDeviceList();
             loadPerformanceData();
             setupEventListeners();
-            
+
             // Auto-refresh every 30 seconds
             setInterval(() => {
                 if (document.visibilityState === 'visible') {
@@ -379,7 +379,7 @@
             });
 
             document.getElementById('refresh-data').addEventListener('click', loadPerformanceData);
-            
+
             document.getElementById('run-bandwidth-test').addEventListener('click', function() {
                 runBandwidthTest();
             });
@@ -410,10 +410,10 @@
                 const response = await fetch('/api/devices');
                 const data = await response.json();
                 const deviceFilter = document.getElementById('device-filter');
-                
+
                 // Clear existing options (except "All Devices")
                 deviceFilter.innerHTML = '<option value="">All Devices</option>';
-                
+
                 data.devices.forEach(device => {
                     const option = document.createElement('option');
                     option.value = device.id;
@@ -429,28 +429,28 @@
             try {
                 // Load performance summary
                 await loadPerformanceSummary();
-                
+
                 // Load network quality score
                 await loadNetworkQuality();
-                
+
                 // Load performance trends
                 await loadPerformanceTrends();
-                
+
                 // Load bandwidth history
                 await loadBandwidthHistory();
-                
+
                 // Load device performance
                 await loadDevicePerformance();
-                
+
                 // Load performance alerts
                 await loadPerformanceAlerts();
-                
+
                 // Load optimization recommendations
                 await loadOptimizationRecommendations();
-                
+
                 // Load detailed metrics
                 await loadDetailedMetrics();
-                
+
             } catch (error) {
                 console.error('Error loading performance data:', error);
                 showToast('Error loading performance data', 'error');
@@ -460,16 +460,16 @@
         async function loadPerformanceSummary() {
             const response = await fetch(`/api/performance/summary?hours=${currentTimeRange}`);
             const data = await response.json();
-            
+
             // Update overview cards
             if (data.metrics) {
                 // Average latency
                 if (data.metrics.response_time) {
-                    document.getElementById('avg-latency').textContent = 
+                    document.getElementById('avg-latency').textContent =
                         `${data.metrics.response_time.average.toFixed(1)} ms`;
-                    document.getElementById('latency-devices').textContent = 
+                    document.getElementById('latency-devices').textContent =
                         `${data.metrics.response_time.device_count || 0} devices`;
-                    
+
                     // Set trend arrow based on recent performance
                     const trendIcon = document.getElementById('latency-trend');
                     if (data.metrics.response_time.average < 50) {
@@ -481,23 +481,23 @@
                     }
                 }
             }
-            
+
             // Update bandwidth info
             if (data.bandwidth && data.bandwidth.download_mbps) {
-                document.getElementById('bandwidth-speed').textContent = 
+                document.getElementById('bandwidth-speed').textContent =
                     `${data.bandwidth.download_mbps.toFixed(1)} Mbps`;
-                document.getElementById('bandwidth-details').textContent = 
+                document.getElementById('bandwidth-details').textContent =
                     `↓${data.bandwidth.download_mbps.toFixed(1)} / ↑${data.bandwidth.upload_mbps.toFixed(1)} Mbps`;
             }
-            
+
             // Update alerts count
             if (data.alerts) {
                 document.getElementById('active-alerts-count').textContent = data.alerts.active_count || 0;
-                
-                const criticalAlerts = data.alerts.recent_alerts ? 
+
+                const criticalAlerts = data.alerts.recent_alerts ?
                     data.alerts.recent_alerts.filter(alert => alert.severity === 'critical').length : 0;
                 document.getElementById('alerts-breakdown').textContent = `${criticalAlerts} critical`;
-                
+
                 // Update alerts icon color
                 const alertsIcon = document.getElementById('alerts-icon');
                 if (criticalAlerts > 0) {
@@ -513,12 +513,12 @@
         async function loadNetworkQuality() {
             const response = await fetch(`/api/performance/quality/score?hours=${currentTimeRange}`);
             const data = await response.json();
-            
-            document.getElementById('network-quality-score').textContent = 
+
+            document.getElementById('network-quality-score').textContent =
                 data.overall_score ? `${data.overall_score}%` : '--';
-            document.getElementById('network-quality-grade').textContent = 
+            document.getElementById('network-quality-grade').textContent =
                 `Grade: ${data.quality_grade || '--'}`;
-            
+
             // Update quality indicator color
             const indicator = document.getElementById('quality-indicator');
             if (data.overall_score >= 90) {
@@ -540,36 +540,36 @@
                 metric_type: 'response_time',
                 interval: currentTimeRange <= 24 ? 60 : 240  // 1h or 4h intervals
             });
-            
+
             if (currentDeviceFilter) {
                 params.append('device_id', currentDeviceFilter);
             }
-            
+
             const response = await fetch(`/api/performance/metrics/trends?${params}`);
             const data = await response.json();
-            
+
             updatePerformanceTrendsChart(data.trends || []);
         }
 
         async function loadBandwidthHistory() {
             const response = await fetch(`/api/performance/bandwidth/history?hours=${currentTimeRange}`);
             const data = await response.json();
-            
+
             updateBandwidthChart(data.analyzer_data || []);
         }
 
         async function loadDevicePerformance() {
             const response = await fetch('/api/devices');
             const devicesData = await response.json();
-            
+
             const deviceList = document.getElementById('device-performance-list');
             deviceList.innerHTML = '';
-            
+
             for (const device of devicesData.devices.slice(0, 10)) {  // Show top 10 devices
                 try {
                     const perfResponse = await fetch(`/api/performance/device/${device.id}?hours=${currentTimeRange}`);
                     const perfData = await perfResponse.json();
-                    
+
                     const deviceItem = createDevicePerformanceItem(device, perfData);
                     deviceList.appendChild(deviceItem);
                 } catch (error) {
@@ -583,24 +583,24 @@
                 hours: currentTimeRange,
                 status: 'active'
             });
-            
+
             if (currentDeviceFilter) {
                 params.append('device_id', currentDeviceFilter);
             }
-            
+
             const response = await fetch(`/api/performance/alerts?${params}`);
             const data = await response.json();
-            
+
             const alertsList = document.getElementById('performance-alerts-list');
             alertsList.innerHTML = '';
-            
+
             const allAlerts = [...(data.analyzer_alerts || []), ...(data.database_alerts || [])];
-            
+
             if (allAlerts.length === 0) {
                 alertsList.innerHTML = '<p class="text-muted">No active performance alerts</p>';
                 return;
             }
-            
+
             allAlerts.slice(0, 10).forEach(alert => {
                 const alertItem = createAlertItem(alert);
                 alertsList.appendChild(alertItem);
@@ -610,17 +610,17 @@
         async function loadOptimizationRecommendations() {
             const response = await fetch('/api/performance/recommendations?status=pending&priority_min=2');
             const data = await response.json();
-            
+
             const recommendationsDiv = document.getElementById('optimization-recommendations');
             recommendationsDiv.innerHTML = '';
-            
+
             const allRecommendations = [...(data.analyzer_recommendations || []), ...(data.database_recommendations || [])];
-            
+
             if (allRecommendations.length === 0) {
                 recommendationsDiv.innerHTML = '<p class="text-muted">No pending optimization recommendations</p>';
                 return;
             }
-            
+
             allRecommendations.slice(0, 5).forEach(recommendation => {
                 const recItem = createRecommendationItem(recommendation);
                 recommendationsDiv.appendChild(recItem);
@@ -631,22 +631,22 @@
             const params = new URLSearchParams({
                 hours: currentTimeRange
             });
-            
+
             if (currentDeviceFilter) {
                 params.append('device_id', currentDeviceFilter);
             }
-            
+
             const response = await fetch(`/api/performance/metrics?${params}`);
             const data = await response.json();
-            
+
             const tableBody = document.getElementById('metrics-table-body');
             tableBody.innerHTML = '';
-            
+
             if (!data.metrics_summary || Object.keys(data.metrics_summary).length === 0) {
                 tableBody.innerHTML = '<tr><td colspan="7" class="text-center text-muted">No metrics data available</td></tr>';
                 return;
             }
-            
+
             // Create rows for each metric type
             Object.entries(data.metrics_summary).forEach(([metricType, metricData]) => {
                 const row = createMetricsTableRow(metricType, metricData);
@@ -656,16 +656,16 @@
 
         function updatePerformanceTrendsChart(trends) {
             const ctx = document.getElementById('performance-trends-chart').getContext('2d');
-            
+
             if (performanceTrendsChart) {
                 performanceTrendsChart.destroy();
             }
-            
+
             const labels = trends.map(t => new Date(t.timestamp).toLocaleTimeString());
             const avgData = trends.map(t => t.average);
             const minData = trends.map(t => t.min);
             const maxData = trends.map(t => t.max);
-            
+
             performanceTrendsChart = new Chart(ctx, {
                 type: 'line',
                 data: {
@@ -717,15 +717,15 @@
 
         function updateBandwidthChart(bandwidthData) {
             const ctx = document.getElementById('bandwidth-chart').getContext('2d');
-            
+
             if (bandwidthChart) {
                 bandwidthChart.destroy();
             }
-            
+
             const labels = bandwidthData.map(b => new Date(b.timestamp).toLocaleTimeString());
             const downloadData = bandwidthData.map(b => b.download_mbps);
             const uploadData = bandwidthData.map(b => b.upload_mbps);
-            
+
             bandwidthChart = new Chart(ctx, {
                 type: 'bar',
                 data: {
@@ -768,10 +768,10 @@
         function createDevicePerformanceItem(device, perfData) {
             const div = document.createElement('div');
             div.className = 'mb-3 p-3 border rounded';
-            
+
             const performanceLevel = perfData.performance_level || 'unknown';
             const qualityClass = `quality-${performanceLevel}`;
-            
+
             div.innerHTML = `
                 <div class="d-flex justify-content-between align-items-center">
                     <div>
@@ -790,21 +790,21 @@
                     </small>
                 </div>
             `;
-            
+
             div.style.cursor = 'pointer';
             div.addEventListener('click', () => {
                 window.location.href = `/device/${device.id}?tab=performance`;
             });
-            
+
             return div;
         }
 
         function createAlertItem(alert) {
             const div = document.createElement('div');
             div.className = `alert-item p-3 mb-2 border rounded alert-${alert.severity}`;
-            
+
             const timeAgo = new Date(alert.detected_at).toLocaleString();
-            
+
             div.innerHTML = `
                 <div class="d-flex justify-content-between align-items-start">
                     <div>
@@ -816,26 +816,26 @@
                     <span class="badge bg-${getSeverityColor(alert.severity)}">${alert.severity}</span>
                 </div>
             `;
-            
+
             div.style.cursor = 'pointer';
             div.addEventListener('click', () => {
                 showAlertDetails(alert);
             });
-            
+
             return div;
         }
 
         function createRecommendationItem(recommendation) {
             const div = document.createElement('div');
             div.className = `recommendation-card p-3 mb-3 border rounded priority-${recommendation.priority}`;
-            
+
             div.innerHTML = `
                 <div class="d-flex justify-content-between align-items-start">
                     <div class="flex-grow-1">
                         <h6 class="mb-1">${recommendation.title}</h6>
                         <p class="mb-2 text-muted">${recommendation.description}</p>
                         <small class="text-muted">
-                            Category: ${recommendation.category} | 
+                            Category: ${recommendation.category} |
                             Effort: ${recommendation.implementation_effort} |
                             Impact: ${recommendation.estimated_improvement || 'TBD'}
                         </small>
@@ -845,22 +845,22 @@
                     </div>
                 </div>
             `;
-            
+
             div.style.cursor = 'pointer';
             div.addEventListener('click', () => {
                 showRecommendationDetails(recommendation);
             });
-            
+
             return div;
         }
 
         function createMetricsTableRow(metricType, metricData) {
             const row = document.createElement('tr');
-            
+
             const deviceCount = metricData.device_count || 0;
             const stats = metricData.statistics;
             const unit = metricData.unit || '';
-            
+
             // Determine quality based on metric type and values
             let quality = 'good';
             if (metricType === 'response_time' && stats) {
@@ -873,7 +873,7 @@
                 else if (stats.average > 0) quality = 'fair';
                 else quality = 'excellent';
             }
-            
+
             // Simple trend calculation (just show if current is above/below average)
             let trendIcon = 'fas fa-minus text-muted';
             if (stats && stats.max > stats.average * 1.2) {
@@ -881,7 +881,7 @@
             } else if (stats && stats.min < stats.average * 0.8) {
                 trendIcon = 'fas fa-arrow-down text-success';
             }
-            
+
             row.innerHTML = `
                 <td>${deviceCount} devices</td>
                 <td>${metricType.replace('_', ' ').toUpperCase()}</td>
@@ -891,7 +891,7 @@
                 <td><span class="quality-indicator quality-${quality}"></span>${quality}</td>
                 <td>${new Date().toLocaleTimeString()}</td>
             `;
-            
+
             return row;
         }
 
@@ -907,7 +907,7 @@
 
         function showAlertDetails(alert) {
             currentAlertId = alert.alert_id;
-            
+
             const modalBody = document.getElementById('alert-details');
             modalBody.innerHTML = `
                 <div class="row">
@@ -938,13 +938,13 @@
                     </div>
                 </div>
             `;
-            
+
             new bootstrap.Modal(document.getElementById('alertModal')).show();
         }
 
         function showRecommendationDetails(recommendation) {
             currentRecommendationId = recommendation.recommendation_id;
-            
+
             const modalBody = document.getElementById('recommendation-details');
             modalBody.innerHTML = `
                 <div class="row">
@@ -972,7 +972,7 @@
                     </div>
                 ` : ''}
             `;
-            
+
             new bootstrap.Modal(document.getElementById('recommendationModal')).show();
         }
 
@@ -981,11 +981,11 @@
                 const button = document.getElementById('run-bandwidth-test');
                 button.disabled = true;
                 button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Testing...';
-                
+
                 const response = await fetch('/api/performance/bandwidth/test', {
                     method: 'POST'
                 });
-                
+
                 if (response.ok) {
                     showToast('Bandwidth test initiated', 'success');
                     // Reload bandwidth data after test completes
@@ -1008,7 +1008,7 @@
                 const response = await fetch(`/api/performance/${action}`, {
                     method: 'POST'
                 });
-                
+
                 if (response.ok) {
                     showToast(`Performance analyzer ${action}ed successfully`, 'success');
                     setTimeout(loadPerformanceData, 2000);  // Reload data after action
@@ -1033,7 +1033,7 @@
                         notes: 'Acknowledged via performance dashboard'
                     })
                 });
-                
+
                 if (response.ok) {
                     showToast('Alert acknowledged successfully', 'success');
                     bootstrap.Modal.getInstance(document.getElementById('alertModal')).hide();
@@ -1060,7 +1060,7 @@
                         notes: `${status.charAt(0).toUpperCase() + status.slice(1)} via performance dashboard`
                     })
                 });
-                
+
                 if (response.ok) {
                     showToast(`Recommendation ${status} successfully`, 'success');
                     bootstrap.Modal.getInstance(document.getElementById('recommendationModal')).hide();
@@ -1077,7 +1077,7 @@
         function showToast(message, type = 'info') {
             // Create a simple toast notification
             const toastContainer = document.getElementById('toast-container') || createToastContainer();
-            
+
             const toast = document.createElement('div');
             toast.className = `toast align-items-center text-white bg-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'primary'} border-0`;
             toast.setAttribute('role', 'alert');
@@ -1087,12 +1087,12 @@
                     <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
                 </div>
             `;
-            
+
             toastContainer.appendChild(toast);
-            
+
             const bsToast = new bootstrap.Toast(toast);
             bsToast.show();
-            
+
             // Remove toast after it's hidden
             toast.addEventListener('hidden.bs.toast', () => {
                 toast.remove();

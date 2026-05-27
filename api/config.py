@@ -18,7 +18,7 @@ def get_configuration():
             'description': config.description,
             'updated_at': config.updated_at.isoformat()
         } for config in configs}
-        
+
         # Add current runtime configuration values
         runtime_config = {
             'network_range': Config.NETWORK_RANGE,
@@ -31,12 +31,12 @@ def get_configuration():
             'port': Config.PORT,
             'debug': Config.DEBUG
         }
-        
+
         return jsonify({
             'database_config': config_dict,
             'runtime_config': runtime_config
         })
-        
+
     except Exception as e:
         raise DatabaseError("Failed to retrieve configuration", operation="get_configuration") from e
 
@@ -47,12 +47,12 @@ def get_config_value(key):
     """Get specific configuration value"""
     try:
         config = Configuration.query.filter_by(key=key).first()
-        
+
         if not config:
             raise ResourceNotFoundError("Configuration", key)
-        
+
         return jsonify(config.to_dict())
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -63,10 +63,10 @@ def update_config_value(key):
     try:
         from flask import current_app
         data = request.get_json()
-        
+
         if not data or 'value' not in data:
             return jsonify({'error': 'Value is required'}), 400
-        
+
         # Use configuration service if available
         if hasattr(current_app, 'configuration_service'):
             config_service = current_app.configuration_service
@@ -77,7 +77,7 @@ def update_config_value(key):
                 user='api_user',
                 validate=True
             )
-            
+
             if success:
                 # Get updated configuration
                 config = Configuration.query.filter_by(key=key).first()
@@ -94,7 +94,7 @@ def update_config_value(key):
                         return jsonify({'error': 'Ping interval must be between 5 and 900 seconds'}), 400
                 except ValueError:
                     return jsonify({'error': 'Ping interval must be a number'}), 400
-            
+
             elif key == 'scan_interval':
                 try:
                     value = int(data['value'])
@@ -102,7 +102,7 @@ def update_config_value(key):
                         return jsonify({'error': 'Scan interval must be between 60 and 3600 seconds'}), 400
                 except ValueError:
                     return jsonify({'error': 'Scan interval must be a number'}), 400
-            
+
             elif key == 'data_retention_days':
                 try:
                     value = int(data['value'])
@@ -110,16 +110,16 @@ def update_config_value(key):
                         return jsonify({'error': 'Data retention must be between 1 and 365 days'}), 400
                 except ValueError:
                     return jsonify({'error': 'Data retention days must be a number'}), 400
-            
+
             # Update configuration
             config = Configuration.set_value(
                 key=key,
                 value=data['value'],
                 description=data.get('description')
             )
-            
+
             return jsonify(config.to_dict())
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -136,9 +136,9 @@ def get_network_config():
             'max_workers': int(Configuration.get_value('max_workers', str(Config.MAX_WORKERS))),
             'scan_excluded_ips': Configuration.get_value('scan_excluded_ips', '')
         }
-        
+
         return jsonify(network_config)
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -148,13 +148,13 @@ def update_network_config():
     """Update network configuration"""
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({'error': 'No data provided'}), 400
-        
+
         # Validate and update each field
         updated_fields = []
-        
+
         if 'network_range' in data:
             # Basic validation for network range (CIDR notation)
             import ipaddress
@@ -164,7 +164,7 @@ def update_network_config():
                 updated_fields.append('network_range')
             except ValueError:
                 return jsonify({'error': 'Invalid network range format'}), 400
-        
+
         if 'ping_interval' in data:
             try:
                 value = int(data['ping_interval'])
@@ -175,7 +175,7 @@ def update_network_config():
                     return jsonify({'error': 'Ping interval must be between 5 and 900 seconds'}), 400
             except ValueError:
                 return jsonify({'error': 'Ping interval must be a number'}), 400
-        
+
         if 'scan_interval' in data:
             try:
                 value = int(data['scan_interval'])
@@ -186,7 +186,7 @@ def update_network_config():
                     return jsonify({'error': 'Scan interval must be between 60 and 3600 seconds'}), 400
             except ValueError:
                 return jsonify({'error': 'Scan interval must be a number'}), 400
-        
+
         if 'ping_timeout' in data:
             try:
                 value = float(data['ping_timeout'])
@@ -197,7 +197,7 @@ def update_network_config():
                     return jsonify({'error': 'Ping timeout must be between 1.0 and 10.0 seconds'}), 400
             except ValueError:
                 return jsonify({'error': 'Ping timeout must be a number'}), 400
-        
+
         if 'max_workers' in data:
             try:
                 value = int(data['max_workers'])
@@ -208,7 +208,7 @@ def update_network_config():
                     return jsonify({'error': 'Max workers must be between 1 and 100'}), 400
             except ValueError:
                 return jsonify({'error': 'Max workers must be a number'}), 400
-        
+
         if 'scan_excluded_ips' in data:
             # Basic validation for IP addresses
             excluded_ips = data['scan_excluded_ips'].strip()
@@ -220,7 +220,7 @@ def update_network_config():
                     ip_list = [ip.strip() for ip in excluded_ips.replace('\n', ',').split(',') if ip.strip()]
                     for ip in ip_list:
                         ipaddress.ip_address(ip)  # This will raise ValueError if invalid
-                    
+
                     Configuration.set_value('scan_excluded_ips', excluded_ips, 'IP addresses to exclude from network discovery scans')
                     updated_fields.append('scan_excluded_ips')
                 except ValueError as e:
@@ -229,13 +229,13 @@ def update_network_config():
                 # Empty value is valid (clears exclusions)
                 Configuration.set_value('scan_excluded_ips', '', 'IP addresses to exclude from network discovery scans')
                 updated_fields.append('scan_excluded_ips')
-        
+
         return jsonify({
             'message': f'Updated {len(updated_fields)} network configuration field(s)',
             'updated_fields': updated_fields,
             'note': 'Changes will take effect after service restart'
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -256,9 +256,9 @@ def get_alert_config():
             'device_down_threshold': int(Configuration.get_value('device_down_threshold_minutes', '3')),
             'high_latency_threshold': int(Configuration.get_value('high_latency_threshold_ms', '1000'))
         }
-        
+
         return jsonify(alert_config)
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -268,44 +268,44 @@ def update_alert_config():
     """Update alert configuration"""
     try:
         data = request.get_json()
-        
+
         if not data:
             return jsonify({'error': 'No data provided'}), 400
-        
+
         updated_fields = []
-        
+
         if 'email_enabled' in data:
             Configuration.set_value('alert_email_enabled', str(data['email_enabled']).lower(), 'Enable email alerts')
             updated_fields.append('email_enabled')
-        
+
         if 'webhook_enabled' in data:
             Configuration.set_value('alert_webhook_enabled', str(data['webhook_enabled']).lower(), 'Enable webhook alerts')
             updated_fields.append('webhook_enabled')
-        
+
         if 'push_enabled' in data:
             Configuration.set_value('push_notifications_enabled', str(data['push_enabled']).lower(), 'Enable push notifications')
             updated_fields.append('push_enabled')
-        
+
         if 'ntfy_topic' in data:
             Configuration.set_value('ntfy_topic', data['ntfy_topic'], 'Ntfy topic name')
             updated_fields.append('ntfy_topic')
-        
+
         if 'ntfy_server' in data:
             Configuration.set_value('ntfy_server', data['ntfy_server'], 'Ntfy server URL')
             updated_fields.append('ntfy_server')
-        
+
         if 'email_from' in data:
             Configuration.set_value('alert_from_email', data['email_from'], 'From email address for alerts')
             updated_fields.append('email_from')
-        
+
         if 'email_to' in data:
             Configuration.set_value('alert_to_emails', data['email_to'], 'To email addresses for alerts (comma separated)')
             updated_fields.append('email_to')
-        
+
         if 'webhook_url' in data:
             Configuration.set_value('alert_webhook_url', data['webhook_url'], 'Webhook URL for alerts')
             updated_fields.append('webhook_url')
-        
+
         if 'device_down_threshold' in data:
             try:
                 value = int(data['device_down_threshold'])
@@ -316,7 +316,7 @@ def update_alert_config():
                     return jsonify({'error': 'Device down threshold must be between 1 and 60 minutes'}), 400
             except ValueError:
                 return jsonify({'error': 'Device down threshold must be a number'}), 400
-        
+
         if 'high_latency_threshold' in data:
             try:
                 value = int(data['high_latency_threshold'])
@@ -327,12 +327,12 @@ def update_alert_config():
                     return jsonify({'error': 'High latency threshold must be between 100 and 10000 ms'}), 400
             except ValueError:
                 return jsonify({'error': 'High latency threshold must be a number'}), 400
-        
+
         return jsonify({
             'message': f'Updated {len(updated_fields)} alert configuration field(s)',
             'updated_fields': updated_fields
         })
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
@@ -343,14 +343,14 @@ def reset_configuration():
     try:
         data = request.get_json() or {}
         confirm = data.get('confirm', False)
-        
+
         if not confirm:
             return jsonify({'error': 'Please confirm reset by sending {"confirm": true}'}), 400
-        
+
         # Delete all configuration entries
         Configuration.query.delete()
         db.session.commit()
-        
+
         # Reinitialize default configuration
         default_configs = [
             ('network_range', '192.168.86.0/24', 'Network range to monitor'),
@@ -362,15 +362,15 @@ def reset_configuration():
             ('ntfy_topic', '', 'Ntfy topic name (e.g., your-unique-topic)'),
             ('ntfy_server', 'https://ntfy.sh', 'Ntfy server URL'),
         ]
-        
+
         for key, value, description in default_configs:
             Configuration.set_value(key, value, description)
-        
+
         return jsonify({
             'message': 'Configuration reset to defaults',
             'note': 'Restart required for changes to take effect'
         })
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
@@ -382,7 +382,7 @@ def test_email_config():
     try:
         from datetime import datetime
         data = request.get_json() or {}
-        
+
         # Use provided settings or current configuration
         smtp_server = data.get('smtp_server') or Config.SMTP_SERVER
         smtp_port = data.get('smtp_port') or Config.SMTP_PORT
@@ -390,27 +390,27 @@ def test_email_config():
         smtp_password = data.get('smtp_password') or Config.SMTP_PASSWORD
         from_email = data.get('from_email') or Config.ALERT_FROM_EMAIL
         to_emails = data.get('to_emails') or Config.ALERT_TO_EMAILS
-        
+
         if not all([smtp_server, smtp_username, smtp_password, from_email, to_emails]):
             return jsonify({'error': 'All email configuration fields are required'}), 400
-        
+
         # Send test email
         from monitoring.alerts import AlertManager
         alert_manager = AlertManager()
-        
+
         # Create a mock alert for testing
         class MockDevice:
             display_name = "Test Device"
             ip_address = "192.168.1.100"
             id = 999
-        
+
         class MockAlert:
             device = MockDevice()
             alert_type = "test"
             severity = "info"
             message = "This is a test alert from HomeNetMon"
             created_at = datetime.utcnow()
-        
+
         # Temporarily override config for test
         original_config = {
             'SMTP_SERVER': Config.SMTP_SERVER,
@@ -420,32 +420,32 @@ def test_email_config():
             'ALERT_FROM_EMAIL': Config.ALERT_FROM_EMAIL,
             'ALERT_TO_EMAILS': Config.ALERT_TO_EMAILS
         }
-        
+
         Config.SMTP_SERVER = smtp_server
         Config.SMTP_PORT = smtp_port
         Config.SMTP_USERNAME = smtp_username
         Config.SMTP_PASSWORD = smtp_password
         Config.ALERT_FROM_EMAIL = from_email
         Config.ALERT_TO_EMAILS = to_emails if isinstance(to_emails, list) else [to_emails]
-        
+
         try:
             success = alert_manager.send_email_alert(MockAlert())
-            
+
             # Restore original config
             for key, value in original_config.items():
                 setattr(Config, key, value)
-            
+
             if success:
                 return jsonify({'message': 'Test email sent successfully'})
             else:
                 return jsonify({'error': 'Failed to send test email'}), 500
-                
+
         except Exception as e:
             # Restore original config
             for key, value in original_config.items():
                 setattr(Config, key, value)
             raise e
-        
+
     except Exception as e:
         return jsonify({'error': f'Email test failed: {str(e)}'}), 500
 
@@ -456,12 +456,12 @@ def test_webhook_config():
     try:
         from datetime import datetime
         data = request.get_json() or {}
-        
+
         webhook_url = data.get('webhook_url') or Config.WEBHOOK_URL
-        
+
         if not webhook_url:
             return jsonify({'error': 'Webhook URL is required'}), 400
-        
+
         # Send test webhook
         test_payload = {
             'alert_id': 999,
@@ -474,10 +474,10 @@ def test_webhook_config():
             'dashboard_url': f"http://{Config.HOST}:{Config.PORT}",
             'test': True
         }
-        
+
         import requests
         response = requests.post(webhook_url, json=test_payload, timeout=10)
-        
+
         if response.status_code == 200:
             return jsonify({
                 'message': 'Test webhook sent successfully',
@@ -489,7 +489,7 @@ def test_webhook_config():
                 'error': f'Webhook test failed with status {response.status_code}',
                 'response': response.text[:200]
             }), 500
-        
+
     except Exception as e:
         return jsonify({'error': f'Webhook test failed: {str(e)}'}), 500
 
@@ -499,21 +499,21 @@ def test_push_config():
     """Test push notification configuration by sending a test notification"""
     try:
         from services.push_notifications import push_service
-        
+
         # Update push service configuration from database
         push_service.enabled = Configuration.get_value('push_notifications_enabled', 'false').lower() == 'true'
         push_service.topic = Configuration.get_value('ntfy_topic', '')
         push_service.server = Configuration.get_value('ntfy_server', 'https://ntfy.sh')
-        
+
         if not push_service.is_configured():
             return jsonify({
                 'success': False,
                 'error': 'Push notifications not configured. Please set topic and enable notifications.'
             }), 400
-        
+
         # Test connectivity first
         connectivity = push_service.test_connectivity()
-        
+
         response = {
             'connectivity': connectivity,
             'configured': push_service.is_configured(),
@@ -523,7 +523,7 @@ def test_push_config():
                 'topic': push_service.topic
             }
         }
-        
+
         if not connectivity.get('reachable', False):
             response.update({
                 'success': False,
@@ -531,10 +531,10 @@ def test_push_config():
                 'recommendation': 'Check network connectivity and firewall settings'
             })
             return jsonify(response), 400
-        
+
         # Send test notification
         success = push_service.send_test_notification()
-        
+
         if success:
             response.update({
                 'success': True,
@@ -547,7 +547,7 @@ def test_push_config():
                 'error': 'Failed to send test notification despite connectivity test passing.'
             })
             return jsonify(response), 400
-            
+
     except Exception as e:
         return jsonify({
             'success': False,
@@ -562,17 +562,17 @@ def restart_services():
         import subprocess
         import os
         import signal
-        
+
         # Simple approach: Try to restart the main process
         # This works by sending a signal to reload configuration
-        
+
         # Method 1: Try using systemctl if running as service
         try:
-            result = subprocess.run(['systemctl', 'is-active', 'homenetmon'], 
+            result = subprocess.run(['systemctl', 'is-active', 'homenetmon'],
                                   capture_output=True, text=True, shell=False)
             if result.returncode == 0:
                 # Service is running, restart it
-                subprocess.run(['sudo', 'systemctl', 'restart', 'homenetmon'], 
+                subprocess.run(['sudo', 'systemctl', 'restart', 'homenetmon'],
                              check=True, shell=False)
                 return jsonify({
                     'success': True,
@@ -581,7 +581,7 @@ def restart_services():
                 })
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
             pass  # Fall through to other methods
-        
+
         # Method 2: For development/manual runs, just return instructions
         return jsonify({
             'success': True,
@@ -593,7 +593,7 @@ def restart_services():
             ],
             'note': 'Network range changes require a full restart to take effect.'
         })
-        
+
     except Exception as e:
         return jsonify({
             'success': False,
@@ -608,14 +608,14 @@ def restart_system():
         import os
         import sys
         import subprocess
-        
+
         # Method 1: Try systemd service restart first
         try:
-            result = subprocess.run(['systemctl', 'is-active', 'homenetmon'], 
+            result = subprocess.run(['systemctl', 'is-active', 'homenetmon'],
                                   capture_output=True, text=True, timeout=5, shell=False)
             if result.returncode == 0:  # Service is active
                 # Restart the systemd service
-                restart_result = subprocess.run(['sudo', 'systemctl', 'restart', 'homenetmon'], 
+                restart_result = subprocess.run(['sudo', 'systemctl', 'restart', 'homenetmon'],
                                               capture_output=True, text=True, timeout=30, shell=False)
                 if restart_result.returncode == 0:
                     return jsonify({
@@ -629,12 +629,12 @@ def restart_system():
         except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.CalledProcessError):
             # systemctl not available or service not running, fall through
             pass
-        
+
         # Method 2: Kill current process and let system restart it
         try:
             # Get the current process ID
             current_pid = os.getpid()
-            
+
             # Schedule a restart by killing the current process
             # This should work if the application is being managed by a process manager
             # or if it's set to auto-restart
@@ -642,17 +642,17 @@ def restart_system():
                 import time
                 time.sleep(2)  # Give time for response to be sent
                 os.kill(current_pid, 15)  # SIGTERM
-            
+
             import threading
             threading.Thread(target=delayed_restart, daemon=True).start()
-            
+
             return jsonify({
                 'success': True,
                 'message': 'HomeNetMon restart initiated. Page will refresh automatically.',
                 'method': 'process_restart',
                 'note': 'Application will be available again in 10-15 seconds'
             })
-            
+
         except Exception as e:
             return jsonify({
                 'success': False,
@@ -663,7 +663,7 @@ def restart_system():
                     'If running as service: Run "sudo systemctl restart homenetmon"'
                 ]
             }), 500
-            
+
     except Exception as e:
         return jsonify({
             'success': False,
@@ -677,42 +677,42 @@ def reset_monitoring_data():
     try:
         from datetime import datetime
         from models import MonitoringData, Device
-        
+
         data = request.get_json() or {}
         confirm = data.get('confirm', False)
-        
+
         if not confirm:
             return jsonify({
                 'error': 'Please confirm data deletion by sending {"confirm": true}',
                 'warning': 'This action will permanently delete all historical ping data and cannot be undone'
             }), 400
-        
+
         # Count records before deletion
         total_monitoring_records = MonitoringData.query.count()
-        
+
         # Get time span of data being deleted
         oldest_record = MonitoringData.query.order_by(MonitoringData.timestamp.asc()).first()
         newest_record = MonitoringData.query.order_by(MonitoringData.timestamp.desc()).first()
-        
+
         time_span_info = None
         if oldest_record and newest_record:
             time_span = newest_record.timestamp - oldest_record.timestamp
             days = time_span.days
             time_span_info = f"{days} days of data (from {oldest_record.timestamp.strftime('%Y-%m-%d')} to {newest_record.timestamp.strftime('%Y-%m-%d')})"
-        
+
         # Delete all monitoring data
         deleted_count = MonitoringData.query.delete()
-        
+
         # Reset device last_seen timestamps to current time for fresh start
         # This ensures uptime calculations start fresh
         updated_devices = Device.query.filter_by(is_monitored=True).all()
         current_time = datetime.utcnow()
-        
+
         for device in updated_devices:
             device.last_seen = current_time
-        
+
         db.session.commit()
-        
+
         return jsonify({
             'success': True,
             'message': f'Successfully deleted {deleted_count} monitoring records',
@@ -724,7 +724,7 @@ def reset_monitoring_data():
             },
             'note': 'Uptime percentages will now start calculating fresh from this point forward'
         })
-        
+
     except Exception as e:
         db.session.rollback()
         return jsonify({
@@ -738,23 +738,23 @@ def update_dashboard_title():
     """Update dashboard title configuration"""
     try:
         data = request.get_json()
-        
+
         if not data or 'title' not in data:
             return jsonify({'error': 'Title is required'}), 400
-        
+
         title = data['title'].strip()
-        
+
         # Validate title
         if not title or len(title) < 1:
             return jsonify({'error': 'Title cannot be empty'}), 400
-        
+
         if len(title) > 50:
             return jsonify({'error': 'Title must be 50 characters or less'}), 400
-        
+
         # Update configuration
         Configuration.set_value('dashboard_title', title, 'Custom title displayed on the main dashboard header')
-        
+
         return jsonify({'success': True, 'message': 'Dashboard title updated successfully'})
-        
+
     except Exception as e:
         return jsonify({'error': str(e)}), 500

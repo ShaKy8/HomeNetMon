@@ -45,17 +45,17 @@ class ModernVisualizations {
 
         // Add gradient definitions
         const defs = svg.append('defs');
-        
+
         // Gradient for connections
         const gradient = defs.append('linearGradient')
             .attr('id', 'connection-gradient')
             .attr('gradientUnits', 'userSpaceOnUse');
-        
+
         gradient.append('stop')
             .attr('offset', '0%')
             .attr('stop-color', '#6366f1')
             .attr('stop-opacity', 0.8);
-        
+
         gradient.append('stop')
             .attr('offset', '100%')
             .attr('stop-color', '#8b5cf6')

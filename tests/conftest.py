@@ -38,17 +38,17 @@ class TestConfig(Config):
     SQLALCHEMY_DATABASE_URI = 'sqlite:///:memory:'  # In-memory database for tests
     SECRET_KEY = 'test-secret-key'
     WTF_CSRF_ENABLED = False
-    
+
     # Disable external network operations for tests
     NETWORK_RANGE = '192.168.1.0/24'
     PING_INTERVAL = 1
     SCAN_INTERVAL = 1
     PING_TIMEOUT = 0.1
-    
+
     # Disable real SMTP for tests
     SMTP_SERVER = None
     WEBHOOK_URL = None
-    
+
     # Fast test execution
     DATA_RETENTION_DAYS = 1
     MAX_WORKERS = 2
@@ -59,35 +59,35 @@ def app():
     """Create and configure a new app instance for each test session."""
     # Create a temporary file for the test database
     db_fd, db_path = tempfile.mkstemp()
-    
+
     # Override the production Config before creating the app
     original_db_uri = Config.SQLALCHEMY_DATABASE_URI
     Config.SQLALCHEMY_DATABASE_URI = f'sqlite:///{db_path}'
     Config.TESTING = True
     Config.WTF_CSRF_ENABLED = False
-    
+
     # Disable background services for testing
     Config.PING_INTERVAL = 3600  # Very long interval to prevent background activity
     Config.SCAN_INTERVAL = 3600
-    
+
     try:
         app, socketio = create_app()
-        
+
         # Additional test configuration
         app.config['TESTING'] = True
         app.config['WTF_CSRF_ENABLED'] = False
-        
+
         # Create the database and the database table
         with app.app_context():
             db.create_all()
             yield app
-            
+
     finally:
         # Restore original configuration
         Config.SQLALCHEMY_DATABASE_URI = original_db_uri
         Config.TESTING = False
         Config.WTF_CSRF_ENABLED = True
-        
+
         # Clean up temp file
         os.close(db_fd)
         os.unlink(db_path)
@@ -109,30 +109,30 @@ def runner(app):
 def db_session(app):
     """
     Create a fresh database session for each test.
-    
+
     This fixture provides a clean database state for each test and
     automatically clears all data after the test completes.
     """
     with app.app_context():
         # Create all tables if they don't exist
         db.create_all()
-        
+
         # Clear all existing data at the start of each test
         # This ensures tests start with a clean database
         db.session.query(Alert).delete()
-        db.session.query(MonitoringData).delete() 
+        db.session.query(MonitoringData).delete()
         db.session.query(PerformanceMetrics).delete()
         db.session.query(Device).delete()
         db.session.query(Configuration).delete()
         db.session.commit()
-        
+
         yield db.session
-        
+
         # Clean up after test - clear all data
         try:
             db.session.query(Alert).delete()
             db.session.query(MonitoringData).delete()
-            db.session.query(PerformanceMetrics).delete() 
+            db.session.query(PerformanceMetrics).delete()
             db.session.query(Device).delete()
             db.session.query(Configuration).delete()
             db.session.commit()
@@ -169,7 +169,7 @@ def sample_device(db_session, sample_device_data):
 def sample_devices(db_session):
     """Create multiple sample devices for testing."""
     devices = []
-    
+
     device_configs = [
         {
             'ip_address': '192.168.1.1',
@@ -196,13 +196,13 @@ def sample_devices(db_session):
             'is_monitored': True
         }
     ]
-    
+
     for config in device_configs:
         device = Device(**config)
         device.last_seen = datetime.utcnow()  # Set as recently seen
         db_session.add(device)
         devices.append(device)
-    
+
     db_session.commit()
     return devices
 
@@ -212,7 +212,7 @@ def sample_monitoring_data(db_session, sample_device):
     """Create sample monitoring data for testing."""
     monitoring_records = []
     base_time = datetime.utcnow() - timedelta(hours=1)
-    
+
     for i in range(10):
         record = MonitoringData(
             device_id=sample_device.id,
@@ -222,7 +222,7 @@ def sample_monitoring_data(db_session, sample_device):
         )
         monitoring_records.append(record)
         db_session.add(record)
-    
+
     db_session.commit()
     return monitoring_records
 
@@ -283,15 +283,15 @@ def sample_configuration(db_session):
             description='Critical performance alert threshold'
         ),
         Configuration(
-            key='performance_alert_warning_threshold', 
+            key='performance_alert_warning_threshold',
             value='70',
             description='Warning performance alert threshold'
         )
     ]
-    
+
     for config in configs:
         db_session.add(config)
-    
+
     db_session.commit()
     return configs
 
@@ -387,7 +387,7 @@ def create_test_device(db_session, **kwargs):
         'is_monitored': True
     }
     default_data.update(kwargs)
-    
+
     device = Device(**default_data)
     db_session.add(device)
     db_session.commit()
@@ -399,7 +399,7 @@ def create_test_monitoring_data(db_session, device, count=5, **kwargs):
     """Utility function to create test monitoring data."""
     records = []
     base_time = datetime.utcnow() - timedelta(hours=1)
-    
+
     for i in range(count):
         default_data = {
             'device_id': device.id,
@@ -408,11 +408,11 @@ def create_test_monitoring_data(db_session, device, count=5, **kwargs):
             'packet_loss': 0.0
         }
         default_data.update(kwargs)
-        
+
         record = MonitoringData(**default_data)
         db_session.add(record)
         records.append(record)
-    
+
     db_session.commit()
     return records
 
@@ -429,7 +429,7 @@ def create_test_performance_metrics(db_session, device, **kwargs):
         'collection_period_minutes': 60
     }
     default_data.update(kwargs)
-    
+
     metrics = PerformanceMetrics(**default_data)
     db_session.add(metrics)
     db_session.commit()

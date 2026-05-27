@@ -137,18 +137,18 @@ class NetworkPerformanceAnalyzer:
     Comprehensive network performance analyzer that monitors, analyzes, and optimizes
     network performance across all monitored devices.
     """
-    
+
     def __init__(self, app=None):
         self.app = app
         self.running = False
         self.analysis_thread = None
         self.bandwidth_thread = None
-        
+
         # Performance data storage
         self.performance_snapshots = deque(maxlen=10000)
         self.bandwidth_history = deque(maxlen=1000)
         self.latency_cache = defaultdict(lambda: deque(maxlen=100))
-        
+
         # Analysis configuration
         self.analysis_config = {
             'snapshot_interval': 60,  # seconds
@@ -163,12 +163,12 @@ class NetworkPerformanceAnalyzer:
             'optimization_check_interval': 86400,  # 24 hours
             'historical_retention_days': 90
         }
-        
+
         # Performance baselines
         self.performance_baselines = {}
         self.optimization_recommendations = {}
         self.active_alerts = {}
-        
+
         # Statistics tracking
         self.performance_statistics = {
             'total_snapshots': 0,
@@ -178,104 +178,104 @@ class NetworkPerformanceAnalyzer:
             'last_analysis': None,
             'analysis_duration': 0
         }
-    
+
     def start_analysis(self):
         """Start the performance analysis engine"""
         if self.running:
             logger.warning("Performance analyzer is already running")
             return
-        
+
         self.running = True
-        
+
         # Start analysis thread
         self.analysis_thread = threading.Thread(target=self._analysis_loop, daemon=True)
         self.analysis_thread.start()
-        
+
         # Start bandwidth monitoring thread
         self.bandwidth_thread = threading.Thread(target=self._bandwidth_monitoring_loop, daemon=True)
         self.bandwidth_thread.start()
-        
+
         logger.info("Network performance analyzer started")
-    
+
     def stop_analysis(self):
         """Stop the performance analysis engine"""
         self.running = False
-        
+
         if self.analysis_thread and self.analysis_thread.is_alive():
             self.analysis_thread.join(timeout=30)
-        
+
         if self.bandwidth_thread and self.bandwidth_thread.is_alive():
             self.bandwidth_thread.join(timeout=30)
-        
+
         logger.info("Network performance analyzer stopped")
-    
+
     def _analysis_loop(self):
         """Main analysis loop that continuously monitors performance"""
         logger.info("Starting performance analysis loop")
-        
+
         while self.running:
             try:
                 start_time = time.time()
-                
+
                 # Collect performance snapshots
                 self._collect_performance_snapshots()
-                
+
                 # Analyze latency and network quality
                 self._analyze_network_latency()
-                
+
                 # Check for performance alerts
                 self._check_performance_alerts()
-                
+
                 # Generate optimization recommendations (less frequent)
                 if int(time.time()) % self.analysis_config['optimization_check_interval'] == 0:
                     self._generate_optimization_recommendations()
-                
+
                 # Update statistics
                 analysis_duration = time.time() - start_time
                 self.performance_statistics['analysis_duration'] = analysis_duration
                 self.performance_statistics['last_analysis'] = datetime.utcnow()
-                
+
                 # Sleep until next interval
                 sleep_time = max(0, self.analysis_config['snapshot_interval'] - analysis_duration)
                 time.sleep(sleep_time)
-                
+
             except Exception as e:
                 logger.error(f"Error in performance analysis loop: {e}")
                 time.sleep(30)  # Wait before retrying
-    
+
     def _bandwidth_monitoring_loop(self):
         """Dedicated loop for bandwidth testing"""
         logger.info("Starting bandwidth monitoring loop")
-        
+
         while self.running:
             try:
                 # Perform bandwidth test
                 self._perform_bandwidth_test()
-                
+
                 # Sleep until next test
                 time.sleep(self.analysis_config['bandwidth_test_interval'])
-                
+
             except Exception as e:
                 logger.error(f"Error in bandwidth monitoring loop: {e}")
                 time.sleep(300)  # Wait 5 minutes before retrying
-    
+
     def _collect_performance_snapshots(self):
         """Collect performance data snapshots from all devices"""
         try:
             devices = Device.query.filter_by(active=True).all()
             current_time = datetime.utcnow()
-            
+
             for device in devices:
                 # Get recent monitoring data
                 recent_data = MonitoringData.query.filter(
                     MonitoringData.device_id == device.id,
                     MonitoringData.timestamp >= current_time - timedelta(minutes=5)
                 ).order_by(MonitoringData.timestamp.desc()).limit(10).all()
-                
+
                 if recent_data:
                     # Calculate performance metrics
                     response_times = [d.response_time for d in recent_data if d.response_time is not None]
-                    
+
                     if response_times:
                         # Response time metrics
                         avg_response_time = statistics.mean(response_times)
@@ -287,7 +287,7 @@ class NetworkPerformanceAnalyzer:
                                 'max': max(response_times)
                             }
                         )
-                        
+
                         # Jitter calculation
                         if len(response_times) > 1:
                             jitter = statistics.stdev(response_times)
@@ -295,12 +295,12 @@ class NetworkPerformanceAnalyzer:
                                 device.id, PerformanceMetric.JITTER,
                                 jitter, "ms", {'sample_count': len(response_times)}
                             )
-                    
+
                     # Packet loss calculation
                     total_pings = len(recent_data)
                     failed_pings = sum(1 for d in recent_data if d.response_time is None)
                     packet_loss = (failed_pings / total_pings) * 100 if total_pings > 0 else 0
-                    
+
                     self._add_performance_snapshot(
                         device.id, PerformanceMetric.PACKET_LOSS,
                         packet_loss, "%", {
@@ -308,13 +308,13 @@ class NetworkPerformanceAnalyzer:
                             'failed_pings': failed_pings
                         }
                     )
-            
+
             self.performance_statistics['total_snapshots'] += len(devices)
-            
+
         except Exception as e:
             logger.error(f"Error collecting performance snapshots: {e}")
-    
-    def _add_performance_snapshot(self, device_id: int, metric_type: PerformanceMetric, 
+
+    def _add_performance_snapshot(self, device_id: int, metric_type: PerformanceMetric,
                                  value: float, unit: str, metadata: Dict[str, Any]):
         """Add a performance snapshot to the collection"""
         snapshot = PerformanceSnapshot(
@@ -326,29 +326,29 @@ class NetworkPerformanceAnalyzer:
             metadata=metadata
         )
         self.performance_snapshots.append(snapshot)
-    
+
     def _perform_bandwidth_test(self):
         """Perform internet bandwidth test"""
         try:
             logger.info("Starting bandwidth test")
-            
+
             # Initialize speedtest
             st = speedtest.Speedtest()
             st.get_best_server()
-            
+
             start_time = time.time()
-            
+
             # Perform download test
             download_speed = st.download() / 1_000_000  # Convert to Mbps
-            
+
             # Perform upload test
             upload_speed = st.upload() / 1_000_000  # Convert to Mbps
-            
+
             # Get ping
             ping_result = st.results.ping
-            
+
             test_duration = time.time() - start_time
-            
+
             # Store bandwidth measurement
             measurement = BandwidthMeasurement(
                 timestamp=datetime.utcnow(),
@@ -358,32 +358,32 @@ class NetworkPerformanceAnalyzer:
                 server_info=st.results.server,
                 test_duration=test_duration
             )
-            
+
             self.bandwidth_history.append(measurement)
             self.performance_statistics['bandwidth_tests_completed'] += 1
-            
+
             logger.info(f"Bandwidth test completed: {download_speed:.2f} Mbps down, {upload_speed:.2f} Mbps up, {ping_result:.2f} ms ping")
-            
+
         except Exception as e:
             logger.error(f"Error performing bandwidth test: {e}")
-    
+
     def _analyze_network_latency(self):
         """Analyze network latency patterns and trends"""
         try:
             devices = Device.query.filter_by(active=True).all()
-            
+
             for device in devices:
                 # Get recent latency data
                 recent_snapshots = [
                     s for s in self.performance_snapshots
-                    if s.device_id == device.id and 
+                    if s.device_id == device.id and
                     s.metric_type == PerformanceMetric.RESPONSE_TIME and
                     s.timestamp >= datetime.utcnow() - timedelta(hours=1)
                 ]
-                
+
                 if len(recent_snapshots) >= 5:
                     latencies = [s.value for s in recent_snapshots]
-                    
+
                     analysis = LatencyAnalysis(
                         device_id=device.id,
                         min_latency=min(latencies),
@@ -394,72 +394,72 @@ class NetworkPerformanceAnalyzer:
                         sample_count=len(latencies),
                         analysis_period=timedelta(hours=1)
                     )
-                    
+
                     self.latency_cache[device.id].append(analysis)
-        
+
         except Exception as e:
             logger.error(f"Error analyzing network latency: {e}")
-    
+
     def _get_recent_packet_loss(self, device_id: int) -> float:
         """Get recent packet loss percentage for a device"""
         recent_snapshots = [
             s for s in self.performance_snapshots
-            if s.device_id == device_id and 
+            if s.device_id == device_id and
             s.metric_type == PerformanceMetric.PACKET_LOSS and
             s.timestamp >= datetime.utcnow() - timedelta(hours=1)
         ]
-        
+
         if recent_snapshots:
             return statistics.mean([s.value for s in recent_snapshots])
         return 0.0
-    
+
     def _check_performance_alerts(self):
         """Check for performance issues and generate alerts"""
         try:
             for snapshot in list(self.performance_snapshots)[-100:]:  # Check recent snapshots
                 metric_type = snapshot.metric_type
-                
+
                 if metric_type in self.analysis_config['alert_thresholds']:
                     threshold = self.analysis_config['alert_thresholds'][metric_type]
-                    
+
                     # Check if threshold is exceeded
                     if self._is_threshold_exceeded(snapshot.value, threshold, metric_type):
                         alert_id = f"{snapshot.device_id}_{metric_type.value}_{int(snapshot.timestamp.timestamp())}"
-                        
+
                         if alert_id not in self.active_alerts:
                             alert = self._create_performance_alert(snapshot, threshold)
                             self.active_alerts[alert_id] = alert
                             self._send_performance_alert(alert)
-                            
+
                             self.performance_statistics['alerts_generated'] += 1
-        
+
         except Exception as e:
             logger.error(f"Error checking performance alerts: {e}")
-    
+
     def _is_threshold_exceeded(self, value: float, threshold: float, metric_type: PerformanceMetric) -> bool:
         """Check if a performance value exceeds the threshold"""
         # For metrics where higher is worse
-        if metric_type in [PerformanceMetric.LATENCY, PerformanceMetric.PACKET_LOSS, 
+        if metric_type in [PerformanceMetric.LATENCY, PerformanceMetric.PACKET_LOSS,
                           PerformanceMetric.JITTER, PerformanceMetric.ERROR_RATE]:
             return value > threshold
-        
+
         # For metrics where lower is worse (bandwidth utilization is special case)
         if metric_type == PerformanceMetric.BANDWIDTH_UTILIZATION:
             return value > threshold  # High utilization is bad
-        
+
         return False
-    
+
     def _create_performance_alert(self, snapshot: PerformanceSnapshot, threshold: float) -> PerformanceAlert:
         """Create a performance alert from a snapshot"""
         device = Device.query.get(snapshot.device_id)
         device_name = device.name if device else f"Device {snapshot.device_id}"
-        
+
         # Generate recommendations based on metric type
         recommendations = self._get_metric_recommendations(snapshot.metric_type, snapshot.value)
-        
+
         # Determine severity
         severity = self._calculate_alert_severity(snapshot.value, threshold, snapshot.metric_type)
-        
+
         return PerformanceAlert(
             alert_id=f"{snapshot.device_id}_{snapshot.metric_type.value}_{int(snapshot.timestamp.timestamp())}",
             device_id=snapshot.device_id,
@@ -471,11 +471,11 @@ class NetworkPerformanceAnalyzer:
             recommendations=recommendations,
             detected_at=snapshot.timestamp
         )
-    
+
     def _get_metric_recommendations(self, metric_type: PerformanceMetric, value: float) -> List[str]:
         """Get recommendations based on the metric type and value"""
         recommendations = []
-        
+
         if metric_type == PerformanceMetric.LATENCY:
             recommendations = [
                 "Check network congestion and bandwidth utilization",
@@ -504,13 +504,13 @@ class NetworkPerformanceAnalyzer:
                 "Consider upgrading internet connection",
                 "Optimize application bandwidth usage"
             ]
-        
+
         return recommendations
-    
+
     def _calculate_alert_severity(self, value: float, threshold: float, metric_type: PerformanceMetric) -> str:
         """Calculate alert severity based on how much the threshold is exceeded"""
         ratio = value / threshold if threshold > 0 else 1.0
-        
+
         if ratio <= 1.2:
             return "low"
         elif ratio <= 1.5:
@@ -519,7 +519,7 @@ class NetworkPerformanceAnalyzer:
             return "high"
         else:
             return "critical"
-    
+
     def _send_performance_alert(self, alert: PerformanceAlert):
         """Send performance alert through notification system"""
         try:
@@ -541,46 +541,46 @@ Recommendations:
             )
         except Exception as e:
             logger.error(f"Error sending performance alert: {e}")
-    
+
     def _generate_optimization_recommendations(self):
         """Generate network optimization recommendations"""
         try:
             logger.info("Generating performance optimization recommendations")
-            
+
             recommendations = []
-            
+
             # Analyze bandwidth utilization trends
             recommendations.extend(self._analyze_bandwidth_optimization())
-            
+
             # Analyze latency patterns
             recommendations.extend(self._analyze_latency_optimization())
-            
+
             # Analyze network configuration
             recommendations.extend(self._analyze_network_configuration())
-            
+
             # Store recommendations
             for rec in recommendations:
                 self.optimization_recommendations[rec.recommendation_id] = rec
-            
+
             self.performance_statistics['optimizations_recommended'] += len(recommendations)
-            
+
             logger.info(f"Generated {len(recommendations)} optimization recommendations")
-            
+
         except Exception as e:
             logger.error(f"Error generating optimization recommendations: {e}")
-    
+
     def _analyze_bandwidth_optimization(self) -> List[OptimizationRecommendation]:
         """Analyze bandwidth usage and generate optimization recommendations"""
         recommendations = []
-        
+
         if len(self.bandwidth_history) < 5:
             return recommendations
-        
+
         # Analyze recent bandwidth trends
         recent_measurements = list(self.bandwidth_history)[-10:]
         avg_download = statistics.mean([m.download_mbps for m in recent_measurements])
         avg_upload = statistics.mean([m.upload_mbps for m in recent_measurements])
-        
+
         # Check for consistently low bandwidth
         if avg_download < 50:  # Less than 50 Mbps
             recommendations.append(OptimizationRecommendation(
@@ -601,25 +601,25 @@ Recommendations:
                 devices_affected=[],
                 cost_estimate="$20-100/month additional"
             ))
-        
+
         return recommendations
-    
+
     def _analyze_latency_optimization(self) -> List[OptimizationRecommendation]:
         """Analyze latency patterns and generate optimization recommendations"""
         recommendations = []
-        
+
         # Analyze devices with consistently high latency
         high_latency_devices = []
-        
+
         for device_id, analyses in self.latency_cache.items():
             if analyses:
                 recent_analysis = analyses[-1]
                 if recent_analysis.avg_latency > 100:  # High latency threshold
                     high_latency_devices.append((device_id, recent_analysis))
-        
+
         if high_latency_devices:
             device_ids = [d[0] for d in high_latency_devices]
-            
+
             recommendations.append(OptimizationRecommendation(
                 recommendation_id=f"latency_optimization_{int(time.time())}",
                 category=OptimizationCategory.LATENCY_REDUCTION,
@@ -638,16 +638,16 @@ Recommendations:
                 ],
                 devices_affected=device_ids
             ))
-        
+
         return recommendations
-    
+
     def _analyze_network_configuration(self) -> List[OptimizationRecommendation]:
         """Analyze network configuration and generate recommendations"""
         recommendations = []
-        
+
         # This would analyze network configuration files, router settings, etc.
         # For now, we'll generate some general recommendations
-        
+
         recommendations.append(OptimizationRecommendation(
             recommendation_id=f"qos_configuration_{int(time.time())}",
             category=OptimizationCategory.QOS_CONFIGURATION,
@@ -666,17 +666,17 @@ Recommendations:
             ],
             devices_affected=[]
         ))
-        
+
         return recommendations
-    
+
     # Public API methods
-    
+
     def get_performance_summary(self, hours: int = 24) -> Dict[str, Any]:
         """Get comprehensive performance summary"""
         try:
             cutoff_time = datetime.utcnow() - timedelta(hours=hours)
             recent_snapshots = [s for s in self.performance_snapshots if s.timestamp >= cutoff_time]
-            
+
             summary = {
                 'time_period_hours': hours,
                 'total_snapshots': len(recent_snapshots),
@@ -692,7 +692,7 @@ Recommendations:
                     'high_priority': len([r for r in self.optimization_recommendations.values() if r.priority >= 4])
                 }
             }
-            
+
             # Calculate metrics summaries
             for metric_type in PerformanceMetric:
                 metric_snapshots = [s for s in recent_snapshots if s.metric_type == metric_type]
@@ -705,7 +705,7 @@ Recommendations:
                         'max': max(values),
                         'latest': values[-1] if values else None
                     }
-            
+
             # Recent bandwidth data
             if self.bandwidth_history:
                 latest_bandwidth = self.bandwidth_history[-1]
@@ -715,32 +715,32 @@ Recommendations:
                     'ping_ms': latest_bandwidth.ping_ms,
                     'test_time': latest_bandwidth.timestamp.isoformat()
                 }
-            
+
             # Recent alerts
             recent_alerts = [
                 asdict(alert) for alert in self.active_alerts.values()
                 if alert.detected_at >= cutoff_time
             ][:10]  # Last 10 alerts
             summary['alerts']['recent_alerts'] = recent_alerts
-            
+
             return summary
-            
+
         except Exception as e:
             logger.error(f"Error getting performance summary: {e}")
             return {'error': str(e)}
-    
+
     def get_device_performance_analysis(self, device_id: int, hours: int = 24) -> Dict[str, Any]:
         """Get detailed performance analysis for a specific device"""
         try:
             cutoff_time = datetime.utcnow() - timedelta(hours=hours)
             device_snapshots = [
-                s for s in self.performance_snapshots 
+                s for s in self.performance_snapshots
                 if s.device_id == device_id and s.timestamp >= cutoff_time
             ]
-            
+
             device = Device.query.get(device_id)
             device_name = device.name if device else f"Device {device_id}"
-            
+
             analysis = {
                 'device_id': device_id,
                 'device_name': device_name,
@@ -752,7 +752,7 @@ Recommendations:
                 'alerts': [],
                 'recommendations': []
             }
-            
+
             # Analyze each metric type
             for metric_type in PerformanceMetric:
                 metric_snapshots = [s for s in device_snapshots if s.metric_type == metric_type]
@@ -770,68 +770,68 @@ Recommendations:
                             for s in metric_snapshots[-20:]  # Last 20 points
                         ]
                     }
-            
+
             # Get latest latency analysis
             if self.latency_cache.get(device_id):
                 latest_analysis = self.latency_cache[device_id][-1]
                 analysis['latency_analysis'] = asdict(latest_analysis)
-            
+
             # Calculate overall performance level
             analysis['performance_level'] = self._calculate_device_performance_level(device_snapshots)
-            
+
             # Get device-specific alerts
             device_alerts = [
                 asdict(alert) for alert in self.active_alerts.values()
                 if alert.device_id == device_id and alert.detected_at >= cutoff_time
             ]
             analysis['alerts'] = device_alerts
-            
+
             # Get device-specific recommendations
             device_recommendations = [
                 asdict(rec) for rec in self.optimization_recommendations.values()
                 if device_id in rec.devices_affected or not rec.devices_affected
             ]
             analysis['recommendations'] = device_recommendations
-            
+
             return analysis
-            
+
         except Exception as e:
             logger.error(f"Error getting device performance analysis: {e}")
             return {'error': str(e)}
-    
+
     def _calculate_trend(self, values: List[float]) -> str:
         """Calculate trend direction for a series of values"""
         if len(values) < 3:
             return "stable"
-        
+
         # Calculate simple linear trend
         x = list(range(len(values)))
         y = values
-        
+
         # Simple correlation coefficient
         n = len(values)
         sum_x = sum(x)
         sum_y = sum(y)
         sum_xy = sum(x[i] * y[i] for i in range(n))
         sum_x2 = sum(xi * xi for xi in x)
-        
+
         correlation = (n * sum_xy - sum_x * sum_y) / ((n * sum_x2 - sum_x * sum_x) ** 0.5 * (n * sum(yi * yi for yi in y) - sum_y * sum_y) ** 0.5)
-        
+
         if correlation > 0.3:
             return "improving"
         elif correlation < -0.3:
             return "degrading"
         else:
             return "stable"
-    
+
     def _calculate_device_performance_level(self, snapshots: List[PerformanceSnapshot]) -> str:
         """Calculate overall performance level for a device"""
         if not snapshots:
             return PerformanceLevel.GOOD.value
-        
+
         # Score based on different metrics
         score = 100  # Start with perfect score
-        
+
         # Check latency
         latency_snapshots = [s for s in snapshots if s.metric_type == PerformanceMetric.RESPONSE_TIME]
         if latency_snapshots:
@@ -842,7 +842,7 @@ Recommendations:
                 score -= 15
             elif avg_latency > 50:
                 score -= 5
-        
+
         # Check packet loss
         packet_loss_snapshots = [s for s in snapshots if s.metric_type == PerformanceMetric.PACKET_LOSS]
         if packet_loss_snapshots:
@@ -853,7 +853,7 @@ Recommendations:
                 score -= 20
             elif avg_packet_loss > 1:
                 score -= 10
-        
+
         # Check jitter
         jitter_snapshots = [s for s in snapshots if s.metric_type == PerformanceMetric.JITTER]
         if jitter_snapshots:
@@ -862,7 +862,7 @@ Recommendations:
                 score -= 25
             elif avg_jitter > 50:
                 score -= 10
-        
+
         # Convert score to performance level
         if score >= 90:
             return PerformanceLevel.EXCELLENT.value
@@ -874,21 +874,21 @@ Recommendations:
             return PerformanceLevel.POOR.value
         else:
             return PerformanceLevel.CRITICAL.value
-    
+
     def get_bandwidth_history(self, hours: int = 24) -> List[Dict[str, Any]]:
         """Get bandwidth test history"""
         cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-        
+
         return [
             asdict(measurement) for measurement in self.bandwidth_history
             if measurement.timestamp >= cutoff_time
         ]
-    
-    def get_optimization_recommendations(self, category: Optional[str] = None, 
+
+    def get_optimization_recommendations(self, category: Optional[str] = None,
                                        priority_min: int = 1) -> List[Dict[str, Any]]:
         """Get optimization recommendations"""
         recommendations = list(self.optimization_recommendations.values())
-        
+
         # Filter by category
         if category:
             try:
@@ -896,40 +896,40 @@ Recommendations:
                 recommendations = [r for r in recommendations if r.category == category_enum]
             except ValueError:
                 pass
-        
+
         # Filter by priority
         recommendations = [r for r in recommendations if r.priority >= priority_min]
-        
+
         # Sort by priority (highest first)
         recommendations.sort(key=lambda r: r.priority, reverse=True)
-        
+
         return [asdict(rec) for rec in recommendations]
-    
-    def get_performance_alerts(self, device_id: Optional[int] = None, 
+
+    def get_performance_alerts(self, device_id: Optional[int] = None,
                               hours: int = 24) -> List[Dict[str, Any]]:
         """Get performance alerts"""
         cutoff_time = datetime.utcnow() - timedelta(hours=hours)
-        
+
         alerts = [
             alert for alert in self.active_alerts.values()
             if alert.detected_at >= cutoff_time
         ]
-        
+
         if device_id:
             alerts = [alert for alert in alerts if alert.device_id == device_id]
-        
+
         # Sort by detection time (newest first)
         alerts.sort(key=lambda a: a.detected_at, reverse=True)
-        
+
         return [asdict(alert) for alert in alerts]
-    
+
     def acknowledge_alert(self, alert_id: str) -> bool:
         """Acknowledge a performance alert"""
         if alert_id in self.active_alerts:
             del self.active_alerts[alert_id]
             return True
         return False
-    
+
     def get_performance_statistics(self) -> Dict[str, Any]:
         """Get performance analyzer statistics"""
         return {

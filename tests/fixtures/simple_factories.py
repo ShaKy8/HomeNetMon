@@ -19,14 +19,14 @@ from models import Device, MonitoringData, PerformanceMetrics, Alert, Configurat
 
 class SimpleDeviceFactory:
     """Simple factory for creating Device test objects."""
-    
+
     _counter = 0
-    
+
     @classmethod
     def create(cls, **kwargs):
         """Create a Device instance with default or provided values."""
         cls._counter += 1
-        
+
         defaults = {
             'ip_address': f'192.168.1.{100 + cls._counter}',
             'mac_address': cls._generate_mac(),
@@ -39,13 +39,13 @@ class SimpleDeviceFactory:
             'created_at': datetime.utcnow(),
             'updated_at': datetime.utcnow()
         }
-        
+
         # Override defaults with provided kwargs
         for key, value in kwargs.items():
             defaults[key] = value
-        
+
         device = Device(**defaults)
-        
+
         # Try to add to session if in an app context (but don't commit)
         try:
             from models import db
@@ -55,9 +55,9 @@ class SimpleDeviceFactory:
         except:
             # If we can't add to session, that's okay for some tests
             pass
-            
+
         return device
-    
+
     @staticmethod
     def _generate_mac():
         """Generate a random MAC address."""
@@ -69,7 +69,7 @@ class SimpleDeviceFactory:
 
 class SimpleMonitoringDataFactory:
     """Simple factory for creating MonitoringData test objects."""
-    
+
     @classmethod
     def create(cls, **kwargs):
         """Create a MonitoringData instance."""
@@ -80,17 +80,17 @@ class SimpleMonitoringDataFactory:
             'packet_loss': 0.0,
             'additional_data': '{}'
         }
-        
+
         # Handle device relationship
         if 'device' in kwargs:
             device = kwargs.pop('device')
             defaults['device_id'] = device.id
-            
+
         for key, value in kwargs.items():
             defaults[key] = value
-            
+
         monitoring_data = MonitoringData(**defaults)
-        
+
         # Try to add to session if in an app context (but don't commit)
         try:
             from models import db
@@ -100,13 +100,13 @@ class SimpleMonitoringDataFactory:
         except:
             # If we can't add to session, that's okay for some tests
             pass
-            
+
         return monitoring_data
 
 
 class SimpleSuccessfulMonitoringDataFactory(SimpleMonitoringDataFactory):
     """Factory for successful monitoring data."""
-    
+
     @classmethod
     def create(cls, **kwargs):
         defaults = {
@@ -119,7 +119,7 @@ class SimpleSuccessfulMonitoringDataFactory(SimpleMonitoringDataFactory):
 
 class SimpleFailedMonitoringDataFactory(SimpleMonitoringDataFactory):
     """Factory for failed monitoring data."""
-    
+
     @classmethod
     def create(cls, **kwargs):
         defaults = {
@@ -132,7 +132,7 @@ class SimpleFailedMonitoringDataFactory(SimpleMonitoringDataFactory):
 
 class SimpleTimeoutMonitoringDataFactory(SimpleMonitoringDataFactory):
     """Factory for timeout monitoring data."""
-    
+
     @classmethod
     def create(cls, **kwargs):
         defaults = {
@@ -146,12 +146,12 @@ class SimpleTimeoutMonitoringDataFactory(SimpleMonitoringDataFactory):
 
 class SimplePerformanceMetricsFactory:
     """Simple factory for creating PerformanceMetrics test objects."""
-    
+
     @classmethod
     def create(cls, **kwargs):
         """Create a PerformanceMetrics instance."""
         health_score = kwargs.get('health_score', random.uniform(50.0, 95.0))
-        
+
         defaults = {
             'device_id': kwargs.get('device_id', 1),
             'timestamp': datetime.utcnow(),
@@ -162,21 +162,21 @@ class SimplePerformanceMetricsFactory:
             'uptime_percentage': round(random.uniform(90.0, 99.9), 2),
             'packet_loss_rate': round(random.uniform(0.0, 5.0), 2)
         }
-        
+
         # Handle device relationship
         if 'device' in kwargs:
             device = kwargs.pop('device')
             defaults['device_id'] = device.id
-            
+
         for key, value in kwargs.items():
             defaults[key] = value
-            
+
         return PerformanceMetrics(**defaults)
 
 
 class SimpleExcellentPerformanceMetricsFactory(SimplePerformanceMetricsFactory):
     """Factory for excellent performance metrics."""
-    
+
     @classmethod
     def create(cls, **kwargs):
         defaults = {
@@ -193,7 +193,7 @@ class SimpleExcellentPerformanceMetricsFactory(SimplePerformanceMetricsFactory):
 
 class SimplePoorPerformanceMetricsFactory(SimplePerformanceMetricsFactory):
     """Factory for poor performance metrics."""
-    
+
     @classmethod
     def create(cls, **kwargs):
         defaults = {
@@ -210,14 +210,14 @@ class SimplePoorPerformanceMetricsFactory(SimplePerformanceMetricsFactory):
 
 class SimpleAlertFactory:
     """Simple factory for creating Alert test objects."""
-    
+
     _counter = 0
-    
+
     @classmethod
     def create(cls, **kwargs):
         """Create an Alert instance."""
         cls._counter += 1
-        
+
         defaults = {
             'device_id': kwargs.get('device_id', 1),
             'alert_type': 'device_down',
@@ -229,7 +229,7 @@ class SimpleAlertFactory:
             'priority_score': random.randint(1, 100),
             'priority_level': 'MEDIUM'
         }
-        
+
         # Handle device relationship
         if 'device' in kwargs:
             device = kwargs.pop('device')
@@ -238,12 +238,12 @@ class SimpleAlertFactory:
             # Create a device if none provided
             device = SimpleDeviceFactory.create()
             defaults['device_id'] = device.id
-            
+
         for key, value in kwargs.items():
             defaults[key] = value
-            
+
         alert = Alert(**defaults)
-        
+
         # Try to add to session if in an app context (but don't commit)
         try:
             from models import db
@@ -253,13 +253,13 @@ class SimpleAlertFactory:
         except:
             # If we can't add to session, that's okay for some tests
             pass
-            
+
         return alert
 
 
 class SimplePerformanceAlertFactory(SimpleAlertFactory):
     """Factory for performance-related alerts."""
-    
+
     @classmethod
     def create(cls, **kwargs):
         defaults = {
@@ -273,16 +273,16 @@ class SimplePerformanceAlertFactory(SimpleAlertFactory):
 
 class SimpleResolvedAlertFactory(SimpleAlertFactory):
     """Factory for resolved alerts."""
-    
+
     @classmethod
     def create(cls, **kwargs):
         # Create alert that was created in the past and resolved afterwards
         created_hours_ago = random.randint(2, 48)  # Created 2-48 hours ago
         resolved_hours_ago = random.randint(1, created_hours_ago - 1)  # Resolved 1 hour to (created_hours_ago - 1) hours ago
-        
+
         created_time = datetime.utcnow() - timedelta(hours=created_hours_ago)
         resolved_time = datetime.utcnow() - timedelta(hours=resolved_hours_ago)
-        
+
         defaults = {
             'resolved': True,
             'resolved_at': resolved_time,
@@ -294,16 +294,16 @@ class SimpleResolvedAlertFactory(SimpleAlertFactory):
 
 class SimpleAcknowledgedAlertFactory(SimpleAlertFactory):
     """Factory for acknowledged alerts."""
-    
+
     @classmethod
     def create(cls, **kwargs):
         # Create alert that was created in the past and acknowledged afterwards
         created_minutes_ago = random.randint(30, 300)  # Created 30-300 minutes ago
         acknowledged_minutes_ago = random.randint(1, created_minutes_ago - 10)  # Acknowledged after creation
-        
+
         created_time = datetime.utcnow() - timedelta(minutes=created_minutes_ago)
         acknowledged_time = datetime.utcnow() - timedelta(minutes=acknowledged_minutes_ago)
-        
+
         defaults = {
             'acknowledged': True,
             'acknowledged_at': acknowledged_time,
@@ -316,7 +316,7 @@ class SimpleAcknowledgedAlertFactory(SimpleAlertFactory):
 
 class SimpleRouterDeviceFactory(SimpleDeviceFactory):
     """Factory for router devices."""
-    
+
     @classmethod
     def create(cls, **kwargs):
         defaults = {
@@ -330,7 +330,7 @@ class SimpleRouterDeviceFactory(SimpleDeviceFactory):
 
 class SimpleComputerDeviceFactory(SimpleDeviceFactory):
     """Factory for computer devices."""
-    
+
     @classmethod
     def create(cls, **kwargs):
         defaults = {
@@ -344,24 +344,24 @@ class SimpleComputerDeviceFactory(SimpleDeviceFactory):
 
 class SimpleConfigurationFactory:
     """Simple factory for creating Configuration test objects."""
-    
+
     _counter = 0
-    
+
     @classmethod
     def create(cls, **kwargs):
         """Create a Configuration instance."""
         cls._counter += 1
-        
+
         defaults = {
             'key': kwargs.get('key', f'test_config_{cls._counter}'),
             'value': kwargs.get('value', f'test_value_{cls._counter}'),
             'created_at': datetime.utcnow(),
             'updated_at': datetime.utcnow()
         }
-        
+
         for key, value in kwargs.items():
             defaults[key] = value
-            
+
         return Configuration(**defaults)
 
 

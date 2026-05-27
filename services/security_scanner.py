@@ -132,14 +132,14 @@ class PortScanResult:
 
 class NetworkSecurityScanner:
     """Enhanced enterprise-grade network security scanner for HomeNetMon with comprehensive vulnerability assessment"""
-    
+
     def __init__(self, app=None):
         self.app = app
         self.running = False
         self.scan_interval = 86400  # 24 hours default - much less aggressive to reduce alerts
         self.nm = nmap.PortScanner()
         self.anomaly_detection = AnomalyDetectionEngine()
-        
+
         # Scan progress tracking
         self.current_scan = {
             'active': False,
@@ -156,7 +156,7 @@ class NetworkSecurityScanner:
             'alerts_generated': 0,
             'error_message': None
         }
-        
+
         # Security scanning configuration
         self.scan_config = {
             'top_ports': 1000,  # Scan top 1000 most common ports
@@ -169,7 +169,7 @@ class NetworkSecurityScanner:
             'max_retries': 1,       # Reduce retries for problematic hosts
             'scan_delay': '10ms',   # Delay between probes
         }
-        
+
         # Risk scoring weights
         self.risk_weights = {
             'ssh': 3,           # SSH access
@@ -189,7 +189,7 @@ class NetworkSecurityScanner:
             'redis': 4,         # Cache/database
             'unknown': 2        # Unknown service
         }
-        
+
         # Suspicious ports that should trigger alerts
         self.suspicious_ports = {
             23: 'telnet',       # Unencrypted remote access
@@ -221,16 +221,16 @@ class NetworkSecurityScanner:
         self.problematic_devices_blacklist = {
             '192.168.192.5',  # Heavily filtered device, causes infinite hangs
         }
-    
+
     def start_monitoring(self):
         """Start the security scanner monitoring loop"""
         if self.running:
             logger.warning("Security scanner already running")
             return
-            
+
         self.running = True
         logger.info("Starting network security scanner")
-        
+
         def scanner_loop():
             while self.running:
                 try:
@@ -239,19 +239,19 @@ class NetworkSecurityScanner:
                 except Exception as e:
                     logger.error(f"Error in security scanner loop: {e}")
                     time.sleep(300)  # Wait 5 minutes on error
-        
+
         scanner_thread = threading.Thread(
             target=scanner_loop,
             daemon=True,
             name='SecurityScanner'
         )
         scanner_thread.start()
-    
+
     def stop_monitoring(self):
         """Stop the security scanner monitoring"""
         self.running = False
         logger.info("Security scanner stopped")
-    
+
     def get_scan_progress(self):
         """Get current scan progress"""
         return dict(self.current_scan)
@@ -286,7 +286,7 @@ class NetworkSecurityScanner:
         except Exception as e:
             logger.error(f"Error stopping security scan: {e}")
             return {'success': False, 'error': str(e)}
-    
+
     def _reset_scan_progress(self):
         """Reset scan progress tracking"""
         self.current_scan.update({
@@ -304,20 +304,20 @@ class NetworkSecurityScanner:
             'alerts_generated': 0,
             'error_message': None
         })
-    
+
     def _update_scan_progress(self, **kwargs):
         """Update scan progress"""
         self.current_scan.update(kwargs)
-        
+
         # Calculate overall progress
         if self.current_scan['total_devices'] > 0:
             device_progress = self.current_scan['devices_completed'] / self.current_scan['total_devices']
             current_device_progress = self.current_scan['current_device_progress'] / 100.0
-            
+
             # Overall progress is completed devices + partial progress of current device
             overall_progress = device_progress + (current_device_progress / self.current_scan['total_devices'])
             self.current_scan['progress'] = min(100, int(overall_progress * 100))
-    
+
     def run_security_scan(self):
         """Run a complete security scan of the network"""
         logger.info("Starting network security scan")
@@ -356,13 +356,13 @@ class NetworkSecurityScanner:
 
                 devices = query.all()
                 total_devices = len(devices)
-                
+
                 self._update_scan_progress(total_devices=total_devices)
                 logger.info(f"Found {total_devices} devices to scan")
-                
+
                 scan_results = []
                 security_alerts = []
-                
+
                 for i, device in enumerate(devices):
                     try:
                         # Update progress for current device
@@ -370,50 +370,50 @@ class NetworkSecurityScanner:
                             current_device=device.display_name,
                             current_device_progress=0
                         )
-                        
+
                         logger.info(f"Scanning device {i+1}/{total_devices}: {device.display_name} ({device.ip_address})")
-                        
+
                         # Update progress to show scanning started
                         self._update_scan_progress(current_device_progress=25)
-                        
+
                         device_results = self.scan_device_ports(device)
                         scan_results.extend(device_results)
-                        
+
                         # Update progress after port scan
                         self._update_scan_progress(
                             current_device_progress=75,
                             total_ports_scanned=self.current_scan['total_ports_scanned'] + len(device_results),
                             open_ports_found=self.current_scan['open_ports_found'] + len([r for r in device_results if r.state == 'open'])
                         )
-                        
+
                         # Analyze results for security issues
                         device_alerts = self.analyze_security_results(device, device_results)
                         security_alerts.extend(device_alerts)
-                        
+
                         # Mark device as completed
                         self._update_scan_progress(
                             devices_completed=i + 1,
                             current_device_progress=100,
                             alerts_generated=len(security_alerts)
                         )
-                        
+
                     except Exception as e:
                         logger.error(f"Error scanning device {device.id}: {e}")
                         # Still mark as completed to continue with other devices
                         self._update_scan_progress(devices_completed=i + 1)
-                
+
                 # Store scan results
                 if scan_results:
                     logger.info(f"Storing {len(scan_results)} scan results")
                     self.store_scan_results(scan_results)
-                
+
                 # Process security alerts
                 if security_alerts:
                     logger.info(f"Found {len(security_alerts)} security issues")
                     self.process_security_alerts(security_alerts)
                 else:
                     logger.info("No security issues detected")
-                
+
                 # Mark scan as completed
                 self._update_scan_progress(
                     status='completed',
@@ -422,9 +422,9 @@ class NetworkSecurityScanner:
                     current_device=None,
                     current_device_progress=0
                 )
-                
+
                 logger.info(f"Network security scan completed - scanned {total_devices} devices, found {len([r for r in scan_results if r.state == 'open'])} open ports, generated {len(security_alerts)} alerts")
-                
+
         except Exception as e:
             logger.error(f"Security scan failed: {e}")
             self._update_scan_progress(
@@ -432,13 +432,13 @@ class NetworkSecurityScanner:
                 end_time=datetime.utcnow(),
                 error_message=str(e)
             )
-    
+
     def start_background_scan(self):
         """Start a background security scan"""
         if self.current_scan['active']:
             logger.warning("Security scan already in progress")
             return {'success': False, 'error': 'Scan already in progress'}
-        
+
         try:
             # Start scan in background thread
             scan_thread = threading.Thread(
@@ -447,14 +447,14 @@ class NetworkSecurityScanner:
                 name='BackgroundSecurityScan'
             )
             scan_thread.start()
-            
+
             logger.info("Background security scan started")
             return {'success': True, 'message': 'Security scan started in background'}
-            
+
         except Exception as e:
             logger.error(f"Failed to start background scan: {e}")
             return {'success': False, 'error': str(e)}
-    
+
     def scan_device_ports(self, device: Device) -> List[PortScanResult]:
         """Enhanced port scanning with comprehensive service detection"""
         results = []
@@ -533,11 +533,11 @@ class NetworkSecurityScanner:
                 results['scan_duration'] = scan_duration
                 results['error'] = str(e)
                 return results
-            
+
             # Parse results
             if device.ip_address in scan_result['scan']:
                 host_info = scan_result['scan'][device.ip_address]
-                
+
                 # Parse TCP ports
                 if 'tcp' in host_info:
                     for port, port_info in host_info['tcp'].items():
@@ -569,7 +569,7 @@ class NetworkSecurityScanner:
                         results.append(result)
 
                         logger.debug(f"Found service: {device.ip_address}:{port} - {result.service} {result.version}")
-                
+
                 # Parse UDP ports if enabled
                 if 'udp' in host_info:
                     for port, port_info in host_info['udp'].items():
@@ -586,26 +586,26 @@ class NetworkSecurityScanner:
                             scanned_at=datetime.utcnow()
                         )
                         results.append(result)
-                
+
                 # Store OS detection results if available
                 if host_info.get('osmatch'):
                     os_info = host_info['osmatch'][0]
                     self._store_os_detection(device.id, os_info)
-        
+
         except Exception as e:
             logger.error(f"Error scanning {device.ip_address}: {e}")
-        
+
         return results
-    
+
     def analyze_security_results(self, device: Device, scan_results: List[PortScanResult]) -> List[SecurityAlert]:
         """Analyze scan results for security issues"""
         alerts = []
-        
+
         # Get previous scan results for comparison
         previous_results = self.get_previous_scan_results(device.id)
         previous_services = {(r['port'], r['service']) for r in previous_results}
         current_services = {(r.port, r.service) for r in scan_results if r.state == 'open'}
-        
+
         # Check for new services
         new_services = current_services - previous_services
         for port, service in new_services:
@@ -621,7 +621,7 @@ class NetworkSecurityScanner:
                 risk_score=self.calculate_risk_score(port, service)
             )
             alerts.append(alert)
-        
+
         # Check for suspicious ports
         for result in scan_results:
             if result.state == 'open' and result.port in self.suspicious_ports:
@@ -638,7 +638,7 @@ class NetworkSecurityScanner:
                     risk_score=self.calculate_risk_score(result.port, result.service)
                 )
                 alerts.append(alert)
-        
+
         # Check for high-risk services
         for result in scan_results:
             if result.state == 'open':
@@ -657,31 +657,31 @@ class NetworkSecurityScanner:
                         risk_score=risk_score
                     )
                     alerts.append(alert)
-        
+
         return alerts
-    
+
     def calculate_risk_score(self, port: int, service: str) -> float:
         """Calculate risk score for a service"""
         base_score = self.risk_weights.get(service.lower(), self.risk_weights['unknown'])
-        
+
         # Adjust score based on port
         if port in self.suspicious_ports:
             base_score += 2
-        
+
         # Well-known insecure services
         if service.lower() in ['telnet', 'ftp', 'http']:
             base_score += 1
-        
+
         # Secure services get lower scores
         if service.lower() in ['https', 'ssh']:
             base_score = max(1, base_score - 1)
-        
+
         return min(10.0, base_score)
-    
+
     def calculate_service_severity(self, port: int, service: str) -> str:
         """Calculate severity level for a service"""
         risk_score = self.calculate_risk_score(port, service)
-        
+
         # Much higher thresholds to reduce alert sensitivity
         if risk_score >= 9.5:
             return 'critical'
@@ -691,15 +691,15 @@ class NetworkSecurityScanner:
             return 'medium'
         else:
             return 'low'
-    
+
     def get_previous_scan_results(self, device_id: int) -> List[Dict]:
         """Get previous scan results for comparison"""
         try:
             from models import SecurityScan
-            
+
             # Get the most recent scan results for this device (last 24 hours)
             cutoff_time = datetime.utcnow() - timedelta(hours=24)
-            
+
             previous_scans = db.session.query(SecurityScan).filter(
                 and_(
                     SecurityScan.device_id == device_id,
@@ -707,7 +707,7 @@ class NetworkSecurityScanner:
                     SecurityScan.state == 'open'
                 )
             ).all()
-            
+
             return [
                 {
                     'port': scan.port,
@@ -717,23 +717,23 @@ class NetworkSecurityScanner:
                 }
                 for scan in previous_scans
             ]
-            
+
         except Exception as e:
             logger.error(f"Error getting previous scan results: {e}")
             return []
-    
+
     def store_scan_results(self, scan_results: List[PortScanResult]):
         """Store scan results in database"""
         try:
             from models import SecurityScan, SecurityEvent
-            
+
             logger.info(f"Storing {len(scan_results)} scan results")
-            
+
             # Store individual scan results
             for result in scan_results:
                 # Calculate risk score
                 risk_score = self.calculate_risk_score(result.port, result.service)
-                
+
                 security_scan = SecurityScan(
                     device_id=result.device_id,
                     ip_address=result.ip_address,
@@ -747,22 +747,22 @@ class NetworkSecurityScanner:
                     risk_score=risk_score,
                     scanned_at=result.scanned_at
                 )
-                
+
                 db.session.add(security_scan)
-            
+
             # Create a security event for the completed scan
             device_ids = list(set(r.device_id for r in scan_results))
             for device_id in device_ids:
                 device_results = [r for r in scan_results if r.device_id == device_id]
                 open_ports = [r for r in device_results if r.state == 'open']
-                
+
                 event_metadata = {
                     'ports_scanned': len(device_results),
                     'open_ports': len(open_ports),
                     'services_found': list(set(r.service for r in open_ports)),
                     'scan_duration': 'unknown'  # Could be enhanced with timing
                 }
-                
+
                 security_event = SecurityEvent(
                     device_id=device_id,
                     event_type='scan_completed',
@@ -771,16 +771,16 @@ class NetworkSecurityScanner:
                     event_metadata=json.dumps(event_metadata),
                     created_at=datetime.utcnow()
                 )
-                
+
                 db.session.add(security_event)
-            
+
             db.session.commit()
             logger.info("Security scan results stored successfully")
-            
+
         except Exception as e:
             logger.error(f"Error storing scan results: {e}")
             db.session.rollback()
-    
+
     def process_security_alerts(self, security_alerts: List[SecurityAlert]):
         """Process detected security alerts"""
         for alert in security_alerts:
@@ -790,21 +790,21 @@ class NetworkSecurityScanner:
                     f"Type: {alert.alert_type}, Severity: {alert.severity}, "
                     f"Message: {alert.message}"
                 )
-                
+
                 # Create alert record
                 self.create_security_alert(alert)
-                
+
                 # Send push notification for security alert
                 self.send_security_push_notification(alert)
-                
+
             except Exception as e:
                 logger.error(f"Error processing security alert: {e}")
-    
+
     def create_security_alert(self, alert: SecurityAlert):
         """Create a security alert record"""
         try:
             from models import Alert
-            
+
             # Create alert with security-specific data
             alert_data = {
                 'alert_type': alert.alert_type,
@@ -813,7 +813,7 @@ class NetworkSecurityScanner:
                 'version': alert.version,
                 'risk_score': alert.risk_score
             }
-            
+
             db_alert = Alert(
                 device_id=alert.device_id,
                 alert_type=f'security_{alert.alert_type}',
@@ -822,47 +822,47 @@ class NetworkSecurityScanner:
                 metadata=json.dumps(alert_data),
                 created_at=alert.detected_at
             )
-            
+
             db.session.add(db_alert)
             db.session.commit()
-            
+
             logger.info(f"Created security alert for device {alert.device_name}")
-            
+
         except Exception as e:
             logger.error(f"Error creating security alert: {e}")
             db.session.rollback()
-    
+
     def send_security_push_notification(self, alert: SecurityAlert):
         """Send push notification for security alert"""
         try:
             from services.push_notifications import push_service
             from models import Configuration, Device
             from config import Config
-            
+
             # Update push service configuration from database
             push_service.enabled = Configuration.get_value('push_notifications_enabled', 'false').lower() == 'true'
             push_service.topic = Configuration.get_value('ntfy_topic', '')
             push_service.server = Configuration.get_value('ntfy_server', 'https://ntfy.sh')
-            
+
             if not push_service.is_configured():
                 logger.debug("Push notifications not configured, skipping security alert notification")
                 return
-            
+
             # Get device information
             device = Device.query.filter_by(id=alert.device_id).first()
             if not device:
                 logger.error(f"Device {alert.device_id} not found for security alert notification")
                 return
-            
+
             # Calculate risk score for push notification
             risk_score = alert.risk_score if alert.risk_score else self.calculate_risk_score(
-                alert.port if alert.port else 0, 
+                alert.port if alert.port else 0,
                 alert.service if alert.service else 'unknown'
             )
-            
+
             # Build dashboard URL
             dashboard_url = f"http://{Config.HOST}:{Config.PORT}/security"
-            
+
             # Send security push notification
             success = push_service.send_security_alert(
                 device_name=alert.device_name,
@@ -871,26 +871,26 @@ class NetworkSecurityScanner:
                 risk_score=risk_score,
                 dashboard_url=dashboard_url
             )
-            
+
             if success:
                 logger.info(f"Sent security push notification for {alert.device_name}: {alert.alert_type}")
             else:
                 logger.warning(f"Failed to send security push notification for {alert.device_name}")
-                
+
         except Exception as e:
             logger.error(f"Error sending security push notification: {e}")
-    
+
     def perform_compliance_assessment(self, device: Device, framework: ComplianceFramework = ComplianceFramework.CIS) -> List[ComplianceCheck]:
         """Perform compliance assessment against specified framework"""
         compliance_checks = []
-        
+
         try:
             logger.info(f"Starting {framework.value.upper()} compliance assessment for {device.display_name}")
-            
+
             # Get current scan results for compliance evaluation
             scan_results = self.scan_device_ports(device)
             open_ports = [r for r in scan_results if r.state == 'open']
-            
+
             if framework == ComplianceFramework.CIS:
                 compliance_checks.extend(self._perform_cis_controls_assessment(device, open_ports))
             elif framework == ComplianceFramework.NIST:
@@ -899,18 +899,18 @@ class NetworkSecurityScanner:
                 compliance_checks.extend(self._perform_pci_dss_assessment(device, open_ports))
             elif framework == ComplianceFramework.ISO27001:
                 compliance_checks.extend(self._perform_iso27001_assessment(device, open_ports))
-            
+
             logger.info(f"Compliance assessment completed: {len(compliance_checks)} checks for {device.display_name}")
             return compliance_checks
-            
+
         except Exception as e:
             logger.error(f"Error in compliance assessment: {e}")
             return []
-    
+
     def _perform_cis_controls_assessment(self, device: Device, open_ports: List[PortScanResult]) -> List[ComplianceCheck]:
         """Perform CIS Controls assessment"""
         checks = []
-        
+
         # CIS Control 4.1: Secure Configuration for Hardware and Software
         telnet_ports = [r for r in open_ports if r.service == 'telnet']
         if telnet_ports:
@@ -942,7 +942,7 @@ class NetworkSecurityScanner:
                 remediation=[],
                 checked_at=datetime.utcnow()
             ))
-        
+
         # CIS Control 12.2: Actively Scan for Vulnerabilities
         checks.append(ComplianceCheck(
             check_id=f"CIS_12.2_{device.id}",
@@ -960,13 +960,13 @@ class NetworkSecurityScanner:
             remediation=[],
             checked_at=datetime.utcnow()
         ))
-        
+
         return checks
-    
+
     def _perform_nist_assessment(self, device: Device, open_ports: List[PortScanResult]) -> List[ComplianceCheck]:
         """Perform NIST Cybersecurity Framework assessment"""
         checks = []
-        
+
         # NIST ID.AM-1: Physical devices and systems within the organization are inventoried
         checks.append(ComplianceCheck(
             check_id=f"NIST_ID.AM-1_{device.id}",
@@ -985,7 +985,7 @@ class NetworkSecurityScanner:
             remediation=[],
             checked_at=datetime.utcnow()
         ))
-        
+
         # NIST PR.IP-1: A baseline configuration of information technology/industrial control systems
         excessive_ports = len(open_ports) > 15
         checks.append(ComplianceCheck(
@@ -1004,13 +1004,13 @@ class NetworkSecurityScanner:
             remediation=['Review necessity of all open ports', 'Close unused services', 'Document approved services'] if excessive_ports else [],
             checked_at=datetime.utcnow()
         ))
-        
+
         return checks
-    
+
     def _perform_pci_dss_assessment(self, device: Device, open_ports: List[PortScanResult]) -> List[ComplianceCheck]:
         """Perform PCI DSS assessment"""
         checks = []
-        
+
         # PCI DSS 2.2.2: Enable only necessary services, protocols, daemons
         unnecessary_services = [r for r in open_ports if r.service in ['telnet', 'ftp', 'rsh', 'rcp']]
         checks.append(ComplianceCheck(
@@ -1028,13 +1028,13 @@ class NetworkSecurityScanner:
             remediation=['Disable unnecessary services', 'Use secure alternatives', 'Document business justification'] if unnecessary_services else [],
             checked_at=datetime.utcnow()
         ))
-        
+
         return checks
-    
+
     def _perform_iso27001_assessment(self, device: Device, open_ports: List[PortScanResult]) -> List[ComplianceCheck]:
         """Perform ISO 27001 assessment"""
         checks = []
-        
+
         # ISO 27001 A.13.1.1: Network controls
         checks.append(ComplianceCheck(
             check_id=f"ISO_A.13.1.1_{device.id}",
@@ -1052,14 +1052,14 @@ class NetworkSecurityScanner:
             remediation=[],
             checked_at=datetime.utcnow()
         ))
-        
+
         return checks
-    
+
     def _store_os_detection(self, device_id: int, os_info: Dict[str, Any]):
         """Store OS detection results"""
         try:
             from models import DeviceOSInfo
-            
+
             os_record = DeviceOSInfo(
                 device_id=device_id,
                 os_name=os_info.get('name', 'Unknown'),
@@ -1068,22 +1068,22 @@ class NetworkSecurityScanner:
                 accuracy=os_info.get('accuracy', 0),
                 detected_at=datetime.utcnow()
             )
-            
+
             db.session.merge(os_record)
             db.session.commit()
-            
+
             logger.debug(f"Stored OS detection for device {device_id}: {os_info.get('name')}")
-            
+
         except Exception as e:
             logger.error(f"Error storing OS detection: {e}")
-    
+
     def get_security_summary(self, hours: int = 24) -> Dict:
         """Get comprehensive security summary statistics"""
         try:
             from models import Alert, SecurityVulnerability
-            
+
             start_time = datetime.utcnow() - timedelta(hours=hours)
-            
+
             # Count security alerts by type and severity
             security_alerts = db.session.query(Alert).filter(
                 and_(
@@ -1091,12 +1091,12 @@ class NetworkSecurityScanner:
                     Alert.created_at >= start_time
                 )
             ).all()
-            
+
             # Count vulnerability findings
             vulnerabilities = db.session.query(SecurityVulnerability).filter(
                 SecurityVulnerability.discovered_at >= start_time
             ).all()
-            
+
             # Count recent scans (safely handle missing table)
             try:
                 from models import SecurityScan
@@ -1108,7 +1108,7 @@ class NetworkSecurityScanner:
             except Exception as e:
                 logger.debug(f"Could not query security scans table: {e}")
                 recent_scans = 0
-            
+
             summary = {
                 'total_alerts': len(security_alerts),
                 'total_vulnerabilities': len(vulnerabilities),
@@ -1120,75 +1120,75 @@ class NetworkSecurityScanner:
                 'high_risk_findings': len([v for v in vulnerabilities if v.risk_score >= 7.0]),
                 'compliance_violations': len([v for v in vulnerabilities if json.loads(v.compliance_violations or '[]')])
             }
-            
+
             # Count alerts by severity
             for alert in security_alerts:
                 summary['by_severity'][alert.severity] += 1
                 alert_type = alert.alert_type.replace('security_', '')
                 summary['by_type'][alert_type] = summary['by_type'].get(alert_type, 0) + 1
-            
+
             # Count vulnerabilities by severity and category
             for vuln in vulnerabilities:
                 summary['by_severity'][vuln.severity] += 1
                 summary['vulnerability_categories'][vuln.category] = summary['vulnerability_categories'].get(vuln.category, 0) + 1
-            
+
             return summary
-            
+
         except Exception as e:
             logger.error(f"Error getting security summary: {e}")
             return {'error': str(e)}
-    
+
     def perform_vulnerability_assessment(self, device: Device) -> List[VulnerabilityFinding]:
         """Comprehensive vulnerability assessment for a device"""
         findings = []
-        
+
         try:
             logger.info(f"Starting vulnerability assessment for {device.display_name}")
-            
+
             # 1. Port-based vulnerability assessment
             port_findings = self._assess_port_vulnerabilities(device)
             findings.extend(port_findings)
-            
+
             # 2. Service version vulnerability checks
             service_findings = self._assess_service_vulnerabilities(device)
             findings.extend(service_findings)
-            
+
             # 3. SSL/TLS certificate analysis
             ssl_findings = self._assess_ssl_vulnerabilities(device)
             findings.extend(ssl_findings)
-            
+
             # 4. Configuration security checks
             config_findings = self._assess_configuration_security(device)
             findings.extend(config_findings)
-            
+
             # 5. Network behavior anomaly assessment
             if self.anomaly_detection:
                 anomaly_findings = self._assess_anomaly_based_vulnerabilities(device)
                 findings.extend(anomaly_findings)
-            
+
             logger.info(f"Vulnerability assessment completed: {len(findings)} findings for {device.display_name}")
             return findings
-            
+
         except Exception as e:
             logger.error(f"Error in vulnerability assessment for {device.display_name}: {e}")
             return []
-    
+
     def _assess_port_vulnerabilities(self, device: Device) -> List[VulnerabilityFinding]:
         """Assess vulnerabilities based on open ports"""
         findings = []
-        
+
         try:
             # Get recent port scan results
             scan_results = self.scan_device_ports(device)
-            
+
             for result in scan_results:
                 if result.state != 'open':
                     continue
-                
+
                 # Check for high-risk ports
                 if result.port in self.suspicious_ports:
                     severity = SecuritySeverity.HIGH if result.port in [23, 3389, 5900] else SecuritySeverity.MEDIUM
-                    
+
                     finding = VulnerabilityFinding(
                         finding_id=f"port_{device.id}_{result.port}_{int(datetime.utcnow().timestamp())}",
                         device_id=device.id,
@@ -1210,7 +1210,7 @@ class NetworkSecurityScanner:
                         last_verified=datetime.utcnow()
                     )
                     findings.append(finding)
-                
+
                 # Check for default/weak service configurations
                 if self._is_default_service_config(result):
                     finding = VulnerabilityFinding(
@@ -1233,26 +1233,26 @@ class NetworkSecurityScanner:
                         last_verified=datetime.utcnow()
                     )
                     findings.append(finding)
-            
+
         except Exception as e:
             logger.error(f"Error assessing port vulnerabilities: {e}")
-        
+
         return findings
-    
+
     def _assess_service_vulnerabilities(self, device: Device) -> List[VulnerabilityFinding]:
         """Assess vulnerabilities based on service versions"""
         findings = []
-        
+
         try:
             scan_results = self.scan_device_ports(device)
-            
+
             for result in scan_results:
                 if result.state != 'open' or not result.version:
                     continue
-                
+
                 # Check for known vulnerable service versions
                 vulnerabilities = self._check_service_version_vulnerabilities(result.service, result.version)
-                
+
                 for vuln in vulnerabilities:
                     finding = VulnerabilityFinding(
                         finding_id=f"service_vuln_{device.id}_{result.port}_{vuln['id']}_{int(datetime.utcnow().timestamp())}",
@@ -1276,25 +1276,25 @@ class NetworkSecurityScanner:
                         cve_references=vuln.get('cve_references', [])
                     )
                     findings.append(finding)
-            
+
         except Exception as e:
             logger.error(f"Error assessing service vulnerabilities: {e}")
-        
+
         return findings
-    
+
     def _assess_ssl_vulnerabilities(self, device: Device) -> List[VulnerabilityFinding]:
         """Assess SSL/TLS certificate and configuration vulnerabilities"""
         findings = []
-        
+
         try:
             # Check common SSL/TLS ports
             ssl_ports = [443, 993, 995, 8443, 9443]
             scan_results = self.scan_device_ports(device)
-            
+
             for result in scan_results:
                 if result.state == 'open' and (result.port in ssl_ports or 'ssl' in result.service.lower()):
                     ssl_info = self._analyze_ssl_certificate(device.ip_address, result.port)
-                    
+
                     if ssl_info:
                         # Check for expired certificates
                         if ssl_info.is_expired:
@@ -1319,11 +1319,11 @@ class NetworkSecurityScanner:
                                 last_verified=datetime.utcnow()
                             )
                             findings.append(finding)
-                        
+
                         # Check for certificates expiring soon
                         elif ssl_info.days_until_expiry <= 30:
                             severity = SecuritySeverity.HIGH if ssl_info.days_until_expiry <= 7 else SecuritySeverity.MEDIUM
-                            
+
                             finding = VulnerabilityFinding(
                                 finding_id=f"ssl_expiring_{device.id}_{result.port}_{int(datetime.utcnow().timestamp())}",
                                 device_id=device.id,
@@ -1345,7 +1345,7 @@ class NetworkSecurityScanner:
                                 last_verified=datetime.utcnow()
                             )
                             findings.append(finding)
-                        
+
                         # Check for self-signed certificates
                         if ssl_info.is_self_signed:
                             finding = VulnerabilityFinding(
@@ -1368,21 +1368,21 @@ class NetworkSecurityScanner:
                                 last_verified=datetime.utcnow()
                             )
                             findings.append(finding)
-            
+
         except Exception as e:
             logger.error(f"Error assessing SSL vulnerabilities: {e}")
-        
+
         return findings
-    
+
     def _assess_configuration_security(self, device: Device) -> List[VulnerabilityFinding]:
         """Assess device configuration security issues"""
         findings = []
-        
+
         try:
             # Check for insecure service combinations
             scan_results = self.scan_device_ports(device)
             open_services = [r.service for r in scan_results if r.state == 'open']
-            
+
             # Check for telnet + other services (indicates poor security practices)
             if 'telnet' in open_services:
                 other_services = [s for s in open_services if s != 'telnet']
@@ -1406,7 +1406,7 @@ class NetworkSecurityScanner:
                         last_verified=datetime.utcnow()
                     )
                     findings.append(finding)
-            
+
             # Check for excessive open ports (potential over-exposure)
             open_ports = [r.port for r in scan_results if r.state == 'open']
             if len(open_ports) > 10:
@@ -1429,20 +1429,20 @@ class NetworkSecurityScanner:
                     last_verified=datetime.utcnow()
                 )
                 findings.append(finding)
-            
+
         except Exception as e:
             logger.error(f"Error assessing configuration security: {e}")
-        
+
         return findings
-    
+
     def _assess_anomaly_based_vulnerabilities(self, device: Device) -> List[VulnerabilityFinding]:
         """Assess vulnerabilities based on anomaly detection"""
         findings = []
-        
+
         try:
             # Get anomaly detection results for this device
             anomalies = self.anomaly_detection.detect_device_anomalies(device.id, hours=24)
-            
+
             for anomaly in anomalies:
                 if anomaly.get('security_relevant', False):
                     severity_map = {
@@ -1451,7 +1451,7 @@ class NetworkSecurityScanner:
                         'high': SecuritySeverity.HIGH,
                         'critical': SecuritySeverity.CRITICAL
                     }
-                    
+
                     finding = VulnerabilityFinding(
                         finding_id=f"anomaly_{device.id}_{anomaly['type']}_{int(datetime.utcnow().timestamp())}",
                         device_id=device.id,
@@ -1472,12 +1472,12 @@ class NetworkSecurityScanner:
                         last_verified=datetime.utcnow()
                     )
                     findings.append(finding)
-            
+
         except Exception as e:
             logger.error(f"Error assessing anomaly-based vulnerabilities: {e}")
-        
+
         return findings
-    
+
     def manual_scan_device(self, device_id: int) -> Dict:
         """Manually trigger a comprehensive security scan for a specific device"""
         try:
@@ -1485,26 +1485,26 @@ class NetworkSecurityScanner:
                 device = Device.query.get(device_id)
                 if not device:
                     return {'error': 'Device not found'}
-                
+
                 logger.info(f"Manual security scan requested for {device.display_name}")
-                
+
                 # Perform comprehensive vulnerability assessment
                 vulnerability_findings = self.perform_vulnerability_assessment(device)
-                
+
                 # Legacy port scanning for compatibility
                 scan_results = self.scan_device_ports(device)
                 security_alerts = self.analyze_security_results(device, scan_results)
-                
+
                 if scan_results:
                     self.store_scan_results(scan_results)
-                
+
                 if security_alerts:
                     self.process_security_alerts(security_alerts)
-                
+
                 # Store vulnerability findings
                 if vulnerability_findings:
                     self.store_vulnerability_findings(vulnerability_findings)
-                
+
                 return {
                     'success': True,
                     'device_name': device.display_name,
@@ -1530,7 +1530,7 @@ class NetworkSecurityScanner:
                         } for v in vulnerability_findings
                     ]
                 }
-                
+
         except Exception as e:
             logger.error(f"Error in manual device scan: {e}")
             return {'error': str(e)}
@@ -1538,7 +1538,7 @@ class NetworkSecurityScanner:
     def _check_service_version_vulnerabilities(self, service: str, version: str) -> List[Dict[str, Any]]:
         """Check for known vulnerabilities in service versions"""
         vulnerabilities = []
-        
+
         # Known vulnerability patterns (simplified database)
         vuln_patterns = {
             'ssh': {
@@ -1581,7 +1581,7 @@ class NetworkSecurityScanner:
                 ]
             }
         }
-        
+
         # Check for exact version matches
         service_lower = service.lower()
         for vuln_service, versions in vuln_patterns.items():
@@ -1589,7 +1589,7 @@ class NetworkSecurityScanner:
                 for vuln_version, vulns in versions.items():
                     if vuln_version in version:
                         vulnerabilities.extend(vulns)
-        
+
         # Check for generic old version patterns
         if self._is_outdated_version(service, version):
             vulnerabilities.append({
@@ -1599,24 +1599,24 @@ class NetworkSecurityScanner:
                 'risk_score': 4.0,
                 'remediation': [f'Update {service} to latest version', 'Review security advisories', 'Test compatibility before updating']
             })
-        
+
         return vulnerabilities
-    
+
     def get_compliance_summary(self, framework: ComplianceFramework = None, hours: int = 24) -> Dict[str, Any]:
         """Get compliance assessment summary"""
         try:
             from models import ComplianceResult
-            
+
             start_time = datetime.utcnow() - timedelta(hours=hours)
             query = db.session.query(ComplianceResult).filter(
                 ComplianceResult.checked_at >= start_time
             )
-            
+
             if framework:
                 query = query.filter(ComplianceResult.framework == framework.value)
-            
+
             compliance_results = query.all()
-            
+
             summary = {
                 'total_checks': len(compliance_results),
                 'by_status': {'pass': 0, 'fail': 0, 'not_applicable': 0},
@@ -1625,39 +1625,39 @@ class NetworkSecurityScanner:
                 'compliance_score': 0.0,
                 'critical_violations': 0
             }
-            
+
             for result in compliance_results:
                 # Count by status
                 summary['by_status'][result.status] += 1
-                
+
                 # Count by framework
                 summary['by_framework'][result.framework] = summary['by_framework'].get(result.framework, 0) + 1
-                
+
                 # Count by severity
                 summary['by_severity'][result.severity] += 1
-                
+
                 # Count critical violations
                 if result.severity == 'critical' and result.status == 'fail':
                     summary['critical_violations'] += 1
-            
+
             # Calculate compliance score
             if summary['total_checks'] > 0:
                 passing_checks = summary['by_status']['pass']
                 summary['compliance_score'] = round((passing_checks / summary['total_checks']) * 100, 2)
-            
+
             return summary
-            
+
         except Exception as e:
             logger.error(f"Error getting compliance summary: {e}")
             return {'error': str(e)}
-    
+
     def store_compliance_results(self, compliance_checks: List[ComplianceCheck]):
         """Store compliance check results in database"""
         try:
             from models import ComplianceResult
-            
+
             logger.info(f"Storing {len(compliance_checks)} compliance results")
-            
+
             for check in compliance_checks:
                 compliance_result = ComplianceResult(
                     check_id=check.check_id,
@@ -1671,31 +1671,31 @@ class NetworkSecurityScanner:
                     remediation=json.dumps(check.remediation),
                     checked_at=check.checked_at
                 )
-                
+
                 db.session.merge(compliance_result)
-            
+
             db.session.commit()
             logger.info("Compliance results stored successfully")
-            
+
         except Exception as e:
             logger.error(f"Error storing compliance results: {e}")
             db.session.rollback()
-    
+
     def _is_outdated_version(self, service: str, version: str) -> bool:
         """Simple heuristic to detect potentially outdated versions"""
         import re
-        
+
         # Extract year from version string
         year_match = re.search(r'(201[0-9]|202[0-4])', version)
         if year_match:
             version_year = int(year_match.group(1))
             current_year = datetime.utcnow().year
             return (current_year - version_year) > 3
-        
+
         # Check for obviously old version patterns
         old_patterns = ['1.0.', '0.', '2010', '2011', '2012', '2013', '2014', '2015']
         return any(pattern in version for pattern in old_patterns)
-    
+
     def _is_default_service_config(self, scan_result: PortScanResult) -> bool:
         """Check if service appears to be running with default configuration"""
         # Common default port/service combinations that indicate default configs
@@ -1707,9 +1707,9 @@ class NetworkSecurityScanner:
             5000: 'upnp',
             8888: 'sun-answerbook'
         }
-        
+
         return scan_result.port in default_configs and default_configs[scan_result.port] in scan_result.service
-    
+
     def _get_port_remediation(self, port: int, service: str) -> List[str]:
         """Get remediation steps for specific port/service combinations"""
         remediation_map = {
@@ -1721,52 +1721,52 @@ class NetworkSecurityScanner:
             3389: ['Enable NLA for RDP', 'Use strong RDP passwords', 'Implement RDP gateway'],
             5900: ['Secure VNC with authentication', 'Use VNC over VPN', 'Consider alternatives to VNC']
         }
-        
+
         return remediation_map.get(port, ['Review service configuration', 'Implement access controls', 'Monitor service logs'])
-    
+
     def _analyze_ssl_certificate(self, ip_address: str, port: int) -> Optional[SSLCertificateInfo]:
         """Analyze SSL certificate for a given IP and port"""
         try:
             import ssl
             import socket
             from datetime import datetime
-            
+
             # Create SSL context
             context = ssl.create_default_context()
             context.check_hostname = False
             context.verify_mode = ssl.CERT_NONE
-            
+
             # Connect and get certificate
             with socket.create_connection((ip_address, port), timeout=10) as sock:
                 with context.wrap_socket(sock) as ssock:
                     cert_der = ssock.getpeercert(binary_form=True)
                     cert_info = ssock.getpeercert()
-                    
+
                     if not cert_info:
                         return None
-                    
+
                     # Parse certificate information
                     subject = dict(x[0] for x in cert_info.get('subject', []))
                     issuer = dict(x[0] for x in cert_info.get('issuer', []))
-                    
+
                     # Parse dates
                     not_before = datetime.strptime(cert_info['notBefore'], '%b %d %H:%M:%S %Y %Z')
                     not_after = datetime.strptime(cert_info['notAfter'], '%b %d %H:%M:%S %Y %Z')
-                    
+
                     # Calculate expiry
                     now = datetime.utcnow()
                     days_until_expiry = (not_after - now).days
                     is_expired = now > not_after
-                    
+
                     # Check if self-signed
                     is_self_signed = subject.get('commonName') == issuer.get('commonName')
-                    
+
                     # Get SAN list
                     san_list = []
                     for san in cert_info.get('subjectAltName', []):
                         if san[0] == 'DNS':
                             san_list.append(san[1])
-                    
+
                     return SSLCertificateInfo(
                         device_id=0,  # Will be set by caller
                         port=port,
@@ -1782,18 +1782,18 @@ class NetworkSecurityScanner:
                         days_until_expiry=days_until_expiry,
                         san_list=san_list
                     )
-        
+
         except Exception as e:
             logger.debug(f"Could not analyze SSL certificate for {ip_address}:{port}: {e}")
             return None
-    
+
     def store_vulnerability_findings(self, findings: List[VulnerabilityFinding]):
         """Store vulnerability findings in database"""
         try:
             from models import SecurityVulnerability
-            
+
             logger.info(f"Storing {len(findings)} vulnerability findings")
-            
+
             for finding in findings:
                 vulnerability = SecurityVulnerability(
                     finding_id=finding.finding_id,
@@ -1812,27 +1812,27 @@ class NetworkSecurityScanner:
                     cve_references=json.dumps(finding.cve_references),
                     compliance_violations=json.dumps(finding.compliance_violations)
                 )
-                
+
                 db.session.add(vulnerability)
-            
+
             db.session.commit()
             logger.info("Vulnerability findings stored successfully")
-            
+
         except Exception as e:
             logger.error(f"Error storing vulnerability findings: {e}")
             db.session.rollback()
-    
+
     def get_vulnerability_summary(self, hours: int = 24) -> Dict[str, Any]:
         """Get vulnerability summary statistics"""
         try:
             from models import SecurityVulnerability
-            
+
             start_time = datetime.utcnow() - timedelta(hours=hours)
-            
+
             vulnerabilities = db.session.query(SecurityVulnerability).filter(
                 SecurityVulnerability.discovered_at >= start_time
             ).all()
-            
+
             summary = {
                 'total_vulnerabilities': len(vulnerabilities),
                 'by_severity': {'info': 0, 'low': 0, 'medium': 0, 'high': 0, 'critical': 0},
@@ -1841,32 +1841,32 @@ class NetworkSecurityScanner:
                 'high_risk_count': 0,
                 'cve_count': 0
             }
-            
+
             for vuln in vulnerabilities:
                 # Count by severity
                 summary['by_severity'][vuln.severity] += 1
-                
+
                 # Count by category
                 summary['by_category'][vuln.category] = summary['by_category'].get(vuln.category, 0) + 1
-                
+
                 # Count by status
                 summary['by_status'][vuln.status] += 1
-                
+
                 # High risk count (risk score >= 7)
                 if vuln.risk_score >= 7.0:
                     summary['high_risk_count'] += 1
-                
+
                 # CVE count
                 cve_refs = json.loads(vuln.cve_references or '[]')
                 if cve_refs:
                     summary['cve_count'] += 1
-            
+
             return summary
-            
+
         except Exception as e:
             logger.error(f"Error getting vulnerability summary: {e}")
             return {'error': str(e)}
-    
+
     def get_device_security_posture(self, device_id: int) -> Dict[str, Any]:
         """Get comprehensive security posture for a specific device"""
         try:
@@ -1874,18 +1874,18 @@ class NetworkSecurityScanner:
                 device = Device.query.get(device_id)
                 if not device:
                     return {'error': 'Device not found'}
-                
+
                 # Get recent vulnerability findings
                 start_time = datetime.utcnow() - timedelta(days=30)
                 from models import SecurityVulnerability, Alert
-                
+
                 vulnerabilities = db.session.query(SecurityVulnerability).filter(
                     and_(
                         SecurityVulnerability.device_id == device_id,
                         SecurityVulnerability.discovered_at >= start_time
                     )
                 ).all()
-                
+
                 # Get recent security alerts
                 security_alerts = db.session.query(Alert).filter(
                     and_(
@@ -1894,15 +1894,15 @@ class NetworkSecurityScanner:
                         Alert.created_at >= start_time
                     )
                 ).all()
-                
+
                 # Calculate risk score
                 risk_scores = [v.risk_score for v in vulnerabilities if v.risk_score]
                 avg_risk_score = sum(risk_scores) / len(risk_scores) if risk_scores else 0.0
-                
+
                 # Determine security posture level
                 critical_vulns = len([v for v in vulnerabilities if v.severity == 'critical'])
                 high_vulns = len([v for v in vulnerabilities if v.severity == 'high'])
-                
+
                 if critical_vulns > 0:
                     posture_level = 'critical'
                 elif high_vulns > 2:
@@ -1913,7 +1913,7 @@ class NetworkSecurityScanner:
                     posture_level = 'fair'
                 else:
                     posture_level = 'good'
-                
+
                 return {
                     'device_id': device_id,
                     'device_name': device.display_name,
@@ -1930,38 +1930,38 @@ class NetworkSecurityScanner:
                     'last_assessment': max(v.discovered_at for v in vulnerabilities).isoformat() if vulnerabilities else None,
                     'recommendations': self._generate_security_recommendations(vulnerabilities, security_alerts)
                 }
-                
+
         except Exception as e:
             logger.error(f"Error getting device security posture: {e}")
             return {'error': str(e)}
-    
+
     def _generate_security_recommendations(self, vulnerabilities: List, alerts: List) -> List[str]:
         """Generate security recommendations based on findings"""
         recommendations = []
-        
+
         # Check for critical vulnerabilities
         critical_vulns = [v for v in vulnerabilities if v.severity == 'critical']
         if critical_vulns:
             recommendations.append("Address critical vulnerabilities immediately")
             recommendations.append("Consider isolating device until critical issues are resolved")
-        
+
         # Check for certificate issues
         cert_issues = [v for v in vulnerabilities if v.category == 'certificate']
         if cert_issues:
             recommendations.append("Review and update SSL/TLS certificates")
-        
+
         # Check for configuration issues
         config_issues = [v for v in vulnerabilities if v.category == 'configuration']
         if config_issues:
             recommendations.append("Review and harden device configuration")
             recommendations.append("Disable unnecessary services and ports")
-        
+
         # Check for service vulnerabilities
         service_issues = [v for v in vulnerabilities if v.category == 'service']
         if service_issues:
             recommendations.append("Update services to latest secure versions")
             recommendations.append("Apply security patches promptly")
-        
+
         # General recommendations if no specific issues
         if not recommendations:
             recommendations.extend([
@@ -1969,7 +1969,7 @@ class NetworkSecurityScanner:
                 "Keep system and services updated",
                 "Maintain security best practices"
             ])
-        
+
         return recommendations
 
 # Global security scanner service instance

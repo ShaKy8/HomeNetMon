@@ -17,11 +17,11 @@ window.RealTimeUpdates = {
  * Initialize real-time updates system
  */
 function initializeRealTimeUpdates() {
-    
+
     if (typeof io === 'undefined') {
         return;
     }
-    
+
     connectWebSocket();
 }
 
@@ -35,9 +35,9 @@ function connectWebSocket() {
             timeout: 20000,
             forceNew: true
         });
-        
+
         setupSocketHandlers();
-        
+
     } catch (error) {
         scheduleReconnect();
     }
@@ -48,58 +48,58 @@ function connectWebSocket() {
  */
 function setupSocketHandlers() {
     const socket = RealTimeUpdates.socket;
-    
+
     socket.on('connect', function() {
         RealTimeUpdates.connected = true;
         RealTimeUpdates.reconnectAttempts = 0;
-        
+
         // Update connection status
         updateConnectionIndicator(true);
-        
+
         // Re-subscribe to rooms
         resubscribeToRooms();
-        
+
         // Emit connection established event
         emitCustomEvent('realtime:connected');
     });
-    
+
     socket.on('disconnect', function(reason) {
         RealTimeUpdates.connected = false;
         updateConnectionIndicator(false);
-        
+
         // Emit disconnection event
         emitCustomEvent('realtime:disconnected', { reason });
-        
+
         // Schedule reconnect if not intentional
         if (reason !== 'io client disconnect') {
             scheduleReconnect();
         }
     });
-    
+
     socket.on('connect_error', function(error) {
         scheduleReconnect();
     });
-    
+
     // Device status updates
     socket.on('device_status_update', function(data) {
         handleDeviceUpdate(data);
     });
-    
+
     // Monitoring summaries
     socket.on('monitoring_summary', function(data) {
         handleMonitoringSummary(data);
     });
-    
+
     // Chart data updates
     socket.on('chart_data_update', function(data) {
         handleChartUpdate(data);
     });
-    
+
     // Alert updates
     socket.on('alert_update', function(data) {
         handleAlertUpdate(data);
     });
-    
+
     // Performance metrics updates
     socket.on('performance_metrics_update', function(data) {
         handlePerformanceUpdate(data);
@@ -111,16 +111,16 @@ function setupSocketHandlers() {
  */
 function handleDeviceUpdate(data) {
     if (!data || !data.device_id) return;
-    
-    
+
+
     // Update device displays
     updateDeviceDisplays(data);
-    
+
     // Update charts if device affects network status
     if (data.status_changed) {
         requestChartUpdate();
     }
-    
+
     // Emit custom event for other components
     emitCustomEvent('device:updated', data);
 }
@@ -130,14 +130,14 @@ function handleDeviceUpdate(data) {
  */
 function handleMonitoringSummary(data) {
     if (!data) return;
-    
-    
+
+
     // Update summary displays
     updateSummaryDisplays(data);
-    
+
     // Update network status indicators
     updateNetworkStatus(data);
-    
+
     // Emit custom event
     emitCustomEvent('monitoring:summary', data);
 }
@@ -147,8 +147,8 @@ function handleMonitoringSummary(data) {
  */
 function handleChartUpdate(data) {
     if (!data) return;
-    
-    
+
+
     // Update charts based on type
     switch (data.type) {
         case 'network_overview':
@@ -161,7 +161,7 @@ function handleChartUpdate(data) {
             updateBandwidthChart(data);
             break;
     }
-    
+
     // Emit custom event
     emitCustomEvent('chart:updated', data);
 }
@@ -171,16 +171,16 @@ function handleChartUpdate(data) {
  */
 function handleAlertUpdate(data) {
     if (!data) return;
-    
-    
+
+
     // Update alert displays
     updateAlertDisplays(data);
-    
+
     // Show notification if new alert
     if (data.type === 'new_alert') {
         showAlertNotification(data);
     }
-    
+
     // Emit custom event
     emitCustomEvent('alert:updated', data);
 }
@@ -190,11 +190,11 @@ function handleAlertUpdate(data) {
  */
 function handlePerformanceUpdate(data) {
     if (!data) return;
-    
-    
+
+
     // Update performance displays
     updatePerformanceDisplays(data);
-    
+
     // Emit custom event
     emitCustomEvent('performance:updated', data);
 }
@@ -204,7 +204,7 @@ function handlePerformanceUpdate(data) {
  */
 function updateDeviceDisplays(data) {
     const deviceElements = document.querySelectorAll(`[data-device-id="${data.device_id}"]`);
-    
+
     deviceElements.forEach(element => {
         // Update status badges
         const statusBadge = element.querySelector('[data-device-status]');
@@ -212,19 +212,19 @@ function updateDeviceDisplays(data) {
             statusBadge.className = `badge bg-${getStatusColor(data.status)}`;
             statusBadge.textContent = data.status.toUpperCase();
         }
-        
+
         // Update response times
         const responseTime = element.querySelector('[data-device-response-time]');
         if (responseTime) {
             responseTime.textContent = data.response_time ? `${data.response_time}ms` : 'N/A';
         }
-        
+
         // Update timestamps
         const lastSeen = element.querySelector('[data-device-last-seen]');
         if (lastSeen && data.timestamp) {
             lastSeen.textContent = formatRelativeTime(data.timestamp);
         }
-        
+
         // Update device names if provided
         if (data.display_name) {
             const nameElement = element.querySelector('[data-device-name]');
@@ -246,7 +246,7 @@ function updateSummaryDisplays(data) {
         { key: 'active_alerts', selector: '[data-summary-alerts]' },
         { key: 'success_rate', selector: '[data-summary-success-rate]' }
     ];
-    
+
     summaryElements.forEach(item => {
         const elements = document.querySelectorAll(item.selector);
         elements.forEach(element => {
@@ -266,7 +266,7 @@ function subscribeToUpdates(room) {
     if (!RealTimeUpdates.socket || RealTimeUpdates.subscriptions.has(room)) {
         return;
     }
-    
+
     RealTimeUpdates.socket.emit('join', room);
     RealTimeUpdates.subscriptions.add(room);
 }
@@ -278,7 +278,7 @@ function unsubscribeFromUpdates(room) {
     if (!RealTimeUpdates.socket || !RealTimeUpdates.subscriptions.has(room)) {
         return;
     }
-    
+
     RealTimeUpdates.socket.emit('leave', room);
     RealTimeUpdates.subscriptions.delete(room);
 }
@@ -312,11 +312,11 @@ function scheduleReconnect() {
         updateConnectionIndicator(false);
         return;
     }
-    
+
     RealTimeUpdates.reconnectAttempts++;
     const delay = Math.min(1000 * Math.pow(2, RealTimeUpdates.reconnectAttempts), 30000);
-    
-    
+
+
     setTimeout(() => {
         if (!RealTimeUpdates.connected) {
             connectWebSocket();
@@ -353,7 +353,7 @@ function formatRelativeTime(timestamp) {
         const date = new Date(timestamp);
         const now = new Date();
         const diff = now - date;
-        
+
         if (diff < 60000) return 'Just now';
         if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
         if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
@@ -378,7 +378,7 @@ function requestChartUpdate() {
 function getStatusColor(status) {
     const colors = {
         'up': 'success',
-        'down': 'danger', 
+        'down': 'danger',
         'warning': 'warning',
         'unknown': 'secondary'
     };
@@ -388,7 +388,7 @@ function getStatusColor(status) {
 // Initialize when DOM is ready
 document.addEventListener('DOMContentLoaded', function() {
     initializeRealTimeUpdates();
-    
+
     // Auto-subscribe to common update streams
     setTimeout(() => {
         subscribeToUpdates('updates_device_status');

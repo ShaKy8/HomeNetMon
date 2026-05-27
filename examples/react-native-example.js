@@ -1,6 +1,6 @@
 /**
  * HomeNetMon React Native Integration Example
- * 
+ *
  * This example demonstrates how to integrate HomeNetMon SDK
  * into a React Native application with offline support,
  * real-time updates, and mobile-optimized UI.
@@ -185,7 +185,7 @@ const LoginScreen = ({ onLoginSuccess }) => {
         <SafeAreaView style={styles.container}>
             <View style={styles.loginContainer}>
                 <Text style={styles.title}>HomeNetMon</Text>
-                
+
                 <TextInput
                     style={styles.input}
                     placeholder="Server URL (optional)"
@@ -263,7 +263,7 @@ const DeviceList = () => {
 
         } catch (error) {
             console.error('Failed to load devices:', error);
-            
+
             // Try to load cached data on error
             if (!isOnline) {
                 const cachedDevices = sdk.getCachedDevices();
@@ -279,11 +279,11 @@ const DeviceList = () => {
         sdk.on('devicesUpdated', (updatedDevices) => {
             setDevices(prevDevices => {
                 const deviceMap = new Map(prevDevices.map(d => [d.id, d]));
-                
+
                 updatedDevices.updated.forEach(device => {
                     deviceMap.set(device.id, device);
                 });
-                
+
                 return Array.from(deviceMap.values());
             });
         });
@@ -297,10 +297,10 @@ const DeviceList = () => {
     const handleDevicePress = async (device) => {
         try {
             const response = await sdk.getDevice(device.id, { hours: 24 });
-            
+
             // Navigate to device details screen
             // Navigation.navigate('DeviceDetails', { device: response.device });
-            
+
         } catch (error) {
             Alert.alert('Error', 'Failed to load device details');
         }
@@ -309,7 +309,7 @@ const DeviceList = () => {
     const handlePingDevice = async (deviceId) => {
         try {
             const response = await sdk.pingDevice(deviceId);
-            
+
             if (response.success) {
                 Alert.alert('Success', response.message);
             } else {
@@ -329,9 +329,9 @@ const DeviceList = () => {
                 <Text style={styles.deviceName}>{device.display_name}</Text>
                 <View style={[styles.statusIndicator, { backgroundColor: getStatusColor(device.status) }]} />
             </View>
-            
+
             <Text style={styles.deviceIp}>{device.ip_address}</Text>
-            
+
             <View style={styles.deviceStats}>
                 <Text style={styles.deviceStat}>
                     Uptime: {device.uptime_percentage}%
@@ -340,13 +340,13 @@ const DeviceList = () => {
                     Response: {device.latest_response_time}ms
                 </Text>
             </View>
-            
+
             {device.active_alerts > 0 && (
                 <View style={styles.alertBadge}>
                     <Text style={styles.alertText}>{device.active_alerts} alerts</Text>
                 </View>
             )}
-            
+
             <TouchableOpacity
                 style={styles.pingButton}
                 onPress={() => handlePingDevice(device.id)}

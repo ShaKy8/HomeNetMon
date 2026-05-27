@@ -4,31 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard - HomeNetMon</title>
-    
+
     <!-- PWA Manifest -->
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
-    
+
     <!-- PWA Meta Tags -->
     <meta name="theme-color" content="#0f0f23">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="HomeNetMon">
-    
+
     <!-- Bootstrap CSS for grid and utilities -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <!-- Bootstrap Icons -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
-    
+
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
-    
+
     <!-- Socket.IO -->
     <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <!-- D3.js for network topology -->
     <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
-    
+
 <style>
 /* Reset and Modern Foundation */
 * {
@@ -55,7 +55,7 @@ body::before {
     left: 0;
     width: 100%;
     height: 100%;
-    background: 
+    background:
         radial-gradient(circle at 20% 80%, rgba(239, 68, 68, 0.2) 0%, transparent 50%),
         radial-gradient(circle at 80% 20%, rgba(59, 130, 246, 0.2) 0%, transparent 50%),
         radial-gradient(circle at 40% 40%, rgba(120, 119, 198, 0.15) 0%, transparent 50%);
@@ -353,23 +353,23 @@ body::before {
     .container {
         padding: 1rem;
     }
-    
+
     .nav-links {
         display: none;
     }
-    
+
     .page-title {
         font-size: 1.8rem;
     }
-    
+
     .hero-stats {
         grid-template-columns: repeat(2, 1fr);
     }
-    
+
     .devices-grid {
         grid-template-columns: 1fr;
     }
-    
+
     .action-buttons {
         flex-direction: column;
     }
@@ -401,7 +401,7 @@ body::before {
             <div class="hero-section">
                 <h1 class="page-title">📊 {{ dashboard_title or "Network Dashboard" }}</h1>
                 <p class="page-subtitle">Real-time monitoring and management of your home network</p>
-                
+
                 <!-- Hero Stats -->
                 <div class="hero-stats">
                     <div class="hero-stat">
@@ -452,7 +452,7 @@ body::before {
                         <p class="text-muted mt-2">Loading devices...</p>
                     </div>
                 </div>
-                
+
                 <!-- No devices state -->
                 <div id="no-devices" class="text-center py-5" style="display: none;">
                     <i class="bi bi-router" style="font-size: 3rem; color: rgba(255,255,255,0.3);"></i>
@@ -467,37 +467,37 @@ body::before {
     // Initialize Socket.IO
     let socket;
     let devicesData = [];
-    
+
     document.addEventListener('DOMContentLoaded', function() {
         // Initialize Socket.IO connection
         socket = io();
-        
+
         // Initialize dashboard
         loadDashboardData();
-        
+
         // Setup event listeners
         document.getElementById('refresh-all').addEventListener('click', refreshAllDevices);
         document.getElementById('scan-network').addEventListener('click', scanNetwork);
         document.getElementById('toggle-view').addEventListener('click', toggleDeviceView);
-        
+
         // Socket.IO event listeners
         socket.on('connect', function() {
             console.log('Connected to server');
             updateNetworkStatus(true);
         });
-        
+
         socket.on('disconnect', function() {
             console.log('Disconnected from server');
             updateNetworkStatus(false);
         });
-        
+
         socket.on('device_update', handleDeviceUpdate);
         socket.on('monitoring_summary', handleMonitoringSummary);
-        
+
         // Auto-refresh every 30 seconds
         setInterval(loadDashboardData, 30000);
     });
-    
+
     function loadDashboardData() {
         fetch('/api/devices')
             .then(response => response.json())
@@ -512,45 +512,45 @@ body::before {
                 document.getElementById('loading-devices').innerHTML = '<p class="text-danger">Error loading devices</p>';
             });
     }
-    
+
     function updateHeroStats() {
         const onlineDevices = devicesData.filter(d => d.status === 'up').length;
         const totalDevices = devicesData.length;
         const avgResponseTime = devicesData
             .filter(d => d.latest_response_time && d.latest_response_time > 0)
-            .reduce((acc, d) => acc + d.latest_response_time, 0) / 
+            .reduce((acc, d) => acc + d.latest_response_time, 0) /
             devicesData.filter(d => d.latest_response_time && d.latest_response_time > 0).length;
-        
+
         document.getElementById('hero-devices-online').textContent = onlineDevices;
         document.getElementById('hero-total-devices').textContent = totalDevices;
-        document.getElementById('hero-response-time').textContent = 
+        document.getElementById('hero-response-time').textContent =
             avgResponseTime ? Math.round(avgResponseTime) + ' ms' : '-- ms';
     }
-    
+
     function displayDevices() {
         const container = document.getElementById('devices-grid');
         const loading = document.getElementById('loading-devices');
         const noDevices = document.getElementById('no-devices');
-        
+
         loading.style.display = 'none';
-        
+
         if (devicesData.length === 0) {
             container.innerHTML = '';
             noDevices.style.display = 'block';
             return;
         }
-        
+
         noDevices.style.display = 'none';
-        
+
         container.innerHTML = devicesData.map(device => createDeviceCard(device)).join('');
     }
-    
+
     function createDeviceCard(device) {
         const statusClass = device.status || 'unknown';
         const deviceName = device.display_name || device.hostname || device.ip_address;
         const lastSeen = device.last_seen ? new Date(device.last_seen).toLocaleString() : 'Never';
         const responseTime = device.latest_response_time ? `${Math.round(device.latest_response_time)}ms` : '--';
-        
+
         return `
             <div class="device-card status-${statusClass}" onclick="openDeviceDetails(${device.id})">
                 <div class="device-name">
@@ -565,12 +565,12 @@ body::before {
             </div>
         `;
     }
-    
+
     function refreshAllDevices() {
         const btn = document.getElementById('refresh-all');
         btn.innerHTML = '<i class="bi bi-arrow-clockwise me-2 spinning"></i> Refreshing...';
         btn.disabled = true;
-        
+
         fetch('/api/devices/ping_all', { method: 'POST' })
             .then(response => response.json())
             .then(data => {
@@ -583,12 +583,12 @@ body::before {
                 btn.disabled = false;
             });
     }
-    
+
     function scanNetwork() {
         const btn = document.getElementById('scan-network');
         btn.innerHTML = '<i class="bi bi-search me-2"></i> Scanning...';
         btn.disabled = true;
-        
+
         fetch('/api/devices/scan', { method: 'POST' })
             .then(response => response.json())
             .then(data => {
@@ -601,7 +601,7 @@ body::before {
                 btn.disabled = false;
             });
     }
-    
+
     function toggleDeviceView() {
         const container = document.getElementById('devices-grid');
         if (container.classList.contains('devices-grid')) {
@@ -612,11 +612,11 @@ body::before {
             container.style.display = 'grid';
         }
     }
-    
+
     function openDeviceDetails(deviceId) {
         window.location.href = `/device/${deviceId}`;
     }
-    
+
     function updateNetworkStatus(connected) {
         const statusElement = document.getElementById('hero-network-status');
         if (connected) {
@@ -625,7 +625,7 @@ body::before {
             statusElement.innerHTML = '<span class="status-dot status-down"></span>Disconnected';
         }
     }
-    
+
     function handleDeviceUpdate(data) {
         // Update device in the array
         const deviceIndex = devicesData.findIndex(d => d.id === data.device_id);
@@ -635,21 +635,21 @@ body::before {
             displayDevices();
         }
     }
-    
+
     function handleMonitoringSummary(data) {
         updateHeroStats();
         if (data.network_status) {
             updateNetworkStatus(data.network_status === 'up');
         }
     }
-    
+
     // Add some CSS animations
     const style = document.createElement('style');
     style.textContent = `
         .spinning {
             animation: spin 1s linear infinite;
         }
-        
+
         @keyframes spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }

@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 
 class PerformanceCache:
     """High-performance memory cache with intelligent invalidation"""
-    
+
     def __init__(self, default_ttl=300, max_size=10000):
         self.default_ttl = default_ttl  # 5 minutes default
         self.max_size = max_size
@@ -31,19 +31,19 @@ class PerformanceCache:
         }
         self._cleanup_interval = 60  # Cleanup every minute
         self._last_cleanup = time.time()
-        
+
     def get(self, key: str, default=None):
         """Get value from cache with LRU tracking"""
         with self._lock:
             current_time = time.time()
-            
+
             # Periodic cleanup
             if current_time - self._last_cleanup > self._cleanup_interval:
                 self._cleanup_expired()
-            
+
             if key in self._cache:
                 entry = self._cache[key]
-                
+
                 # Check if expired
                 if current_time > entry['expires_at']:
                     del self._cache[key]
@@ -51,25 +51,25 @@ class PerformanceCache:
                         del self._access_times[key]
                     self._stats['misses'] += 1
                     return default
-                
+
                 # Update access time for LRU
                 self._access_times[key] = current_time
                 self._stats['hits'] += 1
                 return entry['value']
-            
+
             self._stats['misses'] += 1
             return default
-    
+
     def set(self, key: str, value: Any, ttl: Optional[int] = None):
         """Set value in cache with optional TTL"""
         with self._lock:
             current_time = time.time()
             ttl = ttl or self.default_ttl
-            
+
             # Enforce max size with LRU eviction
             if len(self._cache) >= self.max_size and key not in self._cache:
                 self._evict_lru()
-            
+
             self._cache[key] = {
                 'value': value,
                 'created_at': current_time,
@@ -77,7 +77,7 @@ class PerformanceCache:
                 'ttl': ttl
             }
             self._access_times[key] = current_time
-    
+
     def invalidate(self, pattern: str = None, keys: list = None):
         """Invalidate cache entries by pattern or specific keys"""
         with self._lock:
@@ -93,19 +93,19 @@ class PerformanceCache:
                 for key in self._cache.keys():
                     if pattern in key:
                         keys_to_remove.append(key)
-                
+
                 for key in keys_to_remove:
                     del self._cache[key]
                     if key in self._access_times:
                         del self._access_times[key]
                     self._stats['invalidations'] += 1
-    
+
     def clear(self):
         """Clear entire cache"""
         with self._lock:
             self._cache.clear()
             self._access_times.clear()
-    
+
     def get_stats(self):
         """Get cache statistics"""
         with self._lock:
@@ -117,35 +117,35 @@ class PerformanceCache:
                 'memory_usage_mb': self._estimate_memory_usage(),
                 **self._stats
             }
-    
+
     def _cleanup_expired(self):
         """Remove expired entries"""
         current_time = time.time()
         expired_keys = []
-        
+
         for key, entry in self._cache.items():
             if current_time > entry['expires_at']:
                 expired_keys.append(key)
-        
+
         for key in expired_keys:
             del self._cache[key]
             if key in self._access_times:
                 del self._access_times[key]
-        
+
         self._last_cleanup = current_time
         if expired_keys:
             logger.debug(f"Cleaned up {len(expired_keys)} expired cache entries")
-    
+
     def _evict_lru(self):
         """Evict least recently used item"""
         if not self._access_times:
             return
-        
+
         lru_key = min(self._access_times, key=self._access_times.get)
         del self._cache[lru_key]
         del self._access_times[lru_key]
         self._stats['evictions'] += 1
-    
+
     def _estimate_memory_usage(self):
         """Estimate memory usage in MB"""
         try:
@@ -163,7 +163,7 @@ performance_cache = PerformanceCache()
 def cached_property(ttl=300, key_func=None, invalidate_on=None):
     """
     Decorator for caching expensive property calculations
-    
+
     Args:
         ttl: Time to live in seconds
         key_func: Function to generate cache key
@@ -177,17 +177,17 @@ def cached_property(ttl=300, key_func=None, invalidate_on=None):
                 cache_key = key_func(self)
             else:
                 cache_key = f"{self.__class__.__name__}:{self.id}:{func.__name__}"
-            
+
             # Try to get from cache first
             cached_result = performance_cache.get(cache_key)
             if cached_result is not None:
                 return cached_result
-            
+
             # Calculate value and cache it
             result = func(self)
             performance_cache.set(cache_key, result, ttl)
             return result
-        
+
         # Return a property that calls the wrapper
         return property(wrapper)
     return decorator
@@ -195,7 +195,7 @@ def cached_property(ttl=300, key_func=None, invalidate_on=None):
 def cached_query(ttl=60, key_func=None):
     """
     Decorator for caching database queries
-    
+
     Args:
         ttl: Time to live in seconds
         key_func: Function to generate cache key from query parameters
@@ -211,23 +211,23 @@ def cached_query(ttl=60, key_func=None):
                 arg_str = '_'.join(str(arg) for arg in args[1:])  # Skip self
                 kwarg_str = '_'.join(f"{k}={v}" for k, v in kwargs.items())
                 cache_key = f"query:{func.__name__}:{arg_str}:{kwarg_str}"
-            
+
             # Try cache first
             cached_result = performance_cache.get(cache_key)
             if cached_result is not None:
                 return cached_result
-            
+
             # Execute query and cache result
             result = func(*args, **kwargs)
             performance_cache.set(cache_key, result, ttl)
             return result
-        
+
         return wrapper
     return decorator
 
 class CacheInvalidator:
     """Manages cache invalidation based on database changes"""
-    
+
     def __init__(self):
         self.invalidation_rules = {
             'Device': ['device_*', 'topology_*', 'status_*'],
@@ -235,11 +235,11 @@ class CacheInvalidator:
             'PerformanceMetrics': ['device_*_health_score', 'device_*_performance_*'],
             'Alert': ['device_*_active_alerts', 'alert_*']
         }
-    
+
     def invalidate_for_model(self, model_name: str, model_id: int = None):
         """Invalidate cache entries related to a specific model"""
         patterns = self.invalidation_rules.get(model_name, [])
-        
+
         for pattern in patterns:
             if model_id:
                 # Replace * with model_id
@@ -248,7 +248,7 @@ class CacheInvalidator:
             else:
                 # Invalidate all entries matching the pattern
                 performance_cache.invalidate(pattern=pattern)
-    
+
     def invalidate_device_cache(self, device_id: int):
         """Invalidate all cache entries for a specific device"""
         patterns = [
@@ -257,7 +257,7 @@ class CacheInvalidator:
             f"health_{device_id}",
             f"status_{device_id}"
         ]
-        
+
         for pattern in patterns:
             performance_cache.invalidate(pattern=pattern)
 
@@ -266,17 +266,17 @@ cache_invalidator = CacheInvalidator()
 
 class ResourceMonitor:
     """Monitor system resources and adjust cache behavior"""
-    
+
     def __init__(self):
         self.memory_threshold = 0.85  # 85% memory usage
         self.cpu_threshold = 0.80     # 80% CPU usage
-        
+
     def get_system_metrics(self):
         """Get current system resource usage"""
         try:
             memory = psutil.virtual_memory()
             cpu = psutil.cpu_percent(interval=1)
-            
+
             return {
                 'memory_percent': memory.percent / 100,
                 'memory_available_mb': memory.available / 1024 / 1024,
@@ -286,7 +286,7 @@ class ResourceMonitor:
         except Exception as e:
             logger.error(f"Error getting system metrics: {e}")
             return {}
-    
+
     def should_reduce_cache_size(self):
         """Determine if cache size should be reduced due to memory pressure"""
         try:
@@ -294,7 +294,7 @@ class ResourceMonitor:
             return memory.percent / 100 > self.memory_threshold
         except:
             return False
-    
+
     def adjust_cache_settings(self):
         """Dynamically adjust cache settings based on system resources"""
         if self.should_reduce_cache_size():
@@ -308,13 +308,13 @@ class ResourceMonitor:
                         performance_cache._access_times.items(),
                         key=lambda x: x[1]
                     )
-                    
+
                     for key, _ in sorted_keys[:entries_to_remove]:
                         if key in performance_cache._cache:
                             del performance_cache._cache[key]
                         if key in performance_cache._access_times:
                             del performance_cache._access_times[key]
-                
+
                 logger.info(f"Reduced cache size by {entries_to_remove} entries due to memory pressure")
 
 # Global resource monitor
@@ -324,7 +324,7 @@ def get_cache_performance_metrics():
     """Get comprehensive cache performance metrics"""
     system_metrics = resource_monitor.get_system_metrics()
     cache_stats = performance_cache.get_stats()
-    
+
     return {
         'cache': cache_stats,
         'system': system_metrics,
@@ -334,26 +334,26 @@ def get_cache_performance_metrics():
 def _generate_performance_recommendations(system_metrics, cache_stats):
     """Generate performance optimization recommendations"""
     recommendations = []
-    
+
     if cache_stats.get('hit_rate', 0) < 0.7:
         recommendations.append({
             'type': 'cache_tuning',
             'message': 'Low cache hit rate detected. Consider increasing TTL for stable data.',
             'severity': 'medium'
         })
-    
+
     if system_metrics.get('memory_percent', 0) > 0.85:
         recommendations.append({
             'type': 'memory_optimization',
             'message': 'High memory usage detected. Cache size will be automatically reduced.',
             'severity': 'high'
         })
-    
+
     if cache_stats.get('size', 0) > cache_stats.get('max_size', 0) * 0.9:
         recommendations.append({
             'type': 'cache_sizing',
             'message': 'Cache is near maximum size. Consider increasing max_size or reducing TTL.',
             'severity': 'low'
         })
-    
+
     return recommendations

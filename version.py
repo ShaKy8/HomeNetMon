@@ -35,82 +35,82 @@ def get_git_info() -> Dict[str, Any]:
         'commit_author': None,
         'available': False
     }
-    
+
     try:
         # Check if we're in a git repository
-        subprocess.run(['git', 'rev-parse', '--git-dir'], 
+        subprocess.run(['git', 'rev-parse', '--git-dir'],
                       capture_output=True, check=True, timeout=5, shell=False)
         git_info['available'] = True
-        
+
         # Get commit hash
-        result = subprocess.run(['git', 'rev-parse', 'HEAD'], 
+        result = subprocess.run(['git', 'rev-parse', 'HEAD'],
                               capture_output=True, text=True, check=True, timeout=5, shell=False)
         git_info['commit_hash'] = result.stdout.strip()
         git_info['commit_short'] = git_info['commit_hash'][:8] if git_info['commit_hash'] else None
-        
+
         # Get current branch
-        result = subprocess.run(['git', 'branch', '--show-current'], 
+        result = subprocess.run(['git', 'branch', '--show-current'],
                               capture_output=True, text=True, check=True, timeout=5, shell=False)
         git_info['branch'] = result.stdout.strip() or None
-        
+
         # Get latest tag (if any)
         try:
-            result = subprocess.run(['git', 'describe', '--tags', '--exact-match', 'HEAD'], 
+            result = subprocess.run(['git', 'describe', '--tags', '--exact-match', 'HEAD'],
                                   capture_output=True, text=True, check=True, timeout=5, shell=False)
             git_info['tag'] = result.stdout.strip()
         except subprocess.CalledProcessError:
             # Try to get the latest tag
             try:
-                result = subprocess.run(['git', 'describe', '--tags', '--abbrev=0'], 
+                result = subprocess.run(['git', 'describe', '--tags', '--abbrev=0'],
                                       capture_output=True, text=True, check=True, timeout=5, shell=False)
                 git_info['tag'] = result.stdout.strip()
             except subprocess.CalledProcessError:
                 pass
-        
+
         # Check if repository is dirty
-        result = subprocess.run(['git', 'status', '--porcelain'], 
+        result = subprocess.run(['git', 'status', '--porcelain'],
                               capture_output=True, text=True, check=True, timeout=5, shell=False)
         git_info['is_dirty'] = bool(result.stdout.strip())
-        
+
         # Get commit date and author
         try:
-            result = subprocess.run(['git', 'log', '-1', '--format=%ci'], 
+            result = subprocess.run(['git', 'log', '-1', '--format=%ci'],
                                   capture_output=True, text=True, check=True, timeout=5, shell=False)
             git_info['commit_date'] = result.stdout.strip()
         except subprocess.CalledProcessError:
             pass
-            
+
         try:
-            result = subprocess.run(['git', 'log', '-1', '--format=%an'], 
+            result = subprocess.run(['git', 'log', '-1', '--format=%an'],
                                   capture_output=True, text=True, check=True, timeout=5, shell=False)
             git_info['commit_author'] = result.stdout.strip()
         except subprocess.CalledProcessError:
             pass
-            
+
     except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
         # Git not available or not a git repository
         pass
-    
+
     return git_info
 
 def parse_git_version(tag: str) -> Optional[Tuple[int, int, int, str]]:
     """Parse a version tag into components (major, minor, patch, build)"""
     import re
-    
+
     # Match patterns like v2.3.1, 2.3.1-stable, v2.3.1-beta, etc.
     pattern = r'^v?(\d+)\.(\d+)\.(\d+)(?:[-.](.+))?$'
     match = re.match(pattern, tag)
-    
+
     if match:
         major, minor, patch, build = match.groups()
         return int(major), int(minor), int(patch), build or 'stable'
-    
+
     return None
 
 def get_dynamic_version() -> Dict[str, Any]:
     """Get version information from Git if available, fallback to hardcoded values"""
     git_info = get_git_info()
-    
+
     # Start with hardcoded defaults
     version_info = {
         'major': VERSION_MAJOR,
@@ -119,19 +119,19 @@ def get_dynamic_version() -> Dict[str, Any]:
         'build': VERSION_BUILD,
         'source': 'hardcoded'
     }
-    
+
     # Try to get version from Git tag
     if git_info['available'] and git_info['tag']:
         parsed = parse_git_version(git_info['tag'])
         if parsed:
             version_info.update({
                 'major': parsed[0],
-                'minor': parsed[1], 
+                'minor': parsed[1],
                 'patch': parsed[2],
                 'build': parsed[3],
                 'source': 'git-tag'
             })
-    
+
     return version_info
 
 def get_version_string() -> str:
@@ -143,7 +143,7 @@ def get_version_info() -> Dict[str, Any]:
     """Get comprehensive version and build information"""
     version_info = get_dynamic_version()
     git_info = get_git_info()
-    
+
     # Determine build date - use Git commit date if available, otherwise fallback
     build_date = BUILD_DATE
     if git_info['available'] and git_info['commit_date']:
@@ -157,11 +157,11 @@ def get_version_info() -> Dict[str, Any]:
     elif git_info['available']:
         # If we have Git but no commit date, use current date for development builds
         build_date = datetime.now().strftime('%Y-%m-%d')
-    
+
     result = {
         'version': get_version_string(),
         'version_major': version_info['major'],
-        'version_minor': version_info['minor'], 
+        'version_minor': version_info['minor'],
         'version_patch': version_info['patch'],
         'version_build': version_info['build'],
         'version_source': version_info['source'],
@@ -170,7 +170,7 @@ def get_version_info() -> Dict[str, Any]:
         'full_version': f"{get_version_string()}-{version_info['build']}",
         'release_name': get_release_name(version_info['major'], version_info['minor'], version_info['patch'])
     }
-    
+
     # Add Git information if available
     if git_info['available']:
         result['git'] = {
@@ -182,7 +182,7 @@ def get_version_info() -> Dict[str, Any]:
             'commit_date': git_info['commit_date'],
             'commit_author': git_info['commit_author']
         }
-    
+
     return result
 
 def get_release_name(major: int = None, minor: int = None, patch: int = None) -> str:
@@ -191,25 +191,25 @@ def get_release_name(major: int = None, minor: int = None, patch: int = None) ->
     if major is None or minor is None or patch is None:
         version_info = get_dynamic_version()
         major, minor, patch = version_info['major'], version_info['minor'], version_info['patch']
-    
+
     release_names = {
         (2, 3, 2): "Network Guardian Pro",
         (2, 3, 1): "Network Guardian",
-        (2, 3, 0): "Smart Monitor", 
+        (2, 3, 0): "Smart Monitor",
         (2, 2, 0): "Alert Master",
         (2, 1, 0): "Discovery Engine",
         (2, 0, 0): "Advanced Core"
     }
-    
+
     version_key = (major, minor, patch)
     git_info = get_git_info()
-    
+
     # For development builds, show branch info
     base_name = release_names.get(version_key, "Development Build")
     if git_info['available'] and git_info['branch'] and git_info['branch'] != 'main':
         if not git_info['tag']:  # Only for non-tagged builds
             base_name += f" ({git_info['branch']})"
-    
+
     return base_name
 
 def get_system_info() -> Dict[str, Any]:
@@ -224,11 +224,11 @@ def get_system_info() -> Dict[str, Any]:
             'cpu_percent': process.cpu_percent(),
             'threads': process.num_threads()
         }
-        
+
         # Get system info
         memory = psutil.virtual_memory()
         disk = psutil.disk_usage('/')
-        
+
         system_info = {
             'platform': platform.platform(),
             'system': platform.system(),
@@ -247,17 +247,17 @@ def get_system_info() -> Dict[str, Any]:
             'cpu_count': psutil.cpu_count(),
             'cpu_count_logical': psutil.cpu_count(logical=True)
         }
-        
+
         # Get uptime
         boot_time = datetime.fromtimestamp(psutil.boot_time())
         uptime = datetime.now() - boot_time
         system_info['system_uptime'] = str(uptime).split('.')[0]  # Remove microseconds
-        
+
         return {
             'process': process_info,
             'system': system_info
         }
-        
+
     except Exception as e:
         return {
             'error': f'Could not gather system information: {str(e)}',
@@ -279,7 +279,7 @@ def get_application_info() -> Dict[str, Any]:
         'features': [
             'Real-time Device Monitoring',
             'Smart Anomaly Detection with ML',
-            'Network Security Scanning', 
+            'Network Security Scanning',
             'Push Notifications & Alerts',
             'Rule Engine & Automation',
             'Interactive Network Topology',
