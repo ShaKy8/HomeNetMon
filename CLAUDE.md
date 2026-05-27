@@ -18,15 +18,31 @@ python run_http2.py                       # HTTP/2 variant
 Defaults: port 5000, network `192.168.86.0/24`, SQLite at `homeNetMon.db`. Override via `.env` (see `.env.example`). The DB file in this repo is ~1 GB — do not commit changes to it.
 
 ### Tests
+
+CI runs a curated subset of unit tests (133 passing, see `.github/workflows/ci.yml`). The full `pytest` invocation fails because `tests/unit/models/`, `tests/unit/services/test_alert_manager.py`, and `tests/unit/services/test_performance_monitor.py` have stale fixtures (not broken production code — confirmed by running tests pre- and post-perf-cleanup with identical failure counts). Triaging them is its own one-day project.
+
 ```bash
-pytest                                    # full suite (pytest.ini enforces --cov-fail-under=80)
-pytest tests/unit/test_constants.py       # one file
-pytest tests/unit/test_constants.py::TestConstants::test_device_types  # one test
-pytest -m unit                            # by marker (unit/integration/api/slow/network/performance/alerts/models/services)
+pytest tests/unit/test_constants.py       # one file (use this; always passes)
+pytest tests/unit/test_constants.py::TestConstants::test_constants_have_values  # one test
 pytest --no-cov                           # skip coverage gate when iterating
+pytest -m unit                            # by marker (unit/integration/api/slow/network/performance/alerts/models/services)
 npx playwright test TestHomeNetmon.js     # E2E (auto-starts the Flask app; see playwright.config.js)
+
+# What CI runs (curated green set):
+pytest tests/unit/test_batch_session_binding.py tests/unit/test_constants.py \
+       tests/unit/test_critical_device_detection.py tests/unit/test_last_seen_persistence.py \
+       tests/unit/test_monitoring_n_plus_one.py tests/unit/test_security_fixes.py \
+       tests/unit/test_status_cache_invalidation.py --no-cov
 ```
 Test fixtures live in `tests/fixtures/factories.py` and `tests/conftest.py`.
+
+### Lint and formatting
+```bash
+ruff check .            # CI gate; must pass (config in pyproject.toml)
+ruff check --fix .      # auto-fix safe issues
+ruff format .           # opt-in; would touch ~120 files on first run, so not in CI yet
+pre-commit run --all-files  # one-shot run; hooks also fire on `git commit` after `pre-commit install`
+```
 
 ### Assets
 ```bash
