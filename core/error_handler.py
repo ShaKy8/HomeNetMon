@@ -226,13 +226,17 @@ class ErrorHandler:
             # Error was already handled
             return response
 
-        # Log successful requests at debug level
-        duration = (datetime.utcnow() - g.error_handler_start_time).total_seconds()
-        if duration > 5.0:  # Log slow requests
-            logger.warning(
-                f"Slow request: {request.method} {request.path} "
-                f"took {duration:.2f}s (status: {response.status_code})"
-            )
+        # Log slow requests. start_time may be unset if the request was
+        # intercepted before _before_request fired — e.g. when flask-limiter
+        # returns 429 from a `before_request` hook earlier in the chain.
+        start_time = getattr(g, 'error_handler_start_time', None)
+        if start_time is not None:
+            duration = (datetime.utcnow() - start_time).total_seconds()
+            if duration > 5.0:
+                logger.warning(
+                    f"Slow request: {request.method} {request.path} "
+                    f"took {duration:.2f}s (status: {response.status_code})"
+                )
 
         return response
 
