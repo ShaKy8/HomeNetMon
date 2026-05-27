@@ -717,14 +717,20 @@
 
         function updateBandwidthChart(bandwidthData) {
             const ctx = document.getElementById('bandwidth-chart').getContext('2d');
-
-            if (bandwidthChart) {
-                bandwidthChart.destroy();
-            }
-
             const labels = bandwidthData.map(b => new Date(b.timestamp).toLocaleTimeString());
             const downloadData = bandwidthData.map(b => b.download_mbps);
             const uploadData = bandwidthData.map(b => b.upload_mbps);
+
+            // Update in place if the chart already exists — this page auto-
+            // refreshes every 30s, and destroy+rebuild flickers and leaks event
+            // listeners. Only build a fresh chart on the first call.
+            if (bandwidthChart) {
+                bandwidthChart.data.labels = labels;
+                bandwidthChart.data.datasets[0].data = downloadData;
+                bandwidthChart.data.datasets[1].data = uploadData;
+                bandwidthChart.update('none');
+                return;
+            }
 
             bandwidthChart = new Chart(ctx, {
                 type: 'bar',

@@ -992,17 +992,17 @@ function renderRulesCards(rules) {
                         Created by ${rule.created_by || 'Unknown'}
                     </small>
                     <div class="btn-group btn-group-sm">
-                        <button class="btn btn-outline-primary" onclick="editRule(${rule.id})">
-                            <i class="bi bi-pencil"></i>
+                        <button class="btn btn-outline-primary" onclick="editRule(${rule.id})" aria-label="Edit rule" title="Edit rule">
+                            <i class="bi bi-pencil" aria-hidden="true"></i>
                         </button>
-                        <button class="btn btn-outline-success" onclick="testRule(${rule.id})">
-                            <i class="bi bi-play"></i>
+                        <button class="btn btn-outline-success" onclick="testRule(${rule.id})" aria-label="Test rule" title="Test rule">
+                            <i class="bi bi-play" aria-hidden="true"></i>
                         </button>
-                        <button class="btn btn-outline-info" onclick="duplicateRule(${rule.id})">
-                            <i class="bi bi-files"></i>
+                        <button class="btn btn-outline-info" onclick="duplicateRule(${rule.id})" aria-label="Duplicate rule" title="Duplicate rule">
+                            <i class="bi bi-files" aria-hidden="true"></i>
                         </button>
-                        <button class="btn btn-outline-danger" onclick="deleteRule(${rule.id})">
-                            <i class="bi bi-trash"></i>
+                        <button class="btn btn-outline-danger" onclick="deleteRule(${rule.id})" aria-label="Delete rule" title="Delete rule">
+                            <i class="bi bi-trash" aria-hidden="true"></i>
                         </button>
                     </div>
                 </div>

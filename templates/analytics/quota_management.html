@@ -585,8 +585,8 @@
                     <td>${data.projected_monthly || 'N/A'}</td>
                     <td>${data.enforcement}</td>
                     <td>
-                        <button class="btn btn-sm btn-outline-primary" onclick="requestQuotaIncrease('${metric}')">
-                            <i class="fas fa-plus"></i>
+                        <button class="btn btn-sm btn-outline-primary" onclick="requestQuotaIncrease('${metric}')" aria-label="Request quota increase" title="Request quota increase">
+                            <i class="fas fa-plus" aria-hidden="true"></i>
                         </button>
                     </td>
                 `;

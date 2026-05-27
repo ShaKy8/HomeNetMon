@@ -1192,8 +1192,8 @@ function renderExecutionsCards(executions) {
                             <i class="bi bi-eye"></i> Details
                         </button>
                         ${execution.status === 'pending' || execution.status === 'in_progress' ?
-                            `<button class="btn btn-outline-warning" onclick="cancelExecution(${execution.id})">
-                                <i class="bi bi-stop-circle"></i>
+                            `<button class="btn btn-outline-warning" onclick="cancelExecution(${execution.id})" aria-label="Cancel execution" title="Cancel execution">
+                                <i class="bi bi-stop-circle" aria-hidden="true"></i>
                             </button>` : ''
                         }
                     </div>

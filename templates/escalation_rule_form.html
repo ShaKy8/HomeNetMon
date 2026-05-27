@@ -1201,8 +1201,8 @@ function updateConditionsDisplay() {
             <input type="text" class="form-control form-control-sm" placeholder="Value"
                    value="${condition.value}" onchange="updateCondition(${index}, 'value', this.value)">
 
-            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeCondition(${index})">
-                <i class="bi bi-trash"></i>
+            <button type="button" class="btn btn-outline-danger btn-sm" onclick="removeCondition(${index})" aria-label="Remove condition" title="Remove condition">
+                <i class="bi bi-trash" aria-hidden="true"></i>
             </button>
         `;
 
@@ -1249,8 +1249,8 @@ function updateActionsDisplay() {
         const actionTypeInfo = actionTypes[action.action_type];
 
         actionDiv.innerHTML = `
-            <button type="button" class="btn btn-sm btn-outline-danger remove-action" onclick="removeAction(${index})">
-                <i class="bi bi-x"></i>
+            <button type="button" class="btn btn-sm btn-outline-danger remove-action" onclick="removeAction(${index})" aria-label="Remove action" title="Remove action">
+                <i class="bi bi-x" aria-hidden="true"></i>
             </button>
 
             <div class="d-flex justify-content-between align-items-center mb-3">
