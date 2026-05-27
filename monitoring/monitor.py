@@ -605,7 +605,9 @@ class DeviceMonitor:
             self.is_running = False
             return
 
+        from core.health import record_heartbeat
         while not self._stop_event.is_set():
+            record_heartbeat('DeviceMonitor')
             try:
                 # Monitor all devices
                 self.monitor_all_devices()

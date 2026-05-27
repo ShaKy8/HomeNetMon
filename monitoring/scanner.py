@@ -833,7 +833,9 @@ class NetworkScanner:
             return
 
         # Continue scanning at adaptive intervals
+        from core.health import record_heartbeat
         while not self._stop_event.is_set():
+            record_heartbeat('NetworkScanner')
             try:
                 scan_interval = self.get_adaptive_scan_interval()
                 logger.info(f"Next network scan in {scan_interval} seconds")

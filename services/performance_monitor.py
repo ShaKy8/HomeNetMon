@@ -453,7 +453,9 @@ class PerformanceMonitor:
         # Cleanup old data on startup
         self.cleanup_old_performance_data()
 
+        from core.health import record_heartbeat
         while not self._stop_event.is_set():
+            record_heartbeat('PerformanceMonitor')
             try:
                 # Collect performance metrics for all devices
                 self.collect_all_devices_performance()

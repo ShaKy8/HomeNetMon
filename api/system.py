@@ -83,19 +83,31 @@ def get_application_info_endpoint():
 @system_bp.route('/health', methods=['GET'])
 @create_endpoint_limiter('relaxed')
 def health_check():
-    """Simple health check endpoint"""
+    """Liveness check including background-thread heartbeat status.
+
+    Returns 503 when at least one expected background thread is stuck or
+    crashed; 200 otherwise. The full per-thread breakdown is always in
+    the body so an external monitor (uptime checker, dashboard) can
+    visualize what's wrong.
+    """
     try:
         from version import get_version_string
-        return jsonify({
-            'success': True,
-            'status': 'healthy',
+        from core.health import check as check_threads
+
+        thread_status = check_threads()
+        body = {
+            'success': thread_status['healthy'],
+            'status': 'healthy' if thread_status['healthy'] else 'degraded',
             'version': get_version_string(),
-            'message': 'HomeNetMon is running normally'
-        })
+            'threads': thread_status['threads'],
+            'stale_threads': thread_status['stale'],
+        }
+        status_code = 200 if thread_status['healthy'] else 503
+        return jsonify(body), status_code
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         return jsonify({
             'success': False,
             'status': 'error',
-            'error': str(e)
+            'error': str(e),
         }), 500

@@ -59,7 +59,8 @@ class ResourceMonitor:
 
         self.is_running = True
         self._stop_event.clear()
-        self.monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True)
+        # Match the outer wrapper thread's name so the watchdog sees this.
+        self.monitor_thread = threading.Thread(target=self._monitor_loop, daemon=True, name='ResourceMonitor')
         self.monitor_thread.start()
         logger.info("Resource monitoring started")
 
@@ -78,12 +79,37 @@ class ResourceMonitor:
 
     def _monitor_loop(self):
         """Main monitoring loop."""
+        from core.health import record_heartbeat, check as check_threads
+
         cpu_high_start = None
 
         # Run cleanup once shortly after start so a stale DB gets pruned on boot.
         first_cleanup_done = False
 
+        # Self-alert state: don't re-alert about the same stuck thread within an hour.
+        last_stuck_alert: dict[str, float] = {}
+
         while self.is_running and not self._stop_event.is_set():
+            record_heartbeat('ResourceMonitor')
+
+            # Watchdog: alert on any other thread that's gone silent.
+            try:
+                status = check_threads()
+                for name in status['stale']:
+                    if name == 'ResourceMonitor':
+                        continue
+                    now = time.time()
+                    if now - last_stuck_alert.get(name, 0.0) > 3600:
+                        last_stuck_alert[name] = now
+                        logger.error(
+                            f"Watchdog: background thread '{name}' is stale "
+                            f"(last heartbeat {status['threads'][name]['last_heartbeat_ago_s']}s ago, "
+                            f"alive={status['threads'][name]['alive']})"
+                        )
+                        self._emit_thread_stuck_alert(name, status['threads'][name])
+            except Exception as e:
+                logger.debug(f"Watchdog check failed: {e}")
+
             try:
                 # Get current resource usage
                 resources = self.get_resource_usage()
@@ -104,6 +130,31 @@ class ResourceMonitor:
             except Exception as e:
                 logger.error(f"Error in resource monitoring loop: {e}")
                 self._stop_event.wait(60)  # Wait 1 minute before retrying
+
+    def _emit_thread_stuck_alert(self, thread_name: str, info: dict) -> None:
+        """Surface a stuck background thread.
+
+        The primary contract is the /api/system/health endpoint, which
+        returns 503 when any thread is stale. An external monitor
+        (uptime-kuma, healthchecks.io, etc.) polls that and decides how
+        to escalate. The log line below is the fallback for setups that
+        don't have an external monitor.
+
+        Best-effort and silent on failure — we never want the watchdog
+        itself to take down ResourceMonitor.
+        """
+        try:
+            logger.error(
+                "WATCHDOG ALERT: thread %r stale; last heartbeat %.0fs ago "
+                "(expected every ~%ss). alive_in_process=%s. "
+                "External monitors should be paged via /api/system/health (returns 503).",
+                thread_name,
+                info.get('last_heartbeat_ago_s') or 0.0,
+                info.get('expected_interval_s'),
+                info.get('alive'),
+            )
+        except Exception:
+            pass
 
     @handle_errors()
     def get_resource_usage(self) -> Dict:

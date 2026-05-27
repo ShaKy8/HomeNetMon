@@ -191,8 +191,10 @@ class BandwidthMonitor:
         primary_interface = interfaces[0]
         logger.info(f"Using primary interface: {primary_interface}")
 
+        from core.health import record_heartbeat
         with self.app.app_context():
             while not self._stop_event.is_set():
+                record_heartbeat('BandwidthMonitor')
                 try:
                     # Get current interface stats
                     current_stats = self.get_interface_stats(primary_interface)
@@ -254,7 +256,10 @@ class BandwidthMonitor:
 
         self.is_running = True
         self._stop_event.clear()
-        self.monitor_thread = threading.Thread(target=self.monitor_bandwidth)
+        # Match the outer wrapper thread's name so the /api/system/health
+        # watchdog sees this as the BandwidthMonitor thread. (app.py spawns a
+        # named outer thread that calls start_monitoring() and exits.)
+        self.monitor_thread = threading.Thread(target=self.monitor_bandwidth, name='BandwidthMonitor')
         self.monitor_thread.daemon = True
         self.monitor_thread.start()
         logger.info("Bandwidth monitoring started")

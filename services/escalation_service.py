@@ -68,7 +68,9 @@ class EscalationExecutionService:
         self.execution_thread = threading.Thread(
             target=self._execution_loop,
             daemon=True,
-            name='EscalationExecutionService'
+            # Match the outer wrapper-thread name app.py spawns so the
+            # /api/system/health watchdog finds this in threading.enumerate().
+            name='EscalationService',
         )
         self.execution_thread.start()
         logger.info("Started escalation execution service")

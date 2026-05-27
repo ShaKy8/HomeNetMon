@@ -642,7 +642,9 @@ This is an automated message from HomeNetMon.
         # Clean up orphaned recovery alerts on startup
         self.cleanup_orphaned_recovery_alerts()
 
+        from core.health import record_heartbeat
         while not self._stop_event.is_set():
+            record_heartbeat('AlertManager')
             try:
                 # Check if alert generation is paused
                 if self.is_alert_generation_paused():
