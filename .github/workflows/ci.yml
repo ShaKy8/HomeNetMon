@@ -68,6 +68,9 @@ jobs:
           DATABASE_URL: "sqlite:///:memory:"
           SECRET_KEY: ci-test-secret-key-not-for-production-use
           NETWORK_RANGE: "192.168.1.0/24"
+        # tests/unit/test_performance_optimizations.py is intentionally excluded:
+        # it has hardcoded /home/kyle/ClaudeCode/HomeNetMon paths and cannot
+        # run anywhere but the dev machine. Tracked for cleanup separately.
         run: |
           pytest \
             tests/unit/test_batch_session_binding.py \
@@ -78,12 +81,10 @@ jobs:
             tests/unit/test_security_fixes.py \
             tests/unit/test_status_cache_invalidation.py \
             tests/unit/test_n_plus_one_fixes.py \
-            tests/unit/test_performance_optimizations.py \
             --no-cov \
             --timeout=15 \
             -q \
             --tb=short \
             --deselect tests/unit/test_n_plus_one_fixes.py::TestAnalyticsN1QueryFixes::test_network_health_score_uses_consolidated_queries \
             --deselect tests/unit/test_n_plus_one_fixes.py::TestMonitoringN1QueryFixes::test_monitoring_data_pagination_doesnt_cause_n1 \
-            --deselect tests/unit/test_n_plus_one_fixes.py::TestHealthN1QueryFixes::test_health_overview_uses_efficient_queries \
-            --deselect tests/unit/test_performance_optimizations.py::TestConsoleLogRemoval::test_no_console_logs_in_production_js
+            --deselect tests/unit/test_n_plus_one_fixes.py::TestHealthN1QueryFixes::test_health_overview_uses_efficient_queries
