@@ -968,10 +968,10 @@ class DeviceBehaviorAnalytics:
         
         # Business hours vs off-hours activity
         business_hours = sum(hourly_activity[h] for h in range(9, 17))
-        off_hours = sum(hourly_activity[h] for h in list(range(0, 9)) + list(range(17, 24)))
+        off_hours = sum(hourly_activity[h] for h in list(range(9)) + list(range(17, 24)))
         
         # Weekday vs weekend activity
-        weekday_activity = sum(daily_activity[d] for d in range(0, 5))  # Mon-Fri
+        weekday_activity = sum(daily_activity[d] for d in range(5))  # Mon-Fri
         weekend_activity = sum(daily_activity[d] for d in range(5, 7))  # Sat-Sun
         
         # Classify temporal pattern

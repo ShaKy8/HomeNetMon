@@ -449,8 +449,8 @@ class APIDocumentation:
         
     def _marshmallow_to_openapi_type(self, field) -> Dict[str, Any]:
         """Convert Marshmallow field to OpenAPI type."""
-        from marshmallow import fields
-        
+        from marshmallow import fields  # noqa: F811 - intentionally shadows flask_restx.fields locally
+
         if isinstance(field, fields.String):
             return {"type": "string"}
         elif isinstance(field, fields.Integer):

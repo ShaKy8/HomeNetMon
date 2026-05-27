@@ -14,7 +14,7 @@ import logging
 import statistics
 import time
 import threading
-from collections import defaultdict, deque
+from collections import Counter, defaultdict, deque
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Any
 
@@ -925,7 +925,7 @@ class FailurePredictionEngine:
             
             # Consider device critical if it's infrastructure or has high failure rate
             is_critical = (
-                device.ip_address and device.ip_address.endswith('.1') or  # Gateway
+                (device.ip_address and device.ip_address.endswith('.1')) or  # Gateway
                 device.device_type in ['router', 'switch', 'gateway'] or
                 failure_rate > 0.2  # High failure rate
             )

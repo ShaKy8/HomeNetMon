@@ -297,11 +297,10 @@ def get_device(device_id):
                                   .limit(10).all()
         
         device_dict['alerts'] = [alert.to_dict() for alert in recent_alerts]
-        
+
         # PERFORMANCE OPTIMIZATION: Calculate statistics efficiently using direct SQL
-        from datetime import datetime, timedelta
         from sqlalchemy import func
-        
+
         # Calculate 24h and 7d statistics in batch queries
         now = datetime.utcnow()
         cutoff_24h = now - timedelta(hours=24)
@@ -859,8 +858,7 @@ def get_devices_summary():
     try:
         # PERFORMANCE OPTIMIZATION: Use direct SQL aggregation instead of loading all devices
         from sqlalchemy import func, case, and_, or_
-        from datetime import datetime, timedelta
-        
+
         # Calculate status efficiently using the same logic as the status property
         # A device is 'up' if it has successful monitoring data within the ping interval plus buffer
         # The ping interval is 600 seconds (10 minutes), so we use 15 minutes (900 seconds) to account for network delays

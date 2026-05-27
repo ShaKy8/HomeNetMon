@@ -15,7 +15,7 @@ import json
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
-from models import MonitoringData, Device
+from models import MonitoringData, Device, db
 from tests.fixtures.factories import (
     MonitoringDataFactory, SuccessfulMonitoringDataFactory,
     FailedMonitoringDataFactory, TimeoutMonitoringDataFactory,

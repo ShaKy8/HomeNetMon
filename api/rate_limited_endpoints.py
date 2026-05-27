@@ -115,7 +115,7 @@ def apply_rate_limiting(app):
                 # Apply limit using Flask-Limiter's exempt decorator approach
                 # This applies limits based on endpoint name pattern matching
                 limiter.limit(limit_string, per_method=True)(
-                    lambda: endpoint_name
+                    lambda en=endpoint_name: en  # bind loop var; otherwise all lambdas close over the last endpoint_name
                 )
                 applied_count += 1
                 logger.debug(f"Applied {limit_type} rate limit to {endpoint_name}")

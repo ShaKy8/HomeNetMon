@@ -181,7 +181,6 @@ class AlertPriorityScorer:
         except Exception as e:
             # Log error but continue
             print(f"Error calculating uptime for alert priority device {getattr(device, 'id', 'unknown')}: {e}")
-            pass
         
         return min(100, score)
     

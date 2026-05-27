@@ -588,7 +588,7 @@ class NetworkSecurityScanner:
                         results.append(result)
                 
                 # Store OS detection results if available
-                if 'osmatch' in host_info and host_info['osmatch']:
+                if host_info.get('osmatch'):
                     os_info = host_info['osmatch'][0]
                     self._store_os_detection(device.id, os_info)
         

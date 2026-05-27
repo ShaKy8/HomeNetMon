@@ -772,7 +772,7 @@ Recommendations:
                     }
             
             # Get latest latency analysis
-            if device_id in self.latency_cache and self.latency_cache[device_id]:
+            if self.latency_cache.get(device_id):
                 latest_analysis = self.latency_cache[device_id][-1]
                 analysis['latency_analysis'] = asdict(latest_analysis)
             

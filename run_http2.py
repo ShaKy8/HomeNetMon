@@ -77,9 +77,9 @@ async def main():
     logger = logging.getLogger(__name__)
     logger.info("Starting HomeNetMon with HTTP/2 support")
     
-    # Create Flask app
-    app, socketio = create_app()
-    
+    # Create Flask app (socketio is wired into the app inside create_app; Hypercorn serves the WSGI app directly)
+    app, _socketio = create_app()
+
     # Create Hypercorn config
     config = create_hypercorn_config()
     

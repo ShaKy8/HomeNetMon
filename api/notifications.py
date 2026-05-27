@@ -1,12 +1,17 @@
-from flask import Blueprint, request, jsonify
-from datetime import datetime, timedelta
-from models import db, NotificationHistory, Device, NotificationReceipt
-from sqlalchemy import and_, desc, func
+import hashlib
+import logging
+import secrets
 import statistics
 from collections import defaultdict
-import secrets
-import hashlib
+from datetime import datetime, timedelta
+
+from flask import Blueprint, jsonify, request
+from sqlalchemy import and_, desc, func
+
 from api.rate_limited_endpoints import create_endpoint_limiter
+from models import Alert, Device, NotificationHistory, NotificationReceipt, db
+
+logger = logging.getLogger(__name__)
 
 notifications_bp = Blueprint('notifications', __name__)
 

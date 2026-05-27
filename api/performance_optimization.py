@@ -325,7 +325,7 @@ def calculate_performance_score(metrics: dict) -> dict:
         
         # Thread pool efficiency (weight: 20%)
         thread_data = metrics.get('threads', {})
-        if thread_data and not isinstance(thread_data, dict) or not thread_data.get('error'):
+        if (thread_data and not isinstance(thread_data, dict)) or not thread_data.get('error'):
             total_active = sum(stats.active_threads for stats in thread_data.values() if hasattr(stats, 'active_threads'))
             total_pools = len(thread_data)
             if total_pools > 0:

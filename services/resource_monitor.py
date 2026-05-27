@@ -342,12 +342,13 @@ class ResourceMonitor:
                     {'cutoff': cutoff}
                 ).rowcount
                 db.session.commit()
-
                 if deleted:
                     logger.info(f"Cleaned up {deleted} resolved alerts older than {days} days")
-
             except Exception as e:
                 db.session.rollback()
+                if 'no such table' in str(e).lower():
+                    logger.debug("Skipping resolved-alerts cleanup: table 'alerts' not present")
+                    return
                 raise DatabaseError(f"Failed to cleanup resolved alerts: {e}")
 
     def _cleanup_log_files(self, days: int = None):

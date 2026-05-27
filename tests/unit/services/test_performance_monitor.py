@@ -429,9 +429,9 @@ class TestPerformanceMonitorIntegration:
                 assert result is None or isinstance(result, PerformanceMetrics)
 
 
-class TestPerformanceMonitorConfiguration:
-    """Test PerformanceMonitor configuration and customization."""
-    
+class TestPerformanceMonitorCustomization:
+    """Test PerformanceMonitor customization (renamed from duplicate TestPerformanceMonitorConfiguration)."""
+
     def test_custom_collection_interval(self, app, db_session):
         """Test custom collection interval configuration."""
         # Create configuration for custom interval

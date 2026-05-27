@@ -238,8 +238,6 @@ class AnomalyDetectionEngine:
         self.running = True
         logger.info("Starting anomaly detection engine")
         
-        import threading
-        import time
         
         def detection_loop():
             while self.running:

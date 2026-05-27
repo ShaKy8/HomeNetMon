@@ -280,8 +280,8 @@ def fix_websocket_memory_leaks(app, socketio):
     # Create connection manager
     connection_manager = WebSocketConnectionManager(socketio)
     
-    # Import request for WebSocket handlers
-    from flask import request
+    # Import Flask helpers used by the routes and handlers below
+    from flask import jsonify, request
     
     # Override default SocketIO handlers to use our connection manager
     @socketio.on('connect')

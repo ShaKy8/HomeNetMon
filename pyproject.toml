@@ -1,0 +1,88 @@
+[project]
+name = "homenetmon"
+version = "2.3.2"
+description = "Home network monitoring dashboard (Flask + SQLAlchemy + Socket.IO)"
+requires-python = ">=3.10"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 120
+extend-exclude = [
+    "venv",
+    "__pycache__",
+    "static",
+    "templates",
+    "node_modules",
+    "scripts",
+    "security",  # deployment hardening artifacts (shell scripts, .conf files, standalone .py
+                 # files with dashes in their names that aren't importable Python modules)
+    "tests/fixtures/factories_original.py",
+    "production_data",
+    "logs",
+    "screenshots",
+    "test-results",
+    "playwright-report",
+    "examples",
+    "helm",
+    "k8s",
+    "sdk",
+]
+
+[tool.ruff.lint]
+# Bias the ruleset toward catching real bugs and dead code, not style nits.
+# Style fights with an existing 100+ KB codebase would generate noise without value.
+select = [
+    "E9",    # syntax errors (would have caught the resource_monitor.py corruption)
+    "F",     # pyflakes — unused imports, undefined names, etc.
+    "B",     # flake8-bugbear — likely bugs (mutable defaults, broad except, etc.)
+    "S",     # flake8-bandit — security smells (we explicitly want pickle, shell=True, etc. flagged)
+    "PIE",   # misc pitfalls (no-op except, unnecessary placeholders, etc.)
+    "PLE",   # pylint errors (real errors only)
+    "RUF",   # ruff-native rules
+]
+ignore = [
+    # Long-form preferences we don't want to fight an existing codebase about.
+    "E501",   # line-too-long — we use 120 but won't hard-fail on edge cases
+    "B008",   # function call in default arg — common Flask pattern (e.g. Field(...))
+    "B904",   # raise-from in except — not worth a sweeping change
+    "B007",   # unused loop variable — common in `for _ in ...`
+    "B017",   # assert-blind-except — only matters in tests
+    "S101",   # assert statements — we use them in tests
+    "S104",   # hardcoded 0.0.0.0 — by design (see CLAUDE.md "never bind to 127.0.0.1")
+    "S105",   # hardcoded-password-string — many false positives on string literals like "password" as a column name
+    "S106",   # hardcoded-password-funcarg — same false-positive issue
+    "S108",   # hardcoded-temp-file — minor
+    "S110",   # try-except-pass — used legitimately in many places (best-effort cleanup, etc.)
+    "S112",   # try-except-continue — same
+    "S311",   # standard-pseudo-random — we use random.random() for sampling, not crypto
+    "S603",   # subprocess-without-shell-equals-true — we explicitly want shell=False; rule misfires
+    "S607",   # start-process-with-partial-path — `nmap`, `ping` are PATH-resolved by design
+    "S608",   # possible-sql-injection — we use SQLAlchemy parameterized queries; false positives
+    "F401",   # unused imports — too many cleanup churns; rely on auto-fix instead
+    "F841",   # unused-variable — 117 in this codebase; cleanup is welcome but not a CI gate
+    "F541",   # f-string-missing-placeholders — cosmetic; no behavior impact
+    "RUF010", # explicit-f-string-type-conversion — style preference, not a bug
+    "RUF012", # mutable-class-attributes — Flask-SQLAlchemy column declarations
+    "RUF013", # implicit-optional — old-style `x: int = None`; aesthetic
+    "S324",   # insecure-hash-function — md5/sha1 used for cache keys/ETags, not crypto
+    "B028",   # no-explicit-stacklevel — warnings.warn without stacklevel; minor
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["B", "S", "PLE", "RUF", "F401", "F403"]  # tests get more leeway; factories use star imports by design
+"scripts/**" = ["S", "B"]                       # one-shot scripts; not on the runtime path
+"models.py" = ["F811"]                          # redefined-while-unused-import — too many false positives in a 100 KB models file
+"app.py" = ["F811"]                             # large file with intentional shadowing in init blocks
+"api_documentation.py" = ["F403", "F405"]       # legacy star-import from constants; preserved for backward compat
+"api/notifications.py" = ["RUF015"]             # next(iter(...)) micro-optimization not worth touching
+"services/device_control.py" = ["S501"]         # verify=False on HTTPS to LAN devices with self-signed certs — intentional
+
+[tool.ruff.format]
+quote-style = "preserve"
+indent-style = "space"
+
+[tool.pytest.ini_options]
+# We have a tested-and-working subset documented in CLAUDE.md; full triage is
+# tracked separately. CI uses --override-ini="addopts=" to disable coverage.
+minversion = "6.0"
+testpaths = ["tests"]

@@ -320,7 +320,7 @@ def setup_cdn_routes(app):
     @app.route('/cdn/invalidate', methods=['POST'])
     def invalidate_cdn_cache():
         """Endpoint to invalidate CDN cache."""
-        from flask import request, jsonify
+        from flask import jsonify
         
         data = request.get_json() or {}
         pattern = data.get('pattern')

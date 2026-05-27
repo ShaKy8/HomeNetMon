@@ -311,7 +311,7 @@ class NetworkScanner:
                         device_info['mac'] = host_info['addresses']['mac'].lower()
                     
                     # Get hostname if available
-                    if 'hostnames' in host_info and host_info['hostnames']:
+                    if host_info.get('hostnames'):
                         device_info['hostname'] = host_info['hostnames'][0]['name']
                     
                     devices.append(device_info)

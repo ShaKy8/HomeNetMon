@@ -1,17 +1,20 @@
-from flask import Blueprint, request, jsonify
-from datetime import datetime, timedelta
-from sqlalchemy import func
-from sqlalchemy.orm import joinedload
-from models import db, Device, MonitoringData, Alert, BandwidthData
-from monitoring.monitor import DeviceMonitor
-from services.pagination import paginator, create_pagination_response
 import ipaddress
+import json
 import subprocess
 import threading
-from concurrent.futures import ThreadPoolExecutor
-from functools import lru_cache
 import time
+from concurrent.futures import ThreadPoolExecutor
+from datetime import datetime, timedelta
+from functools import lru_cache
+
+from flask import Blueprint, current_app, jsonify, request
+from sqlalchemy import func
+from sqlalchemy.orm import joinedload
+
 from api.rate_limited_endpoints import create_endpoint_limiter
+from models import Alert, BandwidthData, Device, MonitoringData, db
+from monitoring.monitor import DeviceMonitor
+from services.pagination import create_pagination_response, paginator
 
 monitoring_bp = Blueprint('monitoring', __name__)
 

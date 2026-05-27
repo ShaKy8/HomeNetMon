@@ -296,7 +296,7 @@ class SecureExecutor:
         Returns:
             Tuple of (success, average_response_time_ms)
         """
-        success, stdout, stderr = self.execute(
+        success, stdout, _stderr = self.execute(
             CommandType.PING,
             target=target,
             args=['-c', str(count), '-W', str(timeout)]
