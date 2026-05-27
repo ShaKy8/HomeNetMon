@@ -77,41 +77,39 @@ class RateLimiterService:
         logger.info(f"Rate limiter initialized with backend: {storage_uri}")
 
     def _get_storage_uri(self) -> str:
-        """Get the appropriate storage URI for rate limiting backend."""
-        # Try Redis first for distributed rate limiting
-        redis_url = os.getenv('REDIS_URL')
-        if redis_url:
-            return redis_url
+        """Get the appropriate storage URI for rate limiting backend.
 
-        # Check for Redis connection details
-        redis_host = os.getenv('REDIS_HOST', 'localhost')
-        redis_port = int(os.getenv('REDIS_PORT', 6379))
-        redis_db = int(os.getenv('REDIS_DB', 0))
-        redis_password = os.getenv('REDIS_PASSWORD')
-
+        Returns 'memory://' if Redis is unreachable or the redis package
+        isn't installed. Always tests connectivity before returning a redis://
+        URI — flask-limiter will hard-fail at request time if it gets a
+        URI it can't actually use.
+        """
         if not REDIS_AVAILABLE:
-            logger.warning("Redis package not available, using memory backend")
+            logger.info("Rate limiter: redis Python package not installed, using in-memory backend")
             return "memory://"
 
-        try:
-            # Test Redis connectivity
-            test_client = redis.Redis(
-                host=redis_host,
-                port=redis_port,
-                db=redis_db,
-                password=redis_password,
-                socket_connect_timeout=5
-            )
-            test_client.ping()
-
-            # Build Redis URI
+        # Build candidate URI from env (REDIS_URL takes precedence)
+        redis_url = os.getenv('REDIS_URL')
+        if redis_url:
+            candidate_uri = redis_url
+        else:
+            redis_host = os.getenv('REDIS_HOST', 'localhost')
+            redis_port = int(os.getenv('REDIS_PORT', 6379))
+            redis_db = int(os.getenv('REDIS_DB', 0))
+            redis_password = os.getenv('REDIS_PASSWORD')
             if redis_password:
-                return f"redis://:{redis_password}@{redis_host}:{redis_port}/{redis_db}"
+                candidate_uri = f"redis://:{redis_password}@{redis_host}:{redis_port}/{redis_db}"
             else:
-                return f"redis://{redis_host}:{redis_port}/{redis_db}"
+                candidate_uri = f"redis://{redis_host}:{redis_port}/{redis_db}"
 
-        except (redis.ConnectionError, redis.TimeoutError):
-            logger.warning("Redis not available, using memory backend for rate limiting")
+        # Probe the server before committing — fall back to memory if unreachable.
+        try:
+            test_client = redis.Redis.from_url(candidate_uri, socket_connect_timeout=2)
+            test_client.ping()
+            logger.info(f"Rate limiter: using Redis backend at {candidate_uri.split('@')[-1]}")
+            return candidate_uri
+        except Exception as e:
+            logger.info(f"Rate limiter: Redis unreachable ({type(e).__name__}), using in-memory backend")
             return "memory://"
 
     def _get_trusted_ips(self) -> set:

@@ -5,6 +5,9 @@ Flask-SocketIO==5.3.6
 Flask-Limiter==3.5.0
 Flask-Compress==1.18
 Brotli==1.1.0
+# redis Python client — needed so rate-limiter can probe + connect when a Redis
+# server is available; falls back to in-memory storage cleanly when not.
+redis>=4.5
 
 # Database
 SQLAlchemy==2.0.23
@@ -41,12 +44,13 @@ structlog==23.2.0
 # Speed Testing
 speedtest-cli==2.1.3
 
-# Scientific Computing and Analytics (required for anomaly detection and analytics)
-numpy>=1.21.0
-scipy>=1.7.0
-scikit-learn>=1.0.0
-matplotlib>=3.5.0
-pandas>=1.3.0
+# Scientific Computing and Analytics (required for anomaly detection and analytics).
+# Pinned to currently-tested versions for reproducible installs; bump deliberately.
+numpy==2.3.2
+scipy==1.16.1
+scikit-learn==1.7.1
+matplotlib==3.10.5
+pandas==2.3.2
 
 # Development Dependencies (optional)
 pytest==7.4.3

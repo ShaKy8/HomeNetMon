@@ -87,25 +87,54 @@ def create_app():
     except ImportError:
         logger.warning("Error handler not available - using default Flask error handling")
 
-    # Initialize SocketIO for real-time updates - Allow local network access
-    # Allow any origin from local networks for home network monitoring
+    # Initialize SocketIO for real-time updates.
+    # CORS: restrict to the configured NETWORK_RANGE (the subnet this deployment
+    # actually serves) + localhost. The previous version allowed ANY RFC1918
+    # origin, which meant a 10.x attacker could forge an Origin header and join
+    # WebSocket rooms even when the dashboard only ran on 192.168.x.
+    import ipaddress
     import re
+    from urllib.parse import urlparse
+
+    try:
+        _allowed_network = ipaddress.ip_network(Config.NETWORK_RANGE, strict=False)
+    except ValueError:
+        logger.warning(
+            "Invalid NETWORK_RANGE=%r for CORS check; falling back to all-RFC1918",
+            Config.NETWORK_RANGE,
+        )
+        _allowed_network = None
+
+    _local_hostname_pattern = re.compile(r'^[a-zA-Z0-9\-]+(\.local)?$')
+
     def cors_allowed_origins_callback(origin):
         if not origin:
             return False
-        # Allow localhost and common local network ranges
-        allowed_patterns = [
-            r'^http://localhost(:\d+)?$',
-            r'^http://127\.0\.0\.1(:\d+)?$',
-            r'^http://0\.0\.0\.0(:\d+)?$',
-            r'^http://192\.168\.\d+\.\d+(:\d+)?$',  # Common home network
-            r'^http://10\.\d+\.\d+\.\d+(:\d+)?$',    # Private network
-            r'^http://172\.(1[6-9]|2[0-9]|3[0-1])\.\d+\.\d+(:\d+)?$',  # Private network
-            r'^http://[a-zA-Z0-9\-]+(\.local)?(:\d+)?$'  # Local hostnames
-        ]
-        for pattern in allowed_patterns:
-            if re.match(pattern, origin):
-                return True
+        try:
+            parsed = urlparse(origin)
+        except Exception:
+            return False
+        if parsed.scheme not in ('http', 'https'):
+            return False
+        host = parsed.hostname
+        if not host:
+            return False
+
+        # Localhost / loopback
+        if host in ('localhost', '127.0.0.1', '0.0.0.0', '::1'):
+            return True
+
+        # Local hostnames (foo.local or bare unqualified)
+        if _local_hostname_pattern.match(host) and '.' not in host.replace('.local', ''):
+            return True
+
+        # IP literal — must fall inside the configured monitored subnet.
+        try:
+            ip = ipaddress.ip_address(host)
+        except ValueError:
+            return False
+        if _allowed_network is not None and ip in _allowed_network:
+            return True
         return False
 
     socketio = SocketIO(app, cors_allowed_origins=cors_allowed_origins_callback, logger=False, engineio_logger=False)

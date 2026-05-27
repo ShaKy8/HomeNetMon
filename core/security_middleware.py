@@ -39,7 +39,26 @@ class SecurityMiddleware:
             'max_content_length': 16 * 1024 * 1024,  # 16MB
             'allowed_hosts': [],  # Empty means all hosts allowed
             'strict_transport_security_max_age': 31536000,  # 1 year
-            'content_security_policy': "default-src 'self' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://cdn.jsdelivr.net https://cdn.socket.io; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net data:; img-src 'self' data: https:;"
+            # CSP is tuned conservatively for this LAN dashboard:
+            # - 'unsafe-inline' kept on script-src because templates still
+            #   include page-specific inline <script> blocks. Worth removing
+            #   in a future sweep if a stored-XSS vector ever appears.
+            # - 'unsafe-eval' DROPPED — no eval()/Function()/setTimeout("string")
+            #   in our code. Shrinks XSS blast radius.
+            # - object-src 'none', base-uri 'self', frame-ancestors 'none'
+            #   added as defense in depth (block Flash/PDF embeds, <base href>
+            #   injection, and clickjacking).
+            'content_security_policy': (
+                "default-src 'self' https:; "
+                "script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdn.socket.io; "
+                "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
+                "font-src 'self' https://cdn.jsdelivr.net data:; "
+                "img-src 'self' data: https:; "
+                "connect-src 'self' ws: wss:; "
+                "object-src 'none'; "
+                "base-uri 'self'; "
+                "frame-ancestors 'none';"
+            )
         }
 
         if app:
