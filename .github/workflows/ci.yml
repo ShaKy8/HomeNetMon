@@ -20,6 +20,13 @@ jobs:
           python-version: "3.12"
           cache: pip
 
+      - name: Install system deps
+        # `nmap` is the binary that python-nmap shells out to; conftest fixtures
+        # touch the scanner at import time so it must be present.
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends nmap
+
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
