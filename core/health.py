@@ -29,12 +29,12 @@ logger = logging.getLogger(__name__)
 #   2. Call `record_heartbeat('YourThreadName')` once per iteration
 #   3. Add the name + interval here
 EXPECTED_THREADS: dict[str, int] = {
-    'NetworkScanner':     86400,   # daily nmap sweep (long; scanner can sleep a full day)
-    'DeviceMonitor':      600,     # ping cycle (Config.PING_INTERVAL default)
-    'AlertManager':       60,      # one minute
-    'BandwidthMonitor':   300,     # 5 min
-    'PerformanceMonitor': 300,
-    'ResourceMonitor':    300,
+    'NetworkScanner':     86400,   # daily nmap sweep (Config.SCAN_INTERVAL)
+    'DeviceMonitor':      600,     # ping cycle (Config.PING_INTERVAL)
+    'AlertManager':       600,     # 10-min alert check (monitoring/alerts.py:727)
+    'BandwidthMonitor':   300,     # Config.BANDWIDTH_INTERVAL
+    'PerformanceMonitor': 300,     # collection_interval default
+    'ResourceMonitor':    300,     # _monitor_loop wait
 }
 
 # A thread is "stale" once its last heartbeat is older than
