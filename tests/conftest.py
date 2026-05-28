@@ -546,6 +546,10 @@ STALE_TEST_SKIPS = {
         "hardcoded dev paths; environment-specific",
     "test_performance_optimizations.py::TestAssetOptimization":
         "hardcoded /home/kyle/... paths; needs Path(__file__) rewrite",
+    "test_performance_optimizations.py::TestToastNotificationSystem":
+        "hardcoded /home/kyle/... template paths; needs Path(__file__) rewrite",
+    "test_performance_optimizations.py::TestDeferredJavaScriptLoading":
+        "hardcoded /home/kyle/... static paths; needs Path(__file__) rewrite",
 
     # MonitoringData.is_successful() returns True when response_time is set;
     # FailedMonitoringDataFactory produces a row with a high response_time, so
