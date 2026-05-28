@@ -56,35 +56,19 @@ jobs:
       - name: Ruff lint
         run: ruff check .
 
-      # Run the curated-passing subset. The known-failing tests in
-      # tests/unit/models/, tests/unit/services/test_alert_manager.py,
-      # tests/unit/services/test_performance_monitor.py, etc. are stale fixtures
-      # (see CLAUDE.md "Test suite triage" — they need fixture refresh, not
-      # production-code changes). The 4 individually-failing tests below are
-      # also deselected; once their root cause is fixed, remove the --deselect
-      # lines.
-      - name: Run curated unit tests
+      # Run the full unit suite. tests/conftest.py:STALE_TEST_SKIPS holds a
+      # centralized list of tests that were written for APIs that have since
+      # been renamed/removed; each entry has a reason. To revive a skipped
+      # test, refactor it to match the current API and remove its entry from
+      # the dict. The skips amount to ~85 tests as of Phase 4c triage.
+      - name: Run unit tests
         env:
           DATABASE_URL: "sqlite:///:memory:"
           SECRET_KEY: ci-test-secret-key-not-for-production-use
           NETWORK_RANGE: "192.168.1.0/24"
-        # tests/unit/test_performance_optimizations.py is intentionally excluded:
-        # it has hardcoded /home/kyle/ClaudeCode/HomeNetMon paths and cannot
-        # run anywhere but the dev machine. Tracked for cleanup separately.
         run: |
-          pytest \
-            tests/unit/test_batch_session_binding.py \
-            tests/unit/test_constants.py \
-            tests/unit/test_critical_device_detection.py \
-            tests/unit/test_last_seen_persistence.py \
-            tests/unit/test_monitoring_n_plus_one.py \
-            tests/unit/test_security_fixes.py \
-            tests/unit/test_status_cache_invalidation.py \
-            tests/unit/test_n_plus_one_fixes.py \
+          pytest tests/unit \
             --no-cov \
             --timeout=15 \
             -q \
-            --tb=short \
-            --deselect tests/unit/test_n_plus_one_fixes.py::TestAnalyticsN1QueryFixes::test_network_health_score_uses_consolidated_queries \
-            --deselect tests/unit/test_n_plus_one_fixes.py::TestMonitoringN1QueryFixes::test_monitoring_data_pagination_doesnt_cause_n1 \
-            --deselect tests/unit/test_n_plus_one_fixes.py::TestHealthN1QueryFixes::test_health_overview_uses_efficient_queries
+            --tb=short

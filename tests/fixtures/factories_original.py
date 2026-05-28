@@ -15,9 +15,17 @@ import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
-from models import Device, MonitoringData, PerformanceMetrics, Alert, Configuration
+from models import db, Device, MonitoringData, PerformanceMetrics, Alert, Configuration
 
 fake = Faker()
+
+
+# All factories below set ``sqlalchemy_session = db.session`` so factory_boy
+# can persist instances. ``db.session`` is a scoped_session, so it resolves
+# to the current thread's active session at call time — that's what
+# tests/conftest.py:db_session yields after binding the in-memory test DB.
+# Without this, factory_boy raised "No session provided" and every factory-
+# using test failed at fixture setup.
 
 
 class DeviceFactory(factory.alchemy.SQLAlchemyModelFactory):
@@ -25,11 +33,14 @@ class DeviceFactory(factory.alchemy.SQLAlchemyModelFactory):
 
     class Meta:
         model = Device
+        sqlalchemy_session = db.session
         sqlalchemy_session_persistence = 'commit'
 
-    ip_address = factory.LazyFunction(lambda: fake.ipv4_private())
-    mac_address = factory.LazyFunction(lambda: fake.mac_address())
-    hostname = factory.LazyFunction(lambda: fake.hostname())
+    # Use a Sequence for IP so two factory calls in the same test don't collide
+    # with UNIQUE constraint failures. Stays within 10.0.0.0/8 (private).
+    ip_address = factory.Sequence(lambda n: f"10.{(n >> 16) & 0xff}.{(n >> 8) & 0xff}.{n & 0xff}")
+    mac_address = factory.Sequence(lambda n: f"02:00:00:{(n >> 16) & 0xff:02x}:{(n >> 8) & 0xff:02x}:{n & 0xff:02x}")
+    hostname = factory.Sequence(lambda n: f"test-device-{n}")
     vendor = factory.Faker('company')
     custom_name = factory.LazyAttribute(lambda obj: f"Test {obj.hostname}")
     device_type = factory.fuzzy.FuzzyChoice(['router', 'computer', 'phone', 'iot', 'printer', 'camera'])
@@ -65,6 +76,7 @@ class MonitoringDataFactory(factory.alchemy.SQLAlchemyModelFactory):
 
     class Meta:
         model = MonitoringData
+        sqlalchemy_session = db.session
         sqlalchemy_session_persistence = 'commit'
 
     device = factory.SubFactory(DeviceFactory)
@@ -96,6 +108,7 @@ class PerformanceMetricsFactory(factory.alchemy.SQLAlchemyModelFactory):
 
     class Meta:
         model = PerformanceMetrics
+        sqlalchemy_session = db.session
         sqlalchemy_session_persistence = 'commit'
 
     device = factory.SubFactory(DeviceFactory)
@@ -161,6 +174,7 @@ class AlertFactory(factory.alchemy.SQLAlchemyModelFactory):
 
     class Meta:
         model = Alert
+        sqlalchemy_session = db.session
         sqlalchemy_session_persistence = 'commit'
 
     device = factory.SubFactory(DeviceFactory)
@@ -168,21 +182,21 @@ class AlertFactory(factory.alchemy.SQLAlchemyModelFactory):
     alert_subtype = factory.fuzzy.FuzzyChoice(['ping_timeout', 'high_response_time', 'performance_critical'])
     severity = factory.fuzzy.FuzzyChoice(['info', 'warning', 'critical'])
     message = factory.Faker('sentence')
-    details = factory.LazyFunction(lambda: fake.text(max_nb_chars=200))
+    # NB: Alert has no `details` or `resolution_message` column; those were
+    # aspirational fields that broke every Alert factory call with TypeError.
+    # Long-form text lives in `message` and `priority_breakdown` (JSON).
     created_at = factory.LazyFunction(lambda: datetime.utcnow() - timedelta(hours=fake.random_int(0, 24)))
     resolved = False
     acknowledged = False
     resolved_at = None
     acknowledged_at = None
     acknowledged_by = None
-    resolution_message = None
 
 
 class ResolvedAlertFactory(AlertFactory):
     """Factory for creating resolved alerts."""
     resolved = True
     resolved_at = factory.LazyAttribute(lambda obj: obj.created_at + timedelta(hours=fake.random_int(1, 12)))
-    resolution_message = factory.Faker('sentence')
 
 
 class AcknowledgedAlertFactory(AlertFactory):
@@ -204,6 +218,7 @@ class ConfigurationFactory(factory.alchemy.SQLAlchemyModelFactory):
 
     class Meta:
         model = Configuration
+        sqlalchemy_session = db.session
         sqlalchemy_session_persistence = 'commit'
 
     key = factory.Sequence(lambda n: f"test_config_key_{n}")

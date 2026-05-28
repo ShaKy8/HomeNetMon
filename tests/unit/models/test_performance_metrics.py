@@ -227,7 +227,7 @@ class TestPerformanceGrade:
         """Test performance grade A+ for excellent health score."""
         metrics = PerformanceMetricsFactory.create(health_score=97.5)
 
-        grade = metrics.performance_grade()
+        grade = metrics.performance_grade
         assert grade == 'A+'
         PerformanceTestHelper.assert_performance_grade(grade)
 
@@ -235,7 +235,7 @@ class TestPerformanceGrade:
         """Test performance grade A for high health score."""
         metrics = PerformanceMetricsFactory.create(health_score=92.0)
 
-        grade = metrics.performance_grade()
+        grade = metrics.performance_grade
         assert grade == 'A'
         PerformanceTestHelper.assert_performance_grade(grade)
 
@@ -243,7 +243,7 @@ class TestPerformanceGrade:
         """Test performance grade B+ for good health score."""
         metrics = PerformanceMetricsFactory.create(health_score=87.0)
 
-        grade = metrics.performance_grade()
+        grade = metrics.performance_grade
         assert grade == 'B+'
         PerformanceTestHelper.assert_performance_grade(grade)
 
@@ -251,7 +251,7 @@ class TestPerformanceGrade:
         """Test performance grade B for decent health score."""
         metrics = PerformanceMetricsFactory.create(health_score=82.0)
 
-        grade = metrics.performance_grade()
+        grade = metrics.performance_grade
         assert grade == 'B'
         PerformanceTestHelper.assert_performance_grade(grade)
 
@@ -259,27 +259,27 @@ class TestPerformanceGrade:
         """Test performance grades in C range."""
         # C+ grade
         metrics_c_plus = PerformanceMetricsFactory.create(health_score=77.0)
-        assert metrics_c_plus.performance_grade() == 'C+'
+        assert metrics_c_plus.performance_grade == 'C+'
 
         # C grade
         metrics_c = PerformanceMetricsFactory.create(health_score=72.0)
-        assert metrics_c.performance_grade() == 'C'
+        assert metrics_c.performance_grade == 'C'
 
     def test_performance_grade_d_range(self, db_session):
         """Test performance grades in D range."""
         # D+ grade
         metrics_d_plus = PerformanceMetricsFactory.create(health_score=67.0)
-        assert metrics_d_plus.performance_grade() == 'D+'
+        assert metrics_d_plus.performance_grade == 'D+'
 
         # D grade
         metrics_d = PerformanceMetricsFactory.create(health_score=62.0)
-        assert metrics_d.performance_grade() == 'D'
+        assert metrics_d.performance_grade == 'D'
 
     def test_performance_grade_f(self, db_session):
         """Test performance grade F for poor health score."""
         metrics = PerformanceMetricsFactory.create(health_score=45.0)
 
-        grade = metrics.performance_grade()
+        grade = metrics.performance_grade
         assert grade == 'F'
         PerformanceTestHelper.assert_performance_grade(grade)
 
@@ -287,7 +287,7 @@ class TestPerformanceGrade:
         """Test performance grade when health score is None."""
         metrics = PerformanceMetricsFactory.create(health_score=None)
 
-        grade = metrics.performance_grade()
+        grade = metrics.performance_grade
         assert grade == 'N/A'
         PerformanceTestHelper.assert_performance_grade(grade)
 

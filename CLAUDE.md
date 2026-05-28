@@ -19,22 +19,18 @@ Defaults: port 5000, network `192.168.86.0/24`, SQLite at `homeNetMon.db`. Overr
 
 ### Tests
 
-CI runs a curated subset of unit tests (133 passing, see `.github/workflows/ci.yml`). The full `pytest` invocation fails because `tests/unit/models/`, `tests/unit/services/test_alert_manager.py`, and `tests/unit/services/test_performance_monitor.py` have stale fixtures (not broken production code — confirmed by running tests pre- and post-perf-cleanup with identical failure counts). Triaging them is its own one-day project.
+CI runs the full `tests/unit/` suite (~280 passing / ~85 skipped). Skipped tests are listed centrally in `tests/conftest.py:STALE_TEST_SKIPS` with a one-line reason each — these were written against APIs that have since been renamed (mostly public→private), removed, or didn't exist yet (aspirational). To revive a skipped test: refactor it to match the current API and remove its entry from the dict.
 
 ```bash
-pytest tests/unit/test_constants.py       # one file (use this; always passes)
+pytest tests/unit                         # full unit suite (matches CI)
+pytest tests/unit/test_constants.py       # one file
 pytest tests/unit/test_constants.py::TestConstants::test_constants_have_values  # one test
 pytest --no-cov                           # skip coverage gate when iterating
 pytest -m unit                            # by marker (unit/integration/api/slow/network/performance/alerts/models/services)
 npx playwright test TestHomeNetmon.js     # E2E (auto-starts the Flask app; see playwright.config.js)
-
-# What CI runs (curated green set):
-pytest tests/unit/test_batch_session_binding.py tests/unit/test_constants.py \
-       tests/unit/test_critical_device_detection.py tests/unit/test_last_seen_persistence.py \
-       tests/unit/test_monitoring_n_plus_one.py tests/unit/test_security_fixes.py \
-       tests/unit/test_status_cache_invalidation.py --no-cov
 ```
-Test fixtures live in `tests/fixtures/factories.py` and `tests/conftest.py`.
+
+Test fixtures live in `tests/fixtures/factories.py` (which falls back to `factories_original.py` if factory_boy is available). Every `SQLAlchemyModelFactory` sets `sqlalchemy_session = db.session` so factory_boy can persist instances during the test — don't remove that without replacing it.
 
 ### Lint and formatting
 ```bash
