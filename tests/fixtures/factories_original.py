@@ -209,6 +209,10 @@ class AcknowledgedAlertFactory(AlertFactory):
 class PerformanceAlertFactory(AlertFactory):
     """Factory for creating performance-related alerts."""
     alert_type = 'performance'
+    # Performance alerts are at least warning-level — never informational.
+    # (The parent AlertFactory's FuzzyChoice includes 'info', which made
+    # test_performance_alert_factory flaky.)
+    severity = factory.fuzzy.FuzzyChoice(['warning', 'critical'])
     alert_subtype = factory.fuzzy.FuzzyChoice(['performance_critical', 'performance_warning', 'performance_responsiveness'])
     message = factory.LazyAttribute(lambda obj: f"Device performance is {obj.alert_subtype.split('_')[1]}")
 
