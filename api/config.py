@@ -91,7 +91,7 @@ def update_config_value(key):
                 try:
                     value = int(data['value'])
                     if value < 5 or value > 900:
-                        return jsonify({'error': 'Ping interval must be between 5 and 900 seconds'}), 400
+                        return jsonify({'error': 'Ping interval must be between 30 and 3600 seconds'}), 400
                 except ValueError:
                     return jsonify({'error': 'Ping interval must be a number'}), 400
 
@@ -99,7 +99,7 @@ def update_config_value(key):
                 try:
                     value = int(data['value'])
                     if value < 60 or value > 3600:
-                        return jsonify({'error': 'Scan interval must be between 60 and 3600 seconds'}), 400
+                        return jsonify({'error': 'Scan interval must be between 300 seconds and 7 days'}), 400
                 except ValueError:
                     return jsonify({'error': 'Scan interval must be a number'}), 400
 
@@ -168,22 +168,22 @@ def update_network_config():
         if 'ping_interval' in data:
             try:
                 value = int(data['ping_interval'])
-                if 5 <= value <= 900:
+                if 30 <= value <= 3600:
                     Configuration.set_value('ping_interval', str(value), 'Ping interval in seconds')
                     updated_fields.append('ping_interval')
                 else:
-                    return jsonify({'error': 'Ping interval must be between 5 and 900 seconds'}), 400
+                    return jsonify({'error': 'Ping interval must be between 30 and 3600 seconds'}), 400
             except ValueError:
                 return jsonify({'error': 'Ping interval must be a number'}), 400
 
         if 'scan_interval' in data:
             try:
                 value = int(data['scan_interval'])
-                if 60 <= value <= 3600:
+                if 300 <= value <= 604800:
                     Configuration.set_value('scan_interval', str(value), 'Network scan interval in seconds')
                     updated_fields.append('scan_interval')
                 else:
-                    return jsonify({'error': 'Scan interval must be between 60 and 3600 seconds'}), 400
+                    return jsonify({'error': 'Scan interval must be between 300 seconds and 7 days'}), 400
             except ValueError:
                 return jsonify({'error': 'Scan interval must be a number'}), 400
 
@@ -254,7 +254,9 @@ def get_alert_config():
             'ntfy_topic': Configuration.get_value('ntfy_topic', ''),
             'ntfy_server': Configuration.get_value('ntfy_server', 'https://ntfy.sh'),
             'device_down_threshold': int(Configuration.get_value('device_down_threshold_minutes', '3')),
-            'high_latency_threshold': int(Configuration.get_value('high_latency_threshold_ms', '1000'))
+            'high_latency_threshold': int(Configuration.get_value('high_latency_threshold_ms', '1000')),
+            'discord_enabled': Configuration.get_value('alert_discord_enabled', 'false').lower() == 'true',
+            'discord_webhook_url': Configuration.get_value('discord_webhook_url', ''),
         }
 
         return jsonify(alert_config)
@@ -306,14 +308,22 @@ def update_alert_config():
             Configuration.set_value('alert_webhook_url', data['webhook_url'], 'Webhook URL for alerts')
             updated_fields.append('webhook_url')
 
+        if 'discord_enabled' in data:
+            Configuration.set_value('alert_discord_enabled', str(data['discord_enabled']).lower(), 'Enable Discord alerts')
+            updated_fields.append('discord_enabled')
+
+        if 'discord_webhook_url' in data:
+            Configuration.set_value('discord_webhook_url', data['discord_webhook_url'], 'Discord webhook URL for alerts')
+            updated_fields.append('discord_webhook_url')
+
         if 'device_down_threshold' in data:
             try:
                 value = int(data['device_down_threshold'])
-                if 1 <= value <= 60:
+                if 1 <= value <= 1440:
                     Configuration.set_value('device_down_threshold_minutes', str(value), 'Minutes before device down alert')
                     updated_fields.append('device_down_threshold')
                 else:
-                    return jsonify({'error': 'Device down threshold must be between 1 and 60 minutes'}), 400
+                    return jsonify({'error': 'Device down threshold must be between 1 and 1440 minutes'}), 400
             except ValueError:
                 return jsonify({'error': 'Device down threshold must be a number'}), 400
 

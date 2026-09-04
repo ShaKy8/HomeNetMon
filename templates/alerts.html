@@ -587,20 +587,19 @@ class AlertsManager {
                 this.showToast('Unable to restore real-time updates', 'error', 5000);
             });
 
-            // Listen for alert events
-            this.socket.on('alert_created', (alert) => {
-                this.debug('Received alert_created event:', alert);
-                this.handleNewAlert(alert);
+            // Join the alerts room; the server emits a single `alert_update` event
+            // carrying {action: created|updated|acknowledged|resolved|deleted, alert}.
+            this.socket.on('connect', () => {
+                this.socket.emit('subscribe_to_updates', { types: ['alerts'] });
             });
-
-            this.socket.on('alert_updated', (alert) => {
-                this.debug('Received alert_updated event:', alert);
-                this.handleUpdatedAlert(alert);
-            });
-
-            this.socket.on('alert_resolved', (alertId) => {
-                this.debug('Received alert_resolved event:', alertId);
-                this.handleResolvedAlert(alertId);
+            this.socket.on('alert_update', (payload) => {
+                this.debug('Received alert_update event:', payload);
+                const alert = payload && payload.alert;
+                const action = payload && payload.action;
+                if (!alert) { this.loadAlerts(); return; }
+                if (action === 'created') this.handleNewAlert(alert);
+                else if (action === 'resolved' || action === 'deleted') this.handleResolvedAlert(alert.id);
+                else this.handleUpdatedAlert(alert);
             });
 
         } catch (error) {

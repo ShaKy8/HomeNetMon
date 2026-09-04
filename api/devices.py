@@ -13,6 +13,7 @@ from models import db, Device, MonitoringData, Alert, DeviceIpHistory
 from monitoring.monitor import DeviceMonitor
 from services.pagination import paginator, create_pagination_response
 from services.query_cache import get_cached_device_list, invalidate_device_cache
+from sqlalchemy import case
 
 logger = logging.getLogger(__name__)
 
@@ -291,7 +292,7 @@ def get_device(device_id):
         # Get 24h statistics
         stats_24h_raw = db.session.query(
             func.count(MonitoringData.id).label('total_checks'),
-            func.sum(func.case((MonitoringData.response_time.isnot(None), 1), else_=0)).label('successful_checks'),
+            func.sum(case((MonitoringData.response_time.isnot(None), 1), else_=0)).label('successful_checks'),
             func.avg(MonitoringData.response_time).label('avg_response_time'),
             func.min(MonitoringData.response_time).label('min_response_time'),
             func.max(MonitoringData.response_time).label('max_response_time'),
@@ -304,7 +305,7 @@ def get_device(device_id):
         # Get 7d statistics
         stats_7d_raw = db.session.query(
             func.count(MonitoringData.id).label('total_checks'),
-            func.sum(func.case((MonitoringData.response_time.isnot(None), 1), else_=0)).label('successful_checks'),
+            func.sum(case((MonitoringData.response_time.isnot(None), 1), else_=0)).label('successful_checks'),
             func.avg(MonitoringData.response_time).label('avg_response_time'),
             func.min(MonitoringData.response_time).label('min_response_time'),
             func.max(MonitoringData.response_time).label('max_response_time'),

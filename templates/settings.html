@@ -391,11 +391,11 @@
                                 <i class="bi bi-broadcast me-2"></i>Ping Interval (seconds)
                             </label>
                             <div class="input-group">
-                                <input type="number" class="form-control" id="ping-interval" min="5" max="900">
+                                <input type="number" class="form-control" id="ping-interval" min="30" max="3600">
                                 <div class="btn-group">
-                                    <button type="button" class="btn btn-sm" onclick="setPingInterval(30)">30s</button>
-                                    <button type="button" class="btn btn-sm" onclick="setPingInterval(60)">1m</button>
                                     <button type="button" class="btn btn-sm" onclick="setPingInterval(300)">5m</button>
+                                    <button type="button" class="btn btn-sm" onclick="setPingInterval(600)">10m</button>
+                                    <button type="button" class="btn btn-sm" onclick="setPingInterval(1800)">30m</button>
                                 </div>
                             </div>
                             <div class="form-text">How often to ping all monitored devices (5-900 seconds)</div>
@@ -408,11 +408,11 @@
                                 <i class="bi bi-search me-2"></i>Scan Interval (seconds)
                             </label>
                             <div class="input-group">
-                                <input type="number" class="form-control" id="scan-interval" min="60" max="3600">
+                                <input type="number" class="form-control" id="scan-interval" min="300" max="604800">
                                 <div class="btn-group">
-                                    <button type="button" class="btn btn-sm" onclick="setScanInterval(300)">5m</button>
-                                    <button type="button" class="btn btn-sm" onclick="setScanInterval(900)">15m</button>
-                                    <button type="button" class="btn btn-sm" onclick="setScanInterval(1800)">30m</button>
+                                    <button type="button" class="btn btn-sm" onclick="setScanInterval(3600)">1h</button>
+                                    <button type="button" class="btn btn-sm" onclick="setScanInterval(21600)">6h</button>
+                                    <button type="button" class="btn btn-sm" onclick="setScanInterval(86400)">24h</button>
                                 </div>
                             </div>
                             <div class="form-text">How often to scan for new devices (60-3600 seconds)</div>
@@ -481,44 +481,80 @@
 
         <!-- Alerts Settings -->
         <div class="settings-section" id="alerts">
-            <h2 class="section-title">Alert Configuration</h2>
+            <h2 class="section-title">Alerts &amp; Notifications</h2>
 
-            <div class="form-group">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="enable-alerts">
-                    <label class="form-check-label" for="enable-alerts">
-                        Enable alert notifications
-                    </label>
+            <h3 class="h6 text-uppercase text-muted mt-3">Thresholds</h3>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="device-down-threshold" class="form-label">Device down after (minutes)</label>
+                    <input type="number" class="form-control" id="device-down-threshold" min="1" max="1440">
+                    <div class="form-text">Regular devices; critical devices (router, servers) alert sooner.</div>
                 </div>
-                <div class="form-text">Send notifications when devices go offline or come online</div>
+                <div class="col-md-6">
+                    <label for="high-latency-threshold" class="form-label">High latency threshold (ms)</label>
+                    <input type="number" class="form-control" id="high-latency-threshold" min="100" max="10000">
+                </div>
             </div>
 
-            <div class="form-group">
-                <label for="alert-threshold" class="form-label">
-                    <i class="bi bi-clock me-2"></i>Alert Threshold (minutes)
-                </label>
-                <div class="input-group">
-                    <input type="number" class="form-control" id="alert-threshold" min="1" max="60">
-                    <div class="btn-group">
-                        <button type="button" class="btn btn-sm" onclick="setAlertThreshold(5)">5m</button>
-                        <button type="button" class="btn btn-sm" onclick="setAlertThreshold(15)">15m</button>
-                        <button type="button" class="btn btn-sm" onclick="setAlertThreshold(30)">30m</button>
-                    </div>
-                </div>
-                <div class="form-text">How long to wait before sending an alert for offline devices</div>
+            <h3 class="h6 text-uppercase text-muted mt-4">Push (ntfy)</h3>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="push-enabled">
+                <label class="form-check-label" for="push-enabled">Send push notifications</label>
             </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="ntfy-server" class="form-label">ntfy server</label>
+                    <input type="url" class="form-control" id="ntfy-server" placeholder="https://ntfy.sh">
+                </div>
+                <div class="col-md-6">
+                    <label for="ntfy-topic" class="form-label">Topic</label>
+                    <input type="text" class="form-control" id="ntfy-topic" placeholder="my-homenetmon-alerts">
+                </div>
+            </div>
+            <button type="button" class="btn-modern btn-sm mt-2" onclick="testChannel('push')"><i class="bi bi-send"></i> Send test push</button>
 
-            <div class="settings-actions">
-                <button type="button" class="btn-modern" onclick="resetAlertSettings()">
-                    <i class="bi bi-arrow-clockwise"></i> Reset
-                </button>
+            <h3 class="h6 text-uppercase text-muted mt-4">Email</h3>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="email-enabled">
+                <label class="form-check-label" for="email-enabled">Send email alerts</label>
+            </div>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="email-from" class="form-label">From address</label>
+                    <input type="email" class="form-control" id="email-from" placeholder="homenetmon@example.com">
+                </div>
+                <div class="col-md-6">
+                    <label for="email-to" class="form-label">To addresses (comma separated)</label>
+                    <input type="text" class="form-control" id="email-to" placeholder="you@example.com, other@example.com">
+                </div>
+            </div>
+            <div class="form-text">SMTP server and credentials come from SMTP_* in the .env file.</div>
+            <button type="button" class="btn-modern btn-sm mt-2" onclick="testChannel('email')"><i class="bi bi-send"></i> Send test email</button>
+
+            <h3 class="h6 text-uppercase text-muted mt-4">Webhook</h3>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="webhook-enabled">
+                <label class="form-check-label" for="webhook-enabled">POST alerts to a webhook</label>
+            </div>
+            <label for="webhook-url" class="form-label">Webhook URL</label>
+            <input type="url" class="form-control" id="webhook-url" placeholder="https://hooks.example/...">
+            <button type="button" class="btn-modern btn-sm mt-2" onclick="testChannel('webhook')"><i class="bi bi-send"></i> Send test webhook</button>
+
+            <h3 class="h6 text-uppercase text-muted mt-4">Discord</h3>
+            <div class="form-check form-switch mb-2">
+                <input class="form-check-input" type="checkbox" id="discord-enabled">
+                <label class="form-check-label" for="discord-enabled">Post alerts to a Discord channel</label>
+            </div>
+            <label for="discord-webhook-url" class="form-label">Discord webhook URL</label>
+            <input type="url" class="form-control" id="discord-webhook-url" placeholder="https://discord.com/api/webhooks/...">
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
                 <button type="button" class="btn-modern btn-primary" onclick="saveAlertSettings()">
-                    <i class="bi bi-save"></i> Save Changes
+                    <i class="bi bi-save"></i> Save alerts &amp; notifications
                 </button>
             </div>
         </div>
 
-        <!-- System Settings -->
         <div class="settings-section" id="system">
             <h2 class="section-title">System Information</h2>
 
@@ -595,290 +631,189 @@
 
 {% block extra_js %}
 <script>
-// Settings page functionality
+// Settings page: every save goes to a real endpoint and reports the result.
+//   network   -> PUT /api/config/network
+//   interface -> PUT /api/config/<key>
+//   alerts    -> PUT /api/config/alerts
+//   system    -> POST /api/config/restart-system, POST /api/config/reset-monitoring-data
 document.addEventListener('DOMContentLoaded', function() {
-    // Load current settings
     loadCurrentSettings();
-
-    // Setup navigation
     setupSettingsNavigation();
-
-    // Load system information
     loadSystemInfo();
 });
 
 function setupSettingsNavigation() {
     const navItems = document.querySelectorAll('.settings-nav-item');
     const sections = document.querySelectorAll('.settings-section');
-
-    navItems.forEach(item => {
-        item.addEventListener('click', function(e) {
-            e.preventDefault();
-
-            const targetSection = this.getAttribute('data-section');
-
-            // Update active states
-            navItems.forEach(nav => nav.classList.remove('active'));
-            sections.forEach(section => section.classList.remove('active'));
-
-            this.classList.add('active');
-            document.getElementById(targetSection).classList.add('active');
-
-            // Update URL hash
-            window.location.hash = targetSection;
-        });
-    });
-
-    // Handle initial hash
-    const hash = window.location.hash.substring(1);
-    if (hash && document.getElementById(hash)) {
-        navItems.forEach(nav => nav.classList.remove('active'));
-        sections.forEach(section => section.classList.remove('active'));
-
-        document.querySelector(`[data-section="${hash}"]`).classList.add('active');
-        document.getElementById(hash).classList.add('active');
+    function activate(name) {
+        if (!document.getElementById(name)) return;
+        navItems.forEach(nav => nav.classList.toggle('active', nav.getAttribute('data-section') === name));
+        sections.forEach(section => section.classList.toggle('active', section.id === name));
     }
+    navItems.forEach(item => item.addEventListener('click', function(e) {
+        e.preventDefault();
+        activate(this.getAttribute('data-section'));
+        window.location.hash = this.getAttribute('data-section');
+    }));
+    const hash = window.location.hash.substring(1);
+    if (hash) activate(hash);
 }
+
+function val(id) { return document.getElementById(id); }
+function setValue(id, value) { const el = val(id); if (el && value !== undefined && value !== null) el.value = value; }
+function setChecked(id, value) { const el = val(id); if (el) el.checked = !!value; }
 
 async function loadCurrentSettings() {
     try {
-        const response = await fetch('/api/config');
-        const config = await response.json();
-
-        // Populate form fields
-        if (config.network_range) {
-            document.getElementById('network-range').value = config.network_range;
-        }
-        if (config.ping_interval) {
-            document.getElementById('ping-interval').value = config.ping_interval;
-        }
-        if (config.scan_interval) {
-            document.getElementById('scan-interval').value = config.scan_interval;
-        }
-        if (config.dashboard_title) {
-            document.getElementById('dashboard-title').value = config.dashboard_title;
-        }
-        if (config.alert_threshold) {
-            document.getElementById('alert-threshold').value = config.alert_threshold;
-        }
-
-        // Set checkboxes
-        document.getElementById('auto-refresh').checked = config.auto_refresh || false;
-        document.getElementById('show-offline').checked = config.show_offline || true;
-        document.getElementById('enable-alerts').checked = config.enable_alerts || true;
-
+        const cfg = await apiRequest('/api/config');
+        const db = cfg.database_config || {};
+        const rt = cfg.runtime_config || {};
+        const get = (key, fallback) => (db[key] && db[key].value !== undefined) ? db[key].value : fallback;
+        setValue('network-range', get('network_range', rt.network_range));
+        setValue('ping-interval', get('ping_interval', rt.ping_interval));
+        setValue('scan-interval', get('scan_interval', rt.scan_interval));
+        setValue('dashboard-title', get('dashboard_title', 'Home Network Monitor'));
+        setChecked('auto-refresh', String(get('auto_refresh', 'true')) === 'true');
+        setChecked('show-offline', String(get('show_offline', 'true')) === 'true');
     } catch (error) {
-        console.error('Error loading settings:', error);
+        showError(`Could not load settings: ${error.message}`);
+    }
+    try {
+        const a = await apiRequest('/api/config/alerts');
+        setValue('device-down-threshold', a.device_down_threshold);
+        setValue('high-latency-threshold', a.high_latency_threshold);
+        setChecked('push-enabled', a.push_enabled);
+        setValue('ntfy-server', a.ntfy_server);
+        setValue('ntfy-topic', a.ntfy_topic);
+        setChecked('email-enabled', a.email_enabled);
+        setValue('email-from', a.email_from);
+        setValue('email-to', a.email_to);
+        setChecked('webhook-enabled', a.webhook_enabled);
+        setValue('webhook-url', a.webhook_url);
+        setChecked('discord-enabled', a.discord_enabled);
+        setValue('discord-webhook-url', a.discord_webhook_url);
+    } catch (error) {
+        showError(`Could not load alert settings: ${error.message}`);
     }
 }
 
 async function loadSystemInfo() {
     try {
-        const response = await fetch('/api/system/info');
-        const info = await response.json();
-
-        if (info.python_version) {
-            document.getElementById('python-version').textContent = info.python_version;
-        }
+        const info = await apiRequest('/api/system/info');
+        const py = info.python_version || (info.system && info.system.python_version);
+        if (py && val('python-version')) val('python-version').textContent = py;
     } catch (error) {
-        console.error('Error loading system info:', error);
-        document.getElementById('python-version').textContent = 'Unknown';
+        if (val('python-version')) val('python-version').textContent = 'Unknown';
     }
 }
 
-// Network Settings Functions
-function setNetworkRange(range) {
-    document.getElementById('network-range').value = range;
-}
-
-function setPingInterval(interval) {
-    document.getElementById('ping-interval').value = interval;
-}
-
-function setScanInterval(interval) {
-    document.getElementById('scan-interval').value = interval;
-}
+// Network
+function setNetworkRange(range) { setValue('network-range', range); }
+function setPingInterval(interval) { setValue('ping-interval', interval); }
+function setScanInterval(interval) { setValue('scan-interval', interval); }
 
 async function saveNetworkSettings() {
-    const networkRange = document.getElementById('network-range').value;
-    const pingInterval = document.getElementById('ping-interval').value;
-    const scanInterval = document.getElementById('scan-interval').value;
-
     try {
-        const response = await fetch('/api/config', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                network_range: networkRange,
-                ping_interval: parseInt(pingInterval),
-                scan_interval: parseInt(scanInterval)
-            })
-        });
-
-        if (response.ok) {
-            showSuccess('Network settings saved successfully');
-        } else {
-            showError('Failed to save network settings');
-        }
+        const result = await apiRequest('/api/config/network', { method: 'PUT', body: {
+            network_range: val('network-range').value.trim(),
+            ping_interval: parseInt(val('ping-interval').value, 10),
+            scan_interval: parseInt(val('scan-interval').value, 10)
+        }});
+        showSuccess(result.message || 'Network settings saved');
     } catch (error) {
-        console.error('Error saving network settings:', error);
-        showError('Error saving network settings');
+        showError(`Network settings not saved: ${error.message}`);
     }
 }
-
 function resetNetworkSettings() {
-    document.getElementById('network-range').value = '192.168.86.0/24';
-    document.getElementById('ping-interval').value = '60';
-    document.getElementById('scan-interval').value = '300';
+    setValue('network-range', '192.168.1.0/24');
+    setValue('ping-interval', '600');
+    setValue('scan-interval', '86400');
 }
 
-// Interface Settings Functions
+// Interface
 async function saveInterfaceSettings() {
-    const dashboardTitle = document.getElementById('dashboard-title').value;
-    const autoRefresh = document.getElementById('auto-refresh').checked;
-    const showOffline = document.getElementById('show-offline').checked;
-
+    const updates = {
+        dashboard_title: val('dashboard-title').value.trim() || 'Home Network Monitor',
+        auto_refresh: val('auto-refresh').checked ? 'true' : 'false',
+        show_offline: val('show-offline').checked ? 'true' : 'false'
+    };
     try {
-        const response = await fetch('/api/config', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                dashboard_title: dashboardTitle,
-                auto_refresh: autoRefresh,
-                show_offline: showOffline
-            })
-        });
-
-        if (response.ok) {
-            showSuccess('Interface settings saved successfully');
-        } else {
-            showError('Failed to save interface settings');
+        for (const [key, value] of Object.entries(updates)) {
+            await apiRequest(`/api/config/${key}`, { method: 'PUT', body: { value } });
         }
+        showSuccess('Interface settings saved');
     } catch (error) {
-        console.error('Error saving interface settings:', error);
-        showError('Error saving interface settings');
+        showError(`Interface settings not saved: ${error.message}`);
     }
 }
-
 function resetInterfaceSettings() {
-    document.getElementById('dashboard-title').value = 'Home Network Monitor';
-    document.getElementById('auto-refresh').checked = true;
-    document.getElementById('show-offline').checked = true;
+    setValue('dashboard-title', 'Home Network Monitor');
+    setChecked('auto-refresh', true);
+    setChecked('show-offline', true);
 }
 
-// Alert Settings Functions
-function setAlertThreshold(threshold) {
-    document.getElementById('alert-threshold').value = threshold;
-}
-
+// Alerts & notifications
 async function saveAlertSettings() {
-    const enableAlerts = document.getElementById('enable-alerts').checked;
-    const alertThreshold = document.getElementById('alert-threshold').value;
-
     try {
-        const response = await fetch('/api/config', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                enable_alerts: enableAlerts,
-                alert_threshold: parseInt(alertThreshold)
-            })
-        });
+        const result = await apiRequest('/api/config/alerts', { method: 'PUT', body: {
+            device_down_threshold: parseInt(val('device-down-threshold').value, 10),
+            high_latency_threshold: parseInt(val('high-latency-threshold').value, 10),
+            push_enabled: val('push-enabled').checked,
+            ntfy_server: val('ntfy-server').value.trim(),
+            ntfy_topic: val('ntfy-topic').value.trim(),
+            email_enabled: val('email-enabled').checked,
+            email_from: val('email-from').value.trim(),
+            email_to: val('email-to').value.trim(),
+            webhook_enabled: val('webhook-enabled').checked,
+            webhook_url: val('webhook-url').value.trim(),
+            discord_enabled: val('discord-enabled').checked,
+            discord_webhook_url: val('discord-webhook-url').value.trim()
+        }});
+        showSuccess(result.message || 'Alert settings saved');
+    } catch (error) {
+        showError(`Alert settings not saved: ${error.message}`);
+    }
+}
 
-        if (response.ok) {
-            showSuccess('Alert settings saved successfully');
+async function testChannel(channel) {
+    const bodies = {
+        push: {},
+        email: {},
+        webhook: { webhook_url: val('webhook-url').value.trim() }
+    };
+    try {
+        const result = await apiRequest(`/api/config/test/${channel}`, { method: 'POST', body: bodies[channel] || {} });
+        showSuccess(result.message || `Test ${channel} sent`);
+    } catch (error) {
+        showError(`Test ${channel} failed: ${error.message}`);
+    }
+}
+
+// System
+async function restartService() {
+    if (!confirm('Restart the HomeNetMon service?')) return;
+    try {
+        const result = await apiRequest('/api/config/restart-system', { method: 'POST', body: {} });
+        if (result.restarted) {
+            showSuccess(result.message);
         } else {
-            showError('Failed to save alert settings');
+            showToast((result.message || 'Restart not performed.') + ' ' + ((result.instructions || []).join(' ')), 'warning', 10000);
         }
     } catch (error) {
-        console.error('Error saving alert settings:', error);
-        showError('Error saving alert settings');
+        showError(`Restart failed: ${error.message}`);
     }
 }
-
-function resetAlertSettings() {
-    document.getElementById('enable-alerts').checked = true;
-    document.getElementById('alert-threshold').value = '15';
-}
-
-// System Functions
-async function restartService() {
-    if (confirm('Are you sure you want to restart the HomeNetMon service?')) {
-        try {
-            const response = await fetch('/api/system/restart', { method: 'POST' });
-            if (response.ok) {
-                showSuccess('Service restart initiated');
-            } else {
-                showError('Failed to restart service');
-            }
-        } catch (error) {
-            console.error('Error restarting service:', error);
-            showError('Error restarting service');
-        }
-    }
-}
-
 async function clearAllData() {
-    if (confirm('Are you sure you want to clear all monitoring data? This cannot be undone.')) {
-        try {
-            const response = await fetch('/api/system/clear-data', { method: 'POST' });
-            if (response.ok) {
-                showSuccess('All data cleared successfully');
-            } else {
-                showError('Failed to clear data');
-            }
-        } catch (error) {
-            console.error('Error clearing data:', error);
-            showError('Error clearing data');
-        }
+    if (!confirm('Delete all monitoring history? Devices and settings are kept. This cannot be undone.')) return;
+    try {
+        const result = await apiRequest('/api/config/reset-monitoring-data', { method: 'POST', body: {} });
+        showSuccess(result.message || 'Monitoring data cleared');
+    } catch (error) {
+        showError(`Clear failed: ${error.message}`);
     }
 }
-
-async function checkForUpdates() {
-    showSuccess('You are running the latest version of HomeNetMon');
-}
-
-// Utility functions
-function showSuccess(message) {
-    // Create a temporary success message
-    const alert = document.createElement('div');
-    alert.className = 'alert alert-success';
-    alert.textContent = message;
-    alert.style.position = 'fixed';
-    alert.style.top = '90px';
-    alert.style.right = '20px';
-    alert.style.zIndex = '9999';
-    alert.style.minWidth = '300px';
-
-    document.body.appendChild(alert);
-
-    setTimeout(() => {
-        document.body.removeChild(alert);
-    }, 3000);
-}
-
-function showError(message) {
-    // Create a temporary error message
-    const alert = document.createElement('div');
-    alert.className = 'alert alert-danger';
-    alert.textContent = message;
-    alert.style.position = 'fixed';
-    alert.style.top = '90px';
-    alert.style.right = '20px';
-    alert.style.zIndex = '9999';
-    alert.style.minWidth = '300px';
-
-    document.body.appendChild(alert);
-
-    setTimeout(() => {
-        document.body.removeChild(alert);
-    }, 3000);
+function checkForUpdates() {
+    window.open('https://github.com/ShaKy8/HomeNetMon/releases', '_blank', 'noopener');
 }
 </script>
 {% endblock %}

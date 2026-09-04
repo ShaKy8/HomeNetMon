@@ -1,3 +1,4 @@
+// escapeHtml() comes from static/js/ui-feedback.js, loaded by the base template.
     let securityCharts = {};
     let currentTimeFilter = 24; // Default 24 hours
 
@@ -987,7 +988,7 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <small>${device.services.slice(0, 3).join(', ')}${device.services.length > 3 ? '...' : ''}</small>
+                                    <small>${escapeHtml(device.services.slice(0, 3).join(', '))}${device.services.length > 3 ? '...' : ''}</small>
                                 </td>
                                 <td>
                                     <button class="btn btn-sm btn-outline-primary" onclick="scanDevice(${device.id})"
@@ -1062,7 +1063,7 @@
                                     </div>
                                 </td>
                                 <td>
-                                    <div class="fw-medium">${alert.device_name}</div>
+                                    <div class="fw-medium">${escapeHtml(alert.device_name)}</div>
                                     <small class="text-muted">Device</small>
                                 </td>
                                 <td>
@@ -1083,8 +1084,8 @@
                                     <div class="alert-details">
                                         <div class="mb-1">${alert.message.replace('[SECURITY] ', '')}</div>
                                         ${alert.port ? `<div><code class="bg-light px-1 rounded">Port ${alert.port}</code></div>` : ''}
-                                        ${alert.service ? `<div class="mt-1"><small class="text-muted">Service: ${alert.service}</small></div>` : ''}
-                                        ${alert.version ? `<div><small class="text-muted">Version: ${alert.version}</small></div>` : ''}
+                                        ${alert.service ? `<div class="mt-1"><small class="text-muted">Service: ${escapeHtml(alert.service)}</small></div>` : ''}
+                                        ${alert.version ? `<div><small class="text-muted">Version: ${escapeHtml(alert.version)}</small></div>` : ''}
                                     </div>
                                 </td>
                                 <td>

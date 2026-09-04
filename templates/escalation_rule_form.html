@@ -1684,7 +1684,8 @@ async function runRuleTest() {
     try {
         const testContext = JSON.parse(document.getElementById('test-context').value);
 
-        const response = await fetch(`/api/escalation/rules/${ruleId || 'test'}/test`, {
+        if (!ruleId) { showError('Save the rule first, then run the test.'); return; }
+        const response = await fetch(`/api/escalation/rules/${ruleId}/test`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'

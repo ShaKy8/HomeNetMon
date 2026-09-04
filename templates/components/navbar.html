@@ -34,11 +34,6 @@
                     </a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link{% if request.endpoint == 'ai_dashboard' %} active{% endif %}" href="{{ url_for('ai_dashboard') }}">
-                        <i class="bi bi-robot"></i> AI Dashboard
-                    </a>
-                </li>
-                <li class="nav-item">
                     <a class="nav-link{% if request.endpoint == 'security' %} active{% endif %}" href="{{ url_for('security') }}">
                         <i class="bi bi-shield-check"></i> Security
                     </a>
@@ -46,11 +41,6 @@
                 <li class="nav-item">
                     <a class="nav-link{% if request.endpoint == 'settings' %} active{% endif %}" href="{{ url_for('settings') }}">
                         <i class="bi bi-gear"></i> Settings
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link{% if request.endpoint == 'full_view' %} active{% endif %}" href="{{ url_for('full_view') }}" target="_blank">
-                        <i class="bi bi-display"></i> Full View
                     </a>
                 </li>
             </ul>
@@ -220,22 +210,7 @@ input:checked + .theme-slider:before {
 <script>
 // Initialize navbar functionality
 document.addEventListener('DOMContentLoaded', function() {
-    // Theme toggle functionality
-    const themeToggle = document.getElementById('theme-toggle');
-    const currentTheme = localStorage.getItem('theme') || 'light';
-
-    // Set initial theme
-    document.documentElement.setAttribute('data-bs-theme', currentTheme);
-    if (currentTheme === 'dark') {
-        themeToggle.checked = true;
-    }
-
-    // Theme toggle event listener
-    themeToggle.addEventListener('change', function() {
-        const theme = this.checked ? 'dark' : 'light';
-        document.documentElement.setAttribute('data-bs-theme', theme);
-        localStorage.setItem('theme', theme);
-    });
+    // (Theme handling lives in the IIFE at the bottom of this file.)
 
     // Global search functionality
     const searchInput = document.getElementById('global-search');
@@ -243,8 +218,14 @@ document.addEventListener('DOMContentLoaded', function() {
 
     function performSearch() {
         const query = searchInput.value.trim();
+        const dashboardSearch = document.getElementById('device-search');
+        if (dashboardSearch) {
+            // Already on the dashboard: filter in place.
+            dashboardSearch.value = query;
+            dashboardSearch.dispatchEvent(new Event('input', { bubbles: true }));
+            return;
+        }
         if (query) {
-            // Navigate to dashboard with search parameter
             window.location.href = `/?search=${encodeURIComponent(query)}`;
         }
     }
@@ -306,8 +287,11 @@ function updateConnectionStatus(connected) {
 
 // Global keyboard shortcuts
 document.addEventListener('keydown', function(e) {
-    // Focus search on '/' key
-    if (e.key === '/' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+    // Focus search on '/' -- but never steal the key from a field the user is typing in
+    // (CIDR ranges and URLs contain slashes).
+    const typing = e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' ||
+                                e.target.tagName === 'SELECT' || e.target.isContentEditable);
+    if (e.key === '/' && !typing && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         document.getElementById('global-search').focus();
     }
@@ -328,6 +312,11 @@ document.addEventListener('keydown', function(e) {
 (function() {
     const root = document.documentElement;
     const toggle = document.getElementById('theme-toggle');
+    // Migrate the older 'theme' key (a second implementation used it and won on load).
+    if (!localStorage.getItem('homenetmon-theme') && localStorage.getItem('theme')) {
+        localStorage.setItem('homenetmon-theme', localStorage.getItem('theme'));
+    }
+    localStorage.removeItem('theme');
     const stored = localStorage.getItem('homenetmon-theme');
     const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
     const initialTheme = stored || (prefersDark ? 'dark' : 'light');

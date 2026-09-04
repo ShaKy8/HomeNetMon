@@ -12,8 +12,10 @@ let filters = {
     search: '',
     status: '',
     type: '',
-    sortBy: 'name'
+    sortBy: 'name',
+    showArchived: false   // devices unmonitored for staleness are hidden by default
 };
+const esc = (v) => (window.escapeHtml ? window.escapeHtml(v) : String(v == null ? '' : v));
 
 // Utility: Debounce function for performance
 function debounce(func, wait) {
@@ -60,8 +62,8 @@ function startPolling() {
     if (pollingInterval) {
         clearInterval(pollingInterval);
     }
-    // Auto-refresh every 30 seconds when page is visible
-    pollingInterval = setInterval(loadDevices, 30000);
+    // Fallback refresh; live changes arrive over the WebSocket room subscribed below.
+    pollingInterval = setInterval(loadDevices, 120000);
 }
 
 // Stop polling interval
@@ -94,6 +96,8 @@ function initializeSocket() {
 
     socket.on('connect', function() {
         updateNetworkStatus(true);
+        // Server pushes go to rooms; nothing arrives until the page joins them.
+        socket.emit('subscribe_to_updates', { types: ['device_status', 'monitoring_summary', 'alerts'] });
     });
 
     socket.on('disconnect', function() {
@@ -153,8 +157,18 @@ function initializeSocket() {
         showNotification(`Scan error: ${data.error || 'Unknown error'}`, 'error');
     });
 
-    socket.on('device_update', handleDeviceUpdate);
+    socket.on('device_status_update', handleDeviceStatusUpdate);
     socket.on('monitoring_summary', handleMonitoringSummary);
+    socket.on('alert_update', debounce(loadDevices, 1500));
+}
+
+// Translate the monitor's per-ping event into a partial device record.
+function handleDeviceStatusUpdate(data) {
+    if (!data || data.device_id === undefined) return;
+    const patch = { id: data.device_id, status: data.status, latest_response_time: data.response_time };
+    if (data.response_time !== null && data.response_time !== undefined) patch.last_seen = data.timestamp;
+    if (data.is_monitored !== undefined) patch.is_monitored = data.is_monitored;
+    handleDeviceUpdate(patch);
 }
 
 // Event Listeners Setup
@@ -192,6 +206,20 @@ function setupEventListeners() {
         filters.sortBy = e.target.value;
         filterAndDisplayDevices();
     });
+    const archivedToggle = document.getElementById('show-archived');
+    if (archivedToggle) {
+        archivedToggle.addEventListener('change', function(e) {
+            filters.showArchived = e.target.checked;
+            updateStats();
+            filterAndDisplayDevices();
+        });
+    }
+    // The navbar search navigates here with ?search=<term>
+    const initialSearch = new URLSearchParams(window.location.search).get('search');
+    if (initialSearch) {
+        document.getElementById('device-search').value = initialSearch;
+        filters.search = initialSearch.toLowerCase();
+    }
 
     // Bulk Actions
     document.getElementById('bulk-enable').addEventListener('click', bulkEnableMonitoring);
@@ -228,17 +256,19 @@ async function loadDevices() {
         filterAndDisplayDevices();
         document.getElementById('loading-devices').classList.add('hidden');
     } catch (error) {
-        document.getElementById('loading-devices').innerHTML =
-            '<p class="text-danger">Error loading devices: ' + error.message + '</p>';
+        const loading = document.getElementById('loading-devices');
+        loading.textContent = 'Error loading devices: ' + error.message;
+        loading.classList.add('text-danger');
     }
 }
 
 // Update hero statistics
 function updateStats() {
-    const online = devicesData.filter(d => d.status === 'up').length;
-    const total = devicesData.length;
-    const alerts = devicesData.filter(d => d.has_alerts).length;
-    const avgResponse = devicesData
+    const visible = filters.showArchived ? devicesData : devicesData.filter(d => d.is_monitored);
+    const online = visible.filter(d => d.status === 'up').length;
+    const total = visible.length;
+    const alerts = visible.filter(d => (d.active_alerts || 0) > 0).length;
+    const avgResponse = visible
         .filter(d => d.latest_response_time > 0)
         .reduce((acc, d, _, arr) => acc + d.latest_response_time / arr.length, 0);
 
@@ -262,7 +292,7 @@ function updateStats() {
 
 // Filter and display devices
 function filterAndDisplayDevices() {
-    let filtered = [...devicesData];
+    let filtered = filters.showArchived ? [...devicesData] : devicesData.filter(d => d.is_monitored);
 
     // Apply search filter
     if (filters.search) {
@@ -281,21 +311,16 @@ function filterAndDisplayDevices() {
         filtered = filtered.filter(device => device.status === filters.status);
     }
 
-    // Apply type filter (simplified for now)
+    // Apply type filter on the classified device_type (the API also has /api/devices/types)
     if (filters.type) {
-        filtered = filtered.filter(device => {
-            const name = (device.display_name || device.hostname || '').toLowerCase();
-            switch(filters.type) {
-                case 'cameras':
-                    return name.includes('camera') || name.includes('ring') || name.includes('cam');
-                case 'network':
-                    return name.includes('router') || name.includes('switch') || name.includes('gateway');
-                case 'smart':
-                    return name.includes('google') || name.includes('alexa') || name.includes('nest');
-                default:
-                    return true;
-            }
-        });
+        const groups = {
+            network: ['router', 'switch', 'gateway', 'access_point', 'network'],
+            cameras: ['camera'],
+            smart: ['smart_home', 'iot', 'speaker', 'tv', 'media', 'thermostat', 'sensor'],
+            personal: ['computer', 'laptop', 'phone', 'tablet', 'apple', 'gaming']
+        };
+        const wanted = groups[filters.type] || [];
+        filtered = filtered.filter(device => wanted.includes((device.device_type || 'unknown').toLowerCase()));
     }
 
     // Sort devices
@@ -352,9 +377,9 @@ function createDeviceCard(device) {
         <div class="device-card" data-device-id="${device.id}" onclick="openDeviceDetails(${device.id})">
             <div class="device-name">
                 <span class="status-dot status-${statusClass}"></span>
-                ${name}
+                ${esc(name)}
             </div>
-            <div class="device-ip">${device.ip_address}</div>
+            <div class="device-ip">${esc(device.ip_address)}</div>
             <div class="device-stats">
                 <span><i class="bi bi-lightning"></i> ${responseTime}</span>
                 <span><i class="bi bi-clock"></i> ${lastSeen}</span>
@@ -377,17 +402,17 @@ function createDeviceRow(device) {
     const responseTime = device.latest_response_time
         ? `${Math.round(device.latest_response_time)}ms`
         : '--';
-    const monitoringStatus = device.monitor_enabled ? 'Enabled' : 'Disabled';
+    const monitoringStatus = device.is_monitored ? 'Enabled' : 'Disabled';
 
     return `
         <tr data-device-id="${device.id}">
             <td><span class="status-dot status-${statusClass}"></span></td>
-            <td>${name}</td>
-            <td style="font-family: monospace;">${device.ip_address}</td>
+            <td>${esc(name)}</td>
+            <td style="font-family: monospace;">${esc(device.ip_address)}</td>
             <td>${responseTime}</td>
             <td>${lastSeen}</td>
             <td>
-                <span class="badge ${device.monitor_enabled ? 'bg-success' : 'bg-secondary'}">
+                <span class="badge ${device.is_monitored ? 'bg-success' : 'bg-secondary'}">
                     ${monitoringStatus}
                 </span>
             </td>
@@ -466,7 +491,7 @@ async function refreshAllDevices() {
     btn.disabled = true;
 
     try {
-        await fetch('/api/devices/ping_all', {
+        await fetch('/api/devices/ping-all', {
             method: 'POST'
         });
         setTimeout(loadDevices, 2000);
@@ -802,7 +827,7 @@ async function toggleMonitoring(deviceId) {
             headers: {
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ monitor_enabled: !device.monitor_enabled })
+            body: JSON.stringify({ is_monitored: !device.is_monitored })
         });
         loadDevices();
     } catch (error) {
@@ -811,14 +836,14 @@ async function toggleMonitoring(deviceId) {
 
 // Bulk operations
 async function bulkEnableMonitoring() {
-    const devices = devicesData.filter(d => !d.monitor_enabled);
+    const devices = devicesData.filter(d => !d.is_monitored);
     for (const device of devices) {
         await toggleMonitoring(device.id);
     }
 }
 
 async function bulkDisableMonitoring() {
-    const devices = devicesData.filter(d => d.monitor_enabled);
+    const devices = devicesData.filter(d => d.is_monitored);
     for (const device of devices) {
         await toggleMonitoring(device.id);
     }
@@ -850,7 +875,7 @@ async function applyMonitoringPreset(preset) {
 
     // Enable selected devices
     for (const device of devicesToEnable) {
-        if (!device.monitor_enabled) {
+        if (!device.is_monitored) {
             await toggleMonitoring(device.id);
         }
     }
@@ -866,7 +891,7 @@ function exportToCSV() {
             d.status,
             d.latest_response_time || '',
             d.last_seen || '',
-            d.monitor_enabled ? 'Enabled' : 'Disabled'
+            d.is_monitored ? 'Enabled' : 'Disabled'
         ])
     ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
 

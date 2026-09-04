@@ -538,6 +538,13 @@
             </select>
         </div>
         <div class="col-md-3">
+            <label class="form-label">Archived devices</label>
+            <div class="form-check form-switch mt-1">
+                <input class="form-check-input" type="checkbox" id="show-archived">
+                <label class="form-check-label" for="show-archived">Show devices not seen for 30+ days</label>
+            </div>
+        </div>
+        <div class="col-md-3">
             <label class="form-label">Sort By</label>
             <select class="form-select" id="sort-by">
                 <option value="name">Name</option>
@@ -644,7 +651,7 @@
         </div>
 
         <!-- Table View (hidden by default) -->
-        <div id="devices-table-view" class="hidden">
+        <div id="devices-table-view" class="hidden table-responsive">
             <table class="devices-table">
                 <thead>
                     <tr>
