@@ -554,121 +554,59 @@ def test_push_config():
             'error': f'Error testing push notifications: {str(e)}'
         }), 500
 
+def _request_service_restart(reason: str):
+    """Schedule a restart of this service, if the operator allowed it.
+
+    The old implementation ran `sudo systemctl restart homenetmon`, which (a) can
+    never work for the user-level unit this app actually runs as, and (b) let any
+    LAN client restart the service. Restarts are now opt-in via
+    ALLOW_SERVICE_RESTART=true and use a transient systemd timer so the request
+    completes before the unit is torn down. Otherwise the caller gets instructions.
+    """
+    import os
+    import shutil
+    import subprocess
+    unit = os.environ.get('HOMENETMON_SERVICE_UNIT', 'homenetmon')
+    instructions = [
+        f'If running as a user service: systemctl --user restart {unit}',
+        f'If running as a system service: sudo systemctl restart {unit}',
+        'If running manually: stop (Ctrl+C) and start the application again',
+    ]
+    if os.environ.get('ALLOW_SERVICE_RESTART', 'false').lower() not in ('1', 'true', 'yes'):
+        return {'success': True, 'restarted': False, 'method': 'manual',
+                'message': f'{reason} Restart HomeNetMon to apply it.', 'instructions': instructions}
+    if shutil.which('systemd-run') and shutil.which('systemctl'):
+        for scope in (['--user'], []):
+            active = subprocess.run(['systemctl', *scope, 'is-active', unit], capture_output=True, text=True,
+                                    timeout=5, shell=False)
+            if active.returncode == 0:
+                subprocess.run(['systemd-run', *scope, '--on-active=2', '--timer-property=AccuracySec=1s',
+                                'systemctl', *scope, 'restart', unit], check=True, timeout=10, shell=False)
+                return {'success': True, 'restarted': True, 'method': 'systemd',
+                        'message': f'{reason} Service restart scheduled in 2 seconds.'}
+    return {'success': True, 'restarted': False, 'method': 'manual',
+            'message': f'{reason} Could not find a systemd unit to restart.', 'instructions': instructions}
+
+
 @config_bp.route('/restart-services', methods=['POST'])
 @create_endpoint_limiter('strict')
 def restart_services():
     """Restart monitoring services to apply configuration changes"""
     try:
-        import subprocess
-        import os
-        import signal
-
-        # Simple approach: Try to restart the main process
-        # This works by sending a signal to reload configuration
-
-        # Method 1: Try using systemctl if running as service
-        try:
-            result = subprocess.run(['systemctl', 'is-active', 'homenetmon'],
-                                  capture_output=True, text=True, shell=False)
-            if result.returncode == 0:
-                # Service is running, restart it
-                subprocess.run(['sudo', 'systemctl', 'restart', 'homenetmon'],
-                             check=True, shell=False)
-                return jsonify({
-                    'success': True,
-                    'message': 'HomeNetMon service restart initiated via systemctl.',
-                    'note': 'Service will restart in a few seconds with new configuration.'
-                })
-        except (subprocess.CalledProcessError, subprocess.TimeoutExpired, FileNotFoundError):
-            pass  # Fall through to other methods
-
-        # Method 2: For development/manual runs, just return instructions
-        return jsonify({
-            'success': True,
-            'message': 'Configuration saved. Please restart HomeNetMon to apply network range changes.',
-            'instructions': [
-                'If running manually: Stop (Ctrl+C) and restart the application',
-                'If running as service: Run "sudo systemctl restart homenetmon"',
-                'Configuration will be applied after restart'
-            ],
-            'note': 'Network range changes require a full restart to take effect.'
-        })
-
+        return jsonify(_request_service_restart('Configuration saved.'))
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f'Error restarting services: {str(e)}'
-        }), 500
+        return jsonify({'success': False, 'error': f'Error restarting services: {str(e)}'}), 500
+
 
 @config_bp.route('/restart-system', methods=['POST'])
 @create_endpoint_limiter('strict')
 def restart_system():
-    """Restart the entire HomeNetMon application"""
+    """Restart the HomeNetMon application"""
     try:
-        import os
-        import sys
-        import subprocess
-
-        # Method 1: Try systemd service restart first
-        try:
-            result = subprocess.run(['systemctl', 'is-active', 'homenetmon'],
-                                  capture_output=True, text=True, timeout=5, shell=False)
-            if result.returncode == 0:  # Service is active
-                # Restart the systemd service
-                restart_result = subprocess.run(['sudo', 'systemctl', 'restart', 'homenetmon'],
-                                              capture_output=True, text=True, timeout=30, shell=False)
-                if restart_result.returncode == 0:
-                    return jsonify({
-                        'success': True,
-                        'message': 'HomeNetMon service restarted successfully',
-                        'method': 'systemd'
-                    })
-                else:
-                    # If systemd restart failed, fall through to process restart
-                    pass
-        except (subprocess.TimeoutExpired, FileNotFoundError, subprocess.CalledProcessError):
-            # systemctl not available or service not running, fall through
-            pass
-
-        # Method 2: Kill current process and let system restart it
-        try:
-            # Get the current process ID
-            current_pid = os.getpid()
-
-            # Schedule a restart by killing the current process
-            # This should work if the application is being managed by a process manager
-            # or if it's set to auto-restart
-            def delayed_restart():
-                import time
-                time.sleep(2)  # Give time for response to be sent
-                os.kill(current_pid, 15)  # SIGTERM
-
-            import threading
-            threading.Thread(target=delayed_restart, daemon=True).start()
-
-            return jsonify({
-                'success': True,
-                'message': 'HomeNetMon restart initiated. Page will refresh automatically.',
-                'method': 'process_restart',
-                'note': 'Application will be available again in 10-15 seconds'
-            })
-
-        except Exception as e:
-            return jsonify({
-                'success': False,
-                'error': f'Error initiating restart: {str(e)}',
-                'instructions': [
-                    'Manual restart required',
-                    'If running manually: Stop (Ctrl+C) and restart with "python3 app.py"',
-                    'If running as service: Run "sudo systemctl restart homenetmon"'
-                ]
-            }), 500
-
+        return jsonify(_request_service_restart('Restart requested.'))
     except Exception as e:
-        return jsonify({
-            'success': False,
-            'error': f'Error restarting system: {str(e)}'
-        }), 500
+        return jsonify({'success': False, 'error': f'Error restarting system: {str(e)}'}), 500
+
 
 @config_bp.route('/reset-monitoring-data', methods=['POST'])
 @create_endpoint_limiter('critical')

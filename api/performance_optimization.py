@@ -9,7 +9,7 @@ from api.rate_limited_endpoints import create_endpoint_limiter
 
 logger = logging.getLogger(__name__)
 
-performance_optimization_bp = Blueprint('performance_optimization', __name__, url_prefix='/api/performance')
+performance_optimization_bp = Blueprint('performance_optimization', __name__)
 
 @performance_optimization_bp.route('/cache/stats', methods=['GET'])
 @create_endpoint_limiter('relaxed')

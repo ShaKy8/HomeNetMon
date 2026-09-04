@@ -143,22 +143,28 @@ def create_endpoint_limiter(limit_type='moderate'):
     limit_string = limits.get(limit_type, limits['moderate'])
 
     def decorator(f):
+        limited_cache = {}
+
         @wraps(f)
         def decorated_function(*args, **kwargs):
             limiter = get_limiter()
-            if limiter:
-                try:
-                    # Apply the rate limit - this creates a new decorated function
-                    limited_function = limiter.limit(limit_string)(f)
-                    return limited_function(*args, **kwargs)
-                except Exception as e:
-                    logger.warning(f"Rate limit error for {f.__name__}: {e}")
-                    # Fallback to original function if rate limiting fails
-                    return f(*args, **kwargs)
-            else:
-                # Rate limiter not available - just call the original function
+            if limiter is None:
                 logger.debug(f"Rate limiter not available for {f.__name__} - bypassing rate limiting")
                 return f(*args, **kwargs)
+            # The limiter lives on the app, which does not exist at import time, so the
+            # limited view is built lazily -- but exactly once per endpoint, not per request.
+            limited = limited_cache.get('fn')
+            if limited is None:
+                try:
+                    limited = limiter.limit(limit_string)(f)
+                except Exception as e:
+                    logger.error(f"Could not apply rate limit to {f.__name__}: {e}")
+                    limited = f
+                limited_cache['fn'] = limited
+            # No blanket except here: the old wrapper caught flask-limiter's 429
+            # (an HTTPException) and fell through to the unlimited view, so no
+            # per-endpoint limit was ever enforced.
+            return limited(*args, **kwargs)
 
         return decorated_function
     return decorator

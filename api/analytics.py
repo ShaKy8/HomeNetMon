@@ -1328,7 +1328,7 @@ def identify_failure_hotspots():
 
 # Network Topology Discovery & Visualization Endpoints
 
-@analytics_bp.route('/topology/discover', methods=['GET', 'POST'])
+@analytics_bp.route('/topology/discover', methods=['POST'])
 @create_endpoint_limiter('strict')
 def discover_network_topology():
     """Perform comprehensive network topology discovery"""
@@ -1713,7 +1713,7 @@ def export_topology_data():
 
 # Anomaly Detection Engine Endpoints
 
-@analytics_bp.route('/anomalies/detect', methods=['GET', 'POST'])
+@analytics_bp.route('/anomalies/detect', methods=['POST'])
 @create_endpoint_limiter('strict')
 def detect_anomalies():
     """Perform comprehensive anomaly detection analysis"""
@@ -1741,7 +1741,7 @@ def detect_anomalies():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@analytics_bp.route('/anomalies/detect-legacy', methods=['GET', 'POST'])
+@analytics_bp.route('/anomalies/detect-legacy', methods=['POST'])
 @create_endpoint_limiter('strict')
 def detect_legacy_anomalies():
     """Legacy anomaly detection for backward compatibility"""

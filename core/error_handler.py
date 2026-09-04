@@ -267,9 +267,31 @@ class ErrorHandler:
 
         return jsonify(error.to_dict()), error.status_code
 
+    @staticmethod
+    def _wants_html() -> bool:
+        """Browser navigation to a page (not an API call) should get an HTML error."""
+        if request.path.startswith('/api/') or request.is_json:
+            return False
+        best = request.accept_mimetypes.best_match(['text/html', 'application/json'])
+        return best == 'text/html'
+
+    def _html_error(self, status_code: int, title: str, message: str):
+        from markupsafe import escape
+        body = (f"<!doctype html><html lang='en'><head><meta charset='utf-8'><title>{status_code} {escape(title)}</title>"
+                "<style>body{font-family:system-ui,sans-serif;max-width:40rem;margin:4rem auto;padding:0 1rem;color:#222}"
+                "a{color:#0d6efd}</style></head><body>"
+                f"<h1>{status_code} &middot; {escape(title)}</h1><p>{escape(message)}</p>"
+                "<p><a href='/'>Back to the dashboard</a></p></body></html>")
+        return body, status_code, {'Content-Type': 'text/html; charset=utf-8'}
+
     def handle_http_error(self, error: HTTPException):
         """Handle HTTP errors."""
         g.error_handled = True
+
+        if self._wants_html() and not request.path.startswith('/static/'):
+            self._update_error_stats(f'HTTP_{error.code}')
+            return self._html_error(error.code or 500, error.name or 'Error',
+                                    error.description or f'HTTP {error.code}')
 
         app_error = AppError(
             message=error.description or f"HTTP {error.code} error",
@@ -284,15 +306,23 @@ class ErrorHandler:
         """Handle unexpected errors."""
         g.error_handled = True
 
-        # Create application error from generic exception
+        # A failed request may leave the scoped session in a broken transaction.
+        try:
+            from models import db
+            db.session.rollback()
+        except Exception:
+            pass
+
+        # Exception text can contain SQL statements and bound parameters; only
+        # expose it when the app runs in debug mode. The full trace is logged below.
+        details = {'exception_type': type(error).__name__}
+        if self.app is not None and self.app.debug:
+            details['exception_message'] = str(error)
         app_error = AppError(
             message="An unexpected error occurred",
             error_code=ErrorCode.UNKNOWN_ERROR,
             status_code=500,
-            details={
-                'exception_type': type(error).__name__,
-                'exception_message': str(error)
-            },
+            details=details,
             cause=error
         )
 

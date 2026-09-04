@@ -66,6 +66,10 @@ class RateLimiterService:
             on_breach=self._rate_limit_handler
         )
 
+        # Static assets (CSS/JS/icons) and the Socket.IO transport are not API calls.
+        self.limiter.request_filter(
+            lambda: request.endpoint == 'static' or request.path.startswith(('/static/', '/socket.io/'))
+        )
         # Note: Specific endpoint limits will be applied via decorators on route functions
 
         # Initialize Redis client if available

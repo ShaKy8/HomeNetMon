@@ -1,12 +1,12 @@
+import hashlib
+import hmac
 import logging
 import os
-import secrets
-import hashlib
 import re
+import secrets
 import time
-from typing import Optional, Set, Dict, Any
+from typing import Set
 from flask import Flask, request, make_response, g, jsonify
-from werkzeug.exceptions import BadRequest
 import ipaddress
 
 logger = logging.getLogger(__name__)
@@ -16,25 +16,28 @@ class SecurityMiddleware:
 
     def __init__(self, app: Flask = None):
         self.app = app
-        self.csrf_tokens: Dict[str, float] = {}  # token -> expiration_timestamp
-        self.csrf_token_lifetime = 3600  # 1 hour lifetime for tokens
+        # CSRF tokens are stateless: nonce.timestamp.HMAC(SECRET_KEY). No server-side
+        # store (the old global dict raced across request threads and was lost on
+        # restart) and the token is accepted ONLY from the X-CSRF-Token header or a
+        # csrf_token form field -- never from the cookie, which the browser sends
+        # automatically and therefore proves nothing.
+        self.csrf_token_lifetime = 3600  # seconds
         self.csrf_exempt_routes: Set[str] = {
-            '/api/health',  # Health check endpoint (read-only)
-            '/api/auth/login',  # Login endpoint needs to work without token
-            '/api/csrf-token',  # CSRF token refresh endpoint
-            '/login',  # Web login page
-            '/test-login',  # Test login route for debugging
-            '/favicon.ico',  # Static resources
-            '/static/service-worker.js'  # Service worker
-            # NOTE: /api/devices/scan and /api/monitoring/alerts are NOT exempt
-            # Frontend MUST send CSRF tokens for these endpoints
+            '/api/csrf-token',   # token endpoint itself (GET)
+            '/api/system/health',
+            '/health', '/ready', '/live',
+            '/favicon.ico',
         }
 
         # Security configuration
         self.config = {
             'enable_csrf': True,  # ENABLED for production security
             'enable_security_headers': True,
-            'enable_input_validation': True,
+            # The former request-wide "malicious pattern" filter is gone: it rejected
+            # legitimate input (device names with parentheses, JSON containing the word
+            # "update", hex colours) and protected nothing -- all SQL is parameterised
+            # and no shell is ever invoked with user input.
+            'enable_input_validation': False,
             'enable_rate_limiting': True,
             'max_content_length': 16 * 1024 * 1024,  # 16MB
             'allowed_hosts': [],  # Empty means all hosts allowed
@@ -108,12 +111,6 @@ class SecurityMiddleware:
                 logger.warning("CSRF token verification failed")
                 return jsonify({'error': 'CSRF token validation failed'}), 403
 
-        # Input validation
-        if self.config['enable_input_validation']:
-            validation_error = self._validate_input()
-            if validation_error:
-                return validation_error
-
         logger.debug(f"Security checks passed for {request.path}")
 
     def _after_request(self, response):
@@ -170,144 +167,35 @@ class SecurityMiddleware:
                 return True
         return False
 
+    def _csrf_secret(self) -> bytes:
+        secret = (self.app.config.get('SECRET_KEY') if self.app else None) or os.environ.get('SECRET_KEY', '')
+        return str(secret).encode()
+
+    def _sign(self, nonce: str, issued: int) -> str:
+        return hmac.new(self._csrf_secret(), f"{nonce}:{issued}".encode(), hashlib.sha256).hexdigest()[:40]
+
     def _generate_csrf_token(self) -> str:
-        """Generate a new CSRF token with expiration."""
-        token = secrets.token_urlsafe(32)
-        expiration_time = time.time() + self.csrf_token_lifetime
-        self.csrf_tokens[token] = expiration_time
+        """Issue a stateless token: <nonce>.<issued-unix-ts>.<hmac>."""
+        nonce = secrets.token_urlsafe(16)
+        issued = int(time.time())
+        return f"{nonce}.{issued}.{self._sign(nonce, issued)}"
 
-        # Clean up expired tokens periodically
-        self._cleanup_expired_tokens()
-
-        # Limit token storage to prevent memory issues
-        if len(self.csrf_tokens) > 10000:
-            # Keep only the most recent 5000 tokens
-            sorted_tokens = sorted(self.csrf_tokens.items(), key=lambda x: x[1])
-            self.csrf_tokens = dict(sorted_tokens[-5000:])
-
-        return token
-
-    def _cleanup_expired_tokens(self):
-        """Remove expired CSRF tokens."""
-        current_time = time.time()
-        expired_tokens = [token for token, expiration in self.csrf_tokens.items()
-                         if expiration < current_time]
-        for token in expired_tokens:
-            del self.csrf_tokens[token]
+    def _token_is_valid(self, token: str) -> bool:
+        try:
+            nonce, issued_s, sig = token.split('.')
+            issued = int(issued_s)
+        except (ValueError, AttributeError):
+            return False
+        if not (0 <= time.time() - issued <= self.csrf_token_lifetime):
+            return False
+        return hmac.compare_digest(sig, self._sign(nonce, issued))
 
     def _verify_csrf_token(self) -> bool:
-        """Verify CSRF token from request."""
-        # Skip CSRF check for exempt routes
+        """Verify the CSRF token supplied in the request header or form body."""
         if request.endpoint in self.csrf_exempt_routes or request.path in self.csrf_exempt_routes:
             return True
-
-        # Get token from header or form data
         token = request.headers.get('X-CSRF-Token') or request.form.get('csrf_token')
-
-        if not token:
-            # Try to get from cookies
-            token = request.cookies.get('csrf_token')
-
-        if token and token in self.csrf_tokens:
-            # Check if token is still valid (not expired)
-            current_time = time.time()
-            expiration_time = self.csrf_tokens[token]
-
-            if expiration_time > current_time:
-                return True
-            else:
-                # Token expired, remove it
-                del self.csrf_tokens[token]
-                return False
-
-        return False
-
-    def _validate_input(self) -> Optional[tuple]:
-        """Validate request input for common security issues."""
-        # Validate query parameters
-        for key, value in request.args.items():
-            if self._contains_malicious_pattern(str(value)):
-                logger.warning(f"Malicious pattern detected in query parameter: {key}")
-                return jsonify({'error': f'Invalid input in parameter: {key}'}), 400
-
-        # Validate form data
-        if request.form:
-            for key, value in request.form.items():
-                if self._contains_malicious_pattern(str(value)):
-                    logger.warning(f"Malicious pattern detected in form field: {key}")
-                    return jsonify({'error': f'Invalid input in field: {key}'}), 400
-
-        # Validate JSON data
-        if request.is_json:
-            # Use silent=True to avoid exceptions for empty/invalid JSON bodies
-            json_data = request.get_json(silent=True)
-            # Only validate if there's actual JSON data (DELETE requests with JSON content type might have None data)
-            if json_data is not None:
-                validation_error = self._validate_json_data(json_data)
-                if validation_error:
-                    return jsonify({'error': validation_error}), 400
-
-        return None
-
-    def _contains_malicious_pattern(self, value: str) -> bool:
-        """Check if value contains potentially malicious patterns."""
-        # SQL injection patterns
-        sql_patterns = [
-            r"(\b(SELECT|INSERT|UPDATE|DELETE|DROP|UNION|CREATE|ALTER)\b)",
-            r"(--|#|/\*|\*/)",
-            r"(\bOR\b\s*\d+\s*=\s*\d+)",
-            r"(\bAND\b\s*\d+\s*=\s*\d+)"
-        ]
-
-        # XSS patterns
-        xss_patterns = [
-            r"<script[^>]*>.*?</script>",
-            r"javascript:",
-            r"on\w+\s*=",
-            r"<iframe[^>]*>",
-            r"<object[^>]*>"
-        ]
-
-        # Command injection patterns
-        cmd_patterns = [
-            r"[;&|`$()]",
-            r"\.\./",
-            r"/etc/passwd",
-            r"/bin/sh"
-        ]
-
-        all_patterns = sql_patterns + xss_patterns + cmd_patterns
-
-        for pattern in all_patterns:
-            if re.search(pattern, value, re.IGNORECASE):
-                return True
-
-        return False
-
-    def _validate_json_data(self, data: Any, depth: int = 0) -> Optional[str]:
-        """Recursively validate JSON data."""
-        if depth > 10:  # Prevent deep recursion
-            return "JSON structure too deep"
-
-        if isinstance(data, dict):
-            for key, value in data.items():
-                if self._contains_malicious_pattern(str(key)):
-                    return f"Invalid key: {key}"
-                error = self._validate_json_data(value, depth + 1)
-                if error:
-                    return error
-
-        elif isinstance(data, list):
-            for item in data:
-                error = self._validate_json_data(item, depth + 1)
-                if error:
-                    return error
-
-        elif isinstance(data, str):
-            if self._contains_malicious_pattern(data):
-                return "Invalid string value detected"
-
-        return None
+        return bool(token) and self._token_is_valid(token)
 
     def _handle_bad_request(self, error):
         """Handle bad request errors."""

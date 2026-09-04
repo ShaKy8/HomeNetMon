@@ -819,7 +819,7 @@ def get_device_types():
         return jsonify({'error': str(e)}), 500
 
 @devices_bp.route('/test-ping/<string:ip>', methods=['GET'])
-@create_endpoint_limiter('critical')
+@create_endpoint_limiter('moderate')
 def test_ping(ip):
     """Test ping functionality with direct IP"""
     try:

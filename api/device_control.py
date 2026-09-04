@@ -1,10 +1,43 @@
-from flask import Blueprint, request, jsonify, current_app
+import ipaddress
 from datetime import datetime
-from services.device_control import device_control_service
-from models import Device
+
+from flask import Blueprint, jsonify, request
+
 from api.rate_limited_endpoints import create_endpoint_limiter
+from models import Device
+from services.device_control import device_control_service
 
 device_control_bp = Blueprint('device_control', __name__)
+
+
+def _resolve_target(data):
+    """Resolve the target IP from `ip_address` or `device_id` and validate it.
+
+    Only private (RFC 1918 / link-local) unicast addresses are accepted: these
+    endpoints run ping/traceroute/nmap and HTTP probes, so an arbitrary value
+    would make the app an open relay (and `-f` would be a flood ping).
+    Returns (ip_string, None) or (None, (json_response, status)).
+    """
+    ip_address = data.get('ip_address')
+    device_id = data.get('device_id')
+    if not ip_address and not device_id:
+        return None, (jsonify({'error': 'Either ip_address or device_id is required'}), 400)
+    if device_id and not ip_address:
+        if not isinstance(device_id, int):
+            return None, (jsonify({'error': 'device_id must be an integer'}), 400)
+        device = Device.query.get(device_id)
+        if not device:
+            return None, (jsonify({'error': 'Device not found'}), 404)
+        if not device.ip_address:
+            return None, (jsonify({'error': 'Device has no IP address'}), 400)
+        ip_address = device.ip_address
+    try:
+        ip = ipaddress.ip_address(str(ip_address).strip())
+    except ValueError:
+        return None, (jsonify({'error': 'Invalid IP address'}), 400)
+    if not (ip.is_private or ip.is_link_local) or ip.is_multicast or ip.is_unspecified:
+        return None, (jsonify({'error': 'Only LAN (private) addresses can be targeted'}), 400)
+    return str(ip), None
 
 @device_control_bp.route('/wake-on-lan', methods=['POST'])
 @create_endpoint_limiter('strict')
@@ -51,24 +84,13 @@ def ping_device():
         if not data:
             return jsonify({'error': 'JSON data required'}), 400
 
-        # Get IP address from request or device ID
-        ip_address = data.get('ip_address')
-        device_id = data.get('device_id')
         count = data.get('count', 4)
-
-        if not ip_address and not device_id:
-            return jsonify({'error': 'Either ip_address or device_id is required'}), 400
-
-        # Validate count
-        if not isinstance(count, int) or count < 1 or count > 10:
+        if not isinstance(count, int) or isinstance(count, bool) or count < 1 or count > 10:
             return jsonify({'error': 'Count must be between 1 and 10'}), 400
 
-        # If device_id provided, get IP from database
-        if device_id and not ip_address:
-            device = Device.query.get(device_id)
-            if not device:
-                return jsonify({'error': 'Device not found'}), 404
-            ip_address = device.ip_address
+        ip_address, error = _resolve_target(data)
+        if error:
+            return error
 
         # Ping device
         result = device_control_service.ping_device(ip_address, count)
@@ -87,20 +109,10 @@ def scan_ports():
         if not data:
             return jsonify({'error': 'JSON data required'}), 400
 
-        # Get IP address from request or device ID
-        ip_address = data.get('ip_address')
-        device_id = data.get('device_id')
         ports = data.get('ports')  # Optional custom ports
-
-        if not ip_address and not device_id:
-            return jsonify({'error': 'Either ip_address or device_id is required'}), 400
-
-        # If device_id provided, get IP from database
-        if device_id and not ip_address:
-            device = Device.query.get(device_id)
-            if not device:
-                return jsonify({'error': 'Device not found'}), 404
-            ip_address = device.ip_address
+        ip_address, error = _resolve_target(data)
+        if error:
+            return error
 
         # Validate custom ports if provided
         if ports:
@@ -129,19 +141,9 @@ def discover_info():
         if not data:
             return jsonify({'error': 'JSON data required'}), 400
 
-        # Get IP address from request or device ID
-        ip_address = data.get('ip_address')
-        device_id = data.get('device_id')
-
-        if not ip_address and not device_id:
-            return jsonify({'error': 'Either ip_address or device_id is required'}), 400
-
-        # If device_id provided, get IP from database
-        if device_id and not ip_address:
-            device = Device.query.get(device_id)
-            if not device:
-                return jsonify({'error': 'Device not found'}), 404
-            ip_address = device.ip_address
+        ip_address, error = _resolve_target(data)
+        if error:
+            return error
 
         # Discover device info
         result = device_control_service.discover_device_info(ip_address)
@@ -160,19 +162,9 @@ def traceroute():
         if not data:
             return jsonify({'error': 'JSON data required'}), 400
 
-        # Get IP address from request or device ID
-        ip_address = data.get('ip_address')
-        device_id = data.get('device_id')
-
-        if not ip_address and not device_id:
-            return jsonify({'error': 'Either ip_address or device_id is required'}), 400
-
-        # If device_id provided, get IP from database
-        if device_id and not ip_address:
-            device = Device.query.get(device_id)
-            if not device:
-                return jsonify({'error': 'Device not found'}), 404
-            ip_address = device.ip_address
+        ip_address, error = _resolve_target(data)
+        if error:
+            return error
 
         # Perform traceroute
         result = device_control_service.traceroute_to_device(ip_address)

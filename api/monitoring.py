@@ -1056,7 +1056,7 @@ def get_background_activity():
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/topology-test', methods=['GET'])
-@create_endpoint_limiter('critical')
+@create_endpoint_limiter('relaxed')
 def get_topology_test():
     """Network topology endpoint with all real devices"""
     try:

@@ -445,14 +445,24 @@ def cleanup_logs():
     """Clean up old log files to free space."""
     try:
         data = request.get_json() or {}
-        days_to_keep = data.get('days_to_keep', 7)
+        try:
+            days_to_keep = int(data.get('days_to_keep', 7))
+        except (TypeError, ValueError):
+            return jsonify({'success': False, 'error': 'days_to_keep must be an integer'}), 400
+        if days_to_keep < 1 or days_to_keep > 3650:
+            # A zero or negative value put the cutoff in the future and deleted every
+            # *.log under the working directory, venv/ and node_modules/ included.
+            return jsonify({'success': False, 'error': 'days_to_keep must be between 1 and 3650'}), 400
 
         logger.info(f"Starting log cleanup: keeping {days_to_keep} days")
 
-        # Find log files
+        # Find log files -- only under the application's own log directory.
         log_files = []
         log_extensions = ['.log', '.log.1', '.log.2', '.log.3']
-        current_dir = os.getcwd()
+        from config import Config
+        current_dir = str(Config.BASE_DIR / 'logs')
+        if not os.path.isdir(current_dir):
+            return jsonify({'success': True, 'files_cleaned': 0, 'message': 'No log directory present'})
 
         total_size_before = 0
         files_cleaned = 0

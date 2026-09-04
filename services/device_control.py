@@ -1,10 +1,12 @@
-import subprocess
-import socket
-import struct
+import ipaddress
 import logging
-import requests
+import socket
+import subprocess
 from datetime import datetime
-from flask import current_app
+
+import requests
+
+from config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -31,19 +33,19 @@ class DeviceControlService:
             mac_bytes = bytes.fromhex(mac_address)
 
             # Create magic packet (6 bytes of FF followed by 16 repetitions of MAC)
-            magic_packet = b'\\xff' * 6 + mac_bytes * 16
+            magic_packet = b'\xff' * 6 + mac_bytes * 16  # the old b'\\xff' literal was 4 bytes: every packet was malformed
 
             # Send packet via UDP broadcast
             sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             sock.setsockopt(socket.SOL_SOCKET, socket.SO_BROADCAST, 1)
 
-            # Send to multiple broadcast addresses for better coverage
-            broadcast_addresses = [
-                '255.255.255.255',  # General broadcast
-                '192.168.1.255',    # Common subnet
-                '192.168.0.255',    # Common subnet
-                '192.168.86.255',   # Kyle's subnet
-            ]
+            # Limited broadcast plus the configured LAN's directed broadcast
+            broadcast_addresses = ['255.255.255.255']
+            try:
+                lan = ipaddress.ip_network(Config.NETWORK_RANGE, strict=False)
+                broadcast_addresses.append(str(lan.broadcast_address))
+            except ValueError:
+                pass
 
             sent_count = 0
             for broadcast_addr in broadcast_addresses:
@@ -88,7 +90,7 @@ class DeviceControlService:
             result = subprocess.run(cmd, capture_output=True, text=True, timeout=30, shell=False)
 
             # Parse ping output
-            output_lines = result.stdout.split('\\n')
+            output_lines = result.stdout.splitlines()  # the old split('\\n') never matched a real newline: 100% loss always
             success_count = 0
             total_count = count
             avg_time = 0

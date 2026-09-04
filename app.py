@@ -41,13 +41,10 @@ def create_app():
     ]
     logger.info("HTTP compression enabled with Brotli, gzip, and deflate")
 
-    # Initialize HTTP optimizer for performance and HTTP/2 support
-    try:
-        from services.http_optimizer import HTTPOptimizer
-        http_optimizer = HTTPOptimizer(app)
-        logger.info("HTTP optimizer initialized with caching and HTTP/2 support")
-    except ImportError:
-        logger.warning("HTTP optimizer not available")
+    # (services/http_optimizer.py was removed: it duplicated flask-compress and the
+    # security/performance middlewares, and -- running last in the after_request
+    # chain -- overrode X-Frame-Options to SAMEORIGIN and made API GET responses
+    # publicly cacheable for 30 s.)
 
     # Initialize CDN manager for static asset optimization
     try:
@@ -138,7 +135,12 @@ def create_app():
             return True
         return False
 
-    socketio = SocketIO(app, cors_allowed_origins=cors_allowed_origins_callback, logger=False, engineio_logger=False)
+    # async_mode is explicit: every background service is a native thread doing
+    # blocking subprocess/SQLite work, so the server must be threading-based too.
+    # (Left unset, python-engineio auto-selected eventlet because the package was
+    # installed, with no monkey-patching -- a greenlet hub beside ten OS threads.)
+    socketio = SocketIO(app, cors_allowed_origins=cors_allowed_origins_callback, async_mode='threading',
+                        logger=False, engineio_logger=False)
 
     # Import and register blueprints
     from api.devices import devices_bp  # Use original for now
@@ -175,7 +177,7 @@ def create_app():
     app.register_blueprint(health_bp, url_prefix='/api/health')
     app.register_blueprint(escalation_bp, url_prefix='/api/escalation')
     app.register_blueprint(performance_bp, url_prefix='/api/performance')
-    app.register_blueprint(performance_optimization_bp)
+    app.register_blueprint(performance_optimization_bp, url_prefix='/api/performance-optimization')
     app.register_blueprint(rate_limit_admin_bp, url_prefix='/api/rate-limit')
     app.register_blueprint(maintenance_bp, url_prefix='/api/maintenance')
 
@@ -489,16 +491,6 @@ def create_app():
     services_thread = threading.Thread(target=start_monitoring_services, daemon=True)
     services_thread.start()
 
-    # NUCLEAR CACHE BUSTING - Add no-cache headers to ALL responses
-    @app.after_request
-    def add_no_cache_headers(response):
-        # Apply no-cache headers to ALL responses to prevent browser caching issues
-        response.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
-        response.headers['Pragma'] = 'no-cache'
-        response.headers['Expires'] = '0'
-        response.headers['Last-Modified'] = ''
-        response.headers['ETag'] = ''
-        return response
 
     # Web routes (protected)
     @app.route('/')
@@ -633,11 +625,6 @@ def create_app():
         except Exception as e:
             return f'<html><body><h1>Template Error</h1><p>{str(e)}</p></body></html>', 500
 
-    @app.route('/test-debug')
-    def test_debug():
-        """Test route to debug route registration"""
-        return "Route registration test successful"
-
     @app.route('/full-view')
     def full_view():
         """Network Operations Center - Full-screen monitoring dashboard with standardized URL"""
@@ -664,37 +651,6 @@ def create_app():
     def escalation_executions():
         """Escalation executions monitoring page"""
         return render_template('escalation_executions.html')
-
-    @app.route('/test')
-    def test():
-        return jsonify({'message': 'Flask is working'})
-
-    @app.route('/debug/routes')
-    def list_routes():
-        routes = []
-        for rule in app.url_map.iter_rules():
-            routes.append({
-                'endpoint': rule.endpoint,
-                'methods': list(rule.methods),
-                'rule': rule.rule
-            })
-        return jsonify({'count': len(routes), 'routes': routes})
-
-    @app.route('/simple-test')
-    def simple_test():
-        return redirect('/ai-dashboard')
-
-    @app.route('/traceroute-test')
-    def traceroute_test():
-        from services.device_control import DeviceControlService
-        service = DeviceControlService()
-        result = service.traceroute_to_device('8.8.8.8')
-        return jsonify({
-            'hop_count': result.get('hop_count', 0),
-            'hops_length': len(result.get('hops', [])),
-            'success': result.get('success', False),
-            'first_hop': result.get('hops', [{}])[0] if result.get('hops') else None
-        })
 
     @app.route('/static/service-worker.js')
     def service_worker():
@@ -774,414 +730,9 @@ def create_app():
             logger.error(f"Error handling unsubscription: {e}")
             emit('unsubscription_error', {'error': str(e)})
 
-    @socketio.on('request_device_update')
-    def handle_device_update_request(data=None):
-        try:
-            # Check if client supports delta updates
-            client_supports_delta = data and data.get('supports_delta', False)
-
-            # Use optimized data fetching to prevent N+1 queries
-            from services.websocket_optimizer import websocket_optimizer
-            if websocket_optimizer:
-                if client_supports_delta:
-                    # Send delta update if client supports it
-                    delta_update = websocket_optimizer.get_device_delta_update()
-                    if delta_update:
-                        emit('device_delta_update', delta_update)
-                    else:
-                        # No changes to report
-                        emit('device_no_changes', {'timestamp': datetime.utcnow().isoformat() + 'Z'})
-                else:
-                    # Send full update
-                    devices_data = websocket_optimizer.get_optimized_device_data()
-                    emit('device_update', devices_data)
-            else:
-                # Fallback to original method
-                from models import Device
-                devices = Device.query.all()
-                devices_data = [device.to_dict() for device in devices]
-                emit('device_update', devices_data)
-        except Exception as e:
-            logger.error(f"Error in device update request: {e}")
-            emit('device_update_error', {'error': str(e)})
-
-    @socketio.on('request_config_update')
-    def handle_config_update_request():
-        """Handle request for current configuration"""
-        try:
-            from models import Configuration
-            configs = Configuration.query.all()
-            config_data = {config.key: {
-                'value': config.value,
-                'description': config.description,
-                'version': config.version,
-                'updated_at': config.updated_at.isoformat()
-            } for config in configs}
-            emit('configuration_full_update', config_data)
-        except Exception as e:
-            emit('configuration_error', {'error': str(e)})
-
-    @socketio.on('update_configuration')
-    def handle_configuration_update(data):
-        """Handle configuration update via WebSocket with validation and logging"""
-        try:
-            # Get client information for logging
-            client_sid = request.sid
-            client_ip = request.environ.get('REMOTE_ADDR', 'unknown')
-
-            key = data.get('key')
-            value = data.get('value')
-            description = data.get('description')
-            user = data.get('user', 'websocket_user')
-
-            # Basic validation for key and value
-            if not key or value is None:
-                logger.warning(f"Configuration update rejected: missing key/value from {client_ip} (session: {client_sid})")
-                emit('configuration_error', {'error': 'Key and value are required'})
-                return
-
-            # Validate user parameter (sanitize to prevent injection)
-            if user:
-                # Allow alphanumeric, underscore, hyphen, dot, and @ for email-like identifiers
-                import re
-                if not re.match(r'^[a-zA-Z0-9_\-\.@]{1,100}$', str(user)):
-                    logger.warning(f"Configuration update rejected: invalid user parameter from {client_ip} (session: {client_sid})")
-                    emit('configuration_error', {'error': 'Invalid user parameter'})
-                    return
-
-            # Log configuration change attempt
-            logger.info(f"Configuration update request: key='{key}' by user='{user}' from IP={client_ip} (session: {client_sid})")
-
-            # Use configuration service to update
-            success, message = configuration_service.set_configuration(
-                key=key,
-                value=value,
-                description=description,
-                user=user,
-                validate=True
-            )
-
-            if success:
-                logger.info(f"Configuration updated successfully: key='{key}' by user='{user}' from IP={client_ip}")
-                emit('configuration_update_success', {
-                    'key': key,
-                    'value': value,
-                    'message': message
-                })
-                # Broadcast to all clients
-                socketio.emit('configuration_updated', {
-                    'key': key,
-                    'value': value,
-                    'user': user,
-                    'timestamp': datetime.utcnow().isoformat()
-                })
-            else:
-                logger.warning(f"Configuration update failed: key='{key}' reason='{message}' from IP={client_ip}")
-                emit('configuration_error', {'error': message})
-
-        except Exception as e:
-            logger.error(f"Error in configuration update handler: {e}")
-            emit('configuration_error', {'error': str(e)})
-
-    @socketio.on('request_health_update')
-    def handle_health_update_request():
-        """Handle request for health overview update"""
-        try:
-            from api.health import calculate_health_score, get_recent_network_activity
-            from models import Device, MonitoringData, Alert
-            from datetime import timedelta
-
-            # Get current health data
-            now = datetime.utcnow()
-            online_threshold = now - timedelta(seconds=DEVICE_DOWN_AFTER_SECONDS)
-
-            total_devices = Device.query.filter_by(is_monitored=True).count()
-            devices_online = Device.query.filter(
-                Device.is_monitored == True,
-                Device.last_seen >= online_threshold
-            ).count()
-
-            # Quick health score calculation
-            health_score = calculate_health_score(
-                devices_online, total_devices, 50.0, 0, 95.0  # Simplified for real-time
-            )
-
-            emit('health_update', {
-                'health_score': health_score,
-                'network_status': {
-                    'devices_online': devices_online,
-                    'devices_offline': total_devices - devices_online,
-                    'total_devices': total_devices
-                },
-                'timestamp': now.isoformat() + 'Z'
-            })
-
-        except Exception as e:
-            emit('health_error', {'error': str(e)})
-
-    @socketio.on('request_topology_update')
-    def handle_topology_update_request():
-        """Handle request for network topology update"""
-        try:
-            from models import Device
-
-            devices = Device.query.filter_by(is_monitored=True).all()
-            online_threshold = datetime.utcnow() - timedelta(seconds=DEVICE_DOWN_AFTER_SECONDS)
-
-            topology_data = []
-            for device in devices:
-                status = 'online' if device.last_seen and device.last_seen >= online_threshold else 'offline'
-                topology_data.append({
-                    'id': device.id,
-                    'ip_address': device.ip_address,
-                    'name': device.display_name,
-                    'type': device.device_type or 'unknown',
-                    'status': status
-                })
-
-            emit('topology_update', {
-                'devices': topology_data,
-                'timestamp': datetime.utcnow().isoformat() + 'Z'
-            })
-
-        except Exception as e:
-            emit('topology_error', {'error': str(e)})
-
-    @socketio.on('request_alert_updates')
-    def handle_alert_updates_request():
-        """Handle request for real-time alert updates"""
-        try:
-            # Use optimized data fetching to prevent N+1 queries
-            from services.websocket_optimizer import websocket_optimizer
-            if websocket_optimizer:
-                alert_data = websocket_optimizer.get_optimized_alert_data()
-            else:
-                # Fallback method with eager loading to prevent N+1 queries
-                from models import Alert
-                from sqlalchemy.orm import joinedload
-                active_alerts = Alert.query.options(joinedload(Alert.device)).filter_by(resolved=False).all()
-
-                alert_data = []
-                for alert in active_alerts:
-                    alert_data.append({
-                        'id': alert.id,
-                        'device_id': alert.device_id,
-                        'device_name': alert.device.display_name if alert.device else 'Unknown',
-                        'device_ip': alert.device.ip_address if alert.device else None,
-                        'alert_type': alert.alert_type,
-                        'severity': alert.severity,
-                        'message': alert.message,
-                        'created_at': alert.created_at.isoformat() + 'Z',
-                        'acknowledged': alert.acknowledged,
-                        'resolved': alert.resolved
-                    })
-
-            emit('alert_updates', {
-                'alerts': alert_data,
-                'count': len(alert_data),
-                'timestamp': datetime.utcnow().isoformat() + 'Z'
-            })
-
-        except Exception as e:
-            emit('alert_error', {'error': str(e)})
-
-    @socketio.on('request_chart_data')
-    def handle_chart_data_request(data):
-        """Handle request for specific chart data"""
-        try:
-            chart_type = data.get('type')
-            device_id = data.get('device_id')
-            time_range = data.get('time_range', '24h')
-
-            if chart_type == 'device_response_time' and device_id:
-                # Get recent response time data for a specific device
-                from models import MonitoringData
-                from datetime import timedelta
-
-                hours_map = {'1h': 1, '6h': 6, '24h': 24, '7d': 168}
-                hours = hours_map.get(time_range, 24)
-                cutoff = datetime.utcnow() - timedelta(hours=hours)
-
-                data_points = MonitoringData.query.filter(
-                    MonitoringData.device_id == device_id,
-                    MonitoringData.timestamp >= cutoff
-                ).order_by(MonitoringData.timestamp.desc()).limit(200).all()
-
-                chart_data = [{
-                    'timestamp': point.timestamp.isoformat(),
-                    'response_time': point.response_time,
-                    'device_id': point.device_id
-                } for point in reversed(data_points)]
-
-                emit('chart_data_response', {
-                    'type': chart_type,
-                    'device_id': device_id,
-                    'data': chart_data,
-                    'timestamp': datetime.utcnow().isoformat()
-                })
-
-            elif chart_type == 'device_types':
-                # Get device types breakdown
-                from models import Device
-                from collections import defaultdict
-
-                devices = Device.query.filter_by(is_monitored=True).all()
-                device_types = defaultdict(lambda: {'up': 0, 'down': 0})
-
-                online_threshold = datetime.utcnow() - timedelta(seconds=DEVICE_DOWN_AFTER_SECONDS)
-
-                for device in devices:
-                    device_type = device.device_type or 'unknown'
-                    if device.last_seen and device.last_seen >= online_threshold:
-                        device_types[device_type]['up'] += 1
-                    else:
-                        device_types[device_type]['down'] += 1
-
-                chart_data = []
-                for device_type, counts in device_types.items():
-                    total = counts['up'] + counts['down']
-                    if total > 0:
-                        chart_data.append({
-                            'type': device_type,
-                            'total': total,
-                            'up': counts['up'],
-                            'down': counts['down'],
-                            'uptime_percentage': (counts['up'] / total) * 100
-                        })
-
-                emit('chart_data_response', {
-                    'type': chart_type,
-                    'data': chart_data,
-                    'timestamp': datetime.utcnow().isoformat()
-                })
-
-        except Exception as e:
-            emit('chart_data_error', {'error': str(e), 'type': chart_type})
-
-    @socketio.on('request_performance_summary')
-    def handle_performance_summary_request():
-        """Handle request for performance summary"""
-        try:
-            summary = performance_monitor.get_network_performance_summary(24)
-            if summary:
-                emit('performance_summary_response', summary)
-            else:
-                emit('performance_error', {'error': 'Unable to generate performance summary'})
-        except Exception as e:
-            emit('performance_error', {'error': str(e)})
-
-    @socketio.on('request_device_performance')
-    def handle_device_performance_request(data):
-        """Handle request for device performance data"""
-        try:
-            device_id = data.get('device_id')
-            hours = data.get('hours', 24)
-
-            if not device_id:
-                emit('performance_error', {'error': 'Device ID required'})
-                return
-
-            from models import Device
-            device = Device.query.get(device_id)
-            if not device:
-                emit('performance_error', {'error': 'Device not found'})
-                return
-
-            performance_summary = device.get_performance_summary(hours)
-            emit('device_performance_response', {
-                'device_id': device_id,
-                'performance_summary': performance_summary,
-                'timestamp': datetime.utcnow().isoformat()
-            })
-
-        except Exception as e:
-            emit('performance_error', {'error': str(e)})
-
-    @socketio.on('subscribe_to_delta_updates')
-    def handle_delta_subscription(data):
-        """Handle subscription to efficient delta updates"""
-        try:
-            client_sid = request.sid
-            update_types = data.get('types', ['devices', 'alerts'])
-
-            # Join rooms for delta updates
-            for update_type in update_types:
-                room_name = f"delta_{update_type}"
-                join_room(room_name)
-                logger.debug(f"Client {client_sid} subscribed to delta updates: {room_name}")
-
-            emit('delta_subscription_confirmed', {
-                'subscribed_to': update_types,
-                'supports_delta': True,
-                'timestamp': datetime.utcnow().isoformat() + 'Z'
-            })
-
-        except Exception as e:
-            logger.error(f"Error in delta subscription: {e}")
-            emit('delta_subscription_error', {'error': str(e)})
-
-    @socketio.on('request_performance_metrics')
-    def handle_performance_metrics_request():
-        """Handle request for performance metrics"""
-        try:
-            from services.performance_cache import get_cache_performance_metrics
-            from services.memory_monitor import get_memory_stats
-            from services.thread_pool_manager import thread_pool_manager
-
-            # Get comprehensive performance metrics
-            cache_metrics = get_cache_performance_metrics()
-            memory_stats = get_memory_stats()
-            thread_pool_stats = thread_pool_manager.get_all_stats()
-            system_resources = thread_pool_manager.get_system_resource_summary()
-
-            performance_data = {
-                'cache': cache_metrics,
-                'memory': {
-                    'total_mb': memory_stats.total_mb,
-                    'used_mb': memory_stats.used_mb,
-                    'percent_used': memory_stats.percent_used * 100,
-                    'cache_usage_mb': memory_stats.cache_usage_mb
-                },
-                'thread_pools': thread_pool_stats,
-                'system': system_resources,
-                'timestamp': datetime.utcnow().isoformat() + 'Z'
-            }
-
-            emit('performance_metrics_response', performance_data)
-
-        except Exception as e:
-            logger.error(f"Error getting performance metrics: {e}")
-            emit('performance_metrics_error', {'error': str(e)})
-
-    @socketio.on('trigger_performance_collection')
-    def handle_performance_collection_trigger(data):
-        """Handle manual performance collection trigger"""
-        try:
-            device_id = data.get('device_id') if data else None
-
-            if device_id:
-                # Collect for specific device
-                result = performance_monitor.collect_device_performance_metrics(device_id)
-                if result:
-                    emit('performance_collection_success', {
-                        'message': f'Performance metrics collected for device {device_id}',
-                        'device_id': device_id,
-                        'timestamp': datetime.utcnow().isoformat()
-                    })
-                else:
-                    emit('performance_collection_error', {
-                        'error': 'Failed to collect device performance metrics'
-                    })
-            else:
-                # Collect for all devices
-                performance_monitor.collect_all_devices_performance()
-                emit('performance_collection_success', {
-                    'message': 'Performance metrics collection triggered for all devices',
-                    'timestamp': datetime.utcnow().isoformat()
-                })
-
-        except Exception as e:
-            emit('performance_collection_error', {'error': str(e)})
+    # Request/response Socket.IO handlers were removed: no page ever emitted them,
+    # and `update_configuration` allowed unauthenticated config writes that bypassed
+    # CSRF and validation. Pages use the REST API plus the room-based pushes below.
 
     def emit_alert_update(alert, action='created'):
         """Emit real-time alert update to all connected clients"""
@@ -1215,92 +766,7 @@ def create_app():
 
     # Error handlers
     # Comprehensive error handling
-    @app.errorhandler(400)
-    def bad_request(error):
-        logger.warning(f"400 Bad Request: {request.method} {request.path} - {error.description}")
-        return jsonify({
-            'error': 'Bad Request',
-            'message': 'The request could not be processed due to invalid data',
-            'status_code': 400
-        }), 400
-
-    @app.errorhandler(401)
-    def unauthorized(error):
-        return jsonify({
-            'error': 'Unauthorized',
-            'message': 'Authentication required',
-            'status_code': 401
-        }), 401
-
-    @app.errorhandler(403)
-    def forbidden(error):
-        return jsonify({
-            'error': 'Forbidden',
-            'message': 'Access denied',
-            'status_code': 403
-        }), 403
-
-    @app.errorhandler(404)
-    def not_found(error):
-        # For static file requests, return standard 404 instead of JSON
-        if request.path.startswith('/static/'):
-            return f'File not found: {request.path}', 404
-
-        return jsonify({
-            'error': 'Not Found',
-            'message': 'The requested resource could not be found',
-            'status_code': 404
-        }), 404
-
-    @app.errorhandler(405)
-    def method_not_allowed(error):
-        return jsonify({
-            'error': 'Method Not Allowed',
-            'message': f'The {request.method} method is not allowed for this endpoint',
-            'status_code': 405
-        }), 405
-
-    @app.errorhandler(413)
-    def payload_too_large(error):
-        return jsonify({
-            'error': 'Payload Too Large',
-            'message': 'The request payload exceeds the maximum allowed size',
-            'status_code': 413
-        }), 413
-
-    @app.errorhandler(429)
-    def rate_limit_exceeded(error):
-        return jsonify({
-            'error': 'Too Many Requests',
-            'message': 'Rate limit exceeded. Please try again later',
-            'status_code': 429
-        }), 429
-
-    @app.errorhandler(500)
-    def internal_error(error):
-        db.session.rollback()
-        logger.error(f"Internal server error: {str(error)}")
-
-        # For static file requests, return standard 500 instead of JSON
-        if request.path.startswith('/static/'):
-            return f'Internal server error serving: {request.path}', 500
-
-        return jsonify({
-            'error': 'Internal Server Error',
-            'message': 'An unexpected error occurred',
-            'status_code': 500
-        }), 500
-
-    @app.errorhandler(Exception)
-    def handle_exception(error):
-        """Handle unexpected exceptions"""
-        db.session.rollback()
-        logger.exception(f"Unhandled exception: {str(error)}")
-        return jsonify({
-            'error': 'Internal Server Error',
-            'message': 'An unexpected error occurred',
-            'status_code': 500
-        }), 500
+    # Error handling lives in core.error_handler (JSON for /api/*, HTML otherwise).
 
     # Health check endpoint (public for monitoring)
     @app.route('/health')
@@ -1383,66 +849,6 @@ def create_app():
         })
 
     # Network topology endpoint
-    @app.route('/api/monitoring/topology-test')
-    def get_topology_test():
-        """Network topology data for graph visualization"""
-        from models import Device, MonitoringData, Alert
-        try:
-            devices = Device.query.filter_by(is_monitored=True).limit(10).all()
-
-            nodes = []
-            for i, device in enumerate(devices):
-                color_map = {'up': '#28a745', 'down': '#dc3545', 'warning': '#ffc107', 'unknown': '#6c757d'}
-                icon_map = {'router': '🌐', 'computer': '💻', 'phone': '📱', 'camera': '📷', 'smart_home': '🏠', 'unknown': '❓'}
-
-                # Get latest response time directly to avoid property caching issues
-                latest_data = MonitoringData.query.filter_by(device_id=device.id)\
-                                                 .order_by(MonitoringData.timestamp.desc())\
-                                                 .first()
-                latest_response_time = latest_data.response_time if latest_data else None
-
-                # Get active alerts count
-                active_alerts = Alert.query.filter_by(device_id=device.id, resolved=False).count()
-
-                # Calculate uptime percentage (method call, not property)
-                uptime_pct = device.uptime_percentage() or 0
-
-                nodes.append({
-                    'id': str(device.id),
-                    'label': device.display_name[:15],
-                    'ip': device.ip_address,
-                    'status': device.status,
-                    'color': color_map.get(device.status, '#6c757d'),
-                    'icon': icon_map.get(device.device_type, '❓'),
-                    'device_type': device.device_type,
-                    'response_time': latest_response_time,
-                    'uptime_percentage': uptime_pct,
-                    'active_alerts': active_alerts,
-                    'size': 20 + uptime_pct / 5
-                })
-
-            # Create simple hub topology
-            edges = []
-            if nodes:
-                hub_id = nodes[0]['id']  # Use first device as hub
-                for node in nodes[1:]:
-                    edges.append({
-                        'source': hub_id,
-                        'target': node['id'],
-                        'strength': 1.0,
-                        'color': '#28a745' if node['status'] == 'up' else '#dc3545'
-                    })
-
-            return jsonify({
-                'nodes': nodes,
-                'edges': edges,
-                'stats': {'total_devices': len(nodes), 'subnets': 1, 'connections': len(edges)},
-                'timestamp': datetime.utcnow().isoformat() + 'Z'
-            })
-        except Exception as e:
-            return jsonify({'error': str(e)}), 500
-
-    # AI Dashboard API endpoint
     @app.route('/api/ai/dashboard', methods=['GET'])
     def get_ai_dashboard():
         """AI Dashboard API endpoint that consolidates anomaly detection data"""
