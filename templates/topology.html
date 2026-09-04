@@ -1258,10 +1258,8 @@ body::before {
 
 {% block extra_js %}
 <!-- D3.js for network graph -->
-<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
 
 <!-- Socket.IO -->
-<script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
 
 <script>
 // Network Topology Application
@@ -1691,7 +1689,7 @@ class NetworkTopology {
         try {
             console.log("Loading topology data...");
 
-            const response = await fetch('/api/monitoring/topology-test');
+            const response = await fetch('/api/analytics/topology/visualization');
 
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -1730,7 +1728,7 @@ class NetworkTopology {
             'D3.js Version': typeof d3 !== 'undefined' ? d3.version || 'Available' : 'Not loaded',
             'Container ID': this.containerId,
             'Container Exists': document.getElementById(this.containerId) ? 'Yes' : 'No',
-            'API Endpoint': '/api/monitoring/topology-test',
+            'API Endpoint': '/api/analytics/topology/visualization',
             'Retry Count': this.retryCount || 0,
             'Max Retries': this.maxRetries,
             'Network Status': navigator.onLine ? 'Online' : 'Offline'
@@ -1790,30 +1788,43 @@ class NetworkTopology {
         this.allLinksData = data.edges || [];
 
         // Process nodes - map fields to match topology API response
+        // /api/analytics/topology/visualization: nodes carry node_type, a size class
+        // and online/offline; edges carry a strength class. Map them to what the
+        // renderer expects.
+        const sizeMap = { xlarge: 30, large: 22, medium: 14, small: 10 };
+        const strengthMap = { strong: 3, medium: 2, weak: 1 };
+        const iconMap = { router: '🌐', switch: '🔀', computer: '💻', laptop: '💻', phone: '📱', tablet: '📱', camera: '📷',
+                          iot: '🏠', smart_home: '🏡', printer: '🖨️', nas: '💾', server: '🖥️', gaming: '🎮', media: '📺', unknown: '❓' };
+        const colorFor = (status) => ({ online: '#28a745', up: '#28a745', offline: '#dc3545', down: '#dc3545', warning: '#ffc107' }[status] || '#6c757d');
         this.nodes = this.allNodesData.map(node => ({
-            id: node.id,
-            name: node.label || node.ip,
-            ip: node.ip,
+            id: String(node.id),
+            name: node.label || node.ip_address || node.ip || `Device ${node.id}`,
+            ip: node.ip_address || node.ip,
             type: node.device_type || 'unknown',
+            node_type: node.node_type,
+            subnet: node.subnet,
             status: node.status || 'unknown',
             response_time: node.response_time,
             last_seen: node.last_seen,
             uptime: node.uptime_percentage,
             alerts_count: node.active_alerts || 0,
-            color: node.color,
-            size: node.size || 10,
-            icon: node.icon,
+            color: node.color || colorFor(node.status),
+            size: typeof node.size === 'number' ? node.size : (sizeMap[node.size] || 14),
+            icon: node.icon || iconMap[node.device_type] || iconMap.unknown,
             x: Math.random() * this.width,
             y: Math.random() * this.height
         }));
-
-        // Process links - edges structure from topology API
-        this.links = this.allLinksData.map(edge => ({
-            source: edge.source,
-            target: edge.target,
-            strength: edge.strength || 1,
-            color: edge.color || '#999'
-        }));
+        const known = new Set(this.nodes.map(n => n.id));
+        this.links = this.allLinksData
+            .filter(edge => known.has(String(edge.source)) && known.has(String(edge.target)))
+            .map(edge => ({
+                source: String(edge.source),
+                target: String(edge.target),
+                type: edge.type,
+                label: edge.label,
+                strength: typeof edge.strength === 'number' ? edge.strength : (strengthMap[edge.strength] || 1),
+                color: edge.color || (edge.type === 'parent_child' ? '#8ab4f8' : '#999')
+            }));
 
         console.log(`Processed ${this.nodes.length} nodes and ${this.links.length} links`);
     }
@@ -2234,15 +2245,10 @@ class NetworkTopology {
     }
 
     async pingDevice(device) {
-        const response = await fetch('/api/devices/ping', {
+        const response = await fetch(`/api/devices/${device.id}/ping`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                ip_address: device.ip,
-                count: 1
-            })
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
         });
 
         if (!response.ok) {
@@ -2526,7 +2532,7 @@ class NetworkTopology {
 
             // Browser info
             userAgent: navigator.userAgent,
-            apiEndpoint: '/api/monitoring/topology-test',
+            apiEndpoint: '/api/analytics/topology/visualization',
             containerId: this.containerId,
             d3Available: typeof d3 !== 'undefined',
             nodeCount: this.allNodesData?.length || 0,

@@ -401,6 +401,14 @@ class Device(db.Model):
             return []
 
     def to_dict(self):
+        """Serialize one device with a bounded number of queries.
+
+        Same key set as to_dict_fast() (list endpoints) plus the cached health
+        fields. The 7-day uptime_percentage() walk is deliberately NOT here --
+        it loads a week of samples per device -- the detail endpoint adds it.
+        """
+        latest = MonitoringData.query.filter_by(device_id=self.id)\
+                                     .order_by(MonitoringData.timestamp.desc()).first()
         return {
             'id': self.id,
             'ip_address': self.ip_address,
@@ -415,11 +423,9 @@ class Device(db.Model):
             'display_name': self.display_name,
             'is_monitored': self.is_monitored,
             'status': self.status,
-            'uptime_percentage': self.uptime_percentage(),
-            # Per-device bandwidth cannot be measured from the host; keys kept for
-            # API compatibility until the serializer contract is revised.
-            'current_bandwidth': None,
-            'bandwidth_usage_24h': None,
+            'active_alerts': self.active_alerts,
+            'latest_response_time': latest.response_time if latest else None,
+            'latest_check': (latest.timestamp.isoformat() + 'Z') if latest else None,
             'health_score': self.current_health_score,
             'performance_grade': self.performance_grade,
             'performance_status': self.performance_status,

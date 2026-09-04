@@ -113,3 +113,62 @@ class TestDeviceEditContract:
         assert d['custom_name'] == 'Office PC' and d['device_priority'] == 'important'
         assert d['is_monitored'] is False and d['display_name'] == 'Office PC'
         assert 'statistics' in d and '24h' in d['statistics'] and 'monitoring_history' in d
+
+
+class TestRetiredPagesAndConsolidation:
+
+    @pytest.mark.parametrize('path,target', [('/full-view', '/'), ('/noc', '/'), ('/dashboard/full', '/'),
+                                             ('/performance-dashboard', '/analytics#performance'),
+                                             ('/ai-dashboard', '/analytics#anomalies'), ('/ai_dashboard', '/analytics#anomalies')])
+    def test_retired_pages_redirect_permanently(self, client, path, target):
+        r = client.get(path)
+        assert r.status_code == 301
+        assert r.headers['Location'].endswith(target)
+
+    def test_analytics_has_anomalies_tab(self, client):
+        html = client.get('/analytics').get_data(as_text=True)
+        assert 'id="anomalies-tab"' in html and '/api/anomaly/alerts' in html
+
+    def test_network_map_uses_topology_engine(self, client):
+        html = client.get('/network-map').get_data(as_text=True)
+        assert '/api/analytics/topology/visualization' in html and 'topology-test' not in html
+        assert html.count('cdn.jsdelivr.net/npm/d3@7') == 1
+
+    def test_manifest_is_a_web_app_manifest(self, client):
+        m = client.get('/static/manifest.json').get_json()
+        assert m['name'] == 'HomeNetMon' and m['start_url'] == '/' and m['icons']
+
+    def test_service_worker_route_is_gone(self, client):
+        assert client.get('/static/service-worker.js').status_code == 404
+
+
+class TestSerializerContract:
+
+    def test_to_dict_and_to_dict_fast_share_the_core_keys(self, app, db_session, device):
+        with app.app_context():
+            full = Device.query.get(device.id).to_dict()
+            fast = Device.query.get(device.id).to_dict_fast()
+        core = {'id', 'ip_address', 'mac_address', 'hostname', 'display_name', 'is_monitored', 'status',
+                'active_alerts', 'latest_response_time', 'latest_check', 'last_seen', 'device_type', 'device_group'}
+        assert core <= set(full) and core <= set(fast)
+        assert 'current_bandwidth' not in full and 'bandwidth_usage_24h' not in full   # unmeasurable per device
+        assert 'uptime_percentage' not in full                                          # 7-day walk; detail endpoint only
+
+    def test_detail_endpoint_adds_uptime(self, client, device):
+        d = client.get(f'/api/devices/{device.id}').get_json()['device']
+        assert 'uptime_percentage' in d and 'statistics' in d and 'health_score' in d
+
+
+class TestEndpointsFixedBySweep:
+
+    def test_performance_devices_no_longer_selects_properties(self, client, device):
+        r = client.get('/api/performance/devices?hours=24')
+        assert r.status_code == 200, r.get_json()
+        assert 'devices' in r.get_json()
+
+    def test_topology_engine_has_an_app_context_without_an_attached_app(self, app):
+        from services.network_topology import NetworkTopologyEngine
+        engine = NetworkTopologyEngine()
+        with app.test_request_context('/'):
+            with engine._app_context():
+                pass  # must not raise 'NoneType has no app_context'

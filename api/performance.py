@@ -49,12 +49,15 @@ def get_devices_performance():
         cutoff = datetime.utcnow() - timedelta(hours=hours)
 
         # Base query for latest performance metrics per device
+        # display_name/status are Python properties, not columns: select the
+        # underlying columns and derive them per row below.
         query = db.session.query(
             Device.id,
-            Device.display_name,
+            Device.custom_name,
+            Device.hostname,
             Device.ip_address,
             Device.device_type,
-            Device.status,
+            Device.last_seen,
             PerformanceMetrics.health_score,
             PerformanceMetrics.responsiveness_score,
             PerformanceMetrics.reliability_score,
@@ -91,7 +94,7 @@ def get_devices_performance():
         # Apply sorting
         if sort_by == 'name':
             main_query = main_query.order_by(
-                desc(subquery.c.display_name) if order == 'desc' else subquery.c.display_name
+                desc(subquery.c.hostname) if order == 'desc' else subquery.c.hostname
             )
         elif sort_by == 'response_time':
             main_query = main_query.order_by(
@@ -107,25 +110,32 @@ def get_devices_performance():
 
         # Format results
         devices_performance = []
+        from constants import DEVICE_DOWN_AFTER_SECONDS
+        down_cutoff = datetime.utcnow() - timedelta(seconds=DEVICE_DOWN_AFTER_SECONDS)
         for row in results:
+            (dev_id, custom_name, hostname, ip, dtype, last_seen, health, resp, rel, eff, stab, uptime, avg_rt, ts) = row
+            if not last_seen:
+                status = 'unknown'
+            else:
+                status = 'up' if last_seen >= down_cutoff else 'down'
             device_data = {
-                'device_id': row[0],
-                'device_name': row[1],
-                'device_ip': row[2],
-                'device_type': row[3] or 'unknown',
-                'device_status': row[4],
+                'device_id': dev_id,
+                'device_name': custom_name or hostname or ip,
+                'device_ip': ip,
+                'device_type': dtype or 'unknown',
+                'device_status': status,
                 'performance_metrics': {
-                    'health_score': row[5],
-                    'responsiveness_score': row[6],
-                    'reliability_score': row[7],
-                    'efficiency_score': row[8],
-                    'stability_score': row[9],
-                    'uptime_percentage': row[10],
-                    'avg_response_time_ms': row[11],
-                    'last_updated': row[12].isoformat() + 'Z' if row[12] else None
+                    'health_score': health,
+                    'responsiveness_score': resp,
+                    'reliability_score': rel,
+                    'efficiency_score': eff,
+                    'stability_score': stab,
+                    'uptime_percentage': uptime,
+                    'avg_response_time_ms': avg_rt,
+                    'last_updated': ts.isoformat() + 'Z' if ts else None
                 },
-                'performance_grade': _get_performance_grade(row[5]),
-                'performance_status': _get_performance_status(row[5])
+                'performance_grade': _get_performance_grade(health),
+                'performance_status': _get_performance_status(health)
             }
             devices_performance.append(device_data)
 

@@ -265,6 +265,8 @@ def get_device(device_id):
 
         device_dict = device.to_dict()
 
+        device_dict['uptime_percentage'] = device.uptime_percentage()  # 7-day walk: detail view only
+
         # Add recent monitoring data (last 24 hours)
         cutoff = datetime.utcnow() - timedelta(hours=24)
         monitoring_data = MonitoringData.query.filter(

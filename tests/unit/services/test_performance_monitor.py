@@ -401,7 +401,9 @@ class TestPerformanceMonitorIntegration:
     def test_database_transaction_handling(self, app, db_session):
         """Test proper database transaction handling during metrics collection."""
         device = DeviceFactory.create()
-        SuccessfulMonitoringDataFactory.create(device=device)
+        # Pin the sample inside the 60-minute collection window (the factory's random
+        # 0-60 min offset made this test fail about once in sixty runs).
+        SuccessfulMonitoringDataFactory.create(device=device, timestamp=datetime.utcnow() - timedelta(minutes=5))
 
         monitor = PerformanceMonitor(app=app)
 

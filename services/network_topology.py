@@ -31,6 +31,17 @@ class NetworkTopologyEngine:
 
     def __init__(self, app=None):
         self.app = app
+
+    def _app_context(self):
+        """App context from the attached app, or the current request's app.
+
+        The singleton in api/analytics.py is created at import time with app=None,
+        so every request-driven call failed with 'NoneType has no app_context'."""
+        app = self.app
+        if app is None:
+            from flask import current_app
+            app = current_app._get_current_object()
+        return app.app_context()
         self.device_analytics = DeviceBehaviorAnalytics()
 
         # Topology data structures
@@ -77,7 +88,7 @@ class NetworkTopologyEngine:
                 logger.info("Starting comprehensive network topology discovery")
                 start_time = datetime.utcnow()
 
-                with self.app.app_context():
+                with self._app_context():
                     # Get all monitored devices
                     devices = Device.query.filter_by(is_monitored=True).all()
 
@@ -1492,7 +1503,7 @@ class NetworkTopologyEngine:
     def analyze_device_relationships(self, device_id: int) -> Dict[str, Any]:
         """Analyze relationships for a specific device"""
         try:
-            with self.app.app_context():
+            with self._app_context():
                 device = Device.query.get(device_id)
                 if not device:
                     return {'error': 'Device not found'}
@@ -1955,7 +1966,7 @@ class NetworkTopologyEngine:
     def monitor_topology_changes(self) -> Dict[str, Any]:
         """Monitor for topology changes and updates"""
         try:
-            with self.app.app_context():
+            with self._app_context():
                 current_topology = self.discover_network_topology(force_refresh=True)
 
                 if 'error' in current_topology:

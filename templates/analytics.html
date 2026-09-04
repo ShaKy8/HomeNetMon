@@ -550,6 +550,9 @@
             <button class="nav-link" id="bandwidth-tab" data-bs-toggle="pill" data-bs-target="#bandwidth-panel" type="button" role="tab" aria-controls="bandwidth-panel" aria-selected="false">
                 <i class="bi bi-speedometer2 me-1"></i> Bandwidth
             </button>
+            <button class="nav-link" id="anomalies-tab" data-bs-toggle="pill" data-bs-target="#anomalies-panel" type="button" role="tab" aria-controls="anomalies-panel" aria-selected="false">
+                <i class="bi bi-activity me-1"></i> Anomalies
+            </button>
         </div>
     </nav>
 </div>
@@ -919,6 +922,34 @@
 </div> <!-- End Performance Tab Panel -->
 
 <!-- Bandwidth Tab Panel -->
+<!-- Anomalies Tab Panel (replaces the retired /ai-dashboard page) -->
+<div class="tab-pane fade" id="anomalies-panel" role="tabpanel" aria-labelledby="anomalies-tab" tabindex="0">
+    <div class="card mb-3">
+        <div class="card-header d-flex justify-content-between align-items-center">
+            <h6 class="mb-0"><i class="bi bi-activity"></i> Anomaly detection</h6>
+            <span id="anomaly-status-badge" class="badge bg-secondary">status unknown</span>
+        </div>
+        <div class="card-body">
+            <p class="text-muted mb-2" id="anomaly-status-text">Statistical anomaly detection compares each device's recent response times and availability against its own baseline.</p>
+            <div class="d-flex gap-2 flex-wrap">
+                <button class="btn btn-sm btn-outline-primary" type="button" onclick="loadAnomalies()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+                <a class="btn btn-sm btn-outline-secondary" href="/settings#alerts">Alert settings</a>
+            </div>
+        </div>
+    </div>
+    <div class="card">
+        <div class="card-header"><h6 class="mb-0">Recent anomalies (7 days)</h6></div>
+        <div class="card-body p-0">
+            <div class="table-responsive">
+                <table class="table table-sm mb-0" aria-label="Recent anomaly alerts">
+                    <thead><tr><th>When</th><th>Device</th><th>Type</th><th>Severity</th><th>Details</th><th>Confidence</th></tr></thead>
+                    <tbody id="anomaly-rows"><tr><td colspan="6" class="text-muted p-3">Loading...</td></tr></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="tab-pane fade" id="bandwidth-panel" role="tabpanel" aria-labelledby="bandwidth-tab" tabindex="0">
 
 <!-- Bandwidth Analytics -->
@@ -2180,5 +2211,49 @@
         // This function would show toast notifications - implementation depends on your toast system
         console.log(`Toast (${type}): ${message}`);
     }
+
+    // ---- Anomalies tab (folded in from the retired AI dashboard) ----
+    async function loadAnomalies() {
+        const badge = document.getElementById('anomaly-status-badge');
+        const text = document.getElementById('anomaly-status-text');
+        const rows = document.getElementById('anomaly-rows');
+        if (!rows) return;
+        try {
+            const st = await apiRequest('/api/anomaly/status');
+            const status = st.status || st;
+            const enabled = !!(status.settings && (status.settings.enabled === true || status.settings.enabled === 'true')) || status.running === true;
+            badge.className = 'badge ' + (enabled ? 'bg-success' : 'bg-secondary');
+            badge.textContent = enabled ? 'running' : 'disabled';
+            if (!enabled) text.textContent = 'Anomaly detection is disabled. Enable anomaly_detection_enabled in Settings to start building baselines.';
+        } catch (e) {
+            badge.textContent = 'unavailable';
+        }
+        try {
+            const data = await apiRequest('/api/anomaly/alerts?hours=168&limit=100');
+            const list = data.alerts || data.anomalies || [];
+            if (!list.length) {
+                rows.innerHTML = '<tr><td colspan="6" class="text-muted p-3">No anomalies detected in the last 7 days.</td></tr>';
+                return;
+            }
+            rows.innerHTML = list.map(a => `<tr>
+                <td class="text-nowrap">${escapeHtml(a.created_at ? new Date(a.created_at).toLocaleString() : '')}</td>
+                <td>${a.device_id ? `<a href="/device/${a.device_id}">${escapeHtml(a.device_name || a.device_id)}</a>` : escapeHtml(a.device_name || '')}</td>
+                <td>${escapeHtml(a.alert_type || '')}</td>
+                <td><span class="badge ${a.severity === 'critical' ? 'bg-danger' : 'bg-warning text-dark'}">${escapeHtml(a.severity || '')}</span></td>
+                <td>${escapeHtml(a.message || '')}</td>
+                <td>${a.confidence != null ? Math.round(a.confidence * 100) + '%' : ''}</td>
+            </tr>`).join('');
+        } catch (e) {
+            rows.innerHTML = `<tr><td colspan="6" class="text-danger p-3">Could not load anomalies: ${escapeHtml(e.message)}</td></tr>`;
+        }
+    }
+    document.addEventListener('DOMContentLoaded', function () {
+        const tab = document.getElementById('anomalies-tab');
+        if (tab) tab.addEventListener('shown.bs.tab', loadAnomalies);
+        // Deep links from retired pages: /analytics#performance, /analytics#anomalies
+        const hash = (window.location.hash || '').replace('#', '');
+        const target = hash && document.getElementById(`${hash}-tab`);
+        if (target && window.bootstrap) new bootstrap.Tab(target).show();
+    });
 </script>
 {% endblock %}

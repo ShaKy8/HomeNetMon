@@ -503,24 +503,29 @@ def create_app():
             # Fallback if database isn't available
             return render_template('dashboard.html', dashboard_title='Home Network Monitor')
 
-    @app.route('/dashboard/full')
-    def dashboard_full():
-        """Full featured dashboard with device grid and detailed monitoring"""
-        try:
-            from models import Configuration
-            # Get dashboard title setting
-            dashboard_title_config = Configuration.query.filter_by(key='dashboard_title').first()
-            dashboard_title = dashboard_title_config.value if dashboard_title_config else 'Home Network Monitor'
-
-            return render_template('dashboard.html', dashboard_title=dashboard_title)
-        except Exception as e:
-            # Fallback if database isn't available
-            return render_template('dashboard.html', dashboard_title='Home Network Monitor')
-
     @app.route('/favicon.ico')
     def favicon():
         """Serve favicon from static folder"""
         return send_from_directory(app.static_folder, 'favicon.ico', mimetype='image/vnd.microsoft.icon')
+
+    # Retired pages. The NOC view had 5 of 8 API calls pointing at URLs that never
+    # existed, the performance dashboard duplicated the home page tiles, and the
+    # AI dashboard depends on the (disabled) anomaly service; their useful panels
+    # live under /analytics. Old bookmarks are redirected.
+    @app.route('/dashboard/full')
+    @app.route('/full-view')
+    @app.route('/noc')
+    def retired_to_dashboard():
+        return redirect(url_for('dashboard'), code=301)
+
+    @app.route('/performance-dashboard')
+    def retired_performance_dashboard():
+        return redirect(url_for('analytics') + '#performance', code=301)
+
+    @app.route('/ai-dashboard')
+    @app.route('/ai_dashboard')
+    def retired_ai_dashboard():
+        return redirect(url_for('analytics') + '#anomalies', code=301)
 
     @app.route('/device/<int:device_id>')
     def device_detail(device_id):
@@ -548,15 +553,6 @@ def create_app():
     def analytics():
         return render_template('analytics.html')
 
-    @app.route('/performance-dashboard')
-    def performance_dashboard():
-        """Real-time performance monitoring dashboard"""
-        return render_template('performance_dashboard.html')
-
-    @app.route('/ai-dashboard')
-    def ai_dashboard():
-        return render_template('ai_dashboard.html')
-
     @app.route('/security-dashboard')
     def security_dashboard():
         """Redirect old security-dashboard URL to new security URL for consistency"""
@@ -582,16 +578,6 @@ def create_app():
     def devices():
         """Redirect to unified dashboard - all device management now in one place"""
         return redirect(url_for('dashboard'))
-
-    @app.route('/noc')
-    def noc_view():
-        """Redirect old noc URL to new full-view URL for consistency"""
-        return redirect(url_for('full_view'), code=301)
-
-    # Redirect routes for common URL variations (underscored URLs redirect to hyphenated ones)
-    @app.route('/ai_dashboard')
-    def ai_dashboard_underscore_redirect():
-        return redirect(url_for('ai_dashboard'))
 
     @app.route('/security_dashboard')
     def security_dashboard_underscore_redirect():
@@ -621,13 +607,6 @@ def create_app():
         except Exception as e:
             return f'<html><body><h1>Template Error</h1><p>{str(e)}</p></body></html>', 500
 
-    @app.route('/full-view')
-    def full_view():
-        """Network Operations Center - Full-screen monitoring dashboard with standardized URL"""
-        return render_template('noc_view.html')
-
-    # Note: Backward compatibility redirects are handled by the existing routes above
-
     @app.route('/escalation-rules')
     def escalation_rules():
         """Escalation rules management page"""
@@ -647,10 +626,6 @@ def create_app():
     def escalation_executions():
         """Escalation executions monitoring page"""
         return render_template('escalation_executions.html')
-
-    @app.route('/static/service-worker.js')
-    def service_worker():
-        return app.send_static_file('service-worker.js'), 200, {'Content-Type': 'application/javascript'}
 
     @app.route('/static/images/<path:filename>')
     def serve_image(filename):
