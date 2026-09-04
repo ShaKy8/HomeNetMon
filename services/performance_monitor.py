@@ -4,7 +4,7 @@ import logging
 import statistics
 from datetime import datetime, timedelta
 from collections import defaultdict
-from models import db, Device, MonitoringData, BandwidthData, PerformanceMetrics, Configuration, Alert
+from models import db, Device, MonitoringData, PerformanceMetrics, Configuration, Alert
 from config import Config
 
 logger = logging.getLogger(__name__)
@@ -66,15 +66,10 @@ class PerformanceMonitor:
                     MonitoringData.timestamp <= end_time
                 ).order_by(MonitoringData.timestamp).all()
 
-                # Collect bandwidth data
-                bandwidth_data = BandwidthData.query.filter(
-                    BandwidthData.device_id == device_id,
-                    BandwidthData.timestamp >= start_time,
-                    BandwidthData.timestamp <= end_time
-                ).order_by(BandwidthData.timestamp).all()
-
-                if not response_data and not bandwidth_data:
-                    logger.debug(f"No data available for device {device.display_name}")
+                if not response_data:
+                    # No probes in the window: nothing to score. (Scoring anyway
+                    # produced a constant 63.0 for every offline device.)
+                    logger.debug(f"No monitoring data for device {device.display_name} in window")
                     return None
 
                 # Calculate response time metrics
@@ -83,17 +78,15 @@ class PerformanceMonitor:
                 # Calculate availability metrics
                 availability_metrics = self._calculate_availability_metrics(response_data)
 
-                # Calculate bandwidth metrics
-                bandwidth_metrics = self._calculate_bandwidth_metrics(bandwidth_data)
-
                 # Calculate quality metrics (jitter, packet loss)
                 quality_metrics = self._calculate_quality_metrics(response_data)
 
                 # Calculate health scores
                 health_scores = PerformanceMetrics.calculate_health_score(
-                    response_metrics, availability_metrics,
-                    bandwidth_metrics, quality_metrics
+                    response_metrics, availability_metrics, None, quality_metrics
                 )
+                if health_scores is None:
+                    return None
 
                 # Create performance metrics record
                 performance_record = PerformanceMetrics(
@@ -112,13 +105,7 @@ class PerformanceMonitor:
                     successful_checks=availability_metrics.get('successful_checks'),
                     failed_checks=availability_metrics.get('failed_checks'),
 
-                    # Bandwidth metrics
-                    avg_bandwidth_in_mbps=bandwidth_metrics.get('avg_in_mbps'),
-                    avg_bandwidth_out_mbps=bandwidth_metrics.get('avg_out_mbps'),
-                    peak_bandwidth_in_mbps=bandwidth_metrics.get('peak_in_mbps'),
-                    peak_bandwidth_out_mbps=bandwidth_metrics.get('peak_out_mbps'),
-                    total_bytes_in=bandwidth_metrics.get('total_bytes_in'),
-                    total_bytes_out=bandwidth_metrics.get('total_bytes_out'),
+                    # Per-device bandwidth is not measurable from the host; columns stay NULL.
 
                     # Quality metrics
                     jitter_ms=quality_metrics.get('jitter_ms'),
@@ -133,8 +120,8 @@ class PerformanceMonitor:
 
                     # Collection metadata
                     collection_period_minutes=collection_period_minutes,
-                    sample_count=len(response_data) + len(bandwidth_data),
-                    anomaly_count=self._count_anomalies(response_data, bandwidth_data)
+                    sample_count=len(response_data),
+                    anomaly_count=self._count_anomalies(response_data, [])
                 )
 
                 db.session.add(performance_record)
@@ -180,7 +167,7 @@ class PerformanceMonitor:
         """Calculate availability and uptime statistics"""
         if not response_data:
             return {
-                'uptime_percentage': 0,
+                'uptime_percentage': None,  # unknown, not zero
                 'total_checks': 0,
                 'successful_checks': 0,
                 'failed_checks': 0
@@ -196,27 +183,6 @@ class PerformanceMonitor:
             'total_checks': total_checks,
             'successful_checks': successful_checks,
             'failed_checks': failed_checks
-        }
-
-    def _calculate_bandwidth_metrics(self, bandwidth_data):
-        """Calculate bandwidth usage statistics"""
-        if not bandwidth_data:
-            return {
-                'avg_in_mbps': 0, 'avg_out_mbps': 0,
-                'peak_in_mbps': 0, 'peak_out_mbps': 0,
-                'total_bytes_in': 0, 'total_bytes_out': 0
-            }
-
-        in_rates = [b.bandwidth_in_mbps for b in bandwidth_data if b.bandwidth_in_mbps is not None]
-        out_rates = [b.bandwidth_out_mbps for b in bandwidth_data if b.bandwidth_out_mbps is not None]
-
-        return {
-            'avg_in_mbps': statistics.mean(in_rates) if in_rates else 0,
-            'avg_out_mbps': statistics.mean(out_rates) if out_rates else 0,
-            'peak_in_mbps': max(in_rates) if in_rates else 0,
-            'peak_out_mbps': max(out_rates) if out_rates else 0,
-            'total_bytes_in': sum(b.bytes_in for b in bandwidth_data if b.bytes_in),
-            'total_bytes_out': sum(b.bytes_out for b in bandwidth_data if b.bytes_out)
         }
 
     def _calculate_quality_metrics(self, response_data):

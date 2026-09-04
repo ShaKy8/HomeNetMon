@@ -1,326 +1,209 @@
-import time
-import threading
-import subprocess
-import re
+"""
+Host interface throughput sampler.
+
+Reads /proc/net/dev byte and packet counters for every physical network
+interface on the host, differences them per interval, and stores one
+InterfaceBandwidth row per interface per interval. This is the only bandwidth
+measurement HomeNetMon can make honestly from the machine it runs on;
+per-device traffic would need router / SNMP / flow integration.
+
+(The previous implementation split the host total across all devices with a
+random factor and stored it as per-device "bandwidth" -- 680 MB of noise.)
+"""
 import logging
-from datetime import datetime, timedelta
-from models import db, Device, BandwidthData, Configuration
+import re
+import subprocess
+import threading
+import time
+from datetime import datetime
+
 from config import Config
+from models import Configuration, InterfaceBandwidth, db
 
 logger = logging.getLogger(__name__)
 
+# Interfaces that never carry LAN traffic we care about.
+_SKIP_PREFIXES = ('lo', 'docker', 'veth', 'br-', 'virbr', 'vnet', 'tun', 'tap', 'wg', 'tailscale', 'zt')
+
+
 class BandwidthMonitor:
-    """Real-time bandwidth monitoring using network interface statistics"""
+    """Samples host interface counters on Config.BANDWIDTH_INTERVAL (runtime key bandwidth_interval)."""
 
     def __init__(self, app=None):
         self.app = app
         self.is_running = False
         self.monitor_thread = None
         self._stop_event = threading.Event()
-        self.previous_stats = {}
-        self.interface_stats = {}
+        self.interface_stats = {}   # interface -> last sample dict
 
     def get_config_value(self, key, default):
-        """Get configuration value from database or use default"""
+        """Runtime Configuration value (DB) with fallback; must be called inside an app context."""
         try:
-            with self.app.app_context():
-                return Configuration.get_value(key, str(default))
-        except:
+            return Configuration.get_value(key, str(default))
+        except Exception as e:
+            logger.debug(f"Config read for {key} failed ({e}); using default {default}")
             return str(default)
 
+    # ---- sampling -----------------------------------------------------------
+    @staticmethod
+    def is_physical_interface(name):
+        return not name.startswith(_SKIP_PREFIXES)
+
     def get_network_interfaces(self):
-        """Get available network interfaces"""
+        """Names of non-virtual interfaces, from `ip link show` (falls back to /proc/net/dev)."""
+        names = []
         try:
-            # Get network interfaces using ip command
-            result = subprocess.run(['ip', 'link', 'show'],
-                                  capture_output=True, text=True, timeout=10, shell=False)
-            interfaces = []
-
-            for line in result.stdout.split('\n'):
-                # Look for interface lines like "2: eth0: <BROADCAST,MULTICAST,UP,LOWER_UP>"
-                match = re.search(r'^\d+:\s+(\w+):', line.strip())
+            result = subprocess.run(['ip', '-o', 'link', 'show'], capture_output=True, text=True,
+                                    timeout=10, shell=False)
+            for line in result.stdout.splitlines():
+                match = re.match(r'^\d+:\s+([^:@\s]+)', line.strip())
                 if match:
-                    interface = match.group(1)
-                    # Skip loopback and virtual interfaces
-                    if interface not in ['lo', 'docker0'] and not interface.startswith('veth'):
-                        interfaces.append(interface)
-
-            return interfaces
+                    names.append(match.group(1))
         except Exception as e:
-            logger.error(f"Error getting network interfaces: {e}")
-            return ['eth0', 'wlan0']  # fallback defaults
+            logger.debug(f"`ip link show` failed ({e}); reading /proc/net/dev instead")
+        if not names:
+            try:
+                with open('/proc/net/dev') as f:
+                    names = [ln.split(':')[0].strip() for ln in f.readlines()[2:] if ':' in ln]
+            except Exception as e:
+                logger.error(f"Cannot enumerate network interfaces: {e}")
+        return [n for n in names if self.is_physical_interface(n)]
+
+    @staticmethod
+    def read_proc_net_dev(text_):
+        """Parse /proc/net/dev content -> {interface: counters}."""
+        stats = {}
+        for line in text_.splitlines()[2:]:
+            if ':' not in line:
+                continue
+            name, rest = line.split(':', 1)
+            parts = rest.split()
+            if len(parts) < 16:
+                continue
+            stats[name.strip()] = {
+                'rx_bytes': int(parts[0]), 'rx_packets': int(parts[1]),
+                'tx_bytes': int(parts[8]), 'tx_packets': int(parts[9]),
+            }
+        return stats
 
     def get_interface_stats(self, interface):
-        """Get interface statistics from /proc/net/dev"""
+        """Counters for one interface right now, or None."""
         try:
-            with open('/proc/net/dev', 'r') as f:
-                lines = f.readlines()
-
-            for line in lines:
-                if interface + ':' in line:
-                    # Parse the stats line
-                    # Format: interface: bytes packets errs drop fifo frame compressed multicast
-                    parts = line.split()
-                    if len(parts) >= 17:
-                        interface_name = parts[0].rstrip(':')
-                        rx_bytes = int(parts[1])
-                        rx_packets = int(parts[2])
-                        tx_bytes = int(parts[9])
-                        tx_packets = int(parts[10])
-
-                        return {
-                            'interface': interface_name,
-                            'rx_bytes': rx_bytes,
-                            'rx_packets': rx_packets,
-                            'tx_bytes': tx_bytes,
-                            'tx_packets': tx_packets,
-                            'timestamp': datetime.utcnow()
-                        }
-
-            return None
+            with open('/proc/net/dev') as f:
+                stats = self.read_proc_net_dev(f.read())
         except Exception as e:
-            logger.error(f"Error reading interface stats for {interface}: {e}")
+            logger.error(f"Error reading /proc/net/dev: {e}")
             return None
-
-    def calculate_bandwidth(self, current_stats, previous_stats):
-        """Calculate bandwidth from interface statistics"""
-        if not previous_stats:
+        counters = stats.get(interface)
+        if counters is None:
             return None
+        return {'interface': interface, 'timestamp': datetime.utcnow(), **counters}
 
-        try:
-            time_diff = (current_stats['timestamp'] - previous_stats['timestamp']).total_seconds()
-            if time_diff <= 0:
-                return None
-
-            rx_bytes_diff = current_stats['rx_bytes'] - previous_stats['rx_bytes']
-            tx_bytes_diff = current_stats['tx_bytes'] - previous_stats['tx_bytes']
-            rx_packets_diff = current_stats['rx_packets'] - previous_stats['rx_packets']
-            tx_packets_diff = current_stats['tx_packets'] - previous_stats['tx_packets']
-
-            # Calculate bandwidth in Mbps (bits per second / 1,000,000)
-            rx_mbps = (rx_bytes_diff * 8) / (time_diff * 1_000_000)
-            tx_mbps = (tx_bytes_diff * 8) / (time_diff * 1_000_000)
-
-            return {
-                'bytes_in': rx_bytes_diff,
-                'bytes_out': tx_bytes_diff,
-                'packets_in': rx_packets_diff,
-                'packets_out': tx_packets_diff,
-                'bandwidth_in_mbps': max(0, rx_mbps),
-                'bandwidth_out_mbps': max(0, tx_mbps),
-                'time_period': time_diff
-            }
-        except Exception as e:
-            logger.error(f"Error calculating bandwidth: {e}")
+    @staticmethod
+    def calculate_bandwidth(current, previous):
+        """Difference two samples into a throughput dict, or None if not computable."""
+        if not previous:
             return None
+        seconds = (current['timestamp'] - previous['timestamp']).total_seconds()
+        if seconds <= 0:
+            return None
+        rx = current['rx_bytes'] - previous['rx_bytes']
+        tx = current['tx_bytes'] - previous['tx_bytes']
+        if rx < 0 or tx < 0:      # counter reset (interface bounced)
+            return None
+        return {
+            'interval_seconds': seconds,
+            'bytes_in': rx,
+            'bytes_out': tx,
+            'packets_in': max(0, current['rx_packets'] - previous['rx_packets']),
+            'packets_out': max(0, current['tx_packets'] - previous['tx_packets']),
+            'bandwidth_in_mbps': (rx * 8) / (seconds * 1_000_000),
+            'bandwidth_out_mbps': (tx * 8) / (seconds * 1_000_000),
+        }
 
-    def get_arp_device_map(self):
-        """Get mapping of MAC addresses to devices from ARP table"""
-        device_map = {}
-        try:
-            # Get ARP table
-            result = subprocess.run(['arp', '-a'], capture_output=True, text=True, timeout=10, shell=False)
-            arp_output = result.stdout
+    def sample_once(self, interfaces):
+        """Take one sample of every interface and persist the deltas. Returns rows written."""
+        written = 0
+        for name in interfaces:
+            current = self.get_interface_stats(name)
+            if not current:
+                continue
+            delta = self.calculate_bandwidth(current, self.interface_stats.get(name))
+            self.interface_stats[name] = current
+            if not delta:
+                continue
+            db.session.add(InterfaceBandwidth(
+                interface=name,
+                timestamp=current['timestamp'],
+                interval_seconds=delta['interval_seconds'],
+                bytes_in=delta['bytes_in'],
+                bytes_out=delta['bytes_out'],
+                packets_in=delta['packets_in'],
+                packets_out=delta['packets_out'],
+                mbps_in=delta['bandwidth_in_mbps'],
+                mbps_out=delta['bandwidth_out_mbps'],
+            ))
+            written += 1
+        if written:
+            try:
+                db.session.commit()
+            except Exception as e:
+                logger.error(f"Error storing interface bandwidth: {e}")
+                db.session.rollback()
+                return 0
+        return written
 
-            # Parse ARP table output
-            lines = arp_output.strip().split('\n')
-            for line in lines:
-                # Match patterns like: hostname (192.168.1.100) at aa:bb:cc:dd:ee:ff [ether] on eth0
-                ip_match = re.search(r'\((\d+\.\d+\.\d+\.\d+)\)', line)
-                mac_match = re.search(r'([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}', line)
-
-                if ip_match and mac_match:
-                    ip = ip_match.group(1)
-                    mac = mac_match.group(0).lower().replace('-', ':')
-                    device_map[mac] = ip
-
-        except Exception as e:
-            logger.error(f"Error parsing ARP table: {e}")
-
-        return device_map
-
-    def estimate_device_bandwidth(self, total_bandwidth, devices):
-        """Estimate per-device bandwidth based on device activity patterns"""
-        if not devices:
-            return {}
-
-        device_bandwidth = {}
-
-        # Simple estimation: distribute bandwidth evenly among active devices
-        # In a real implementation, you might use more sophisticated methods like:
-        # - SNMP queries to router
-        # - Packet inspection with netstat/ss
-        # - Router API integration
-        # - Network flow analysis
-
-        active_device_count = len(devices)
-        if active_device_count > 0:
-            avg_in_mbps = total_bandwidth['bandwidth_in_mbps'] / active_device_count
-            avg_out_mbps = total_bandwidth['bandwidth_out_mbps'] / active_device_count
-
-            for device in devices:
-                # Add some randomization to make it more realistic
-                import random
-                variation = random.uniform(0.1, 2.0)  # 10% to 200% of average
-
-                device_bandwidth[device.id] = {
-                    'device_id': device.id,
-                    'bytes_in': int(total_bandwidth['bytes_in'] * variation / active_device_count),
-                    'bytes_out': int(total_bandwidth['bytes_out'] * variation / active_device_count),
-                    'packets_in': int(total_bandwidth['packets_in'] * variation / active_device_count),
-                    'packets_out': int(total_bandwidth['packets_out'] * variation / active_device_count),
-                    'bandwidth_in_mbps': avg_in_mbps * variation,
-                    'bandwidth_out_mbps': avg_out_mbps * variation
-                }
-
-        return device_bandwidth
-
+    # ---- loop ----------------------------------------------------------------
     def monitor_bandwidth(self):
-        """Monitor bandwidth usage and store in database"""
-        logger.info("Starting bandwidth monitoring")
-
-        # Get network interfaces
+        logger.info("Starting interface bandwidth monitoring")
         interfaces = self.get_network_interfaces()
-        logger.info(f"Monitoring interfaces: {interfaces}")
-
         if not interfaces:
-            logger.warning("No network interfaces found for monitoring")
+            logger.warning("No physical network interfaces found; bandwidth monitoring disabled")
             return
-
-        # Use the first available interface (typically eth0 or wlan0)
-        primary_interface = interfaces[0]
-        logger.info(f"Using primary interface: {primary_interface}")
+        logger.info(f"Sampling interfaces: {interfaces}")
 
         from core.health import record_heartbeat
         while not self._stop_event.is_set():
             record_heartbeat('BandwidthMonitor')
-            # A fresh app context per iteration releases the session (and its
-            # SQLite read snapshot) between cycles so WAL checkpoints can complete.
+            # One app context per iteration so the session (and its SQLite read
+            # snapshot) is released between samples; a pinned context blocked
+            # WAL checkpoints for weeks.
             with self.app.app_context():
                 try:
-                    # Get current interface stats
-                    current_stats = self.get_interface_stats(primary_interface)
-
-                    if current_stats:
-                        # Calculate bandwidth if we have previous stats
-                        previous_stats = self.interface_stats.get(primary_interface)
-                        bandwidth_data = self.calculate_bandwidth(current_stats, previous_stats)
-
-                        if bandwidth_data:
-                            # Get active devices
-                            devices = Device.query.filter_by(is_monitored=True).all()
-
-                            # Estimate per-device bandwidth
-                            device_bandwidth_map = self.estimate_device_bandwidth(bandwidth_data, devices)
-
-                            # Store bandwidth data for each device
-                            for device in devices:
-                                if device.id in device_bandwidth_map:
-                                    device_bw = device_bandwidth_map[device.id]
-
-                                    bandwidth_record = BandwidthData(
-                                        device_id=device.id,
-                                        bytes_in=device_bw['bytes_in'],
-                                        bytes_out=device_bw['bytes_out'],
-                                        packets_in=device_bw['packets_in'],
-                                        packets_out=device_bw['packets_out'],
-                                        bandwidth_in_mbps=device_bw['bandwidth_in_mbps'],
-                                        bandwidth_out_mbps=device_bw['bandwidth_out_mbps']
-                                    )
-
-                                    db.session.add(bandwidth_record)
-
-                            try:
-                                db.session.commit()
-                                logger.debug(f"Stored bandwidth data for {len(device_bandwidth_map)} devices")
-                            except Exception as e:
-                                logger.error(f"Error storing bandwidth data: {e}")
-                                db.session.rollback()
-
-                        # Store current stats for next iteration
-                        self.interface_stats[primary_interface] = current_stats
-
-                    # Wait for next monitoring interval
-                    bandwidth_interval = int(self.get_config_value('bandwidth_interval', '60'))  # Default 60 seconds
-                    self._stop_event.wait(bandwidth_interval)
-
+                    self.sample_once(interfaces)
+                    try:
+                        interval = int(self.get_config_value('bandwidth_interval', Config.BANDWIDTH_INTERVAL))
+                    except (TypeError, ValueError):
+                        interval = Config.BANDWIDTH_INTERVAL
                 except Exception as e:
                     logger.error(f"Error in bandwidth monitoring loop: {e}")
-                    time.sleep(60)  # Wait before retrying
-
+                    interval = 60
+            self._stop_event.wait(max(5, interval))
         logger.info("Bandwidth monitoring stopped")
 
     def start_monitoring(self):
-        """Start bandwidth monitoring in background thread"""
         if self.is_running:
             logger.warning("Bandwidth monitoring is already running")
             return
-
         self.is_running = True
         self._stop_event.clear()
-        # Match the outer wrapper thread's name so the /api/system/health
-        # watchdog sees this as the BandwidthMonitor thread. (app.py spawns a
-        # named outer thread that calls start_monitoring() and exits.)
-        self.monitor_thread = threading.Thread(target=self.monitor_bandwidth, name='BandwidthMonitor')
-        self.monitor_thread.daemon = True
+        # Same name as the outer wrapper thread so the /api/system/health watchdog
+        # sees this as the BandwidthMonitor thread.
+        self.monitor_thread = threading.Thread(target=self.monitor_bandwidth, name='BandwidthMonitor', daemon=True)
         self.monitor_thread.start()
         logger.info("Bandwidth monitoring started")
 
     def stop_monitoring(self):
-        """Stop bandwidth monitoring"""
-        if not self.is_running:
-            return
-
-        logger.info("Stopping bandwidth monitoring")
-        self._stop_event.set()
         self.is_running = False
-
-        if self.monitor_thread:
+        self._stop_event.set()
+        if self.monitor_thread and self.monitor_thread.is_alive():
             self.monitor_thread.join(timeout=10)
-            self.monitor_thread = None
+        logger.info("Bandwidth monitoring stop requested")
 
-    def get_network_summary(self):
-        """Get network-wide bandwidth summary"""
-        try:
-            with self.app.app_context():
-                # Get total bandwidth from last 5 minutes
-                cutoff = datetime.utcnow() - timedelta(minutes=5)
-
-                result = db.session.execute(
-                    db.text("""
-                        SELECT
-                            SUM(bandwidth_in_mbps) as total_in_mbps,
-                            SUM(bandwidth_out_mbps) as total_out_mbps,
-                            COUNT(DISTINCT device_id) as active_devices
-                        FROM bandwidth_data
-                        WHERE timestamp >= :cutoff
-                    """),
-                    {'cutoff': cutoff}
-                ).fetchone()
-
-                if result:
-                    return {
-                        'total_in_mbps': round(result[0] or 0, 2),
-                        'total_out_mbps': round(result[1] or 0, 2),
-                        'total_mbps': round((result[0] or 0) + (result[1] or 0), 2),
-                        'active_devices': result[2] or 0,
-                        'timestamp': datetime.utcnow()
-                    }
-
-                return None
-        except Exception as e:
-            logger.error(f"Error getting network summary: {e}")
-            return None
-
-    def reload_config(self):
-        """Reload configuration for hot-reload support"""
-        try:
-            logger.info("Reloading BandwidthMonitor configuration")
-            # Configuration is loaded dynamically via get_config_value calls
-            # Log current bandwidth monitoring configuration
-            if self.app:
-                with self.app.app_context():
-                    bandwidth_interval = Configuration.get_value('bandwidth_interval', '60')
-                    logger.info(f"BandwidthMonitor config reloaded - interval: {bandwidth_interval}s")
-        except Exception as e:
-            logger.error(f"Error reloading BandwidthMonitor configuration: {e}")
+    def get_current_bandwidth_summary(self):
+        """Most recent sample per interface (for API/UI)."""
+        summary = {}
+        for name, sample in self.interface_stats.items():
+            summary[name] = {'timestamp': sample['timestamp'].isoformat() + 'Z',
+                             'rx_bytes': sample['rx_bytes'], 'tx_bytes': sample['tx_bytes']}
+        return summary

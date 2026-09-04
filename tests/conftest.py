@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from app import create_app
 from models import (
     db, Device, MonitoringData, PerformanceMetrics, Alert, Configuration,
-    DeviceIpHistory, ConfigurationHistory, BandwidthData, NotificationHistory,
+    DeviceIpHistory, ConfigurationHistory, BandwidthData, InterfaceBandwidth, NotificationHistory,
     NotificationReceipt, AlertSuppression, AutomationRule, RuleExecution,
     EscalationRule, EscalationExecution, EscalationActionLog, SecurityScan,
     SecurityVulnerability, SecurityEvent, ComplianceResult, DeviceOSInfo,
@@ -122,6 +122,7 @@ def db_session(app):
         db.session.query(Alert).delete()
         db.session.query(MonitoringData).delete()
         db.session.query(PerformanceMetrics).delete()
+        db.session.query(InterfaceBandwidth).delete()
         db.session.query(Device).delete()
         db.session.query(Configuration).delete()
         db.session.commit()
@@ -133,6 +134,7 @@ def db_session(app):
             db.session.query(Alert).delete()
             db.session.query(MonitoringData).delete()
             db.session.query(PerformanceMetrics).delete()
+            db.session.query(InterfaceBandwidth).delete()
             db.session.query(Device).delete()
             db.session.query(Configuration).delete()
             db.session.commit()

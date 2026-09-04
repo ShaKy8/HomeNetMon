@@ -1,7 +1,7 @@
 from flask import Blueprint, request, jsonify
 from datetime import datetime, timedelta
 from sqlalchemy import func, desc
-from models import db, Device, PerformanceMetrics, MonitoringData, BandwidthData
+from models import db, Device, PerformanceMetrics, MonitoringData
 from api.rate_limited_endpoints import create_endpoint_limiter
 
 performance_bp = Blueprint('performance', __name__)

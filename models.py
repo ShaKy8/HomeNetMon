@@ -170,60 +170,6 @@ class Device(db.Model):
 
         return round(uptime_percentage, 2)
 
-    def get_current_bandwidth(self):
-        """Get current bandwidth usage for this device"""
-        try:
-            latest_bandwidth = db.session.query(db.func.max(db.table('bandwidth_data').c.id))\
-                                        .filter(db.table('bandwidth_data').c.device_id == self.id)\
-                                        .scalar()
-            if latest_bandwidth:
-                bandwidth_data = db.session.execute(
-                    db.text("SELECT bandwidth_in_mbps, bandwidth_out_mbps, timestamp FROM bandwidth_data WHERE id = :id"),
-                    {'id': latest_bandwidth}
-                ).fetchone()
-                if bandwidth_data:
-                    return {
-                        'in_mbps': bandwidth_data[0],
-                        'out_mbps': bandwidth_data[1],
-                        'total_mbps': bandwidth_data[0] + bandwidth_data[1],
-                        'timestamp': bandwidth_data[2]
-                    }
-        except Exception:
-            # Return None if bandwidth data is not available
-            pass
-        return None
-
-    def get_bandwidth_usage_24h(self):
-        """Get 24-hour bandwidth usage statistics"""
-        try:
-            cutoff = datetime.utcnow() - timedelta(hours=24)
-            result = db.session.execute(
-                db.text("""
-                    SELECT
-                        SUM(bytes_in) as total_bytes_in,
-                        SUM(bytes_out) as total_bytes_out,
-                        AVG(bandwidth_in_mbps) as avg_bandwidth_in,
-                        AVG(bandwidth_out_mbps) as avg_bandwidth_out,
-                        MAX(bandwidth_in_mbps + bandwidth_out_mbps) as peak_bandwidth
-                    FROM bandwidth_data
-                    WHERE device_id = :device_id AND timestamp >= :cutoff
-                """),
-                {'device_id': self.id, 'cutoff': cutoff}
-            ).fetchone()
-
-            if result and result[0] is not None:
-                return {
-                    'total_gb_in': round(result[0] / (1024**3), 2) if result[0] else 0,
-                    'total_gb_out': round(result[1] / (1024**3), 2) if result[1] else 0,
-                    'avg_mbps_in': round(result[2], 2) if result[2] else 0,
-                    'avg_mbps_out': round(result[3], 2) if result[3] else 0,
-                    'peak_mbps': round(result[4], 2) if result[4] else 0
-                }
-        except Exception:
-            # Return None if bandwidth data is not available
-            pass
-        return None
-
     @cached_property(ttl=120, key_func=lambda self: f"device_{self.id}_health_score")
     def current_health_score(self):
         """Get the latest health score for this device"""
@@ -468,8 +414,10 @@ class Device(db.Model):
             'is_monitored': self.is_monitored,
             'status': self.status,
             'uptime_percentage': self.uptime_percentage(),
-            'current_bandwidth': self.get_current_bandwidth(),
-            'bandwidth_usage_24h': self.get_bandwidth_usage_24h(),
+            # Per-device bandwidth cannot be measured from the host; keys kept for
+            # API compatibility until the serializer contract is revised.
+            'current_bandwidth': None,
+            'bandwidth_usage_24h': None,
             'health_score': self.current_health_score,
             'performance_grade': self.performance_grade,
             'performance_status': self.performance_status,
@@ -1015,6 +963,48 @@ class BandwidthData(db.Model):
             'total_mbps': self.bandwidth_in_mbps + self.bandwidth_out_mbps
         }
 
+
+
+class InterfaceBandwidth(db.Model):
+    """Throughput of one host network interface over one sampling interval.
+
+    This is the only bandwidth series HomeNetMon can measure honestly from the
+    host it runs on: /proc/net/dev byte counters, differenced per interval.
+    Per-device accounting would require router/SNMP integration.
+    """
+    __tablename__ = 'interface_bandwidth'
+    __table_args__ = (
+        db.Index('idx_interface_bandwidth_iface_ts', 'interface', 'timestamp'),
+    )
+
+    id = db.Column(db.Integer, primary_key=True)
+    interface = db.Column(db.String(32), nullable=False, index=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    interval_seconds = db.Column(db.Float, nullable=False)
+    bytes_in = db.Column(db.BigInteger, default=0)
+    bytes_out = db.Column(db.BigInteger, default=0)
+    packets_in = db.Column(db.Integer, default=0)
+    packets_out = db.Column(db.Integer, default=0)
+    mbps_in = db.Column(db.Float, default=0.0)
+    mbps_out = db.Column(db.Float, default=0.0)
+
+    def __repr__(self):
+        return f'<InterfaceBandwidth {self.interface} at {self.timestamp}>'
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'interface': self.interface,
+            'timestamp': self.timestamp.isoformat() + 'Z',
+            'interval_seconds': self.interval_seconds,
+            'bytes_in': self.bytes_in,
+            'bytes_out': self.bytes_out,
+            'packets_in': self.packets_in,
+            'packets_out': self.packets_out,
+            'mbps_in': self.mbps_in,
+            'mbps_out': self.mbps_out,
+            'total_mbps': (self.mbps_in or 0) + (self.mbps_out or 0),
+        }
 
 
 class NotificationHistory(db.Model):
@@ -1642,98 +1632,78 @@ class PerformanceMetrics(db.Model):
             return 'critical'
 
     @classmethod
-    def calculate_health_score(cls, response_metrics, availability_metrics, bandwidth_metrics, quality_metrics):
-        """Calculate overall health score from component metrics"""
+    def calculate_health_score(cls, response_metrics, availability_metrics, bandwidth_metrics=None, quality_metrics=None):
+        """Calculate an overall 0-100 health score from ping-derived metrics.
+
+        Returns None when there were no checks in the window: a device with no
+        ping data has no health, and scoring it produced a constant that fired
+        false alerts. `bandwidth_metrics` is accepted for call compatibility and
+        ignored -- per-device bandwidth is not measurable from the host.
+        """
         try:
-            # Weights for different performance aspects
+            quality_metrics = quality_metrics or {}
+            if not (availability_metrics or {}).get('total_checks'):
+                return None
+
             weights = {
-                'responsiveness': 0.30,  # 30% - Response time performance
-                'reliability': 0.35,     # 35% - Uptime and availability
-                'efficiency': 0.20,      # 20% - Bandwidth utilization
-                'stability': 0.15        # 15% - Connection stability/jitter
+                'responsiveness': 0.35,  # response time
+                'reliability': 0.45,     # uptime within the window
+                'stability': 0.20,       # jitter + packet loss
             }
 
-            # Calculate responsiveness score (lower response time = higher score)
-            avg_response = response_metrics.get('avg_ms', 0) or 0
-            if avg_response <= 10:
+            avg_response = response_metrics.get('avg_ms')
+            successful = availability_metrics.get('successful_checks')
+            if avg_response is None or successful == 0:
+                responsiveness = 0          # nothing answered: no responsiveness credit
+            elif avg_response <= 10:
                 responsiveness = 100
             elif avg_response <= 50:
-                responsiveness = 90 - ((avg_response - 10) / 40 * 20)  # 90-70
+                responsiveness = 90 - ((avg_response - 10) / 40 * 20)   # 90-70
             elif avg_response <= 100:
-                responsiveness = 70 - ((avg_response - 50) / 50 * 20)  # 70-50
+                responsiveness = 70 - ((avg_response - 50) / 50 * 20)   # 70-50
             elif avg_response <= 500:
-                responsiveness = 50 - ((avg_response - 100) / 400 * 30)  # 50-20
+                responsiveness = 50 - ((avg_response - 100) / 400 * 30) # 50-20
             else:
-                responsiveness = max(0, 20 - ((avg_response - 500) / 1000 * 20))  # 20-0
+                responsiveness = max(0, 20 - ((avg_response - 500) / 1000 * 20))
 
-            # Calculate reliability score (uptime percentage)
-            uptime = availability_metrics.get('uptime_percentage', 0) or 0
-            reliability = uptime  # Direct mapping
+            reliability = availability_metrics.get('uptime_percentage', 0) or 0
 
-            # Calculate efficiency score (bandwidth utilization relative to capacity)
-            # This is a simplified calculation - in practice would consider device capacity
-            avg_total = ((bandwidth_metrics.get('avg_in_mbps', 0) or 0) +
-                        (bandwidth_metrics.get('avg_out_mbps', 0) or 0))
-            if avg_total <= 1:  # Low utilization
-                efficiency = 90 + (avg_total * 10)  # 90-100
-            elif avg_total <= 10:  # Moderate utilization
-                efficiency = 80 + ((avg_total - 1) / 9 * 10)  # 80-90
-            elif avg_total <= 50:  # High utilization
-                efficiency = 60 + ((avg_total - 10) / 40 * 20)  # 60-80
-            else:  # Very high utilization
-                efficiency = max(0, 60 - ((avg_total - 50) / 50 * 60))  # 60-0
-
-            # Calculate stability score (lower jitter/packet loss = higher score)
             jitter = quality_metrics.get('jitter_ms', 0) or 0
             packet_loss = quality_metrics.get('packet_loss_percentage', 0) or 0
-
-            # Jitter component (0-50 points)
             if jitter <= 1:
                 jitter_score = 50
             elif jitter <= 5:
-                jitter_score = 45 - ((jitter - 1) / 4 * 15)  # 45-30
+                jitter_score = 45 - ((jitter - 1) / 4 * 15)
             elif jitter <= 20:
-                jitter_score = 30 - ((jitter - 5) / 15 * 20)  # 30-10
+                jitter_score = 30 - ((jitter - 5) / 15 * 20)
             else:
-                jitter_score = max(0, 10 - ((jitter - 20) / 20 * 10))  # 10-0
-
-            # Packet loss component (0-50 points)
+                jitter_score = max(0, 10 - ((jitter - 20) / 20 * 10))
             if packet_loss <= 0.1:
                 loss_score = 50
             elif packet_loss <= 1:
-                loss_score = 45 - ((packet_loss - 0.1) / 0.9 * 15)  # 45-30
+                loss_score = 45 - ((packet_loss - 0.1) / 0.9 * 15)
             elif packet_loss <= 5:
-                loss_score = 30 - ((packet_loss - 1) / 4 * 20)  # 30-10
+                loss_score = 30 - ((packet_loss - 1) / 4 * 20)
             else:
-                loss_score = max(0, 10 - ((packet_loss - 5) / 5 * 10))  # 10-0
-
+                loss_score = max(0, 10 - ((packet_loss - 5) / 5 * 10))
             stability = jitter_score + loss_score
 
-            # Calculate weighted overall score
-            overall_score = (
-                responsiveness * weights['responsiveness'] +
-                reliability * weights['reliability'] +
-                efficiency * weights['efficiency'] +
-                stability * weights['stability']
-            )
+            overall = (responsiveness * weights['responsiveness']
+                       + reliability * weights['reliability']
+                       + stability * weights['stability'])
 
+            clamp = lambda v: round(min(100, max(0, v)), 2)
             return {
-                'overall_health': round(min(100, max(0, overall_score)), 2),
-                'responsiveness': round(min(100, max(0, responsiveness)), 2),
-                'reliability': round(min(100, max(0, reliability)), 2),
-                'efficiency': round(min(100, max(0, efficiency)), 2),
-                'stability': round(min(100, max(0, stability)), 2)
+                'overall_health': clamp(overall),
+                'responsiveness': clamp(responsiveness),
+                'reliability': clamp(reliability),
+                'efficiency': None,
+                'stability': clamp(stability),
             }
 
         except Exception as e:
-            print(f"Error calculating health score: {e}")
-            return {
-                'overall_health': 0,
-                'responsiveness': 0,
-                'reliability': 0,
-                'efficiency': 0,
-                'stability': 0
-            }
+            logging.getLogger(__name__).error(f"Error calculating health score: {e}")
+            return None
 
 # Retention (deleting old rows from the time-series tables) is handled by
 # services/retention.py on a schedule -- never from insert hooks.
