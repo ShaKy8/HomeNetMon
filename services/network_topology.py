@@ -31,17 +31,6 @@ class NetworkTopologyEngine:
 
     def __init__(self, app=None):
         self.app = app
-
-    def _app_context(self):
-        """App context from the attached app, or the current request's app.
-
-        The singleton in api/analytics.py is created at import time with app=None,
-        so every request-driven call failed with 'NoneType has no app_context'."""
-        app = self.app
-        if app is None:
-            from flask import current_app
-            app = current_app._get_current_object()
-        return app.app_context()
         self.device_analytics = DeviceBehaviorAnalytics()
 
         # Topology data structures
@@ -73,6 +62,17 @@ class NetworkTopologyEngine:
             'highest_traffic': True,
             'route_analysis': True
         }
+
+    def _app_context(self):
+        """App context from the attached app, or the current request's app.
+
+        The singleton in api/analytics.py is created at import time with app=None,
+        so every request-driven call failed with 'NoneType has no app_context'."""
+        app = self.app
+        if app is None:
+            from flask import current_app
+            app = current_app._get_current_object()
+        return app.app_context()
 
     def discover_network_topology(self, force_refresh: bool = False) -> Dict[str, Any]:
         """Perform comprehensive network topology discovery"""

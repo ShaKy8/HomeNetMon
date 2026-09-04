@@ -2,6 +2,7 @@ import csv
 import io
 import logging
 
+import ipaddress
 import ping3
 from flask import Blueprint, current_app, jsonify, request, Response
 from datetime import datetime, timedelta
@@ -18,6 +19,16 @@ from sqlalchemy import case
 logger = logging.getLogger(__name__)
 
 devices_bp = Blueprint('devices', __name__)
+
+
+def _ip_sort_key(device_dict):
+    """Order by numeric IP; devices without an address (reassigned by DHCP) sort last."""
+    ip = device_dict.get('ip_address')
+    try:
+        return (0, int(ipaddress.ip_address(ip)))
+    except (ValueError, TypeError):
+        return (1, 0)
+
 
 @devices_bp.route('', methods=['GET'])
 @create_endpoint_limiter('relaxed')
@@ -69,10 +80,10 @@ def get_devices():
         # Sort by IP address (cached data might not be sorted)
         try:
             import ipaddress
-            filtered_devices.sort(key=lambda x: ipaddress.ip_address(x['ip_address']))
+            filtered_devices.sort(key=_ip_sort_key)
         except:
             # Fallback to string sorting if IP parsing fails
-            filtered_devices.sort(key=lambda x: x['ip_address'])
+            filtered_devices.sort(key=lambda x: (x.get('ip_address') is None, x.get('ip_address') or ''))
 
         # Only apply pagination if explicitly requested
         if 'page' in request.args or 'per_page' in request.args:
@@ -773,7 +784,7 @@ def get_device_groups():
 
         return jsonify({
             'success': True,
-            'groups': sorted(group_list)
+            'groups': sorted(group_list, key=lambda v: (v is None, v or ''))
         })
 
     except Exception as e:
@@ -793,7 +804,7 @@ def get_device_types():
 
         return jsonify({
             'success': True,
-            'types': sorted(type_list)
+            'types': sorted(type_list, key=lambda v: (v is None, v or ''))
         })
 
     except Exception as e:

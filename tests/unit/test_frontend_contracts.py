@@ -172,3 +172,24 @@ class TestEndpointsFixedBySweep:
         with app.test_request_context('/'):
             with engine._app_context():
                 pass  # must not raise 'NoneType has no app_context'
+
+
+class TestLiveRegressions:
+
+    def test_device_list_tolerates_devices_without_an_ip(self, client, db_session, device):
+        """A stale device whose address was reassigned has ip_address NULL; the list must still sort."""
+        ghost = Device(ip_address=None, mac_address='00:ab:00:00:00:99', hostname='ghost', device_type='unknown',
+                       is_monitored=False, last_seen=datetime(2026, 1, 1))
+        db_session.add(ghost)
+        db_session.commit()
+        from services.query_cache import invalidate_device_cache
+        invalidate_device_cache()
+        r = client.get('/api/devices')
+        assert r.status_code == 200, r.get_json()
+        ips = [d['ip_address'] for d in r.get_json()['devices']]
+        assert None in ips and ips[-1] is None
+
+    def test_topology_engine_constructor_is_complete(self):
+        from services.network_topology import NetworkTopologyEngine
+        engine = NetworkTopologyEngine()
+        assert hasattr(engine, 'discovery_lock') and hasattr(engine, 'discovery_methods')
