@@ -132,6 +132,7 @@ class TestRetiredPagesAndConsolidation:
     def test_network_map_uses_topology_engine(self, client):
         html = client.get('/network-map').get_data(as_text=True)
         assert '/api/analytics/topology/visualization' in html and 'topology-test' not in html
+        assert 'data.visualization || data' in html   # payload is wrapped under `visualization`
         assert html.count('cdn.jsdelivr.net/npm/d3@7') == 1
 
     def test_manifest_is_a_web_app_manifest(self, client):

@@ -1783,9 +1783,11 @@ class NetworkTopology {
     }
 
     processData(data) {
-        // Store original data - fix field names to match API response
-        this.allNodesData = data.nodes || [];
-        this.allLinksData = data.edges || [];
+        // /api/analytics/topology/visualization wraps its payload: {timestamp, visualization: {nodes, edges, clusters, ...}}
+        const viz = data.visualization || data;
+        this.allNodesData = viz.nodes || [];
+        this.allLinksData = viz.edges || [];
+        this.clusters = viz.clusters || [];
 
         // Process nodes - map fields to match topology API response
         // /api/analytics/topology/visualization: nodes carry node_type, a size class
