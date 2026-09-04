@@ -618,6 +618,9 @@ class NetworkScanner:
                                 existing_device_with_ip.ip_address = None
                                 existing_device_with_ip.updated_at = datetime.utcnow()
                                 existing_device_with_ip.is_monitored = False  # no address to ping until seen again
+                                # Flush the clear before the moved device takes the address: a single
+                                # flush orders UPDATEs by primary key, which tripped the UNIQUE index.
+                                db.session.flush()
                             else:
                                 # Both devices have the same MAC - this shouldn't happen, but skip update
                                 logger.error(f"Two devices with same MAC {mac} and IP {ip} - skipping update")
@@ -659,8 +662,14 @@ class NetworkScanner:
             if not device:
                 device = Device.query.filter_by(ip_address=ip).first()
 
-                # If we found a device by IP but now have a MAC, update it
-                if device and mac and not device.mac_address:
+                if device and mac and device.mac_address and device.mac_address != mac:
+                    # Different hardware on a reused address (DHCP): this is a NEW device.
+                    # Treating it as the old record merged unrelated devices and resurrected
+                    # archived ones. The creation path below clears the stale device's IP.
+                    logger.info(f"IP {ip} now belongs to MAC {mac} (was {device.mac_address}); treating as new device")
+                    device = None
+                elif device and mac and not device.mac_address:
+                    # If we found a device by IP but now have a MAC, update it
                     device.mac_address = mac
                     logger.info(f"Added MAC address {mac} to existing device {device.display_name}")
 
@@ -746,6 +755,7 @@ class NetworkScanner:
                         existing_ip_device.ip_address = None
                         existing_ip_device.updated_at = datetime.utcnow()
                         existing_ip_device.is_monitored = False  # no address to ping until seen again
+                        db.session.flush()  # see the MAC-path comment above: clear before the INSERT takes the address
                     else:
                         # Both have same IP/MAC - this is a duplicate, skip creation
                         logger.error(f"Duplicate device detected: IP {ip}, MAC {mac} - skipping creation")

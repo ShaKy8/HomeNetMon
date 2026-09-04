@@ -109,3 +109,39 @@ class TestNetworkRangeFilter:
     def test_invalid_range_leaves_list_untouched(self):
         found = [{'ip': '10.0.0.1', 'mac': 'aa:bb:cc:dd:ee:01'}]
         assert NetworkScanner.filter_to_network_range(found, 'garbage') == found
+
+
+class TestIpConflictResolution:
+    """DHCP hands a stale device's address to another device (both paths must not raise)."""
+
+    @pytest.fixture
+    def scanner(self, app):
+        s = NetworkScanner(app=app)
+        s._new_devices_found = []
+        return s
+
+    def _seen(self, scanner, ip, mac):
+        with patch.object(scanner, 'resolve_hostname', return_value=None), \
+             patch.object(scanner, 'get_mac_vendor', return_value=None), \
+             patch.object(scanner, 'get_config_value', side_effect=lambda k, d: str(d)):
+            scanner.process_discovered_device({'ip': ip, 'mac': mac, 'source': 'arp'})
+            db.session.commit()
+
+    def test_known_device_moves_onto_stale_devices_ip(self, app, db_session, scanner):
+        old = datetime.utcnow() - timedelta(days=3)
+        stale_id = _device(db_session, '192.168.1.40', '00:ee:00:00:00:01', old)      # lower id
+        mover_id = _device(db_session, '192.168.1.41', '00:ee:00:00:00:02', old)      # higher id
+        with app.app_context():
+            self._seen(scanner, '192.168.1.40', '00:ee:00:00:00:02')   # mover now holds .40
+            stale, mover = Device.query.get(stale_id), Device.query.get(mover_id)
+            assert mover.ip_address == '192.168.1.40'
+            assert stale.ip_address is None and stale.is_monitored is False
+
+    def test_new_device_appears_on_stale_devices_ip(self, app, db_session, scanner):
+        stale_id = _device(db_session, '192.168.1.42', '00:ee:00:00:00:03', datetime.utcnow() - timedelta(days=3))
+        with app.app_context():
+            self._seen(scanner, '192.168.1.42', '00:ee:00:00:00:04')   # brand-new MAC on .42
+            stale = Device.query.get(stale_id)
+            newcomer = Device.query.filter_by(mac_address='00:ee:00:00:00:04').one()
+            assert newcomer.ip_address == '192.168.1.42' and newcomer.is_monitored is True
+            assert stale.ip_address is None and stale.is_monitored is False

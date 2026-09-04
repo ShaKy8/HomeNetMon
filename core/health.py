@@ -35,6 +35,11 @@ EXPECTED_THREADS: dict[str, int] = {
     'BandwidthMonitor':   300,     # Config.BANDWIDTH_INTERVAL
     'PerformanceMonitor': 300,     # collection_interval default
     'ResourceMonitor':    300,     # _monitor_loop wait
+    'RuleEngine':         30,      # services/rule_engine.py loop wait
+    'ConfigurationService': 30,    # services/configuration_service.py loop wait
+    'EscalationService':  60,      # execution_interval
+    'AnomalyDetection':   300,     # detection_interval (heartbeats even while disabled)
+    'SecurityScanner':    60,      # heartbeats once a minute while sleeping between scans
 }
 
 # A thread is "stale" once its last heartbeat is older than

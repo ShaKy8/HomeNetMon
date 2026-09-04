@@ -710,20 +710,20 @@ class PerformanceMonitor:
 
             severity = severity_map.get(alert_subtype, 'warning')
 
-            # Create alert record
-            alert = Alert(
-                device_id=device.id,
-                alert_type='performance',
-                alert_subtype=alert_subtype,
-                severity=severity,
-                message=message,
-                created_at=datetime.utcnow(),
-                resolved=False,
-                acknowledged=False
-            )
-
-            db.session.add(alert)
-            db.session.commit()
+            # Create through AlertManager so suppression rules, correlation and dedup
+            # apply (this path used to write Alert rows directly and bypass them all).
+            manager = getattr(self.app, 'alert_manager', None) if self.app else None
+            if manager is not None:
+                alert = manager.create_alert(device.id, 'performance', severity, message,
+                                             subtype=alert_subtype, notify=True)
+                if alert is None:
+                    return
+            else:  # no manager attached (tests / standalone use)
+                alert = Alert(device_id=device.id, alert_type='performance', alert_subtype=alert_subtype,
+                              severity=severity, message=message, created_at=datetime.utcnow(),
+                              resolved=False, acknowledged=False)
+                db.session.add(alert)
+                db.session.commit()
 
             logger.warning(f"Performance alert created for {device.display_name}: {message}")
 

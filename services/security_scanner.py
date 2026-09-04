@@ -235,7 +235,13 @@ class NetworkSecurityScanner:
             while self.running:
                 try:
                     self.run_security_scan()
-                    time.sleep(self.scan_interval)
+                    # Sleep in one-minute slices so the watchdog sees a heartbeat and a
+                    # stop request is honoured promptly even with a daily interval.
+                    from core.health import record_heartbeat
+                    deadline = time.time() + self.scan_interval
+                    while self.running and time.time() < deadline:
+                        record_heartbeat('SecurityScanner')
+                        time.sleep(min(60, max(1, deadline - time.time())))
                 except Exception as e:
                     logger.error(f"Error in security scanner loop: {e}")
                     time.sleep(300)  # Wait 5 minutes on error
@@ -389,6 +395,9 @@ class NetworkSecurityScanner:
                         # Analyze results for security issues
                         device_alerts = self.analyze_security_results(device, device_results)
                         security_alerts.extend(device_alerts)
+
+                        # Close alerts for ports that are no longer open
+                        self.resolve_closed_port_alerts(device, device_results)
 
                         # Mark device as completed
                         self._update_scan_progress(
@@ -692,13 +701,50 @@ class NetworkSecurityScanner:
         else:
             return 'low'
 
+    def resolve_closed_port_alerts(self, device: Device, scan_results: List['PortScanResult']) -> int:
+        """Resolve this device's open port-keyed security alerts whose port is no longer open.
+
+        Alerts are keyed by alert_subtype='port_<n>' (see create_security_alert).
+        Returns the number resolved. Runs inside the caller's app context.
+        """
+        try:
+            from models import Alert
+            open_ports = {r.port for r in scan_results if r.state == 'open'}
+            candidates = Alert.query.filter(
+                Alert.device_id == device.id,
+                Alert.alert_type.like('security_%'),
+                Alert.alert_subtype.like('port_%'),
+                Alert.resolved == False,  # SQLAlchemy expression
+            ).all()
+            resolved = 0
+            for alert in candidates:
+                try:
+                    port = int(alert.alert_subtype.split('_', 1)[1])
+                except (ValueError, IndexError):
+                    continue
+                if port not in open_ports:
+                    alert.resolved = True
+                    alert.resolved_at = datetime.utcnow()
+                    resolved += 1
+            if resolved:
+                db.session.commit()
+                logger.info(f"Resolved {resolved} security alert(s) for {device.display_name}: port(s) no longer open")
+            return resolved
+        except Exception as e:
+            logger.error(f"Error resolving closed-port alerts for device {device.id}: {e}")
+            db.session.rollback()
+            return 0
+
     def get_previous_scan_results(self, device_id: int) -> List[Dict]:
-        """Get previous scan results for comparison"""
+        """Open services seen in the previous scan(s) of this device, for change detection."""
         try:
             from models import SecurityScan
 
-            # Get the most recent scan results for this device (last 24 hours)
-            cutoff_time = datetime.utcnow() - timedelta(hours=24)
+            # Look back far enough to include the previous scan at the configured
+            # cadence. The old fixed 24 h window was shorter than the daily interval,
+            # so every open port was "new" on every scan.
+            lookback_seconds = max(24 * 3600, 2 * int(self.scan_interval) + 3600)
+            cutoff_time = datetime.utcnow() - timedelta(seconds=lookback_seconds)
 
             previous_scans = db.session.query(SecurityScan).filter(
                 and_(
@@ -791,8 +837,10 @@ class NetworkSecurityScanner:
                     f"Message: {alert.message}"
                 )
 
-                # Create alert record
-                self.create_security_alert(alert)
+                # Create alert record (None when deduplicated or suppressed)
+                created = self.create_security_alert(alert)
+                if created is None:
+                    continue
 
                 # Send push notification for security alert
                 self.send_security_push_notification(alert)
@@ -814,19 +862,28 @@ class NetworkSecurityScanner:
                 'risk_score': alert.risk_score
             }
 
-            db_alert = Alert(
-                device_id=alert.device_id,
-                alert_type=f'security_{alert.alert_type}',
-                severity=alert.severity,
-                message=f"[SECURITY] {alert.message}",
-                metadata=json.dumps(alert_data),
-                created_at=alert.detected_at
-            )
+            alert_type = f'security_{alert.alert_type}'
+            # Alert has no metadata column (the old `metadata=` kwarg was silently
+            # dropped); the port lives in alert_subtype so the lifecycle can key on it.
+            subtype = f'port_{alert.port}' if alert.port is not None else None
+            message = f"[SECURITY] {alert.message}"
+            logger.debug(f"Security alert data: {json.dumps(alert_data)}")
 
-            db.session.add(db_alert)
-            db.session.commit()
+            manager = getattr(self.app, 'alert_manager', None) if self.app else None
+            if manager is not None:
+                # notify=False: this scanner sends its own push in send_security_push_notification
+                db_alert = manager.create_alert(alert.device_id, alert_type, alert.severity, message,
+                                                subtype=subtype, notify=False)
+                if db_alert is None:
+                    return None
+            else:
+                db_alert = Alert(device_id=alert.device_id, alert_type=alert_type, alert_subtype=subtype,
+                                 severity=alert.severity, message=message, created_at=alert.detected_at)
+                db.session.add(db_alert)
+                db.session.commit()
 
             logger.info(f"Created security alert for device {alert.device_name}")
+            return db_alert
 
         except Exception as e:
             logger.error(f"Error creating security alert: {e}")

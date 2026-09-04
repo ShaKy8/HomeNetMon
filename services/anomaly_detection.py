@@ -240,7 +240,9 @@ class AnomalyDetectionEngine:
 
 
         def detection_loop():
+            from core.health import record_heartbeat
             while self.running:
+                record_heartbeat('AnomalyDetection')
                 try:
                     self.run_detection_cycle()
                     time.sleep(self.detection_interval)

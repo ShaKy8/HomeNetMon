@@ -559,7 +559,9 @@ class ConfigurationService:
         logger.info("Starting configuration service")
 
         def monitoring_loop():
+            from core.health import record_heartbeat
             while not self._stop_event.is_set():
+                record_heartbeat('ConfigurationService')
                 try:
                     # Configuration service runs every 30 seconds
                     self._stop_event.wait(30)

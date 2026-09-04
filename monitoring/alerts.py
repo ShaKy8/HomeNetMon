@@ -800,6 +800,47 @@ This is an automated message from HomeNetMon.
             logger.error(f"Error triggering rule engine for alert: {e}")
             # Don't let rule engine errors affect alert processing
 
+    def create_alert(self, device_id, alert_type, severity, message, subtype=None, notify=True):
+        """Create an alert through the shared pipeline: dedup, suppression rules,
+        correlation, priority, commit, notifications, WebSocket emit, rule engine.
+
+        Returns the new Alert, or None if an identical unresolved alert exists or a
+        rule suppressed it. Must be called inside an app context. Every producer
+        (device down/latency/recovery, performance, security) uses this so
+        suppression windows and dedup apply uniformly.
+        """
+        existing = Alert.query.filter_by(device_id=device_id, alert_type=alert_type,
+                                         alert_subtype=subtype, resolved=False).first()
+        if existing:
+            logger.debug(f"Alert {alert_type}/{subtype} already active for device {device_id}")
+            return None
+        if not self._should_create_alert(alert_type, device_id, message, severity):
+            logger.debug(f"Alert {alert_type}/{subtype} for device {device_id} suppressed")
+            return None
+
+        alert = Alert(device_id=device_id, alert_type=alert_type, alert_subtype=subtype,
+                      severity=severity, message=message)
+        try:
+            alert.calculate_and_update_priority(self.app)
+        except Exception as e:
+            logger.debug(f"Priority calculation skipped: {e}")
+        db.session.add(alert)
+        db.session.commit()
+
+        if notify:
+            try:
+                self.send_alert_notifications(alert)
+            except Exception as e:
+                logger.error(f"Notification dispatch failed for alert {alert.id}: {e}")
+        self._emit_alert_update(alert, 'created')
+        try:
+            device = Device.query.get(device_id)
+            if device:
+                self._trigger_rule_engine_for_alert(alert, device, alert_type)
+        except Exception as e:
+            logger.debug(f"Rule engine trigger skipped: {e}")
+        return alert
+
     def _should_create_alert(self, alert_type: str, device_id: int, message: str, severity: str = 'warning') -> bool:
         """Check if alert should be created based on correlation rules and suppressions"""
         try:

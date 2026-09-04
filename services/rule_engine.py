@@ -439,7 +439,9 @@ class RuleEngineService:
         logger.info("Starting rule engine service")
 
         def monitoring_loop():
+            from core.health import record_heartbeat
             while not self._stop_event.is_set():
+                record_heartbeat('RuleEngine')
                 try:
                     # Rule engine runs every 30 seconds
                     self._stop_event.wait(30)

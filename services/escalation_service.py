@@ -154,7 +154,9 @@ class EscalationExecutionService:
         """Main execution loop for processing escalations"""
         logger.info("Starting escalation execution loop")
 
+        from core.health import record_heartbeat
         while self.is_running and not self.stop_event.is_set():
+            record_heartbeat('EscalationService')
             try:
                 with self.app.app_context():
                     self._process_pending_escalations()
