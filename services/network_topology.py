@@ -547,6 +547,64 @@ class NetworkTopologyEngine:
 
         return chains
 
+    def _build_dependency_tree(self, devices: List[Device], relationships: Dict) -> Dict[str, Any]:
+        """Nest the parent/child hierarchy into a tree rooted at the gateway(s).
+
+        (Referenced by discover_network_topology since the engine was written but
+        never defined -- the endpoint had never completed a request.)
+        """
+        parent_child = relationships.get('parent_child', {}) or {}
+        hierarchy = parent_child.get('hierarchy', {}) or {}
+        by_id = {d.id: d for d in devices}
+
+        def describe(device_id):
+            d = by_id.get(device_id)
+            return {
+                'device_id': device_id,
+                'device_name': d.display_name if d else f'Device {device_id}',
+                'ip_address': d.ip_address if d else None,
+                'device_type': d.device_type if d else None,
+            }
+
+        max_depth = [0]
+        seen = set()
+
+        def build(device_id, depth):
+            node = describe(device_id)
+            node['depth'] = depth
+            node['children'] = []
+            max_depth[0] = max(max_depth[0], depth)
+            if device_id in seen:          # cycle guard
+                return node
+            seen.add(device_id)
+            for child in (hierarchy.get(device_id) or {}).get('children', []):
+                child_id = child.get('device_id') if isinstance(child, dict) else child
+                if child_id is not None:
+                    node['children'].append(build(child_id, depth + 1))
+            return node
+
+        roots = []
+        for root in parent_child.get('root_devices', []) or []:
+            root_id = root.get('device_id') if isinstance(root, dict) else root
+            if root_id is not None:
+                roots.append(build(root_id, 0))
+        # Parents that are not listed as roots and have no parent themselves also head a tree
+        child_ids = {c.get('device_id') if isinstance(c, dict) else c
+                     for h in hierarchy.values() for c in (h or {}).get('children', [])}
+        for parent_id in hierarchy:
+            if parent_id not in seen and parent_id not in child_ids:
+                roots.append(build(parent_id, 0))
+
+        orphaned = [describe(o.get('device_id') if isinstance(o, dict) else o)
+                    for o in parent_child.get('orphaned_devices', []) or []]
+        return {
+            'roots': roots,
+            'orphaned_devices': orphaned,
+            'max_depth': max_depth[0],
+            'devices_in_tree': len(seen),
+            'device_count': len(devices),
+        }
+
     def _analyze_network_routes(self, devices: List[Device]) -> Dict[str, Any]:
         """Analyze network routing and paths"""
         route_analysis = {
