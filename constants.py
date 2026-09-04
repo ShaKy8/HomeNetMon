@@ -10,11 +10,14 @@ APP_DESCRIPTION = "Comprehensive Home Network Monitoring Solution"
 
 # Network Configuration
 DEFAULT_NETWORK_RANGE = "192.168.86.0/24"
-DEFAULT_PING_INTERVAL = 30  # seconds
+DEFAULT_PING_INTERVAL = 600  # seconds (matches config.py; gentle on home IoT)
 DEFAULT_SCAN_TIMEOUT = 300  # seconds (5 minutes)
 MAX_SCAN_TIMEOUT = 600  # seconds (10 minutes)
 
 # Device Status
+# A device is considered down when it has not answered for this long. Must exceed
+# the ping interval (600 s) plus a buffer; every status derivation uses this value.
+DEVICE_DOWN_AFTER_SECONDS = 900
 DEVICE_STATUS_UP = "up"
 DEVICE_STATUS_DOWN = "down"
 DEVICE_STATUS_WARNING = "warning"

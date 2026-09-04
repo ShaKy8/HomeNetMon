@@ -200,6 +200,13 @@ class BandwidthMonitor:
             self.monitor_thread.join(timeout=10)
         logger.info("Bandwidth monitoring stop requested")
 
+    def reload_config(self):
+        """Hot-reload hook (ConfigurationService callback). The interval is re-read
+        every iteration, so there is nothing to cache; log for visibility."""
+        with self.app.app_context():
+            logger.info(f"BandwidthMonitor config reloaded - interval: "
+                        f"{self.get_config_value('bandwidth_interval', Config.BANDWIDTH_INTERVAL)}s")
+
     def get_current_bandwidth_summary(self):
         """Most recent sample per interface (for API/UI)."""
         summary = {}

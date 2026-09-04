@@ -7,6 +7,7 @@ import psutil
 import threading
 import time
 from api.rate_limited_endpoints import create_endpoint_limiter
+from constants import DEVICE_DOWN_AFTER_SECONDS
 
 health_bp = Blueprint('health', __name__)
 logger = logging.getLogger(__name__)
@@ -108,7 +109,7 @@ def get_health_overview():
         total_devices = Device.query.filter_by(is_monitored=True).count()
 
         # Device status calculations
-        online_threshold = now - timedelta(minutes=10)  # 10 minutes threshold
+        online_threshold = now - timedelta(seconds=DEVICE_DOWN_AFTER_SECONDS)
 
         devices_online = Device.query.filter(
             and_(
@@ -208,7 +209,7 @@ def get_health_score():
     """Get just the network health score"""
     try:
         now = datetime.utcnow()
-        online_threshold = now - timedelta(minutes=10)
+        online_threshold = now - timedelta(seconds=DEVICE_DOWN_AFTER_SECONDS)
 
         # Quick calculations for health score
         total_devices = Device.query.filter_by(is_monitored=True).count()
@@ -257,7 +258,7 @@ def get_network_topology():
     """Get simplified network topology for mini-map"""
     try:
         devices = Device.query.filter_by(is_monitored=True).all()
-        online_threshold = datetime.utcnow() - timedelta(minutes=10)
+        online_threshold = datetime.utcnow() - timedelta(seconds=DEVICE_DOWN_AFTER_SECONDS)
 
         # Batch fetch monitoring data to avoid N+1 queries
         device_ids = [d.id for d in devices]

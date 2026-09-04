@@ -66,12 +66,13 @@ class ConfigurationService:
                 error_message="Invalid network range format (must be CIDR notation, e.g., 192.168.1.0/24)"
             ),
             'ping_interval': ConfigValidationRule(
-                validator=lambda v: self._validate_integer_range(v, 5, 900),
-                error_message="Ping interval must be between 5 and 900 seconds"
+                validator=lambda v: self._validate_integer_range(v, 30, 3600),
+                error_message="Ping interval must be between 30 and 3600 seconds"
             ),
             'scan_interval': ConfigValidationRule(
-                validator=lambda v: self._validate_integer_range(v, 60, 3600),
-                error_message="Scan interval must be between 60 and 3600 seconds",
+                # Default is daily (86400); the old 60-3600 range rejected it.
+                validator=lambda v: self._validate_integer_range(v, 300, 604800),
+                error_message="Scan interval must be between 300 seconds and 7 days",
                 dependencies=['ping_interval']
             ),
             'ping_timeout': ConfigValidationRule(
@@ -79,8 +80,8 @@ class ConfigurationService:
                 error_message="Ping timeout must be between 1.0 and 10.0 seconds"
             ),
             'bandwidth_interval': ConfigValidationRule(
-                validator=lambda v: self._validate_integer_range(v, 30, 600),
-                error_message="Bandwidth monitoring interval must be between 30 and 600 seconds"
+                validator=lambda v: self._validate_integer_range(v, 30, 3600),
+                error_message="Bandwidth monitoring interval must be between 30 and 3600 seconds"
             ),
             'max_workers': ConfigValidationRule(
                 validator=lambda v: self._validate_integer_range(v, 1, 100),

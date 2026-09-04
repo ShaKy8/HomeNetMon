@@ -799,7 +799,7 @@ class NetworkScanner:
         try:
             with self.app.app_context():
                 # Get dashboard URL
-                dashboard_url = f"http://{Config.HOST}:{Config.PORT}"
+                dashboard_url = f"{Config.BASE_URL}"
 
                 # Send individual notifications for new devices (limit to 5 to avoid spam)
                 new_device_count = len(self._new_devices_found)

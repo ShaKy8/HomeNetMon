@@ -627,7 +627,7 @@ class AnomalyDetectionEngine:
                 return
 
             # Build dashboard URL
-            dashboard_url = f"http://{Config.HOST}:{Config.PORT}/device/{device.id}"
+            dashboard_url = f"{Config.BASE_URL}/device/{device.id}"
 
             # Send anomaly push notification
             success = push_service.send_anomaly_alert(

@@ -14,6 +14,7 @@ from monitoring.scanner import NetworkScanner
 from monitoring.monitor import DeviceMonitor
 from monitoring.alerts import AlertManager
 from monitoring.bandwidth_monitor import BandwidthMonitor
+from constants import DEVICE_DOWN_AFTER_SECONDS
 
 # Global variable to track server startup time
 SERVER_START_TIME = datetime.now()
@@ -892,7 +893,7 @@ def create_app():
 
             # Get current health data
             now = datetime.utcnow()
-            online_threshold = now - timedelta(minutes=10)
+            online_threshold = now - timedelta(seconds=DEVICE_DOWN_AFTER_SECONDS)
 
             total_devices = Device.query.filter_by(is_monitored=True).count()
             devices_online = Device.query.filter(
@@ -925,7 +926,7 @@ def create_app():
             from models import Device
 
             devices = Device.query.filter_by(is_monitored=True).all()
-            online_threshold = datetime.utcnow() - timedelta(minutes=10)
+            online_threshold = datetime.utcnow() - timedelta(seconds=DEVICE_DOWN_AFTER_SECONDS)
 
             topology_data = []
             for device in devices:
@@ -1027,7 +1028,7 @@ def create_app():
                 devices = Device.query.filter_by(is_monitored=True).all()
                 device_types = defaultdict(lambda: {'up': 0, 'down': 0})
 
-                online_threshold = datetime.utcnow() - timedelta(minutes=10)
+                online_threshold = datetime.utcnow() - timedelta(seconds=DEVICE_DOWN_AFTER_SECONDS)
 
                 for device in devices:
                     device_type = device.device_type or 'unknown'

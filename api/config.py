@@ -471,7 +471,7 @@ def test_webhook_config():
             'severity': 'info',
             'message': 'This is a test alert from HomeNetMon',
             'timestamp': datetime.utcnow().isoformat(),
-            'dashboard_url': f"http://{Config.HOST}:{Config.PORT}",
+            'dashboard_url': f"{Config.BASE_URL}",
             'test': True
         }
 

@@ -33,6 +33,18 @@ class AlertManager:
             'max_alerts_per_burst_window': 2      # Limit alerts per burst window
         }
 
+    @staticmethod
+    def runtime_setting(key, default):
+        """Runtime Configuration value with fallback (must run inside an app context)."""
+        value = Configuration.get_value(key)
+        return default if value in (None, '') else value
+
+    def runtime_int(self, key, default):
+        try:
+            return int(self.runtime_setting(key, default))
+        except (TypeError, ValueError):
+            return default
+
     def is_critical_device(self, device):
         """Determine if a device is critical infrastructure (same logic as monitor)"""
         return (
@@ -84,13 +96,14 @@ class AlertManager:
                 # Get all monitored devices
                 all_devices = Device.query.filter_by(is_monitored=True).all()
                 consecutive_failures_required = self.alert_thresholds['consecutive_failures_required']
+                # Settings UI writes device_down_threshold_minutes; critical devices alert sooner.
+                regular_minutes = self.runtime_int('device_down_threshold_minutes',
+                                                   self.alert_thresholds['device_down_minutes_regular'])
+                critical_minutes = min(regular_minutes, self.alert_thresholds['device_down_minutes_critical'])
 
                 for device in all_devices:
                     # Determine threshold based on device criticality
-                    if self.is_critical_device(device):
-                        threshold_minutes = self.alert_thresholds['device_down_minutes_critical']
-                    else:
-                        threshold_minutes = self.alert_thresholds['device_down_minutes_regular']
+                    threshold_minutes = critical_minutes if self.is_critical_device(device) else regular_minutes
 
                     cutoff_time = datetime.utcnow() - timedelta(minutes=threshold_minutes)
 
@@ -172,7 +185,7 @@ class AlertManager:
 
         with self.app.app_context():
             try:
-                threshold_ms = self.alert_thresholds['high_latency_ms']
+                threshold_ms = self.runtime_int('high_latency_threshold_ms', self.alert_thresholds['high_latency_ms'])
 
                 # Check last 5 minutes of data
                 cutoff_time = datetime.utcnow() - timedelta(minutes=5)
@@ -336,7 +349,7 @@ class AlertManager:
                         logger.debug(f"Alert NOT resolved for {device.display_name}: device={device is not None}, last_seen={device.last_seen if device else None}, recent_time={recent_time}")
 
                 # Resolve high latency alerts for devices with normal latency
-                threshold_ms = self.alert_thresholds['high_latency_ms']
+                threshold_ms = self.runtime_int('high_latency_threshold_ms', self.alert_thresholds['high_latency_ms'])
                 cutoff_time = datetime.utcnow() - timedelta(minutes=5)  # Check last 5 minutes
 
                 active_latency_alerts = Alert.query.options(joinedload(Alert.device)).filter(
@@ -368,15 +381,19 @@ class AlertManager:
     def send_email_alert(self, alert):
         """Send email notification for alert"""
         try:
-            if not all([Config.SMTP_SERVER, Config.SMTP_USERNAME, Config.SMTP_PASSWORD,
-                       Config.ALERT_FROM_EMAIL, Config.ALERT_TO_EMAILS]):
+            # Recipients/sender may be set in Settings (runtime) or .env (fallback).
+            from_email = self.runtime_setting('alert_from_email', Config.ALERT_FROM_EMAIL)
+            to_setting = self.runtime_setting('alert_to_emails', None)
+            to_emails = ([e.strip() for e in to_setting.split(',') if e.strip()]
+                         if isinstance(to_setting, str) else (Config.ALERT_TO_EMAILS or []))
+            if not all([Config.SMTP_SERVER, Config.SMTP_USERNAME, Config.SMTP_PASSWORD, from_email, to_emails]):
                 logger.debug("Email configuration incomplete, skipping email alert")
                 return False
 
             # Create message
             msg = MIMEMultipart()
-            msg['From'] = Config.ALERT_FROM_EMAIL
-            msg['To'] = ', '.join(Config.ALERT_TO_EMAILS)
+            msg['From'] = from_email
+            msg['To'] = ', '.join(to_emails)
             msg['Subject'] = f"[HomeNetMon] {alert.severity.upper()}: {alert.alert_type.replace('_', ' ').title()}"
 
             # Email body
@@ -390,8 +407,8 @@ Time: {alert.created_at.strftime('%Y-%m-%d %H:%M:%S')}
 
 Message: {alert.message}
 
-Dashboard: http://{Config.HOST}:{Config.PORT}
-Device Details: http://{Config.HOST}:{Config.PORT}/device/{alert.device.id}
+Dashboard: {Config.BASE_URL}
+Device Details: {Config.BASE_URL}/device/{alert.device.id}
 
 This is an automated message from HomeNetMon.
             """
@@ -399,12 +416,12 @@ This is an automated message from HomeNetMon.
             msg.attach(MIMEText(body, 'plain'))
 
             # Send email
-            server = smtplib.SMTP(Config.SMTP_SERVER, Config.SMTP_PORT)
+            server = smtplib.SMTP(Config.SMTP_SERVER, Config.SMTP_PORT, timeout=15)
             if Config.SMTP_USE_TLS:
                 server.starttls()
             server.login(Config.SMTP_USERNAME, Config.SMTP_PASSWORD)
             text = msg.as_string()
-            server.sendmail(Config.ALERT_FROM_EMAIL, Config.ALERT_TO_EMAILS, text)
+            server.sendmail(from_email, to_emails, text)
             server.quit()
 
             logger.info(f"Email alert sent for {alert.device.display_name}")
@@ -417,7 +434,8 @@ This is an automated message from HomeNetMon.
     def send_webhook_alert(self, alert):
         """Send webhook notification for alert"""
         try:
-            if not Config.WEBHOOK_URL:
+            webhook_url = self.runtime_setting('alert_webhook_url', Config.WEBHOOK_URL)
+            if not webhook_url:
                 logger.debug("No webhook URL configured, skipping webhook alert")
                 return False
 
@@ -429,12 +447,12 @@ This is an automated message from HomeNetMon.
                 'severity': alert.severity,
                 'message': alert.message,
                 'timestamp': alert.created_at.isoformat(),
-                'dashboard_url': f"http://{Config.HOST}:{Config.PORT}",
-                'device_url': f"http://{Config.HOST}:{Config.PORT}/device/{alert.device.id}"
+                'dashboard_url': f"{Config.BASE_URL}",
+                'device_url': f"{Config.BASE_URL}/device/{alert.device.id}"
             }
 
             response = requests.post(
-                Config.WEBHOOK_URL,
+                webhook_url,
                 json=payload,
                 timeout=Config.WEBHOOK_TIMEOUT
             )
@@ -529,7 +547,7 @@ This is an automated message from HomeNetMon.
                 return False
 
             device = alert.device
-            dashboard_url = f"http://{Config.HOST}:{Config.PORT}"
+            dashboard_url = f"{Config.BASE_URL}"
 
             if alert.alert_type == 'device_down':
                 success = push_service.send_device_down_alert(
@@ -582,7 +600,7 @@ This is an automated message from HomeNetMon.
     def _send_device_recovery_push_notification(self, device):
         """Send enhanced push notification for device recovery"""
         try:
-            dashboard_url = f"http://{Config.HOST}:{Config.PORT}"
+            dashboard_url = f"{Config.BASE_URL}"
 
             # Update push service configuration from database
             push_service.enabled = Configuration.get_value('push_notifications_enabled', 'false').lower() == 'true'
@@ -608,7 +626,7 @@ This is an automated message from HomeNetMon.
     def _send_high_latency_push_notification(self, device, avg_latency):
         """Send enhanced push notification for high latency"""
         try:
-            dashboard_url = f"http://{Config.HOST}:{Config.PORT}"
+            dashboard_url = f"{Config.BASE_URL}"
 
             # Update push service configuration from database
             push_service.enabled = Configuration.get_value('push_notifications_enabled', 'false').lower() == 'true'

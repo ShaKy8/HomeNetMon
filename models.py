@@ -1,5 +1,7 @@
 import logging
 from datetime import datetime, timedelta
+
+from constants import DEVICE_DOWN_AFTER_SECONDS
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import event
 import json
@@ -64,7 +66,7 @@ class Device(db.Model):
         # Consider device down if not seen for more than 15 minutes (900 seconds)
         # This accounts for ping interval (600s) plus buffer for network delays
         from config import Config
-        threshold = datetime.utcnow() - timedelta(seconds=900)
+        threshold = datetime.utcnow() - timedelta(seconds=DEVICE_DOWN_AFTER_SECONDS)
 
         if self.last_seen < threshold:
             return 'down'
@@ -434,7 +436,7 @@ class Device(db.Model):
         # Calculate status from last_seen without additional queries
         status = 'unknown'
         if self.last_seen:
-            threshold = datetime.utcnow() - timedelta(seconds=900)
+            threshold = datetime.utcnow() - timedelta(seconds=DEVICE_DOWN_AFTER_SECONDS)
             if self.last_seen >= threshold:
                 # Check for warning state from pre-fetched monitoring data
                 if monitoring_data and monitoring_data.response_time is not None:
@@ -1274,7 +1276,10 @@ class AlertSuppression(db.Model):
             return False
 
         now = datetime.utcnow()
-        current_hour = now.hour
+        # Daily windows ("quiet hours 23-7") are entered by a person in local time,
+        # so evaluate them against the local clock. Absolute windows stay UTC like
+        # every other timestamp in the database.
+        current_hour = datetime.now().hour
 
         # Check absolute time window
         if self.start_time and self.end_time:
@@ -1751,22 +1756,45 @@ def init_db(app):
                     "refusing to start with an inconsistent schema"
                 ) from e
 
-        # Initialize default configuration
-        default_configs = [
-            ('network_range', '192.168.86.0/24', 'Network range to monitor'),
-            ('ping_interval', '30', 'Ping interval in seconds'),
-            ('scan_interval', '300', 'Network scan interval in seconds'),
-            ('bandwidth_interval', '60', 'Bandwidth monitoring interval in seconds'),
-            ('alert_email_enabled', 'false', 'Enable email alerts'),
-            ('alert_webhook_enabled', 'false', 'Enable webhook alerts'),
-        ]
+        seed_default_configuration()
 
-        for key, value, description in default_configs:
-            try:
-                if not Configuration.query.filter_by(key=key).first():
-                    Configuration.set_value(key, value, description)
-            except Exception as e:
-                print(f"Error initializing configuration {key}: {e}")
+
+
+
+def seed_default_configuration():
+    """Seed runtime Configuration rows that are missing; must run inside an app context.
+
+    Runtime values always win over the environment afterwards, so seeds come
+    from config.py (which reads .env) -- the old hardcoded 30 s / 300 s / 60 s
+    seeds made every fresh install run 20x faster than documented. Existing
+    rows that differ from the environment are reported, not overwritten.
+    """
+    from config import Config
+    default_configs = [
+        ('network_range', Config.NETWORK_RANGE, 'Network range to monitor'),
+        ('ping_interval', str(Config.PING_INTERVAL), 'Ping interval in seconds'),
+        ('scan_interval', str(Config.SCAN_INTERVAL), 'Network scan interval in seconds'),
+        ('bandwidth_interval', str(Config.BANDWIDTH_INTERVAL), 'Bandwidth monitoring interval in seconds'),
+        ('alert_email_enabled', 'false', 'Enable email alerts'),
+        ('alert_webhook_enabled', 'false', 'Enable webhook alerts'),
+    ]
+
+    seed_logger = logging.getLogger(__name__)
+    for key, value, description in default_configs:
+        try:
+            existing = Configuration.query.filter_by(key=key).first()
+            if not existing:
+                Configuration.set_value(key, value, description)
+            elif existing.value != value and key in ('ping_interval', 'scan_interval',
+                                                      'bandwidth_interval', 'network_range'):
+                # Runtime override differs from the environment. Surface it so an
+                # operator editing .env understands why nothing changed.
+                seed_logger.warning(
+                    f"Runtime setting {key}={existing.value!r} overrides {key.upper()}={value!r} "
+                    f"from the environment (edit it in Settings or via /api/config/{key})")
+        except Exception as e:
+            seed_logger.error(f"Error initializing configuration {key}: {e}")
+
 
 class EscalationRule(db.Model):
     """Escalation rules for notification failures and alert management"""

@@ -861,7 +861,7 @@ class NetworkSecurityScanner:
             )
 
             # Build dashboard URL
-            dashboard_url = f"http://{Config.HOST}:{Config.PORT}/security"
+            dashboard_url = f"{Config.BASE_URL}/security"
 
             # Send security push notification
             success = push_service.send_security_alert(

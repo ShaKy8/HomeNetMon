@@ -35,7 +35,8 @@ class Config:
     HOST = os.environ.get('HOST', '127.0.0.1')
 
     # Environment must be set before using it
-    ENV = os.environ.get('ENV', 'development')
+    # ENV is canonical; FLASK_ENV accepted as a fallback because every shipped .env used it.
+    ENV = os.environ.get('ENV') or os.environ.get('FLASK_ENV', 'development')
 
     # Security settings
 
@@ -51,12 +52,31 @@ class Config:
     SQLALCHEMY_ENGINE_OPTIONS = {
         'pool_pre_ping': True,
         'pool_recycle': 3600,
-        'connect_args': {
-            'timeout': 20,  # Connection timeout
-            'check_same_thread': False  # SQLite specific
-        }
     }
+    if SQLALCHEMY_DATABASE_URI.startswith('sqlite'):
+        # SQLite-only driver options; passing them to psycopg2 raises TypeError.
+        SQLALCHEMY_ENGINE_OPTIONS['connect_args'] = {'timeout': 20, 'check_same_thread': False}
     PORT = int(os.environ.get('PORT', '5000'))
+
+    @staticmethod
+    def _detect_primary_ip():
+        """Best-effort LAN address of this host (no packets are sent)."""
+        import socket
+        try:
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.connect(('10.255.255.255', 1))
+                return s.getsockname()[0]
+        except OSError:
+            try:
+                return socket.gethostbyname(socket.gethostname())
+            except OSError:
+                return '127.0.0.1'
+
+    # Public URL used in notification links (email, webhook, ntfy, Discord).
+    # Set BASE_URL explicitly behind a reverse proxy or when using a hostname;
+    # the default is derived from the primary LAN IP because HOST=0.0.0.0 or
+    # 127.0.0.1 is useless in a link opened on a phone.
+    BASE_URL = (os.environ.get('BASE_URL') or '').rstrip('/')
     # Disable debug in production environment
     DEBUG = ENV != 'production' and os.environ.get('DEBUG', 'False').lower() == 'true'
 
@@ -266,3 +286,6 @@ Config.SECRET_KEY = Config._get_validated_secret_key()
 
 # Load configuration from file if it exists
 Config.load_from_file()
+
+if not Config.BASE_URL:
+    Config.BASE_URL = f"http://{Config._detect_primary_ip()}:{Config.PORT}"
