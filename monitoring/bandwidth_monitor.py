@@ -192,9 +192,11 @@ class BandwidthMonitor:
         logger.info(f"Using primary interface: {primary_interface}")
 
         from core.health import record_heartbeat
-        with self.app.app_context():
-            while not self._stop_event.is_set():
-                record_heartbeat('BandwidthMonitor')
+        while not self._stop_event.is_set():
+            record_heartbeat('BandwidthMonitor')
+            # A fresh app context per iteration releases the session (and its
+            # SQLite read snapshot) between cycles so WAL checkpoints can complete.
+            with self.app.app_context():
                 try:
                     # Get current interface stats
                     current_stats = self.get_interface_stats(primary_interface)

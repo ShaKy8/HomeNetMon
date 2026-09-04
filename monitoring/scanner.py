@@ -5,7 +5,7 @@ import ipaddress
 import subprocess
 import re
 import logging
-from datetime import datetime
+from datetime import datetime, timedelta
 from manuf import manuf
 from models import db, Device, Configuration
 from config import Config
@@ -176,6 +176,27 @@ class NetworkScanner:
             logger.error(f"Error parsing ARP table: {e}")
 
         return devices
+
+    @staticmethod
+    def filter_to_network_range(devices, network_range):
+        """Keep only discovered devices whose IP lies inside network_range."""
+        try:
+            network = ipaddress.ip_network(network_range, strict=False)
+        except ValueError:
+            logger.warning(f"Invalid network range {network_range!r}; not filtering discovered devices")
+            return devices
+        kept, dropped = [], 0
+        for info in devices:
+            try:
+                if ipaddress.ip_address(info['ip']) in network:
+                    kept.append(info)
+                else:
+                    dropped += 1
+            except (KeyError, ValueError):
+                dropped += 1
+        if dropped:
+            logger.debug(f"Ignored {dropped} discovered address(es) outside {network_range}")
+        return kept
 
     def is_sensitive_device(self, device_info):
         """Check if device should be scanned less frequently or excluded"""
@@ -487,14 +508,16 @@ class NetworkScanner:
             # Use Flask application context for database operations
             with self.app.app_context():
                 try:
-                    # Get devices from ARP table (faster)
-                    self._emit_scan_progress(15, 'Scanning ARP table...', 0, 0)
-                    arp_devices = self.get_arp_table()
-                    logger.info(f"Found {len(arp_devices)} devices in ARP table")
-
                     # Get network range from database configuration
                     network_range = self.get_config_value('network_range', Config.NETWORK_RANGE)
                     logger.info(f"Using network range: {network_range}")
+
+                    # Get devices from ARP table (faster). The ARP cache also holds
+                    # neighbours on other interfaces (Docker/libvirt bridges, VPNs);
+                    # only the configured LAN range is monitored.
+                    self._emit_scan_progress(15, 'Scanning ARP table...', 0, 0)
+                    arp_devices = self.filter_to_network_range(self.get_arp_table(), network_range)
+                    logger.info(f"Found {len(arp_devices)} devices in ARP table within {network_range}")
 
                     # Merge with nmap scan results
                     self._emit_scan_progress(30, 'Running network discovery (nmap)...', len(arp_devices), 0)
@@ -553,7 +576,7 @@ class NetworkScanner:
                             self.app.socketio.emit('scan_error', {
                                 'error': str(e),
                                 'timestamp': datetime.utcnow().isoformat()
-                            }, namespace='/', broadcast=True)
+                            }, namespace='/')
                     except Exception as emit_error:
                         logger.error(f"Error emitting scan error: {emit_error}")
                     raise
@@ -678,6 +701,17 @@ class NetworkScanner:
                     })
                     device.device_type = device_type
                     updated = True
+
+                # A device that was archived for staleness (is_monitored=False with an old
+                # last_seen) has just reappeared on the network: resume monitoring it.
+                # Devices the user disabled while they stayed online keep a fresh
+                # last_seen from scans, so they are not affected.
+                if not device.is_monitored and device.last_seen is not None:
+                    stale_days = int(self.get_config_value('stale_device_days', Config.STALE_DEVICE_DAYS))
+                    if device.last_seen < datetime.utcnow() - timedelta(days=stale_days):
+                        logger.info(f"Stale device {device.display_name} ({ip}) is back; resuming monitoring")
+                        device.is_monitored = True
+                        updated = True
 
                 device.last_seen = datetime.utcnow()
 

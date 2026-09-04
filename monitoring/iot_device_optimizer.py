@@ -4,6 +4,7 @@ Optimizes monitoring for slow-responding IoT devices like Ring cameras, smart ho
 """
 
 import logging
+import threading
 import time
 from typing import Dict, List, Optional, Tuple
 from datetime import datetime, timedelta
@@ -35,6 +36,9 @@ class IoTDeviceOptimizer:
         self.device_performance = defaultdict(lambda: {'failures': 0, 'successes': 0, 'avg_response': 0})
         self.optimized_settings = {}
         self.last_optimization = {}
+        # The module-level singleton is shared by every ping worker thread;
+        # guard all state mutation with one re-entrant lock.
+        self._lock = threading.RLock()
 
     def identify_device_type(self, device) -> Optional[str]:
         """Identify the type of IoT device based on hostname, vendor, or MAC"""
@@ -53,6 +57,10 @@ class IoTDeviceOptimizer:
 
     def get_optimized_settings(self, device) -> Dict:
         """Get optimized monitoring settings for a device"""
+        with self._lock:
+            return self._get_optimized_settings_locked(device)
+
+    def _get_optimized_settings_locked(self, device) -> Dict:
         device_id = device.id
 
         # Check if we already have optimized settings
@@ -91,6 +99,10 @@ class IoTDeviceOptimizer:
 
     def record_ping_result(self, device, success: bool, response_time: Optional[float]):
         """Record the result of a ping attempt for optimization"""
+        with self._lock:
+            self._record_ping_result_locked(device, success, response_time)
+
+    def _record_ping_result_locked(self, device, success: bool, response_time: Optional[float]):
         device_id = device.id
         perf = self.device_performance[device_id]
 
@@ -153,8 +165,12 @@ class IoTDeviceOptimizer:
 
     def should_skip_monitoring(self, device) -> Tuple[bool, Optional[int]]:
         """Check if device monitoring should be skipped based on interval settings"""
+        with self._lock:
+            return self._should_skip_monitoring_locked(device)
+
+    def _should_skip_monitoring_locked(self, device) -> Tuple[bool, Optional[int]]:
         device_id = device.id
-        settings = self.get_optimized_settings(device)
+        settings = self._get_optimized_settings_locked(device)
 
         # Check last monitoring time
         last_check = self.last_optimization.get(device_id)

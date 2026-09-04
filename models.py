@@ -85,11 +85,10 @@ class Device(db.Model):
     def latest_response_time(self):
         """Get the latest response time for this device"""
         try:
-            with db.session.begin():
-                latest_data = db.session.query(MonitoringData).filter_by(device_id=self.id)\
-                                             .order_by(MonitoringData.timestamp.desc())\
-                                             .first()
-                return latest_data.response_time if latest_data else None
+            latest_data = db.session.query(MonitoringData).filter_by(device_id=self.id)\
+                                         .order_by(MonitoringData.timestamp.desc())\
+                                         .first()
+            return latest_data.response_time if latest_data else None
         except Exception:
             return None
 
@@ -97,8 +96,7 @@ class Device(db.Model):
     def active_alerts(self):
         """Get count of active (unresolved) alerts for this device"""
         try:
-            with db.session.begin():
-                return db.session.query(Alert).filter_by(device_id=self.id, resolved=False).count()
+            return db.session.query(Alert).filter_by(device_id=self.id, resolved=False).count()
         except Exception:
             return 0
 
@@ -228,11 +226,10 @@ class Device(db.Model):
     def current_health_score(self):
         """Get the latest health score for this device"""
         try:
-            with db.session.begin():
-                latest_performance = db.session.query(PerformanceMetrics).filter_by(device_id=self.id)\
-                                                             .order_by(PerformanceMetrics.timestamp.desc())\
-                                                             .first()
-                return latest_performance.health_score if latest_performance else None
+            latest_performance = db.session.query(PerformanceMetrics).filter_by(device_id=self.id)\
+                                                         .order_by(PerformanceMetrics.timestamp.desc())\
+                                                         .first()
+            return latest_performance.health_score if latest_performance else None
         except Exception:
             return None
 

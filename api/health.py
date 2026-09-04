@@ -56,24 +56,40 @@ def get_network_bandwidth():
             })
         return False
 
-def start_bandwidth_monitoring():
-    """Start background bandwidth monitoring"""
-    def monitor_bandwidth():
-        while True:
+_BANDWIDTH_MAX_AGE_SECONDS = 30
+_refresh_in_flight = False
+
+
+def _bandwidth_snapshot():
+    """Return the cached host-interface bandwidth sample.
+
+    Sampling takes one second (two psutil reads), so it runs on a short-lived
+    background thread when the cache is older than 30 s; the request never
+    blocks. (Previously a perpetual, unnamed thread was started at module
+    import — outside the service lifecycle and invisible to the watchdog.)
+    """
+    global _refresh_in_flight
+    with bandwidth_lock:
+        snapshot = bandwidth_data.copy()
+    stale = True
+    if snapshot.get('timestamp'):
+        try:
+            sampled_at = datetime.fromisoformat(snapshot['timestamp'].rstrip('Z'))
+            stale = (datetime.utcnow() - sampled_at).total_seconds() > _BANDWIDTH_MAX_AGE_SECONDS
+        except ValueError:
+            stale = True
+    if stale and not _refresh_in_flight:
+        _refresh_in_flight = True
+
+        def _refresh():
+            global _refresh_in_flight
             try:
                 get_network_bandwidth()
-                time.sleep(30)  # Update every 30 seconds
-            except Exception as e:
-                logger.error(f"Bandwidth monitoring error: {e}")
-                time.sleep(60)  # Wait longer on error
+            finally:
+                _refresh_in_flight = False
 
-    # Start monitoring in background thread
-    monitor_thread = threading.Thread(target=monitor_bandwidth, daemon=True)
-    monitor_thread.start()
-    logger.info("Bandwidth monitoring started")
-
-# Initialize bandwidth monitoring when module loads
-start_bandwidth_monitoring()
+        threading.Thread(target=_refresh, name='HealthBandwidthSample', daemon=True).start()
+    return snapshot
 
 @health_bp.route('/overview', methods=['GET'])
 @create_endpoint_limiter('relaxed')
@@ -152,9 +168,8 @@ def get_health_overview():
         # Network performance trends
         performance_trends = get_performance_trends(last_24h)
 
-        # Get current bandwidth data
-        with bandwidth_lock:
-            bandwidth_usage = bandwidth_data.copy()
+        # Get current bandwidth data (cached; refreshed in the background when stale)
+        bandwidth_usage = _bandwidth_snapshot()
 
         return jsonify({
             'success': True,

@@ -94,18 +94,25 @@ class AlertManager:
 
                     cutoff_time = datetime.utcnow() - timedelta(minutes=threshold_minutes)
 
-                    # Only alert if device hasn't been seen AND has consecutive failures AND has poor recent uptime
-                    # This prevents alerts for devices with good long-term uptime but temporary issues
-                    try:
-                        device_uptime = device.uptime_percentage()
-                    except Exception:
-                        device_uptime = 100  # Default to good uptime if calculation fails
+                    # Only alert if device hasn't been seen AND has consecutive failures AND has poor recent uptime.
+                    # Short-circuit: the cheap last_seen check gates the two DB-heavy checks, and each
+                    # heavy check runs at most once per device per cycle.
+                    not_seen_recently = bool(device.last_seen and device.last_seen < cutoff_time)
+                    consecutive = None
+                    device_uptime = None
+                    should_alert = False
+                    if not_seen_recently:
+                        consecutive = self.has_consecutive_failures(device, consecutive_failures_required)
+                        if consecutive:
+                            try:
+                                device_uptime = device.uptime_percentage()
+                            except Exception:
+                                device_uptime = 100  # Default to good uptime if calculation fails
+                            should_alert = device_uptime < 90  # Only alert if recent uptime is very poor (< 90%)
 
-                    should_alert = (device.last_seen and device.last_seen < cutoff_time and
-                                  self.has_consecutive_failures(device, consecutive_failures_required) and
-                                  device_uptime < 90)  # Only alert if recent uptime is very poor (< 90%)
-
-                    logger.debug(f"Alert decision for {device.display_name}: last_seen={device.last_seen < cutoff_time if device.last_seen else 'Never'}, consecutive_failures={self.has_consecutive_failures(device, consecutive_failures_required)}, uptime={device_uptime}%, should_alert={should_alert}")
+                    if logger.isEnabledFor(logging.DEBUG):
+                        logger.debug(f"Alert decision for {device.display_name}: not_seen_recently={not_seen_recently}, "
+                                     f"consecutive_failures={consecutive}, uptime={device_uptime}, should_alert={should_alert}")
 
                     if should_alert:
 
@@ -116,7 +123,7 @@ class AlertManager:
                             Alert.resolved == False
                         ).first()
 
-                        logger.debug(f"Device {device.display_name}: last_seen={device.last_seen}, cutoff={cutoff_time}, consecutive_failures={self.has_consecutive_failures(device, consecutive_failures_required)}, existing_alert={'Yes' if existing_alert else 'No'}")
+                        logger.debug(f"Device {device.display_name}: last_seen={device.last_seen}, cutoff={cutoff_time}, existing_alert={'Yes' if existing_alert else 'No'}")
 
                         if not existing_alert:
                             device_type = "critical" if self.is_critical_device(device) else "regular"

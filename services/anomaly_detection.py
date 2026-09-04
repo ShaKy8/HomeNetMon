@@ -269,8 +269,11 @@ class AnomalyDetectionEngine:
 
         with self.app.app_context():
             if not Configuration.get_value('anomaly_detection_enabled', 'false').lower() == 'true':
-                logger.info("Anomaly detection is disabled - skipping cycle")
+                if not getattr(self, '_disabled_logged', False):
+                    logger.info("Anomaly detection is disabled - cycles will be skipped until it is enabled")
+                    self._disabled_logged = True
                 return
+            self._disabled_logged = False
 
         logger.info("Running anomaly detection cycle")
 

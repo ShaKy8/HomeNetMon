@@ -92,6 +92,10 @@ class ConfigurationService:
                 validator=lambda v: self._validate_integer_range(v, 1, 365),
                 error_message="Data retention must be between 1 and 365 days"
             ),
+            'stale_device_days': ConfigValidationRule(
+                validator=lambda v: self._validate_integer_range(v, 1, 3650),
+                error_message="Stale device threshold must be between 1 and 3650 days"
+            ),
 
             # Email Configuration
             'smtp_server': ConfigValidationRule(

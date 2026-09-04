@@ -140,8 +140,8 @@ class PerformanceMonitor:
                 db.session.add(performance_record)
                 db.session.commit()
 
-                logger.info(f"Collected performance metrics for {device.display_name}: "
-                          f"Health={health_scores.get('overall_health', 0):.1f}")
+                logger.debug(f"Collected performance metrics for {device.display_name}: "
+                           f"Health={health_scores.get('overall_health', 0):.1f}")
 
                 # Emit real-time performance update via WebSocket
                 self._emit_device_performance_update(device, performance_record)

@@ -24,6 +24,10 @@ class Config:
     PING_TIMEOUT = float(os.environ.get('PING_TIMEOUT', '3.0'))
     MAX_WORKERS = int(os.environ.get('MAX_WORKERS', '50'))
     DATA_RETENTION_DAYS = int(os.environ.get('DATA_RETENTION_DAYS', '30'))
+    # Devices not seen for this many days stop being pinged (is_monitored=False)
+    # and are hidden from the default dashboard view. They are re-enabled
+    # automatically the next time a scan sees their MAC address.
+    STALE_DEVICE_DAYS = int(os.environ.get('STALE_DEVICE_DAYS', '30'))
 
     # Web Interface - Enhanced secret key validation
     SECRET_KEY = None  # Will be set after class definition

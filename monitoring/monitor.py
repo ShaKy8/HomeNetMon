@@ -12,23 +12,26 @@ from monitoring.iot_device_optimizer import iot_optimizer
 
 logger = logging.getLogger(__name__)
 
+
+class _Skipped:
+    """Sentinel returned by ping_device() when a device is deliberately not pinged
+    this cycle (IoT back-off). Distinct from None, which means "pinged, no reply"."""
+    __slots__ = ()
+
+    def __repr__(self):
+        return 'SKIPPED'
+
+
+SKIPPED = _Skipped()
+
+
 class DeviceMonitor:
     def __init__(self, socketio=None, app=None):
         self.socketio = socketio
         self.app = app
         self.is_running = False
-        self.executor = None
         self._stop_event = threading.Event()
-        self._rotation_lock = threading.Lock()  # Thread safety for device rotation
-        self._device_rotation_index = 0
         self.rule_engine_service = None
-
-        # Use adaptive thread pool for monitoring
-        try:
-            from services.thread_pool_manager import get_monitoring_pool
-            self._adaptive_pool = get_monitoring_pool()
-        except ImportError:
-            self._adaptive_pool = None
 
     def get_config_value(self, key, default):
         """Get configuration value from database or use default"""
@@ -61,7 +64,7 @@ class DeviceMonitor:
         should_skip, remaining = iot_optimizer.should_skip_monitoring(device)
         if should_skip:
             logger.debug(f"Skipping {device.display_name} - next check in {remaining}s")
-            return None
+            return SKIPPED
 
         # For critical infrastructure (router, servers), use more lenient settings
         is_critical_device = (
@@ -71,10 +74,14 @@ class DeviceMonitor:
             ('nuc' in device.hostname.lower() if device.hostname else False)
         )
 
-        # Override settings for critical devices
+        # Override settings for critical devices; cap everything else at one retry so an
+        # offline device costs at most two probes per cycle (the optimizer's default for
+        # unknown devices was 3 retries, which made a cycle of ~80 offline devices take minutes).
         if is_critical_device:
             max_retries = max(2, max_retries)
             ping_timeout = max(2.0, ping_timeout)
+        else:
+            max_retries = min(max_retries, 1)
 
         retry_delay = 0.5  # 500ms between retries
 
@@ -159,6 +166,8 @@ class DeviceMonitor:
             device_ip = device.ip_address
 
             response_time = self.ping_device(device)
+            if response_time is SKIPPED:
+                return None  # deliberately not probed this cycle; record nothing
 
             if self.app:
                 with self.app.app_context():
@@ -295,6 +304,66 @@ class DeviceMonitor:
             ('gateway' in (device.hostname or '').lower())
         )
 
+    def archive_stale_devices(self):
+        """Stop pinging devices that have not been seen for `stale_device_days`.
+
+        Sets is_monitored=False (the dashboard hides these behind a toggle). The
+        scanner re-enables monitoring automatically when it sees the MAC again.
+        Devices that have never been seen (last_seen is NULL) are left alone.
+        Returns the number of devices archived.
+        """
+        if not self.app:
+            return 0
+        try:
+            days = int(self.get_config_value('stale_device_days', Config.STALE_DEVICE_DAYS))
+        except (TypeError, ValueError):
+            days = Config.STALE_DEVICE_DAYS
+        if days <= 0:
+            return 0
+
+        cutoff = datetime.utcnow() - timedelta(days=days)
+        archived = []
+        try:
+            with self.app.app_context():
+                stale = Device.query.filter(
+                    Device.is_monitored == True,  # SQLAlchemy expression, not a Python comparison
+                    Device.last_seen.isnot(None),
+                    Device.last_seen < cutoff,
+                ).all()
+                now = datetime.utcnow()
+                for device in stale:
+                    device.is_monitored = False
+                    device.updated_at = now
+                    logger.info(f"Archiving stale device {device.display_name} ({device.ip_address}): "
+                                f"last seen {device.last_seen:%Y-%m-%d}, more than {days} days ago")
+                    archived.append({
+                        'device_id': device.id,
+                        'ip_address': device.ip_address,
+                        'display_name': device.display_name,
+                        'response_time': None,
+                        'status': 'down',
+                        'is_monitored': False,
+                        'timestamp': now.isoformat(),
+                    })
+                if stale:
+                    db.session.commit()
+                    try:
+                        from services.query_cache import invalidate_device_cache
+                        invalidate_device_cache()
+                    except Exception as e:
+                        logger.debug(f"Cache invalidation failed (non-critical): {e}")
+        except Exception as e:
+            logger.error(f"Error archiving stale devices: {e}")
+            if self.app:
+                with self.app.app_context():
+                    db.session.rollback()
+            return 0
+
+        if archived and self.socketio:
+            for event in archived:
+                self.socketio.emit('device_status_update', event, room='updates_device_status')
+        return len(archived)
+
     def monitor_all_devices(self):
         """Monitor ALL devices every cycle for home network use"""
         try:
@@ -316,52 +385,41 @@ class DeviceMonitor:
 
             logger.info(f"Monitoring ALL {len(devices_to_monitor)} devices this cycle")
 
-            # Get configuration values - use appropriate worker pool for home network
-            max_workers = min(20, len(devices_to_monitor))  # Allow up to 20 concurrent pings
-            ping_timeout = float(self.get_config_value('ping_timeout', Config.PING_TIMEOUT))
+            # Worker count: runtime setting (Configuration table) -> Config.MAX_WORKERS
+            try:
+                max_workers = int(self.get_config_value('max_workers', Config.MAX_WORKERS))
+            except (TypeError, ValueError):
+                max_workers = Config.MAX_WORKERS
+            max_workers = max(1, min(max_workers, len(devices_to_monitor)))
 
-            # PERFORMANCE OPTIMIZATION: Use adaptive thread pool for monitoring
-            if self._adaptive_pool:
+            # Every ping already carries its own subprocess timeout, so wait for the whole
+            # batch. (The previous collector waited only ping_timeout*3 seconds for all
+            # devices combined and silently dropped every result that missed the deadline —
+            # in practice ~55% of devices, every cycle, so offline devices never got a
+            # MonitoringData row.) A worker exception is recorded as a failed probe.
+            results = []
+            cycle_started = time.monotonic()
+            with ThreadPoolExecutor(max_workers=max_workers, thread_name_prefix='ping') as executor:
                 future_to_device = {
-                    self._adaptive_pool.submit(self._ping_device_for_batch, device): device
+                    executor.submit(self._ping_device_for_batch, device): device
                     for device in devices_to_monitor
                 }
-            else:
-                # Fallback to regular ThreadPoolExecutor
-                future_to_device = {}
-                with ThreadPoolExecutor(max_workers=max_workers) as executor:
-                    future_to_device = {
-                        executor.submit(self._ping_device_for_batch, device): device
-                        for device in devices_to_monitor
-                    }
-
-            results = []
-
-            # Collect results with timeout
-            try:
-                for future in as_completed(future_to_device, timeout=ping_timeout * 3):
+                for future in as_completed(future_to_device):
                     device = future_to_device[future]
                     try:
-                        result = future.result(timeout=ping_timeout + 1)
-                        if result:
-                            results.append(result)
+                        result = future.result()
                     except Exception as e:
-                        logger.error(f"Error getting result for device {device.ip_address}: {e}")
-            except TimeoutError:
-                # Some futures didn't complete in time - log and continue
-                unfinished = sum(1 for f in future_to_device if not f.done())
-                if unfinished > 0:
-                    logger.warning(f"{unfinished} device pings did not complete within timeout - continuing")
-                # Process the results we did get
-                for future in future_to_device:
-                    if future.done():
-                        device = future_to_device[future]
-                        try:
-                            result = future.result(timeout=0.1)
-                            if result and result not in results:
-                                results.append(result)
-                        except Exception:
-                            pass
+                        logger.error(f"Error pinging device {device.ip_address}: {e}")
+                        result = {
+                            'device_id': device.id,
+                            'response_time': None,
+                            'success': False,
+                            'timestamp': datetime.utcnow(),
+                        }
+                    if result is not None:  # None == deliberately skipped this cycle
+                        results.append(result)
+            logger.debug(f"Ping batch of {len(devices_to_monitor)} devices finished in "
+                         f"{time.monotonic() - cycle_started:.1f}s with {max_workers} workers")
 
             # PERFORMANCE OPTIMIZATION: Batch process all monitoring results in a single transaction
             if results:
@@ -609,7 +667,8 @@ class DeviceMonitor:
         while not self._stop_event.is_set():
             record_heartbeat('DeviceMonitor')
             try:
-                # Monitor all devices
+                # Retire devices nobody has seen in a long time, then monitor the rest
+                self.archive_stale_devices()
                 self.monitor_all_devices()
 
                 # Clean up old data periodically (every 10 cycles)
@@ -850,9 +909,14 @@ class DeviceMonitor:
             logger.error(f"Error reloading DeviceMonitor configuration: {e}")
 
     def _ping_device_for_batch(self, device):
-        """Ping a device and return raw result for batch processing"""
+        """Ping a device and return raw result for batch processing.
+
+        Returns None when the device was deliberately skipped this cycle so that no
+        MonitoringData row is written for it."""
         try:
             response_time = self.ping_device(device)
+            if response_time is SKIPPED:
+                return None
 
             return {
                 'device_id': device.id,
