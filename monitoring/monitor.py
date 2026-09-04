@@ -456,81 +456,6 @@ class DeviceMonitor:
         except Exception as e:
             logger.error(f"Error during device monitoring cycle: {e}")
 
-    def cleanup_old_data(self, aggressive=False):
-        """Clean up old monitoring data based on retention policy"""
-        if not self.app:
-            logger.debug("No app context for cleanup")
-            return
-
-        try:
-            with self.app.app_context():
-                # Use aggressive cleanup (7 days) if requested, otherwise use config value
-                if aggressive:
-                    data_retention_days = 7
-                    logger.info("Running aggressive data cleanup (7 days retention)")
-                else:
-                    data_retention_days = int(self.get_config_value('data_retention_days', Config.DATA_RETENTION_DAYS))
-
-                cutoff_date = datetime.utcnow() - timedelta(days=data_retention_days)
-
-                # Clean monitoring data in batches to avoid locking
-                total_deleted = 0
-                batch_size = 1000  # Reduced batch size for faster processing
-                max_iterations = 100  # Limit iterations to prevent infinite loops
-                iteration = 0
-
-                while iteration < max_iterations:
-                    iteration += 1
-
-                    # Select IDs to delete in batches with timeout
-                    try:
-                        ids_to_delete = db.session.query(MonitoringData.id)\
-                            .filter(MonitoringData.timestamp < cutoff_date)\
-                            .limit(batch_size).all()
-                    except Exception as e:
-                        logger.error(f"Error querying old monitoring data: {e}")
-                        db.session.rollback()
-                        break
-
-                    if not ids_to_delete:
-                        break
-
-                    # Delete by IDs
-                    id_list = [row[0] for row in ids_to_delete]
-                    deleted_count = db.session.query(MonitoringData)\
-                        .filter(MonitoringData.id.in_(id_list))\
-                        .delete(synchronize_session=False)
-
-                    total_deleted += deleted_count
-                    db.session.commit()
-
-                    if len(id_list) < batch_size:
-                        break
-
-                if total_deleted > 0:
-                    logger.info(f"Cleaned up {total_deleted:,} old monitoring records")
-
-                # Also cleanup old performance metrics if aggressive
-                if aggressive:
-                    try:
-                        from models import PerformanceMetrics
-                        perf_deleted = db.session.query(PerformanceMetrics)\
-                            .filter(PerformanceMetrics.timestamp < cutoff_date)\
-                            .delete(synchronize_session=False)
-
-                        if perf_deleted > 0:
-                            db.session.commit()
-                            logger.info(f"Cleaned up {perf_deleted:,} old performance metrics")
-                    except Exception as e:
-                        logger.warning(f"Performance metrics cleanup failed: {e}")
-                        db.session.rollback()
-
-        except Exception as e:
-            logger.error(f"Error during data cleanup: {e}")
-            if self.app:
-                with self.app.app_context():
-                    db.session.rollback()
-
     def get_device_statistics(self, device_id, hours=24):
         """Get statistics for a specific device"""
         try:
@@ -636,27 +561,6 @@ class DeviceMonitor:
             self.is_running = True
             logger.info("Starting device monitoring thread")
 
-            # Run aggressive cleanup on startup for performance with timeout
-            logger.info("Running startup database cleanup for optimal performance...")
-            try:
-                # Use threading-based timeout since signals don't work in background threads
-                import threading
-                from concurrent.futures import ThreadPoolExecutor, TimeoutError as FutureTimeoutError
-
-                # Run cleanup with thread-based timeout
-                with ThreadPoolExecutor(max_workers=1) as executor:
-                    future = executor.submit(self.cleanup_old_data, aggressive=True)
-                    try:
-                        future.result(timeout=30)  # 30-second timeout
-                        logger.info("Database cleanup completed successfully")
-                    except FutureTimeoutError:
-                        logger.warning("Database cleanup timed out after 30 seconds. Continuing with monitoring...")
-                    except Exception as e:
-                        logger.error(f"Error during database cleanup: {e}. Continuing with monitoring...")
-
-            except Exception as e:
-                logger.error(f"Error during startup database cleanup: {e}. Continuing with monitoring...")
-
             logger.info("Entering main monitoring loop")
 
         except Exception as e:
@@ -672,16 +576,14 @@ class DeviceMonitor:
                 self.archive_stale_devices()
                 self.monitor_all_devices()
 
-                # Clean up old data periodically (every 10 cycles)
+                # Alert lifecycle housekeeping (every 10 cycles). Table retention is
+                # handled by services/retention.py from ResourceMonitor.
                 if hasattr(self, '_cleanup_counter'):
                     self._cleanup_counter += 1
                 else:
                     self._cleanup_counter = 1
 
                 if self._cleanup_counter >= 10:
-                    self.cleanup_old_data()
-
-                    # Also run alert retention cleanup (less frequent - every 10 cycles)
                     try:
                         from services.alert_retention_policy import alert_retention_policy
                         if self.app:

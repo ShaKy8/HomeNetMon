@@ -40,12 +40,9 @@ class ResourceMonitor:
             'cpu_duration': 300,       # Duration for sustained CPU (seconds)
         }
 
-        # Cleanup configurations
+        # Cleanup configurations. Database retention lives in services/retention.py
+        # (one rule per table, overridable at runtime); only file cleanup is here.
         self.cleanup_config = {
-            'old_monitoring_data_days': 30,    # Keep monitoring data for 30 days
-            'old_bandwidth_data_days': 30,     # Keep bandwidth data for 30 days
-            'old_performance_metrics_days': 30,  # Keep performance metrics for 30 days
-            'resolved_alerts_days': 7,         # Keep resolved alerts for 7 days
             'log_files_days': 14,              # Keep log files for 14 days
             'temp_files_days': 1,              # Clean temp files older than 1 day
             'cache_files_hours': 24,           # Clean cache files older than 24 hours
@@ -83,8 +80,9 @@ class ResourceMonitor:
 
         cpu_high_start = None
 
-        # Run cleanup once shortly after start so a stale DB gets pruned on boot.
-        first_cleanup_done = False
+        # Run cleanup once shortly after start so a stale DB gets pruned on boot,
+        # then hourly.
+        next_cleanup_at = 0.0
 
         # Self-alert state: don't re-alert about the same stuck thread within an hour.
         last_stuck_alert: dict[str, float] = {}
@@ -119,10 +117,12 @@ class ResourceMonitor:
                 self._check_disk_usage(resources['disk_percent'])
                 cpu_high_start = self._check_cpu_usage(resources['cpu_percent'], cpu_high_start)
 
-                # Perform periodic cleanup (every hour) plus one initial pass
-                if not first_cleanup_done or int(time.time()) % 3600 < 60:
+                # Perform periodic cleanup: one initial pass, then every hour.
+                # (The previous `int(time.time()) % 3600 < 60` test only matched
+                # about one loop iteration in six, so cleanup ran ~5-hourly.)
+                if time.time() >= next_cleanup_at:
                     self._perform_cleanup()
-                    first_cleanup_done = True
+                    next_cleanup_at = time.time() + 3600
 
                 # Sleep for monitoring interval (5 minutes)
                 self._stop_event.wait(300)
@@ -239,10 +239,9 @@ class ResourceMonitor:
         logger.info("Performing scheduled resource cleanup")
 
         try:
-            self._cleanup_old_monitoring_data()
-            self._cleanup_old_bandwidth_data()
-            self._cleanup_old_performance_metrics()
-            self._cleanup_resolved_alerts()
+            if self.app:
+                from services import retention
+                retention.run_all(self.app)
             self._cleanup_log_files()
             self._cleanup_temp_files()
             self._cleanup_cache_files()
@@ -327,80 +326,37 @@ class ResourceMonitor:
         except Exception as e:
             logger.error(f"Error handling high CPU usage: {e}")
 
-    def _delete_rows_older_than(self, table: str, column: str, cutoff: datetime, label: str) -> int:
-        """Delete rows older than `cutoff` from `table.column`. Returns rows deleted.
-
-        Silently skips tables that don't exist — schema variations across test
-        fixtures and partially-migrated production DBs would otherwise spam the
-        log on every cleanup pass.
-        """
+    def _purge(self, table: str, days: int) -> int:
+        """Apply one retention rule with a shorter-than-configured window (resource pressure)."""
         if not self.app:
             return 0
-
+        from services import retention
+        rule = next((r for r in retention.RETENTION_TABLES if r.table == table), None)
+        if rule is None:
+            return 0
         with self.app.app_context():
             try:
-                deleted = db.session.execute(
-                    text(f"DELETE FROM {table} WHERE {column} < :cutoff"),
-                    {'cutoff': cutoff}
-                ).rowcount
-                db.session.commit()
-
-                if deleted:
-                    logger.info(f"Cleaned up {deleted} {label} older than {cutoff.isoformat()}")
-                return deleted
-
+                return retention.purge_table(rule, days=days)
             except Exception as e:
                 db.session.rollback()
-                if 'no such table' in str(e).lower():
-                    logger.debug(f"Skipping {label} cleanup: table {table} not present")
-                    return 0
-                raise DatabaseError(f"Failed to cleanup {label}: {e}")
+                raise DatabaseError(f"Failed to cleanup {rule.label}: {e}")
 
     @handle_errors()
-    def _cleanup_old_monitoring_data(self, days: int = None):
-        """Clean up old monitoring data."""
-        days = days if days is not None else self.cleanup_config['old_monitoring_data_days']
-        cutoff = datetime.utcnow() - timedelta(days=days)
-        self._delete_rows_older_than('monitoring_data', 'timestamp', cutoff, 'monitoring records')
+    def _cleanup_old_monitoring_data(self, days: int):
+        self._purge('monitoring_data', days)
 
     @handle_errors()
-    def _cleanup_old_bandwidth_data(self, days: int = None):
-        """Clean up old bandwidth_data rows."""
-        days = days if days is not None else self.cleanup_config['old_bandwidth_data_days']
-        cutoff = datetime.utcnow() - timedelta(days=days)
-        self._delete_rows_older_than('bandwidth_data', 'timestamp', cutoff, 'bandwidth records')
+    def _cleanup_old_bandwidth_data(self, days: int):
+        self._purge('interface_bandwidth', days)
+        self._purge('bandwidth_data', days)
 
     @handle_errors()
-    def _cleanup_old_performance_metrics(self, days: int = None):
-        """Clean up old performance_metrics rows."""
-        days = days if days is not None else self.cleanup_config['old_performance_metrics_days']
-        cutoff = datetime.utcnow() - timedelta(days=days)
-        self._delete_rows_older_than('performance_metrics', 'timestamp', cutoff, 'performance records')
+    def _cleanup_old_performance_metrics(self, days: int):
+        self._purge('performance_metrics', days)
 
     @handle_errors()
-    def _cleanup_resolved_alerts(self, days: int = None):
-        """Clean up resolved alerts."""
-        if not self.app:
-            return
-
-        days = days if days is not None else self.cleanup_config['resolved_alerts_days']
-        cutoff = datetime.utcnow() - timedelta(days=days)
-
-        with self.app.app_context():
-            try:
-                deleted = db.session.execute(
-                    text("DELETE FROM alerts WHERE resolved = 1 AND resolved_at < :cutoff"),
-                    {'cutoff': cutoff}
-                ).rowcount
-                db.session.commit()
-                if deleted:
-                    logger.info(f"Cleaned up {deleted} resolved alerts older than {days} days")
-            except Exception as e:
-                db.session.rollback()
-                if 'no such table' in str(e).lower():
-                    logger.debug("Skipping resolved-alerts cleanup: table 'alerts' not present")
-                    return
-                raise DatabaseError(f"Failed to cleanup resolved alerts: {e}")
+    def _cleanup_resolved_alerts(self, days: int):
+        self._purge('alerts', days)
 
     def _cleanup_log_files(self, days: int = None):
         """Clean up old log files."""

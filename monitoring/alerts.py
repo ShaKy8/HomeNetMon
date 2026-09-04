@@ -694,10 +694,8 @@ This is an automated message from HomeNetMon.
         # Setup default suppression rules to reduce alert noise
         self.setup_default_suppressions()
 
-        # Cleanup old alerts on startup
-        self.cleanup_old_alerts()
-
-        # Clean up orphaned recovery alerts on startup
+        # Clean up orphaned recovery alerts on startup. (Resolved-alert retention
+        # is handled by services/retention.py.)
         self.cleanup_orphaned_recovery_alerts()
 
         from core.health import record_heartbeat
@@ -718,16 +716,6 @@ This is an automated message from HomeNetMon.
 
                 # Run alert correlation and escalation
                 self.run_alert_correlation()
-
-                # Periodic cleanup (every 10 cycles)
-                if hasattr(self, '_cleanup_counter'):
-                    self._cleanup_counter += 1
-                else:
-                    self._cleanup_counter = 1
-
-                if self._cleanup_counter >= 10:
-                    self.cleanup_old_alerts()
-                    self._cleanup_counter = 0
 
                 # Wait before next check - run much less frequently to reduce alert noise
                 # Check every 10 minutes instead of every 2 minutes

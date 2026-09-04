@@ -1735,38 +1735,9 @@ class PerformanceMetrics(db.Model):
                 'stability': 0
             }
 
-# Database event listeners for cleanup
-@event.listens_for(MonitoringData, 'before_insert')
-def cleanup_old_monitoring_data(mapper, connection, target):
-    from config import Config
-    cutoff = datetime.utcnow() - timedelta(days=Config.DATA_RETENTION_DAYS)
+# Retention (deleting old rows from the time-series tables) is handled by
+# services/retention.py on a schedule -- never from insert hooks.
 
-    # Delete old monitoring data
-    connection.execute(
-        MonitoringData.__table__.delete().where(
-            MonitoringData.__table__.c.timestamp < cutoff
-        )
-    )
-
-
-# Defense-in-depth retention for high-volume tables. ResourceMonitor performs the
-# real scheduled cleanup; these listeners ensure the tables can never grow
-# unbounded if the scheduled service stops for any reason. The sampling guard
-# keeps the per-insert cost negligible.
-import random as _retention_random
-
-
-@event.listens_for(BandwidthData, 'before_insert')
-def cleanup_old_bandwidth_data(mapper, connection, target):
-    if _retention_random.random() >= 0.001:  # ~1-in-1000 inserts triggers a sweep
-        return
-    from config import Config
-    cutoff = datetime.utcnow() - timedelta(days=Config.DATA_RETENTION_DAYS)
-    connection.execute(
-        BandwidthData.__table__.delete().where(
-            BandwidthData.__table__.c.timestamp < cutoff
-        )
-    )
 
 def init_db(app):
     db.init_app(app)
