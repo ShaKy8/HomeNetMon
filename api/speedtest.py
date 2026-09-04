@@ -74,7 +74,7 @@ def run_speedtest_sync():
         return jsonify({'error': str(e)}), 500
 
 @speedtest_bp.route('/results', methods=['GET'])
-@create_endpoint_limiter('critical')
+@create_endpoint_limiter('relaxed')
 def get_speedtest_results():
     """Get recent speed test results"""
     try:
@@ -101,7 +101,7 @@ def get_speedtest_results():
         return jsonify({'error': str(e)}), 500
 
 @speedtest_bp.route('/latest', methods=['GET'])
-@create_endpoint_limiter('critical')
+@create_endpoint_limiter('relaxed')
 def get_latest_result():
     """Get the most recent speed test result"""
     try:
@@ -130,7 +130,7 @@ def get_latest_result():
         return jsonify({'error': str(e)}), 500
 
 @speedtest_bp.route('/statistics', methods=['GET'])
-@create_endpoint_limiter('critical')
+@create_endpoint_limiter('relaxed')
 def get_speedtest_statistics():
     """Get speed test statistics"""
     try:

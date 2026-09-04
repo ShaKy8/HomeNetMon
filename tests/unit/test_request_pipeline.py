@@ -109,3 +109,14 @@ class TestSocketIo:
         assert 'trigger_performance_collection' not in handlers
         assert not any(name.startswith('request_') for name in handlers)
         assert 'subscribe_to_updates' in handlers
+
+
+class TestSocketIoOrigins:
+
+    def test_private_origins_accepted_public_refused(self, app):
+        cb = app.socketio.server.eio.cors_allowed_origins
+        for ok in ('http://192.168.86.42:5000', 'http://192.168.192.168:5000', 'http://10.8.0.2:5000',
+                   'http://172.16.5.9:5000', 'http://localhost:5000', 'http://homenetmon.local:5000'):
+            assert cb(ok), ok
+        for bad in ('http://8.8.8.8:5000', 'https://evil.example.com', 'ftp://192.168.1.1', ''):
+            assert not cb(bad), bad

@@ -1915,7 +1915,7 @@ def update_alert_suppression(suppression_id):
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/suppressions/<int:suppression_id>', methods=['DELETE'])
-@create_endpoint_limiter('critical')
+@create_endpoint_limiter('strict')
 def delete_alert_suppression(suppression_id):
     """Delete an alert suppression rule"""
     try:

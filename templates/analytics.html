@@ -720,6 +720,16 @@
                                 <span class="badge" id="overall-rating-badge">Unknown</span>
                             </div>
 
+                            <div class="border-top pt-2 mt-2 mb-2">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="speedtest-auto-enabled">
+                                    <label class="form-check-label small" for="speedtest-auto-enabled">Run automatically every</label>
+                                </div>
+                                <select class="form-select form-select-sm mt-1" id="speedtest-interval-hours" aria-label="Automatic speed test interval">
+                                    <option value="1">hour</option><option value="3">3 hours</option><option value="6" selected>6 hours</option>
+                                    <option value="12">12 hours</option><option value="24">24 hours</option>
+                                </select>
+                            </div>
                             <div id="speed-recommendations" class="small">
                                 <div class="placeholder-glow">
                                     <span class="placeholder col-12 mb-1"></span>
@@ -729,6 +739,21 @@
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Speed test history -->
+<div class="row mb-4">
+    <div class="col-12">
+        <div class="modern-analytics-card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h6 class="mb-0"><i class="bi bi-graph-up"></i> Speed test history</h6>
+                <span class="small text-muted" id="speedtest-history-summary"></span>
+            </div>
+            <div class="card-body" style="height: 260px">
+                <canvas id="speedtest-history-chart" aria-label="Download and upload speed over time"></canvas>
             </div>
         </div>
     </div>
@@ -2255,5 +2280,47 @@
         const target = hash && document.getElementById(`${hash}-tab`);
         if (target && window.bootstrap) new bootstrap.Tab(target).show();
     });
+
+    // ---- Speed test history + schedule ----
+    let speedHistoryChart = null;
+    async function loadSpeedTestHistory() {
+        const canvas = document.getElementById('speedtest-history-chart');
+        if (!canvas) return;
+        try {
+            const data = await apiRequest('/api/speedtest/results?limit=50');
+            const results = (data.results || []).slice().reverse();
+            const summary = document.getElementById('speedtest-history-summary');
+            if (summary) summary.textContent = results.length ? `${results.length} test(s), latest ${new Date(results[results.length - 1].timestamp).toLocaleString()}` : 'No tests recorded yet';
+            const labels = results.map(r => new Date(r.timestamp).toLocaleString());
+            const ds = (label, key, color) => ({ label, data: results.map(r => r[key]), borderColor: color, backgroundColor: color.replace('1)', '0.15)'), tension: 0.3, fill: false });
+            const cfg = { type: 'line', data: { labels, datasets: [ds('Download (Mbps)', 'download_mbps', 'rgba(34,197,94,1)'), ds('Upload (Mbps)', 'upload_mbps', 'rgba(59,130,246,1)'), ds('Ping (ms)', 'ping_ms', 'rgba(245,158,11,1)')] },
+                          options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true } } } };
+            if (speedHistoryChart) { speedHistoryChart.data = cfg.data; speedHistoryChart.update(); }
+            else speedHistoryChart = new Chart(canvas.getContext('2d'), cfg);
+        } catch (e) {
+            console.error('speed history', e);
+        }
+    }
+    async function loadSpeedTestSchedule() {
+        const toggle = document.getElementById('speedtest-auto-enabled');
+        const interval = document.getElementById('speedtest-interval-hours');
+        if (!toggle) return;
+        try {
+            const cfg = await apiRequest('/api/config');
+            const db = cfg.database_config || {};
+            toggle.checked = String((db.speedtest_auto_enabled || {}).value || 'false') === 'true';
+            if (db.speedtest_interval_hours) interval.value = String(parseFloat(db.speedtest_interval_hours.value));
+        } catch (e) { /* leave defaults */ }
+        toggle.addEventListener('change', async () => {
+            try { await apiRequest('/api/config/speedtest_auto_enabled', { method: 'PUT', body: { value: toggle.checked ? 'true' : 'false' } });
+                  showSuccess(toggle.checked ? 'Automatic speed tests enabled' : 'Automatic speed tests disabled'); }
+            catch (e) { showError(`Could not save: ${e.message}`); toggle.checked = !toggle.checked; }
+        });
+        interval.addEventListener('change', async () => {
+            try { await apiRequest('/api/config/speedtest_interval_hours', { method: 'PUT', body: { value: interval.value } }); showSuccess(`Speed test interval: every ${interval.options[interval.selectedIndex].text}`); }
+            catch (e) { showError(`Could not save: ${e.message}`); }
+        });
+    }
+    document.addEventListener('DOMContentLoaded', function () { loadSpeedTestHistory(); loadSpeedTestSchedule(); });
 </script>
 {% endblock %}

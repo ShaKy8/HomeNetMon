@@ -804,6 +804,31 @@ class NetworkScanner:
             logger.error(f"Error processing device {device_info.get('ip')} (MAC: {device_info.get('mac')}): {e}")
             db.session.rollback()
 
+    def _create_new_device_alerts(self):
+        """Record an informational alert for each device first seen in this scan.
+
+        The push notification alone left no trace in the UI; an Alert row shows on
+        /alerts and can be acknowledged. Uses the shared factory (dedup/suppression).
+        """
+        manager = getattr(self.app, 'alert_manager', None)
+        if manager is None or not self._new_devices_found:
+            return
+        for info in self._new_devices_found:
+            try:
+                device = None
+                if info.get('mac'):
+                    device = Device.query.filter_by(mac_address=info['mac']).first()
+                if device is None and info.get('ip'):
+                    device = Device.query.filter_by(ip_address=info['ip']).first()
+                if device is None:
+                    continue
+                label = info.get('hostname') or info.get('ip')
+                manager.create_alert(device.id, 'new_device', 'info',
+                                     f"New device joined the network: {label} ({info.get('ip')}, {info.get('device_type') or 'unknown type'})",
+                                     notify=False)  # the push below already covers notification
+            except Exception as e:
+                logger.debug(f"Could not record new-device alert for {info.get('ip')}: {e}")
+
     def _send_scan_completion_notifications(self, total_devices):
         """Send push notifications for scan completion and new devices"""
         try:
@@ -815,6 +840,7 @@ class NetworkScanner:
                 new_device_count = len(self._new_devices_found)
                 devices_to_notify = self._new_devices_found[:5]  # Limit to first 5
 
+                self._create_new_device_alerts()
                 for device_info in devices_to_notify:
                     device_name = device_info['hostname'] or device_info['ip']
                     success = push_service.send_new_device_alert(

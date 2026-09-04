@@ -182,13 +182,12 @@ class SpeedTestService:
             }
 
             # Store result
+            # Store result (in memory for this process, and in the database)
             self.test_results.append(result_data)
-
-            # Keep only the most recent results
             if len(self.test_results) > self.max_results:
                 self.test_results = self.test_results[-self.max_results:]
-
             self.last_test_time = result_data['timestamp']
+            self._persist(result_data)
 
             logger.info(f"Speed test completed: {result_data['download_mbps']} Mbps down, {result_data['upload_mbps']} Mbps up, {result_data['ping_ms']} ms ping")
 
@@ -214,16 +213,46 @@ class SpeedTestService:
                 'success': False
             }
 
+    def _persist(self, result):
+        """Write a successful result to speed_test_results (no-op without an app)."""
+        if not self.app:
+            return
+        try:
+            from models import SpeedTestResult, db
+            with self.app.app_context():
+                row = SpeedTestResult(
+                    timestamp=result['timestamp'], test_type=result.get('test_type', 'comprehensive'),
+                    success=True, download_mbps=result.get('download_mbps'), upload_mbps=result.get('upload_mbps'),
+                    ping_ms=result.get('ping_ms'), duration_seconds=result.get('duration'),
+                    server_name=(result.get('server') or {}).get('name'),
+                    server_location=(result.get('server') or {}).get('location'),
+                    isp=(result.get('client') or {}).get('isp'),
+                )
+                db.session.add(row)
+                db.session.commit()
+        except Exception as e:
+            logger.error(f"Could not persist speed test result: {e}")
+
     def get_recent_results(self, limit=10):
-        """Get recent speed test results"""
+        """Most recent results, newest first (from the database when an app is attached)."""
+        if self.app:
+            try:
+                from models import SpeedTestResult
+                with self.app.app_context():
+                    rows = (SpeedTestResult.query.filter_by(success=True)
+                            .order_by(SpeedTestResult.timestamp.desc()).limit(limit).all())
+                    return [r.to_dict() for r in rows]
+            except Exception as e:
+                logger.debug(f"Falling back to in-memory speed test results: {e}")
         return sorted(self.test_results, key=lambda x: x['timestamp'], reverse=True)[:limit]
 
     def get_speed_statistics(self, hours=24):
         """Get speed test statistics for the given period"""
         cutoff = datetime.utcnow().timestamp() - (hours * 3600)
 
+        source = self.get_recent_results(limit=1000) if self.app else self.test_results
         recent_results = [
-            result for result in self.test_results
+            result for result in source
             if result['success'] and result['timestamp'].timestamp() > cutoff
         ]
 
@@ -261,32 +290,41 @@ class SpeedTestService:
 
         self.running = True
 
+        def _sleep(seconds):
+            # Sleep in one-minute slices so the watchdog sees heartbeats and stop is prompt.
+            from core.health import record_heartbeat
+            deadline = time.time() + seconds
+            while self.running and time.time() < deadline:
+                record_heartbeat('SpeedTestService')
+                time.sleep(min(60, max(1, deadline - time.time())))
+
         def run_periodic_tests():
+            from core.health import record_heartbeat
             while self.running:
+                record_heartbeat('SpeedTestService')
                 try:
-                    # Check if automatic testing is enabled
+                    enabled = False
+                    hours = interval_hours
                     if self.app:
                         with self.app.app_context():
-                            auto_test_enabled = Configuration.get_value('speedtest_auto_enabled', 'false').lower() == 'true'
-                            if not auto_test_enabled:
-                                time.sleep(300)  # Check again in 5 minutes
-                                continue
-
-                    # Run speed test
+                            enabled = Configuration.get_value('speedtest_auto_enabled', 'false').lower() == 'true'
+                            try:
+                                hours = float(Configuration.get_value('speedtest_interval_hours', str(interval_hours)))
+                            except (TypeError, ValueError):
+                                hours = interval_hours
+                    if not enabled:
+                        _sleep(300)  # re-check the setting every 5 minutes
+                        continue
                     logger.info("Running automatic speed test...")
                     result = self.run_speed_test('comprehensive')
-
                     if result['success']:
                         logger.info(f"Automatic speed test completed: {result['download_mbps']} Mbps down")
                     else:
                         logger.error(f"Automatic speed test failed: {result.get('error', 'Unknown error')}")
-
-                    # Wait for next test
-                    time.sleep(interval_hours * 3600)
-
+                    _sleep(max(0.25, hours) * 3600)
                 except Exception as e:
                     logger.error(f"Error in automatic speed testing: {e}")
-                    time.sleep(3600)  # Wait 1 hour on error
+                    _sleep(3600)
 
         # Start background thread
         test_thread = threading.Thread(target=run_periodic_tests, daemon=True, name='SpeedTestService')

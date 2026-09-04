@@ -40,6 +40,7 @@ EXPECTED_THREADS: dict[str, int] = {
     'EscalationService':  60,      # execution_interval
     'AnomalyDetection':   300,     # detection_interval (heartbeats even while disabled)
     'SecurityScanner':    60,      # heartbeats once a minute while sleeping between scans
+    'SpeedTestService':   300,     # heartbeats every minute while idle/sleeping
 }
 
 # A thread is "stale" once its last heartbeat is older than

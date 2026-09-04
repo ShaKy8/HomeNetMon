@@ -94,7 +94,7 @@ class SuccessfulMonitoringDataFactory(MonitoringDataFactory):
 class FailedMonitoringDataFactory(MonitoringDataFactory):
     """Factory for creating failed monitoring data (high response time or packet loss)."""
     response_time = factory.fuzzy.FuzzyFloat(500.0, 2000.0, precision=2)
-    packet_loss = factory.fuzzy.FuzzyFloat(10.0, 100.0, precision=1)
+    packet_loss = factory.fuzzy.FuzzyFloat(10.0, 99.0, precision=1)  # 100% loss is a timeout, not a slow reply
 
 
 class TimeoutMonitoringDataFactory(MonitoringDataFactory):

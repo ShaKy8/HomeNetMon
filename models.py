@@ -980,6 +980,40 @@ class InterfaceBandwidth(db.Model):
         }
 
 
+class SpeedTestResult(db.Model):
+    """One internet speed test (manual or scheduled). Results used to live only in
+    process memory and vanished on restart."""
+    __tablename__ = 'speed_test_results'
+
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    test_type = db.Column(db.String(32), default='comprehensive')
+    success = db.Column(db.Boolean, default=True, nullable=False)
+    download_mbps = db.Column(db.Float)
+    upload_mbps = db.Column(db.Float)
+    ping_ms = db.Column(db.Float)
+    duration_seconds = db.Column(db.Float)
+    server_name = db.Column(db.String(255))
+    server_location = db.Column(db.String(255))
+    isp = db.Column(db.String(255))
+    error = db.Column(db.Text)
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'timestamp': self.timestamp,          # datetime; the API formats it
+            'test_type': self.test_type,
+            'success': self.success,
+            'download_mbps': self.download_mbps,
+            'upload_mbps': self.upload_mbps,
+            'ping_ms': self.ping_ms,
+            'duration': self.duration_seconds,
+            'server': {'name': self.server_name, 'location': self.server_location},
+            'client': {'isp': self.isp},
+            'error': self.error,
+        }
+
+
 class NotificationHistory(db.Model):
     """Model for tracking sent push notifications"""
     __tablename__ = 'notification_history'

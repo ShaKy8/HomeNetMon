@@ -344,6 +344,9 @@
             <i class="bi bi-gear"></i>
             System
         </a>
+        <a href="#history" class="settings-nav-item" data-section="history">
+            <i class="bi bi-clock-history"></i> History
+        </a>
         <a href="#about" class="settings-nav-item" data-section="about">
             <i class="bi bi-info-circle"></i>
             About
@@ -596,6 +599,18 @@
         </div>
 
         <!-- About Settings -->
+        <div class="settings-section" id="history">
+            <h2 class="section-title">Configuration History</h2>
+            <p class="text-muted">Every runtime setting change is recorded. Roll a key back to its previous value with one click.</p>
+            <div class="table-responsive">
+                <table class="table table-sm align-middle" aria-label="Configuration change history">
+                    <thead><tr><th>When</th><th>Key</th><th>From</th><th>To</th><th>By</th><th></th></tr></thead>
+                    <tbody id="config-history-rows"><tr><td colspan="6" class="text-muted">Loading...</td></tr></tbody>
+                </table>
+            </div>
+            <button type="button" class="btn-modern btn-sm" onclick="loadConfigHistory()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+        </div>
+
         <div class="settings-section" id="about">
             <h2 class="section-title">About HomeNetMon</h2>
 
@@ -640,6 +655,7 @@ document.addEventListener('DOMContentLoaded', function() {
     loadCurrentSettings();
     setupSettingsNavigation();
     loadSystemInfo();
+    loadConfigHistory();
 });
 
 function setupSettingsNavigation() {
@@ -814,6 +830,39 @@ async function clearAllData() {
 }
 function checkForUpdates() {
     window.open('https://github.com/ShaKy8/HomeNetMon/releases', '_blank', 'noopener');
+}
+
+// Configuration history (api/config_management.py)
+async function loadConfigHistory() {
+    const rows = document.getElementById('config-history-rows');
+    if (!rows) return;
+    try {
+        const data = await apiRequest('/api/config-management/history?limit=50');
+        const history = data.history || [];
+        if (!history.length) { rows.innerHTML = '<tr><td colspan="6" class="text-muted">No changes recorded yet.</td></tr>'; return; }
+        rows.innerHTML = history.map(h => `<tr>
+            <td class="text-nowrap">${escapeHtml(h.changed_at ? new Date(h.changed_at).toLocaleString() : '')}</td>
+            <td><code>${escapeHtml(h.config_key)}</code></td>
+            <td>${escapeHtml(h.old_value ?? '')}</td>
+            <td>${escapeHtml(h.new_value ?? '')}</td>
+            <td>${escapeHtml(h.changed_by || '')}</td>
+            <td>${h.rollback_available !== false && h.old_value != null ? `<button class="btn btn-sm btn-outline-warning" onclick="rollbackConfig(${h.id}, '${escapeHtml(h.config_key)}')">Roll back</button>` : ''}</td>
+        </tr>`).join('');
+    } catch (error) {
+        rows.innerHTML = `<tr><td colspan="6" class="text-danger">Could not load history: ${escapeHtml(error.message)}</td></tr>`;
+    }
+}
+async function rollbackConfig(historyId, key) {
+    if (!confirm(`Roll back ${key} to its previous value?`)) return;
+    try {
+        const result = await apiRequest('/api/config-management/rollback', { method: 'POST', body: { key, history_id: historyId } });
+        if (result.success === false) throw new Error(result.error || 'rollback refused');
+        showSuccess(result.message || `${key} rolled back`);
+        loadConfigHistory();
+        loadCurrentSettings();
+    } catch (error) {
+        showError(`Rollback failed: ${error.message}`);
+    }
 }
 </script>
 {% endblock %}

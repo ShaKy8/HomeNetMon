@@ -445,6 +445,10 @@
                 <li><a class="dropdown-item text-danger" href="#" onclick="bulkDeleteBySeverity('warning')">Delete All Warning Alerts</a></li>
             </ul>
         </div>
+        <button class="btn-modern btn-secondary" onclick="openSuppressions()" id="suppressions-btn" title="Quiet hours and suppression rules">
+            <i class="bi bi-bell-slash"></i>
+            Quiet hours &amp; rules
+        </button>
         <button class="btn-modern btn-primary" onclick="refreshAlerts()">
             <i class="bi bi-arrow-clockwise"></i>
             Refresh
@@ -490,6 +494,43 @@
 
 <!-- Toast Container -->
 <div id="toast-container" class="toast-container"></div>
+
+<!-- Alert suppression rules (quiet hours, per-device/per-type silencing) -->
+<div class="modal fade" id="suppressionsModal" tabindex="-1" aria-labelledby="suppressionsTitle">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="suppressionsTitle"><i class="bi bi-bell-slash"></i> Quiet hours &amp; suppression rules</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">A matching rule stops an alert from being created (and notified). Leave a field on "Any" to match everything. Daily hours use this computer's local time.</p>
+                <div class="table-responsive mb-3">
+                    <table class="table table-sm align-middle" aria-label="Suppression rules">
+                        <thead><tr><th>On</th><th>Name</th><th>Device</th><th>Type</th><th>Severity</th><th>Window</th><th></th></tr></thead>
+                        <tbody id="suppression-rows"><tr><td colspan="7" class="text-muted">Loading...</td></tr></tbody>
+                    </table>
+                </div>
+                <h6>New rule</h6>
+                <form id="suppression-form" class="row g-2" onsubmit="createSuppression(event)">
+                    <div class="col-md-6"><label class="form-label small" for="sup-name">Name</label><input class="form-control form-control-sm" id="sup-name" required maxlength="255" placeholder="e.g. Night quiet hours"></div>
+                    <div class="col-md-6"><label class="form-label small" for="sup-device">Device</label><select class="form-select form-select-sm" id="sup-device"><option value="">Any device</option></select></div>
+                    <div class="col-md-4"><label class="form-label small" for="sup-type">Alert type</label>
+                        <select class="form-select form-select-sm" id="sup-type"><option value="">Any type</option>
+                            <option value="device_down">Device down</option><option value="device_recovery">Device recovery</option><option value="high_latency">High latency</option>
+                            <option value="performance">Performance</option><option value="new_device">New device</option><option value="security_new_service">Security: new service</option>
+                            <option value="security_suspicious_port">Security: suspicious port</option><option value="security_vulnerability">Security: vulnerability</option></select></div>
+                    <div class="col-md-2"><label class="form-label small" for="sup-severity">Severity</label>
+                        <select class="form-select form-select-sm" id="sup-severity"><option value="">Any</option><option value="info">Info</option><option value="warning">Warning</option><option value="critical">Critical</option></select></div>
+                    <div class="col-md-3"><label class="form-label small" for="sup-start">Daily from (hour)</label><input type="number" class="form-control form-control-sm" id="sup-start" min="0" max="23" placeholder="all day"></div>
+                    <div class="col-md-3"><label class="form-label small" for="sup-end">Daily until (hour)</label><input type="number" class="form-control form-control-sm" id="sup-end" min="0" max="23" placeholder="all day"></div>
+                    <div class="col-12"><label class="form-label small" for="sup-desc">Description</label><input class="form-control form-control-sm" id="sup-desc" maxlength="500"></div>
+                    <div class="col-12 d-flex justify-content-end"><button type="submit" class="btn btn-sm btn-primary"><i class="bi bi-plus-lg"></i> Add rule</button></div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_js %}
@@ -1391,5 +1432,71 @@ document.addEventListener('DOMContentLoaded', function() {
         }, 10000);
     }
 });
+
+// ---- Suppression rules (quiet hours) ----
+async function openSuppressions() {
+    const modalEl = document.getElementById('suppressionsModal');
+    new bootstrap.Modal(modalEl).show();
+    await Promise.all([loadSuppressions(), loadSuppressionDevices()]);
+}
+async function loadSuppressionDevices() {
+    const select = document.getElementById('sup-device');
+    if (!select || select.options.length > 1) return;
+    try {
+        const data = await apiRequest('/api/devices');
+        (data.devices || []).sort((a, b) => (a.display_name || '').localeCompare(b.display_name || ''))
+            .forEach(d => { const o = document.createElement('option'); o.value = d.id; o.textContent = `${d.display_name} (${d.ip_address || 'no IP'})`; select.appendChild(o); });
+    } catch (e) { /* device list optional */ }
+}
+function describeWindow(r) {
+    if (r.daily_start_hour !== null && r.daily_start_hour !== undefined && r.daily_end_hour !== null && r.daily_end_hour !== undefined)
+        return `daily ${String(r.daily_start_hour).padStart(2, '0')}:00–${String(r.daily_end_hour).padStart(2, '0')}:00`;
+    if (r.start_time && r.end_time) return `${new Date(r.start_time).toLocaleString()} → ${new Date(r.end_time).toLocaleString()}`;
+    return 'always';
+}
+async function loadSuppressions() {
+    const rows = document.getElementById('suppression-rows');
+    try {
+        const data = await apiRequest('/api/monitoring/alerts/suppressions');
+        const list = data.suppressions || [];
+        if (!list.length) { rows.innerHTML = '<tr><td colspan="7" class="text-muted">No rules yet.</td></tr>'; return; }
+        rows.innerHTML = list.map(r => `<tr>
+            <td><div class="form-check form-switch m-0"><input class="form-check-input" type="checkbox" ${r.enabled ? 'checked' : ''} onchange="toggleSuppression(${r.id}, this.checked)" aria-label="Enable ${escapeHtml(r.name)}"></div></td>
+            <td>${escapeHtml(r.name)}${r.description ? `<div class="small text-muted">${escapeHtml(r.description)}</div>` : ''}</td>
+            <td>${escapeHtml(r.device_name || 'All devices')}</td>
+            <td>${escapeHtml(r.alert_type || 'All alert types')}</td>
+            <td>${escapeHtml(r.severity || 'All severities')}</td>
+            <td>${escapeHtml(describeWindow(r))}</td>
+            <td><button class="btn btn-sm btn-outline-danger" onclick="deleteSuppression(${r.id})" aria-label="Delete ${escapeHtml(r.name)}"><i class="bi bi-trash"></i></button></td>
+        </tr>`).join('');
+    } catch (e) {
+        rows.innerHTML = `<tr><td colspan="7" class="text-danger">Could not load rules: ${escapeHtml(e.message)}</td></tr>`;
+    }
+}
+async function createSuppression(event) {
+    event.preventDefault();
+    const val = id => document.getElementById(id).value;
+    const hour = id => { const v = val(id); return v === '' ? null : parseInt(v, 10); };
+    const body = { name: val('sup-name').trim(), description: val('sup-desc').trim(), enabled: true,
+                   device_id: val('sup-device') ? parseInt(val('sup-device'), 10) : null,
+                   alert_type: val('sup-type') || null, severity: val('sup-severity') || null,
+                   daily_start_hour: hour('sup-start'), daily_end_hour: hour('sup-end') };
+    if ((body.daily_start_hour === null) !== (body.daily_end_hour === null)) { showError('Set both daily hours or neither'); return; }
+    try {
+        await apiRequest('/api/monitoring/alerts/suppressions', { method: 'POST', body });
+        showSuccess('Rule added');
+        document.getElementById('suppression-form').reset();
+        loadSuppressions();
+    } catch (e) { showError(`Could not add rule: ${e.message}`); }
+}
+async function toggleSuppression(id, enabled) {
+    try { await apiRequest(`/api/monitoring/alerts/suppressions/${id}`, { method: 'PUT', body: { enabled } }); }
+    catch (e) { showError(`Could not update rule: ${e.message}`); loadSuppressions(); }
+}
+async function deleteSuppression(id) {
+    if (!confirm('Delete this rule?')) return;
+    try { await apiRequest(`/api/monitoring/alerts/suppressions/${id}`, { method: 'DELETE' }); loadSuppressions(); }
+    catch (e) { showError(`Could not delete rule: ${e.message}`); }
+}
 </script>
 {% endblock %}

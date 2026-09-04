@@ -13,6 +13,7 @@ let filters = {
     status: '',
     type: '',
     sortBy: 'name',
+    group: '',
     showArchived: false   // devices unmonitored for staleness are hidden by default
 };
 const esc = (v) => (window.escapeHtml ? window.escapeHtml(v) : String(v == null ? '' : v));
@@ -206,6 +207,13 @@ function setupEventListeners() {
         filters.sortBy = e.target.value;
         filterAndDisplayDevices();
     });
+    const groupFilter = document.getElementById('group-filter');
+    if (groupFilter) {
+        groupFilter.addEventListener('change', function(e) {
+            filters.group = e.target.value;
+            filterAndDisplayDevices();
+        });
+    }
     const archivedToggle = document.getElementById('show-archived');
     if (archivedToggle) {
         archivedToggle.addEventListener('change', function(e) {
@@ -252,6 +260,7 @@ async function loadDevices() {
         }
 
         devicesData = data.devices || [];
+        refreshGroupOptions();
         updateStats();
         filterAndDisplayDevices();
         document.getElementById('loading-devices').classList.add('hidden');
@@ -306,6 +315,11 @@ function filterAndDisplayDevices() {
         });
     }
 
+    // Apply group filter (device_group is free text set in the device editor)
+    if (filters.group) {
+        filtered = filtered.filter(device => (device.device_group || '') === filters.group);
+    }
+
     // Apply status filter
     if (filters.status) {
         filtered = filtered.filter(device => device.status === filters.status);
@@ -358,6 +372,22 @@ function filterAndDisplayDevices() {
     }
 }
 
+// Keep the group <select> in sync with the groups that exist
+function refreshGroupOptions() {
+    const select = document.getElementById('group-filter');
+    if (!select) return;
+    const groups = [...new Set(devicesData.map(d => d.device_group).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+    const current = select.value;
+    select.innerHTML = '<option value="">All groups</option>' +
+        groups.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
+    if (groups.includes(current)) select.value = current; else filters.group = '';
+}
+
+function groupBadge(device) {
+    const bits = [device.device_group, device.room_location].filter(Boolean);
+    return bits.length ? `<span class="badge bg-secondary ms-1" title="Group / room">${esc(bits.join(' · '))}</span>` : '';
+}
+
 // Display devices in grid view
 function displayGridView(devices) {
     const container = document.getElementById('devices-grid-view');
@@ -377,7 +407,7 @@ function createDeviceCard(device) {
         <div class="device-card" data-device-id="${device.id}" onclick="openDeviceDetails(${device.id})">
             <div class="device-name">
                 <span class="status-dot status-${statusClass}"></span>
-                ${esc(name)}
+                ${esc(name)}${groupBadge(device)}
             </div>
             <div class="device-ip">${esc(device.ip_address)}</div>
             <div class="device-stats">
@@ -407,7 +437,7 @@ function createDeviceRow(device) {
     return `
         <tr data-device-id="${device.id}">
             <td><span class="status-dot status-${statusClass}"></span></td>
-            <td>${esc(name)}</td>
+            <td>${esc(name)}${groupBadge(device)}</td>
             <td style="font-family: monospace;">${esc(device.ip_address)}</td>
             <td>${responseTime}</td>
             <td>${lastSeen}</td>

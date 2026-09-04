@@ -126,11 +126,17 @@ def create_app():
         if _local_hostname_pattern.match(host) and '.' not in host.replace('.local', ''):
             return True
 
-        # IP literal — must fall inside the configured monitored subnet.
+        # IP literal: any private / link-local / loopback address. The pages are
+        # served from this host, so the origin is whatever LAN address the browser
+        # used to reach it -- that may be another local subnet (a second interface,
+        # a VLAN or a VPN range) than the one being monitored. Public addresses are
+        # still refused.
         try:
             ip = ipaddress.ip_address(host)
         except ValueError:
             return False
+        if ip.is_private or ip.is_loopback or ip.is_link_local:
+            return True
         if _allowed_network is not None and ip in _allowed_network:
             return True
         return False
@@ -383,6 +389,12 @@ def create_app():
         performance_thread.start()
 
         # Start resource monitor (DB retention + system resource cleanup)
+        # Scheduled internet speed tests (idles until speedtest_auto_enabled is set in Settings)
+        try:
+            speed_test_service.start_automatic_testing(interval_hours=6)
+        except Exception as e:
+            logger.error(f"Speed test service failed to start: {e}")
+
         resource_monitor_thread = threading.Thread(
             target=resource_monitor.start_monitoring,
             daemon=True,
