@@ -1135,7 +1135,7 @@ def get_topology_test():
         # Find the router (usually .1 in the network)
         for device in devices:
             device_type = device.device_type or ''
-            if device.ip_address.endswith('.1') or 'router' in device_type.lower():
+            if (device.ip_address or '').endswith('.1') or 'router' in device_type.lower():
                 router_device = device
                 break
 
@@ -1256,7 +1256,7 @@ def get_network_topology():
         # Find the router (usually .1 in the network)
         for device in devices:
             device_type = device.device_type or ''
-            if device.ip_address.endswith('.1') or 'router' in device_type.lower():
+            if (device.ip_address or '').endswith('.1') or 'router' in device_type.lower():
                 router_device = device
                 break
 

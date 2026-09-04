@@ -1090,11 +1090,11 @@ class DeviceBehaviorAnalytics:
         # IP address pattern analysis
         ip_pattern = 'unknown'
         if device.ip_address:
-            if device.ip_address.endswith('.1'):
+            if (device.ip_address or '').endswith('.1'):
                 ip_pattern = 'gateway_router'
-            elif device.ip_address.endswith(('.2', '.3', '.4', '.5')):
+            elif (device.ip_address or '').endswith(('.2', '.3', '.4', '.5')):
                 ip_pattern = 'infrastructure_range'
-            elif int(device.ip_address.split('.')[-1]) > 100:
+            elif device.ip_address and int(device.ip_address.split('.')[-1]) > 100:
                 ip_pattern = 'dhcp_client'
             else:
                 ip_pattern = 'static_assignment'

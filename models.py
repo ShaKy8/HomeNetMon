@@ -29,7 +29,9 @@ class Device(db.Model):
     __tablename__ = 'devices'
 
     id = db.Column(db.Integer, primary_key=True)
-    ip_address = db.Column(db.String(15), unique=True, nullable=False, index=True)
+    # Nullable: the scanner clears the IP of a stale device when a different MAC
+    # takes over its address (DHCP reuse). Such devices are unmonitored until seen again.
+    ip_address = db.Column(db.String(15), unique=True, nullable=True, index=True)
     mac_address = db.Column(db.String(17), index=True)
     hostname = db.Column(db.String(255))
     vendor = db.Column(db.String(255))

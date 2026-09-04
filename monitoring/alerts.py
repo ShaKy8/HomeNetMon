@@ -36,8 +36,8 @@ class AlertManager:
     def is_critical_device(self, device):
         """Determine if a device is critical infrastructure (same logic as monitor)"""
         return (
-            device.ip_address.endswith('.1') or  # Router/Gateway
-            device.ip_address.endswith('.64') or  # Server
+            (device.ip_address or '').endswith('.1') or  # Router/Gateway
+            (device.ip_address or '').endswith('.64') or  # Server
             ('router' in device.device_type.lower() if device.device_type else False) or
             ('server' in device.device_type.lower() if device.device_type else False) or
             ('nuc' in (device.hostname or '').lower()) or

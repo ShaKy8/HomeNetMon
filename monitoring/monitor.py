@@ -68,7 +68,7 @@ class DeviceMonitor:
 
         # For critical infrastructure (router, servers), use more lenient settings
         is_critical_device = (
-            device.ip_address.endswith('.1') or  # Router
+            (device.ip_address or '').endswith('.1') or  # Router
             ('router' in device.device_type.lower() if device.device_type else False) or
             ('server' in device.device_type.lower() if device.device_type else False) or
             ('nuc' in device.hostname.lower() if device.hostname else False)
@@ -296,8 +296,8 @@ class DeviceMonitor:
         """Determine if a device is critical infrastructure"""
         # Critical device criteria
         return (
-            device.ip_address.endswith('.1') or  # Router/Gateway
-            device.ip_address.endswith('.64') or  # Server
+            (device.ip_address or '').endswith('.1') or  # Router/Gateway
+            (device.ip_address or '').endswith('.64') or  # Server
             ('router' in device.device_type.lower() if device.device_type else False) or
             ('server' in device.device_type.lower() if device.device_type else False) or
             ('nuc' in (device.hostname or '').lower()) or
@@ -373,7 +373,8 @@ class DeviceMonitor:
 
             with self.app.app_context():
                 # Get all devices that should be monitored
-                all_devices = Device.query.filter_by(is_monitored=True).all()
+                all_devices = Device.query.filter(Device.is_monitored == True,  # SQLAlchemy expression
+                                                  Device.ip_address.isnot(None)).all()
 
             if not all_devices:
                 logger.debug("No devices to monitor")

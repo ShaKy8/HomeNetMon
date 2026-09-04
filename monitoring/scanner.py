@@ -617,6 +617,7 @@ class NetworkScanner:
                                 logger.info(f"Clearing IP from stale device {existing_device_with_ip.id}")
                                 existing_device_with_ip.ip_address = None
                                 existing_device_with_ip.updated_at = datetime.utcnow()
+                                existing_device_with_ip.is_monitored = False  # no address to ping until seen again
                             else:
                                 # Both devices have the same MAC - this shouldn't happen, but skip update
                                 logger.error(f"Two devices with same MAC {mac} and IP {ip} - skipping update")
@@ -744,6 +745,7 @@ class NetworkScanner:
                         logger.info(f"Clearing IP from existing device {existing_ip_device.id} to resolve conflict")
                         existing_ip_device.ip_address = None
                         existing_ip_device.updated_at = datetime.utcnow()
+                        existing_ip_device.is_monitored = False  # no address to ping until seen again
                     else:
                         # Both have same IP/MAC - this is a duplicate, skip creation
                         logger.error(f"Duplicate device detected: IP {ip}, MAC {mac} - skipping creation")
