@@ -168,56 +168,6 @@ class TestMonitoringN1Queries:
         assert difference < 10, \
             f"Query count scales with items: {query_count_small[0]} vs {query_count_large[0]} (diff: {difference})"
 
-    def test_bandwidth_data_uses_eager_loading(self, app, client, db_session):
-        """GET /api/monitoring/bandwidth/data should also use eager loading."""
-        from models import Device, BandwidthData, db
-
-        with app.app_context():
-            # Create devices with bandwidth data
-            devices = []
-            for i in range(3):
-                device = Device(
-                    ip_address=f'192.168.1.{180+i}',
-                    mac_address=f'00:11:22:33:44:D{i}',
-                    hostname=f'bandwidth-test-{i}',
-                    device_type='computer',
-                    is_monitored=True,
-                    last_seen=datetime.utcnow()
-                )
-                db_session.add(device)
-                devices.append(device)
-            db_session.commit()
-
-            for device in devices:
-                for j in range(3):
-                    bandwidth_data = BandwidthData(
-                        device_id=device.id,
-                        bytes_in=2000 * (j + 1),
-                        bytes_out=1000 * (j + 1),
-                        timestamp=datetime.utcnow() - timedelta(minutes=j)
-                    )
-                    db_session.add(bandwidth_data)
-            db_session.commit()
-
-        # Track query count
-        query_count = [0]
-
-        def count_queries(conn, cursor, statement, parameters, context, executemany):
-            query_count[0] += 1
-
-        with app.app_context():
-            event.listen(db.engine, 'before_cursor_execute', count_queries)
-
-            try:
-                response = client.get('/api/monitoring/bandwidth/data?hours=24')
-                # Endpoint might not exist or return different status
-                if response.status_code == 200:
-                    data = response.get_json()
-                    # With eager loading: should be few queries
-                    assert query_count[0] < 10, \
-                        f"N+1 query in bandwidth: {query_count[0]} queries"
-            finally:
-                event.remove(db.engine, 'before_cursor_execute', count_queries)
 
     def test_joinedload_present_in_query(self, app, db_session):
         """Verify joinedload is applied to the monitoring data query."""

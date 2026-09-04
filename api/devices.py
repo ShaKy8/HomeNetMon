@@ -14,18 +14,6 @@ from monitoring.monitor import DeviceMonitor
 from services.pagination import paginator, create_pagination_response
 from services.query_cache import get_cached_device_list, invalidate_device_cache
 
-# Import ultra-fast cache if available
-try:
-    from services.ultra_cache import device_cache, cached_query, response_cache
-    ULTRA_CACHE_AVAILABLE = True
-except ImportError:
-    ULTRA_CACHE_AVAILABLE = False
-    # Fallback decorator
-    def cached_query(ttl=60):
-        def decorator(func):
-            return func
-        return decorator
-
 logger = logging.getLogger(__name__)
 
 devices_bp = Blueprint('devices', __name__)
@@ -35,12 +23,6 @@ devices_bp = Blueprint('devices', __name__)
 def get_devices():
     """Get all devices with optional filtering - ULTRA-CACHED VERSION"""
 
-    # Ultra-fast response cache for frequently accessed endpoints
-    if ULTRA_CACHE_AVAILABLE:
-        cache_key = f"devices:{request.args}"
-        cached_result = response_cache.get(cache_key)
-        if cached_result:
-            return cached_result
     try:
         # Validate and sanitize query parameters
         group = InputValidator.sanitize_string(request.args.get('group', ''), max_length=100)
@@ -125,10 +107,6 @@ def get_devices():
                 'total': len(filtered_devices),
                 'cached': True  # Indicate this response was cached
             }
-
-        # Cache the response for fast subsequent requests
-        if ULTRA_CACHE_AVAILABLE:
-            response_cache.set(cache_key, response)
 
         return jsonify(response)
 

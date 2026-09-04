@@ -21,7 +21,6 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from core.security_middleware import SecurityMiddleware
-from core.database_pool import DatabaseConnectionPool, get_connection_pool, _pool_init_lock
 from models import AutomationRule, RuleExecution, db
 from flask import Flask
 
@@ -97,97 +96,6 @@ class TestCSRFCookieSecurity:
                     "Must have SameSite=Strict flag"
 
 
-class TestDatabasePoolThreadSafety:
-    """Tests for database connection pool thread-safe initialization."""
-
-    @pytest.fixture(autouse=True)
-    def reset_pool(self):
-        """Reset the global connection pool before each test."""
-        import core.database_pool as pool_module
-        pool_module._connection_pool = None
-        yield
-        # Clean up after test
-        if pool_module._connection_pool:
-            try:
-                pool_module._connection_pool.close_all()
-            except:
-                pass
-            pool_module._connection_pool = None
-
-    def test_get_connection_pool_returns_same_instance(self, tmpdir):
-        """Should return the same pool instance when called multiple times."""
-        # Create a temporary database file
-        db_path = str(tmpdir.join("test.db"))
-
-        # Call get_connection_pool multiple times
-        pool1 = get_connection_pool(db_path)
-        pool2 = get_connection_pool(db_path)
-        pool3 = get_connection_pool()  # Without path after initialization
-
-        # All should return the same instance
-        assert pool1 is pool2, "First and second call should return same pool"
-        assert pool2 is pool3, "Second and third call should return same pool"
-        assert pool1 is pool3, "First and third call should return same pool"
-
-    def test_connection_pool_thread_safe_initialization(self, tmpdir):
-        """Should safely initialize the pool when accessed from multiple threads simultaneously."""
-        db_path = str(tmpdir.join("test.db"))
-
-        # Storage for pool instances from different threads
-        pools = []
-        exceptions = []
-
-        def get_pool():
-            """Function to be called from multiple threads."""
-            try:
-                pool = get_connection_pool(db_path)
-                pools.append(pool)
-            except Exception as e:
-                exceptions.append(e)
-
-        # Create multiple threads that try to initialize the pool simultaneously
-        threads = []
-        for _ in range(10):
-            thread = threading.Thread(target=get_pool)
-            threads.append(thread)
-
-        # Start all threads at approximately the same time
-        for thread in threads:
-            thread.start()
-
-        # Wait for all threads to complete
-        for thread in threads:
-            thread.join(timeout=5.0)
-
-        # Verify no exceptions occurred
-        assert len(exceptions) == 0, f"Thread-safe initialization failed with exceptions: {exceptions}"
-
-        # Verify all threads got the same pool instance
-        assert len(pools) == 10, "All threads should have obtained a pool"
-        assert all(p is pools[0] for p in pools), "All threads should get the same pool instance"
-
-    def test_connection_pool_double_checked_locking(self, tmpdir):
-        """Should use double-checked locking to avoid unnecessary lock contention."""
-        db_path = str(tmpdir.join("test.db"))
-
-        # Initialize pool first
-        pool1 = get_connection_pool(db_path)
-
-        # Mock the lock to verify it's not acquired on subsequent calls
-        with patch('core.database_pool._pool_init_lock') as mock_lock:
-            mock_lock.acquire = Mock()
-            mock_lock.release = Mock()
-            mock_lock.__enter__ = Mock()
-            mock_lock.__exit__ = Mock()
-
-            # Call get_connection_pool again (pool already exists)
-            pool2 = get_connection_pool()
-
-            # Verify the lock was not acquired (fast path taken)
-            mock_lock.__enter__.assert_not_called()
-
-            # Verify we got the same pool
-            assert pool2 is pool1
 
 
 class TestJSONParsingErrorHandling:
@@ -428,79 +336,6 @@ class TestSocketIOConfigurationValidation:
                 f"Configuration update should reject invalid user: {user}"
 
 
-class TestDatabasePoolErrorHandling:
-    """Tests for database pool operations handling sqlite3.Error."""
-
-    @pytest.fixture(autouse=True)
-    def reset_pool(self):
-        """Reset the global connection pool before each test."""
-        import core.database_pool as pool_module
-        pool_module._connection_pool = None
-        yield
-        if pool_module._connection_pool:
-            try:
-                pool_module._connection_pool.close_all()
-            except:
-                pass
-            pool_module._connection_pool = None
-
-    def test_create_connection_catches_sqlite3_error(self, tmpdir):
-        """Should catch sqlite3.Error when creating connection fails."""
-        import sqlite3
-
-        # Use an invalid database path to trigger sqlite3.Error
-        invalid_path = "/invalid/path/that/does/not/exist/test.db"
-
-        pool = DatabaseConnectionPool(invalid_path, max_connections=5)
-
-        # Verify pool was created (error handling allowed graceful failure)
-        assert pool is not None
-        assert pool.database_path == invalid_path
-
-    def test_close_connection_catches_sqlite3_error(self, tmpdir):
-        """Should catch sqlite3.Error when closing connection fails."""
-        import sqlite3
-
-        db_path = str(tmpdir.join("test.db"))
-        pool = DatabaseConnectionPool(db_path, max_connections=5)
-
-        # Test that the pool handles connection close errors gracefully
-        # by verifying the error handling in the close_all method
-        try:
-            pool.close_all()
-            # Should complete without raising even if connections have issues
-        except Exception as e:
-            pytest.fail(f"close_all should handle errors gracefully, but raised: {e}")
-
-        # Verify we can still create a new pool after cleanup
-        pool2 = DatabaseConnectionPool(db_path, max_connections=5)
-        assert pool2 is not None
-
-    def test_connection_pool_handles_broken_connection(self, tmpdir):
-        """Should handle broken connections gracefully with proper error catching."""
-        import sqlite3
-
-        db_path = str(tmpdir.join("test.db"))
-        pool = DatabaseConnectionPool(db_path, max_connections=5)
-
-        # Simulate a broken connection by mocking execute to raise sqlite3.Error
-        try:
-            with pool.get_connection() as conn:
-                # Force a sqlite3.Error
-                conn.execute = Mock(side_effect=sqlite3.Error("Connection is broken"))
-                # Try to use the connection
-                conn.execute('SELECT 1')
-        except sqlite3.Error:
-            # Expected to catch the error
-            pass
-        except Exception:
-            # Should catch and handle sqlite3.Error properly
-            pass
-
-        # Pool should still be functional after handling broken connection
-        with pool.get_connection() as conn:
-            result = conn.execute('SELECT 1').fetchone()
-            assert result is not None
 
 
 class TestSecurityMiddlewareIntegration:
@@ -559,28 +394,6 @@ class TestRegressionCoverage:
         assert isinstance(rule.conditions, dict)
         assert isinstance(rule.actions, dict)
 
-    def test_database_pool_cleanup_on_error(self, tmpdir):
-        """Should properly clean up resources when errors occur in pool operations."""
-        import sqlite3
-
-        db_path = str(tmpdir.join("test.db"))
-        pool = DatabaseConnectionPool(db_path, max_connections=2)
-
-        # Get initial connection count
-        initial_count = pool.created_connections
-
-        # Simulate error scenario
-        try:
-            with pool.get_connection() as conn:
-                raise Exception("Simulated error")
-        except Exception:
-            pass  # Expected
-
-        # Pool should handle the error and maintain consistency
-        # We should still be able to get a connection
-        with pool.get_connection() as conn:
-            result = conn.execute('SELECT 1').fetchone()
-            assert result is not None
 
     def test_csrf_cookie_set_on_all_get_requests(self, app, client):
         """Should set CSRF cookie on all GET requests."""

@@ -18,7 +18,7 @@ Steps
   5. bulk-resolve the never-auto-resolved security_new_service alert backlog
   6. rebuild devices with ip_address nullable (scanner IP-conflict path) and 5 indexes instead of 20;
      drops the orphan view device_summary_optimized that referenced it
-  7. drop orphan tables left by removed features (users, sessions, ...)
+  7. drop orphan tables left by removed features (users, sessions, ...) and tables of deleted models
   8. wal_checkpoint(TRUNCATE); VACUUM; ANALYZE; integrity_check
 """
 import argparse
@@ -58,7 +58,10 @@ DEVICES_KEEP_INDEXES = [
     "CREATE INDEX idx_devices_group_monitored ON devices (device_group, is_monitored)",
 ]
 
-ORPHAN_TABLES = ['users', 'sessions', 'device_summary_cache', 'query_performance_log']
+ORPHAN_TABLES = ['users', 'sessions', 'device_summary_cache', 'query_performance_log',
+                 # models removed in Phase 5 (all had 0 rows; bandwidth_data was emptied in step 3)
+                 'security_incidents', 'performance_snapshots', 'bandwidth_tests', 'latency_analysis',
+                 'performance_alerts', 'optimization_recommendations', 'bandwidth_data']
 
 
 def resolve_db_path(cli_path):
@@ -156,21 +159,7 @@ class Window:
 
     def step_empty_bandwidth(self):
         print("3. empty bandwidth_data (synthetic per-device rows)")
-        if not self.table_exists('bandwidth_data'):
-            print("  [skip] table absent")
-            return
-        rows = self.one("SELECT count(*) FROM bandwidth_data")
-        if rows == 0:
-            print("  [skip] already empty")
-            return
-        ddl = self.one("SELECT sql FROM sqlite_master WHERE type='table' AND name='bandwidth_data'")
-        idx_ddls = [r[0] for r in self.q(
-            "SELECT sql FROM sqlite_master WHERE type='index' AND tbl_name='bandwidth_data' AND sql IS NOT NULL")]
-        print(f"  {rows:,} rows; dropping and recreating the table with {len(idx_ddls)} index(es)")
-        self.run("DROP TABLE bandwidth_data", "DROP TABLE bandwidth_data")
-        self.run("CREATE TABLE bandwidth_data", ddl)
-        for d in idx_ddls:
-            self.run(d.split(' ON ')[0], d)
+        print("  [skip] superseded: the BandwidthData model was removed; the table is dropped in step 7")
 
     def step_delete_garbage_perf(self):
         print("4. delete performance_metrics rows computed from zero ping checks")

@@ -17,7 +17,7 @@ jobs:
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: "3.12"  # requires-python >=3.11 (numpy 2.x / scikit-learn 1.7 floor)
           cache: pip
 
       - name: Install system deps
@@ -30,9 +30,7 @@ jobs:
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
-          pip install -r requirements.txt
-          pip install ruff==0.15.14  # keep in sync with .pre-commit-config.yaml
-          pip install pip-audit
+          pip install -r requirements.txt -r requirements-dev.txt
 
       # Cheap syntax check: parses every .py file. This is the gate that would
       # have caught the literal-`\n` corruption of services/resource_monitor.py.

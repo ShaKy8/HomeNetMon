@@ -234,13 +234,9 @@ def create_app():
     performance_monitor.set_socketio(socketio)
 
 
-    # Apply global rate limiting for production security
-    try:
-        from core.rate_limiter import apply_global_rate_limiting
-        apply_global_rate_limiting(app)
-        logger.info("Global rate limiting applied successfully")
-    except Exception as e:
-        logger.warning(f"Global rate limiting failed, continuing without it: {e}")
+    # (core/rate_limiter.py -- a second, in-memory limiter with a cross-IP global
+    # cap, unconditional X-Forwarded-For trust and dead auth limits -- was removed.
+    # Flask-Limiter in services/rate_limiter.py is the one rate limiter.)
 
     # Make services accessible to other parts of the app
     app._scanner = scanner
