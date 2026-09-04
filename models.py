@@ -1802,11 +1802,14 @@ def init_db(app):
                 db.session.commit()
                 print("Added version column to configuration table")
             except Exception as e:
-                print(f"Could not add version column: {e}")
-                # If we can't add the column, recreate the table
-                db.drop_all()
-                db.create_all()
-                print("Recreated database tables with new schema")
+                # Never fall back to drop_all()/create_all() here: on a locked or
+                # partially-migrated production database that would destroy every
+                # table. Fail loudly instead so the operator can intervene.
+                db.session.rollback()
+                raise RuntimeError(
+                    "Could not add 'version' column to configuration table; "
+                    "refusing to start with an inconsistent schema"
+                ) from e
 
         # Initialize default configuration
         default_configs = [

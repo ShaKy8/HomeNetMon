@@ -103,6 +103,7 @@ celerybeat.pid
 .env.production
 .env.prod
 .env.prod.template
+!.env.prod.example
 .venv
 env/
 venv/
@@ -179,3 +180,9 @@ database_archives/
 
 # Added by ggshield
 .cache_ggshield
+
+# Build/test artifacts and vendored node deps (never commit)
+node_modules/
+test-results/
+playwright-report/
+static/bundles/*.gz

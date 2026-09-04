@@ -82,7 +82,53 @@ quote-style = "preserve"
 indent-style = "space"
 
 [tool.pytest.ini_options]
-# We have a tested-and-working subset documented in CLAUDE.md; full triage is
-# tracked separately. CI uses --override-ini="addopts=" to disable coverage.
-minversion = "6.0"
+# Single source of pytest configuration. (The former pytest.ini used the
+# setup.cfg-style `[tool:pytest]` header, which pytest ignores, so none of its
+# options -- including the coverage gate -- were ever in effect.)
+minversion = "7.0"
 testpaths = ["tests"]
+python_files = ["test_*.py", "*_test.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "--strict-markers --tb=short -ra"
+# pytest-timeout: per-test wall clock. Background-thread tests that hang are
+# the main failure mode this guards against.
+timeout = 15
+markers = [
+    "unit: unit tests for individual components",
+    "integration: integration tests for component interactions",
+    "api: API endpoint tests",
+    "slow: tests that take longer than usual to run",
+    "network: tests that require network access (normally mocked)",
+]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+    "ignore:.*unclosed.*:ResourceWarning",
+]
+
+# Coverage is opt-in (`pytest --cov`). No fail-under gate is set until coverage
+# has actually been measured on the full suite; set it to (measured - 2) then.
+[tool.coverage.run]
+source = ["."]
+omit = [
+    "*/venv/*",
+    "*/tests/*",
+    "*/instance/*",
+    "*/logs/*",
+    "*/scripts/*",
+    "*/migrations/*",
+    "*/static/*",
+    "*/templates/*",
+    "*/node_modules/*",
+    "conftest.py",
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+    "if TYPE_CHECKING:",
+]

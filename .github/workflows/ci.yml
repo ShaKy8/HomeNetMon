@@ -30,8 +30,9 @@ jobs:
       - name: Install Python deps
         run: |
           python -m pip install --upgrade pip
-          pip install ruff pytest pytest-timeout
           pip install -r requirements.txt
+          pip install ruff==0.15.14  # keep in sync with .pre-commit-config.yaml
+          pip install pip-audit
 
       # Cheap syntax check: parses every .py file. This is the gate that would
       # have caught the literal-`\n` corruption of services/resource_monitor.py.
@@ -56,11 +57,17 @@ jobs:
       - name: Ruff lint
         run: ruff check .
 
+      # Known-vulnerability scan of pinned runtime deps. Advisory-only until the
+      # dependency cleanup lands; then flip continue-on-error off.
+      - name: pip-audit
+        continue-on-error: true
+        run: pip-audit -r requirements.txt
+
       # Run the full unit suite. tests/conftest.py:STALE_TEST_SKIPS holds a
       # centralized list of tests that were written for APIs that have since
       # been renamed/removed; each entry has a reason. To revive a skipped
       # test, refactor it to match the current API and remove its entry from
-      # the dict. The skips amount to ~85 tests as of Phase 4c triage.
+      # the dict. Pytest options live in pyproject.toml [tool.pytest.ini_options].
       - name: Run unit tests
         env:
           DATABASE_URL: "sqlite:///:memory:"
@@ -68,6 +75,21 @@ jobs:
           NETWORK_RANGE: "192.168.1.0/24"
         run: |
           pytest tests/unit \
+            --no-cov \
+            --timeout=15 \
+            -q \
+            --tb=short
+
+      # tests/api + tests/integration (~209 tests) have never run in CI. Run
+      # them advisory-only until they are triaged, then make this required.
+      - name: Run API + integration tests (advisory)
+        continue-on-error: true
+        env:
+          DATABASE_URL: "sqlite:///:memory:"
+          SECRET_KEY: ci-test-secret-key-not-for-production-use
+          NETWORK_RANGE: "192.168.1.0/24"
+        run: |
+          pytest tests/api tests/integration \
             --no-cov \
             --timeout=15 \
             -q \

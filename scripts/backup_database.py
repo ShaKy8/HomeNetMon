@@ -16,6 +16,7 @@ import argparse
 import logging
 import gzip
 import shutil
+import sqlite3
 import subprocess
 import json
 from datetime import datetime, timedelta
@@ -23,15 +24,16 @@ from pathlib import Path
 from typing import Dict, List, Optional, Union
 import hashlib
 
-# Add the project root to Python path
-sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+# Add the project root (parent of scripts/) to Python path so `config` imports
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(PROJECT_ROOT))
 
 def setup_logging(verbose: bool = False) -> logging.Logger:
     """Set up logging for backup operations."""
     log_level = logging.DEBUG if verbose else logging.INFO
 
     # Create logs directory if it doesn't exist
-    log_dir = Path("logs")
+    log_dir = PROJECT_ROOT / "logs"
     log_dir.mkdir(exist_ok=True)
 
     log_file = log_dir / f"backup_{datetime.now().strftime('%Y%m%d')}.log"
@@ -66,8 +68,13 @@ class BackupManager:
             self.db_url = Config.SQLALCHEMY_DATABASE_URI
 
             if self.db_type == 'sqlite':
-                # Extract SQLite file path
-                self.sqlite_path = self.db_url.replace('sqlite:///', '')
+                # Extract SQLite file path. 'sqlite:////abs/path' -> '/abs/path';
+                # 'sqlite:///rel/path' -> repo-root-relative.
+                raw = self.db_url[len('sqlite:///'):]
+                path = Path(raw)
+                if not path.is_absolute():
+                    path = PROJECT_ROOT / path
+                self.sqlite_path = str(path)
             else:
                 # Parse PostgreSQL URL
                 from urllib.parse import urlparse
@@ -99,8 +106,22 @@ class BackupManager:
         backup_path = self.backup_dir / backup_filename
 
         try:
-            # Copy SQLite database file
-            shutil.copy2(self.sqlite_path, backup_path)
+            # Use SQLite's online backup API. A plain file copy of a WAL-mode
+            # database misses every transaction still in the -wal file (a torn
+            # snapshot); Connection.backup() produces a consistent image while
+            # the app keeps running.
+            src = sqlite3.connect(f"file:{self.sqlite_path}?mode=ro", uri=True, timeout=60)
+            try:
+                dst = sqlite3.connect(str(backup_path))
+                try:
+                    src.backup(dst, pages=4096)
+                    check = dst.execute("PRAGMA quick_check").fetchone()[0]
+                finally:
+                    dst.close()
+            finally:
+                src.close()
+            if check != 'ok':
+                raise RuntimeError(f"Backup failed integrity check: {check}")
 
             backup_info = {
                 'type': 'full',

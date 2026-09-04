@@ -439,13 +439,7 @@ def create_test_performance_metrics(db_session, device, **kwargs):
 
 # Pytest configuration
 
-def pytest_configure(config):
-    """Configure pytest with custom markers."""
-    config.addinivalue_line("markers", "unit: mark test as a unit test")
-    config.addinivalue_line("markers", "integration: mark test as an integration test")
-    config.addinivalue_line("markers", "api: mark test as an API test")
-    config.addinivalue_line("markers", "slow: mark test as slow running")
-    config.addinivalue_line("markers", "network: mark test as requiring network access")
+# Markers are registered in pyproject.toml [tool.pytest.ini_options] (--strict-markers).
 
 
 # Centralized skip list for unit tests that exercise APIs / model attributes
