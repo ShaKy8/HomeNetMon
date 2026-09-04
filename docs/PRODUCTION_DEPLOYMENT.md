@@ -54,14 +54,12 @@ sudo ./setup_ssl.sh your-domain.com your-email@domain.com
 Key production settings in `.env.prod`:
 
 - `SECRET_KEY`: Strong secret key for sessions
-- `ADMIN_PASSWORD`: Admin login password
 - `NETWORK_RANGE`: Your network CIDR (e.g., 192.168.1.0/24)
 - `SMTP_*`: Email configuration for alerts
 - `REDIS_URL`: Redis connection for caching
 
 ### Security Settings
 
-- Change default admin password
 - Configure firewall (ports 80, 443)
 - Enable HTTPS in production
 - Set strong SECRET_KEY
@@ -159,7 +157,7 @@ sudo ./update.sh
 
 ## Security Checklist
 
-- [ ] Strong admin password set
+- [ ] Dashboard reachable only from the LAN/VPN (there is no login)
 - [ ] HTTPS enabled with valid certificate
 - [ ] Firewall configured (UFW/iptables)
 - [ ] Regular security updates

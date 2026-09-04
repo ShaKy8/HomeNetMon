@@ -23,7 +23,7 @@ HomeNetMon is a comprehensive network monitoring solution that helps you monitor
 1. **Access the Application**
    - Open your web browser
    - Navigate to `http://your-server-ip` or your configured domain
-   - You should see the HomeNetMon login screen
+   - You should see the HomeNetMon dashboard (there is no login)
 
 2. **Login**
    - Username: `admin`
@@ -31,7 +31,7 @@ HomeNetMon is a comprehensive network monitoring solution that helps you monitor
    - Click "Login"
 
 3. **Initial Setup**
-   - Upon first login, the system will automatically start scanning your network
+   - On first start the system automatically scans your network
    - Wait for the initial scan to complete (usually 1-2 minutes)
    - You'll see discovered devices appear on the dashboard
 

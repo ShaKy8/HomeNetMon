@@ -11,7 +11,7 @@ NC='\033[0m' # No Color
 
 # Configuration
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-BACKUP_SCRIPT="$SCRIPT_DIR/backup_database.py"
+BACKUP_SCRIPT="$SCRIPT_DIR/scripts/backup_database.py"
 PYTHON_PATH="$SCRIPT_DIR/venv/bin/python"
 BACKUP_CONFIG="$SCRIPT_DIR/backup_config.json"
 

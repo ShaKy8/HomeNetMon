@@ -73,13 +73,15 @@ jobs:
           NETWORK_RANGE: "192.168.1.0/24"
         run: |
           pytest tests/unit \
-            --no-cov \
+            --cov=. --cov-report=term --cov-fail-under=28 \
             --timeout=15 \
             -q \
             --tb=short
+      # Coverage floor: unit tests measured 30.5% on 2026-09-04 (background threads no longer run under test); raise it as coverage grows.
 
-      # tests/api + tests/integration (~209 tests) have never run in CI. Run
-      # them advisory-only until they are triaged, then make this required.
+      # tests/api + tests/integration (209 tests) were written against endpoints
+      # and service attributes that never existed (162 fail, 47 pass as of
+      # 2026-09-04). They stay advisory until rewritten against the real API.
       - name: Run API + integration tests (advisory)
         continue-on-error: true
         env:

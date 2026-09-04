@@ -11,12 +11,10 @@ This guide covers security hardening for HomeNetMon production deployments.
 - [ ] DH parameters generated for perfect forward secrecy
 - [ ] Secure cipher suites enabled
 
-### 🔐 Authentication & Authorization
-- [ ] Strong admin password set (12+ characters)
-- [ ] CSRF protection enabled on all forms
-- [ ] Secure session configuration
-- [ ] Session timeout configured
-- [ ] Rate limiting enabled
+### 🔐 Access
+- [ ] HomeNetMon has **no authentication**: the dashboard must only be reachable from the trusted LAN or a VPN
+- [ ] CSRF token (`X-CSRF-Token`) required on every state-changing request (built in)
+- [ ] Rate limiting enabled (built in; Redis optional)
 
 ### 🌐 Network Security
 - [ ] Firewall configured (UFW or iptables)
@@ -77,7 +75,7 @@ python3 -c "
 import secrets, string
 chars = string.ascii_letters + string.digits + '!@#$%^&*'
 password = ''.join(secrets.choice(chars) for _ in range(16))
-print(f'ADMIN_PASSWORD={password}')
+print(f'SECRET_KEY={password}')
 " >> .env.prod
 
 # Apply session security settings

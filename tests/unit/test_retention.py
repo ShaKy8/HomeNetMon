@@ -116,7 +116,9 @@ class TestRunAll:
         assert deleted['monitoring_data'] == 1
         assert deleted['notification_history'] >= 1
         with app.app_context():
-            assert MonitoringData.query.count() == 1
+            cutoff = datetime.utcnow() - timedelta(days=300)
+            assert MonitoringData.query.filter(MonitoringData.timestamp < cutoff).count() == 0
+            assert MonitoringData.query.filter(MonitoringData.timestamp >= cutoff, MonitoringData.device_id == device.id).count() >= 1
             assert NotificationHistory.query.filter_by(device_id=device.id).count() == 1
         st = retention.status()
         assert st['runs'] >= 1 and st['last_run'] and st['last_deleted'] == deleted

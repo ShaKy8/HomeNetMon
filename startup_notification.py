@@ -9,7 +9,7 @@ import os
 import time
 
 # Add the project directory to Python path
-sys.path.insert(0, '/home/kyle/ClaudeCode/HomeNetMon')
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 
 def send_startup_notification():
     """Send a push notification when HomeNetMon starts"""

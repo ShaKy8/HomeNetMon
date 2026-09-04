@@ -127,13 +127,13 @@ curl http://localhost/api/system/info
 
 ```bash
 # Database health check
-python3 comprehensive_database_health_assessment.py
+python3 scripts/db/maintenance_window.py
 
 # Run optimization
 python3 optimize_database_performance.py
 
 # Clean old data
-python3 database_performance_fix.py
+python3 scripts/db/maintenance_window.py   # dry run; --execute with the service stopped
 ```
 
 ### Database Monitoring
@@ -203,10 +203,10 @@ sqlite3 /opt/homenetmon/data/homeNetMon.db ".restore /path/to/backup.db"
    ```bash
    # Run optimization scripts
    python3 optimize_database_performance.py
-   python3 database_performance_fix.py
+   python3 scripts/db/maintenance_window.py   # dry run; --execute with the service stopped
 
    # Check for data bloat
-   python3 comprehensive_database_health_assessment.py
+   python3 scripts/db/maintenance_window.py
    ```
 
 2. **Application Tuning**
@@ -230,8 +230,6 @@ sqlite3 /opt/homenetmon/data/homeNetMon.db ".restore /path/to/backup.db"
    # Monitor security events
    python3 security/security-monitor.py
 
-   # Check for failed logins
-   grep "Failed login" /opt/homenetmon/logs/app.log
 
    # Monitor CSRF violations
    grep "CSRF" /opt/homenetmon/logs/app.log
@@ -403,7 +401,7 @@ sqlite3 /opt/homenetmon/data/homeNetMon.db ".restore /path/to/backup.db"
 |-------|---------|-------------|
 | Service down | `sudo systemctl restart homenetmon` | Restart application |
 | High memory | `python3 optimize_database_performance.py` | Optimize database |
-| Slow queries | `python3 database_performance_fix.py` | Fix DB performance |
+| Slow queries | `python3 scripts/db/maintenance_window.py   # dry run; --execute with the service stopped` | Fix DB performance |
 | SSL issues | `sudo certbot renew` | Renew SSL certificate |
 | Network errors | `sudo systemctl restart networking` | Restart networking |
 

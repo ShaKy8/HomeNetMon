@@ -16,6 +16,7 @@ from collections import defaultdict
 from models import db, Device, Alert, Configuration
 from sqlalchemy import and_
 from services.anomaly_detection import AnomalyDetectionEngine
+from config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -136,7 +137,7 @@ class NetworkSecurityScanner:
     def __init__(self, app=None):
         self.app = app
         self.running = False
-        self.scan_interval = 86400  # 24 hours default - much less aggressive to reduce alerts
+        self.scan_interval = Config.SECURITY_SCAN_INTERVAL  # daily by default; nmap sweeps can unsettle IoT devices
         self.nm = nmap.PortScanner()
         self.anomaly_detection = AnomalyDetectionEngine()
 

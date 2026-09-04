@@ -124,9 +124,10 @@ The fastest way to get HomeNetMon running:
 
 ### Production Installation (Ubuntu/Debian)
 
-1. **Run the automated installer:**
+1. **Run the automated installer** (as your normal user; it uses sudo where needed):
    ```bash
-   sudo ./install.sh
+   ./install.sh            # system service in /opt/homenetmon
+   ./install.sh --user     # or: per-user service from this checkout, no root
    ```
 
 2. **Access dashboard:** http://your-server-ip:5000
@@ -155,8 +156,8 @@ Docker provides the easiest deployment method with all dependencies included.
    cat > .env << EOF
    # Network Configuration
    NETWORK_RANGE=192.168.1.0/24
-   PING_INTERVAL=30
-   SCAN_INTERVAL=300
+   PING_INTERVAL=600
+   SCAN_INTERVAL=86400
    
    # Email Alerts (Optional)
    SMTP_SERVER=smtp.gmail.com
@@ -195,11 +196,11 @@ For Ubuntu/Debian systems, use the automated installation script.
 # Make script executable
 chmod +x install.sh
 
-# Run installation
-sudo ./install.sh
+# Run installation (do not use sudo; the script asks for it where needed)
+./install.sh
 
 # Check service status
-sudo systemctl status homeNetMon
+sudo systemctl status homenetmon
 ```
 
 **Manual Installation:**
@@ -269,15 +270,20 @@ pkill -f "python app.py"
 
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `NETWORK_RANGE` | `192.168.86.0/24` | Network range to monitor (CIDR notation) |
-| `PING_INTERVAL` | `30` | Seconds between ping checks |
-| `SCAN_INTERVAL` | `300` | Seconds between network scans |
+| `NETWORK_RANGE` | `192.168.86.0/24` | Network range to monitor (CIDR notation); addresses outside it are ignored |
+| `PING_INTERVAL` | `600` | Seconds between ping cycles (deliberately gentle on IoT devices) |
+| `SCAN_INTERVAL` | `86400` | Seconds between discovery scans (daily) |
 | `PING_TIMEOUT` | `3.0` | Ping timeout in seconds |
 | `MAX_WORKERS` | `50` | Maximum concurrent monitoring threads |
-| `HOST` | `0.0.0.0` | Web server bind address |
+| `HOST` | `127.0.0.1` | Web server bind address; the systemd units and Docker set `0.0.0.0` for LAN access |
 | `PORT` | `5000` | Web server port |
 | `DEBUG` | `false` | Enable debug mode |
-| `DATA_RETENTION_DAYS` | `30` | Days to keep monitoring data |
+| `DATA_RETENTION_DAYS` | `30` | Days of history to keep (applies to every time-series table) |
+| `STALE_DEVICE_DAYS` | `30` | Devices unseen this long stop being pinged until seen again |
+| `BASE_URL` | auto | Public URL used in notification links |
+| `SECURITY_SCANNING_ENABLED` | `false` | nmap port scans of devices (can destabilise IoT) |
+
+> Values saved in **Settings** override `NETWORK_RANGE`, `PING_INTERVAL`, `SCAN_INTERVAL` and `BANDWIDTH_INTERVAL`; the environment only seeds them on a fresh database.
 
 ### Email Configuration
 
@@ -298,42 +304,9 @@ pkill -f "python app.py"
 | `WEBHOOK_URL` | URL to POST alert notifications |
 | `WEBHOOK_TIMEOUT` | Webhook request timeout in seconds |
 
-### Configuration File
+### Runtime settings
 
-You can also use a YAML configuration file (`config.yaml`):
-
-```yaml
-network:
-  range: "192.168.1.0/24"
-  ping_interval: 30
-  scan_interval: 300
-  ping_timeout: 3.0
-  max_workers: 50
-
-alerts:
-  email:
-    enabled: true
-    smtp_server: "smtp.gmail.com"
-    smtp_port: 587
-    username: "your-email@gmail.com"
-    password: "your-password"
-    use_tls: true
-    from_email: "alerts@yourdomain.com"
-    to_emails:
-      - "admin@yourdomain.com"
-      - "user@yourdomain.com"
-  
-  webhook:
-    enabled: true
-    url: "https://your-webhook-url.com/alerts"
-    timeout: 10
-
-database:
-  retention_days: 30
-
-logging:
-  level: "INFO"
-```
+Network range, intervals, alert thresholds and notification channels can be changed at any time under **Settings** in the dashboard; those values are stored in the database and take precedence over the environment.
 
 ## Usage Guide
 
@@ -397,7 +370,7 @@ HomeNetMon provides a REST API for integration with other systems.
 
 ### Authentication
 
-Currently, no authentication is required for API access. This is suitable for home networks but consider adding authentication for production use.
+There is no authentication: HomeNetMon is designed for a trusted home LAN. Keep it off the public internet (firewall or VPN). State-changing requests (POST/PUT/DELETE) must carry the `X-CSRF-Token` header obtained from `GET /api/csrf-token`. Interactive docs: `/api/docs`.
 
 ### Endpoints
 
@@ -568,7 +541,7 @@ pkill -f "python app.py"
 **5. Performance Issues**
 
 *Problem: High CPU usage*
-- Reduce monitoring frequency in `.env`: `PING_INTERVAL=60`
+- Reduce monitoring frequency in Settings (the default ping cycle is already 10 minutes)
 - Decrease max_workers: `MAX_WORKERS=25`
 - Check for network connectivity issues
 
@@ -601,19 +574,19 @@ ps aux | grep "python app.py"
 
 **Docker Installation:**
 ```bash
-docker-compose logs -f homeNetMon
+docker compose logs -f homeNetMon
 ```
 
 **Systemd Service Installation:**
 ```bash
 # View service logs
-sudo journalctl -u homeNetMon -f
+sudo journalctl -u homenetmon -f
 
 # Check service status
-sudo systemctl status homeNetMon
+sudo systemctl status homenetmon
 
 # View log file
-tail -f /var/log/homeNetMon/homeNetMon.log
+tail -f /opt/homenetmon/logs/homenetmon.log
 ```
 
 **Log Analysis Tips:**
@@ -652,19 +625,19 @@ network:
 docker exec homeNetMon sqlite3 /app/data/homeNetMon.db ".backup /app/data/backup.db"
 
 # Native
-sqlite3 /opt/homeNetMon/homeNetMon.db ".backup backup.db"
+venv/bin/python scripts/backup_database.py   # online, WAL-safe backup into backups/
 ```
 
 **Restore Database:**
 ```bash
 # Stop service first
-sudo systemctl stop homeNetMon
+sudo systemctl stop homenetmon
 
 # Restore
-cp backup.db /opt/homeNetMon/homeNetMon.db
+cp backups/homeNetMon_full_<timestamp>.db /opt/homenetmon/data/homeNetMon.db
 
 # Restart service
-sudo systemctl start homeNetMon
+sudo systemctl start homenetmon
 ```
 
 ## Security Considerations
@@ -731,13 +704,13 @@ HomeNetMon/
 │   ├── monitoring.py      # Monitoring data API
 │   └── config.py          # Configuration API
 ├── static/                # Static web assets
-│   ├── css/              # Stylesheets
-│   └── js/               # JavaScript files
+│   ├── js/               # JavaScript (no build step)
+│   └── icons/            # App icons + web manifest
 ├── templates/             # HTML templates
 ├── docker-compose.yml     # Docker deployment
 ├── Dockerfile            # Container build
 ├── install.sh           # Installation script
-├── homeNetMon.service   # Systemd service
+├── systemd/             # systemd units (system + per-user)
 └── README.md           # Documentation
 ```
 

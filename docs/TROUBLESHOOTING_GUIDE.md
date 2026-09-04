@@ -24,7 +24,7 @@ This guide provides systematic troubleshooting procedures for common issues enco
 sudo systemctl status homenetmon
 
 # Test HTTP endpoint
-curl -f http://localhost/health || echo "Service not responding"
+curl -f http://127.0.0.1:5000/api/system/health || echo "Service not responding"
 
 # Check process
 ps aux | grep -i homenetmon
@@ -105,7 +105,7 @@ ping google.com
    sudo cat /opt/homenetmon/.env
 
    # Validate environment variables
-   sudo -u homenetmon bash -c 'source .env && env | grep -E "(SECRET_KEY|ADMIN_PASSWORD)"'
+   sudo -u homenetmon bash -c 'source .env && env | grep -E "(SECRET_KEY|NETWORK_RANGE)"'
    ```
 
 2. **Permission issues**
@@ -141,7 +141,7 @@ ping google.com
    watch 'ps aux | grep homenetmon'
 
    # Check for memory leaks
-   python3 performance_monitor_live.py
+   python3 scripts/perf/performance_monitor_live.py
    ```
 
 3. **Check database issues**
@@ -161,7 +161,7 @@ ping google.com
    sudo systemctl restart homenetmon
 
    # Optimize database
-   python3 optimize_database_performance.py
+   python3 scripts/db/maintenance_window.py        # dry run; add --execute with the service stopped
    ```
 
 2. **Database corruption**
@@ -312,7 +312,7 @@ ping google.com
 
 2. **Analyze database**
    ```bash
-   python3 comprehensive_database_health_assessment.py
+   python3 scripts/db/maintenance_window.py        # dry run reports table/index state
    ```
 
 3. **Check query performance**
@@ -329,13 +329,13 @@ ping google.com
 1. **Database optimization**
    ```bash
    # Run optimization
-   python3 optimize_database_performance.py
+   python3 scripts/db/maintenance_window.py        # dry run; add --execute with the service stopped
 
    # Clean old data
-   python3 database_performance_fix.py
+   python3 scripts/db/maintenance_window.py
 
    # Emergency cleanup
-   python3 emergency_database_cleanup.py
+   python3 scripts/db/maintenance_window.py --execute
    ```
 
 2. **Index optimization**
@@ -451,10 +451,10 @@ ping google.com
 2. **Long-term fixes**
    ```bash
    # Optimize database
-   python3 optimize_database_performance.py
+   python3 scripts/db/maintenance_window.py        # dry run; add --execute with the service stopped
 
    # Clean old data
-   python3 emergency_database_cleanup.py
+   python3 scripts/db/maintenance_window.py --execute
 
    # Reduce worker processes
    export WORKERS=2
@@ -493,7 +493,7 @@ ping google.com
 
 2. **Optimize database queries**
    ```bash
-   python3 optimize_database_performance.py
+   python3 scripts/db/maintenance_window.py        # dry run; add --execute with the service stopped
    ```
 
 ## Security Issues
@@ -573,7 +573,6 @@ ping google.com
    "
 
    # Update .env file
-   ADMIN_PASSWORD=new-password-here
    ```
 
 2. **Fix session configuration**
@@ -608,7 +607,7 @@ ping google.com
 
 2. **Check required variables**
    ```bash
-   grep -E "(SECRET_KEY|ADMIN_PASSWORD|NETWORK_RANGE)" /opt/homenetmon/.env
+   grep -E "(SECRET_KEY|NETWORK_RANGE)" /opt/homenetmon/.env
    ```
 
 **Solutions:**
@@ -648,7 +647,7 @@ sudo systemctl restart homenetmon
 python3 performance_monitor_live.py
 
 # Database performance analysis
-python3 comprehensive_database_health_assessment.py
+python3 scripts/db/maintenance_window.py
 
 # Load testing
 python3 comprehensive_load_stress_test_suite.py

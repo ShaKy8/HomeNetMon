@@ -1,15 +1,22 @@
 #!/bin/bash
-# Production runner for HomeNetMon
+# Run HomeNetMon in the foreground with production settings (systemd is preferred; see systemd/).
+set -euo pipefail
+cd "$(dirname "$0")"
 
-# Load environment
+# Load .env without word-splitting values (the old `export $(cat .env | xargs)` mangled
+# passwords containing spaces or shell metacharacters).
 if [ -f .env ]; then
-    export $(cat .env | grep -v '^#' | xargs)
+    set -a
+    # shellcheck disable=SC1091
+    . ./.env
+    set +a
 fi
 
-# Set production defaults
-export FLASK_ENV=production
-export HOST=0.0.0.0
-export PORT=5000
+export ENV="${ENV:-production}"
+export HOST="${HOST:-0.0.0.0}"
+export PORT="${PORT:-5000}"
+# Keep the database out of the checkout unless the operator chose otherwise.
+export DATABASE_URL="${DATABASE_URL:-sqlite:///$(pwd)/production_data/homeNetMon.db}"
+mkdir -p production_data
 
-# Run the application
 exec venv/bin/python app.py

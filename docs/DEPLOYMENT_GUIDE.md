@@ -26,7 +26,7 @@ This comprehensive guide covers all aspects of deploying HomeNetMon in productio
 
 ### Software Dependencies
 
-- Python 3.8 or higher
+- Python 3.11 or higher
 - Docker 20.10+ (for container deployment)
 - Nginx 1.18+ (for reverse proxy)
 - Redis 6.0+ (for caching and rate limiting)
@@ -92,7 +92,6 @@ This comprehensive guide covers all aspects of deploying HomeNetMon in productio
 
    # Required settings:
    SECRET_KEY=your-secret-key-here
-   ADMIN_PASSWORD=your-secure-password
    NETWORK_RANGE=192.168.1.0/24
    ```
 
@@ -153,7 +152,6 @@ This comprehensive guide covers all aspects of deploying HomeNetMon in productio
 | Variable | Description | Default | Required |
 |----------|-------------|---------|----------|
 | `SECRET_KEY` | Flask secret key | - | Yes |
-| `ADMIN_PASSWORD` | Admin user password | - | Yes |
 | `NETWORK_RANGE` | Network to monitor | 192.168.1.0/24 | Yes |
 | `DATABASE_URL` | Database connection | sqlite:///data/homeNetMon.db | No |
 | `REDIS_URL` | Redis connection | redis://localhost:6379/0 | No |
@@ -222,14 +220,14 @@ This comprehensive guide covers all aspects of deploying HomeNetMon in productio
 
 ### Authentication
 
-1. **Set Strong Admin Password**
+1. **There is no admin password** -- HomeNetMon has no login. Restrict network access instead (firewall/VPN).
    ```bash
    # Generate strong password
    python3 -c "
    import secrets, string
    chars = string.ascii_letters + string.digits + '!@#$%^&*'
    password = ''.join(secrets.choice(chars) for _ in range(16))
-   print(f'ADMIN_PASSWORD={password}')
+   print(f'SECRET_KEY={password}')
    "
    ```
 
@@ -408,7 +406,7 @@ This comprehensive guide covers all aspects of deploying HomeNetMon in productio
 2. **Database Maintenance**
    ```bash
    # Run database cleanup
-   python3 database_performance_fix.py
+   python3 scripts/db/maintenance_window.py
 
    # Create backup
    python3 backup_production.py

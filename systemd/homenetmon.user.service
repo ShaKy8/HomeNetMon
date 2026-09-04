@@ -1,0 +1,25 @@
+# Per-user unit (no root needed): install to ~/.config/systemd/user/homenetmon.service
+#   mkdir -p ~/.config/systemd/user && cp systemd/homenetmon.user.service ~/.config/systemd/user/homenetmon.service
+#   systemctl --user daemon-reload && systemctl --user enable --now homenetmon
+#   loginctl enable-linger $USER      # keep it running when you are not logged in
+# Edit WorkingDirectory/EnvironmentFile if the checkout is not ~/HomeNetMon.
+[Unit]
+Description=HomeNetMon Network Monitoring Service
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+WorkingDirectory=%h/HomeNetMon
+EnvironmentFile=-%h/HomeNetMon/.env
+Environment=ENV=production
+Environment=HOST=0.0.0.0
+Environment=DATABASE_URL=sqlite:///%h/HomeNetMon/production_data/homeNetMon.db
+ExecStart=%h/HomeNetMon/venv/bin/python app.py
+Restart=always
+RestartSec=10
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=default.target

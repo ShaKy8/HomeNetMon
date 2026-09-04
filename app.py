@@ -484,8 +484,14 @@ def create_app():
             }
 
     # Start services in background
-    services_thread = threading.Thread(target=start_monitoring_services, daemon=True)
-    services_thread.start()
+    # Under pytest (conftest sets Config.TESTING before create_app) the monitoring
+    # threads must not start: they would ping test devices and write rows into the
+    # test database mid-test, which made several tests order-dependent.
+    if getattr(Config, 'TESTING', False) or app.config.get('TESTING'):
+        logger.info("TESTING set: background monitoring services not started")
+    else:
+        services_thread = threading.Thread(target=start_monitoring_services, daemon=True)
+        services_thread.start()
 
 
     # Web routes (protected)

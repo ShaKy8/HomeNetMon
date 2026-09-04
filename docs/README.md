@@ -18,8 +18,8 @@ Welcome to the comprehensive documentation for HomeNetMon, a powerful network mo
 
 ### 🔌 Technical Reference
 - [**API Reference**](API_REFERENCE.md) - Complete API documentation
-- [**Security Guide**](../SECURITY_GUIDE.md) - Security hardening
-- [**Production Deployment**](../PRODUCTION_DEPLOYMENT.md) - Production setup
+- [**Security Guide**](SECURITY_GUIDE.md) - Security hardening
+- [**Production Deployment**](PRODUCTION_DEPLOYMENT.md) - Production setup
 
 ## Documentation Structure
 
@@ -59,13 +59,12 @@ Welcome to the comprehensive documentation for HomeNetMon, a powerful network mo
 - Performance optimization
 
 ### Security Features
-- Authentication and authorization
+- Access model (no authentication; trusted LAN only)
 - SSL/TLS encryption
 - Rate limiting and protection
 - Security monitoring
 
 ### Administration
-- User management
 - Configuration management
 - Backup and recovery
 - System maintenance
@@ -212,7 +211,7 @@ For immediate deployment:
 
 3. **Access and Configure**
    - Open http://your-server-ip
-   - Login with admin credentials
+   - Open the dashboard (no login)
    - Configure network range
    - Start monitoring
 

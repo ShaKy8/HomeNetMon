@@ -62,7 +62,7 @@ sudo -u $APP_USER $APP_DIR/venv/bin/pip install -r $APP_DIR/requirements.txt
 
 # Configure systemd service
 log_info "Installing systemd service"
-cp $APP_DIR/homenetmon.service /etc/systemd/system/
+cp $APP_DIR/systemd/homenetmon.service /etc/systemd/system/
 systemctl daemon-reload
 systemctl enable $SERVICE_NAME
 

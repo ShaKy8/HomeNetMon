@@ -1,36 +1,44 @@
+# System-wide unit: install to /etc/systemd/system/homenetmon.service
+#   sudo cp systemd/homenetmon.service /etc/systemd/system/ && sudo systemctl daemon-reload
+#   sudo systemctl enable --now homenetmon
+# Assumes the checkout lives in /opt/homenetmon with a venv in /opt/homenetmon/venv
+# and its configuration in /opt/homenetmon/.env (see .env.prod.example).
 [Unit]
 Description=HomeNetMon Network Monitoring Service
-After=network.target
-Wants=network.target
+After=network-online.target
+Wants=network-online.target
 
 [Service]
 Type=simple
 User=homenetmon
 Group=homenetmon
 WorkingDirectory=/opt/homenetmon
-Environment=FLASK_ENV=production
-Environment=PYTHONPATH=/opt/homenetmon
+EnvironmentFile=-/opt/homenetmon/.env
+Environment=ENV=production
+Environment=HOST=0.0.0.0
 Environment=DATABASE_URL=sqlite:////opt/homenetmon/data/homeNetMon.db
 ExecStart=/opt/homenetmon/venv/bin/python app.py
-ExecReload=/bin/kill -HUP $MAINPID
 Restart=always
 RestartSec=10
 StandardOutput=journal
 StandardError=journal
 SyslogIdentifier=homenetmon
 
-# Security settings
+# Hardening. The app only needs to write its data/, logs/ and backups/ directories.
 NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
-ReadWritePaths=/opt/homenetmon/data /opt/homenetmon/logs
+ReadWritePaths=/opt/homenetmon/data /opt/homenetmon/logs /opt/homenetmon/backups
 PrivateTmp=true
 ProtectKernelTunables=true
 ProtectKernelModules=true
 ProtectControlGroups=true
 RestrictRealtime=true
-RestrictNamespaces=true
-MemoryDenyWriteExecute=true
+# (MemoryDenyWriteExecute is deliberately not set: numpy/scikit-learn need it off.)
+# Raw-socket discovery works unprivileged when nmap/ping carry cap_net_raw file
+# capabilities (Debian/Ubuntu default). Uncomment if your distro does not:
+# AmbientCapabilities=CAP_NET_RAW
+# CapabilityBoundingSet=CAP_NET_RAW
 
 [Install]
 WantedBy=multi-user.target

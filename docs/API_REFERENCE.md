@@ -20,20 +20,7 @@ HomeNetMon provides a comprehensive REST API for programmatic access to all moni
 
 ## Authentication
 
-### Session-Based Authentication
-
-Most API endpoints require authentication. Use the web login to establish a session, then include session cookies with API requests.
-
-```bash
-# Login to establish session
-curl -X POST -c cookies.txt \
-  -d "username=admin&password=yourpassword" \
-  -d "csrf_token=$(curl -b cookies.txt http://localhost/api/csrf-token | jq -r '.csrf_token')" \
-  http://localhost/login
-
-# Use session cookies for API calls
-curl -b cookies.txt http://localhost/api/devices
-```
+HomeNetMon has **no authentication**. It is built for a trusted home LAN and every endpoint is open to any client that can reach the server; keep it behind your router's firewall or a VPN. There is no `/login` route and no user model.
 
 ### CSRF Protection
 
@@ -89,7 +76,6 @@ curl -X POST -H "X-CSRF-Token: $CSRF_TOKEN" \
 | 200 | OK | Successful request |
 | 201 | Created | Resource created successfully |
 | 400 | Bad Request | Invalid request data |
-| 401 | Unauthorized | Authentication required |
 | 403 | Forbidden | Insufficient permissions |
 | 404 | Not Found | Resource not found |
 | 422 | Unprocessable Entity | Validation errors |
@@ -100,7 +86,6 @@ curl -X POST -H "X-CSRF-Token: $CSRF_TOKEN" \
 
 | Code | Description |
 |------|-------------|
-| `AUTHENTICATION_REQUIRED` | Login required |
 | `CSRF_TOKEN_MISSING` | CSRF token required |
 | `VALIDATION_ERROR` | Input validation failed |
 | `DEVICE_NOT_FOUND` | Device does not exist |
@@ -113,7 +98,7 @@ API endpoints are rate limited to prevent abuse:
 
 - **Default Limit**: 100 requests per minute per IP
 - **API Endpoints**: 60 requests per minute per IP
-- **Authentication**: 10 attempts per minute per IP
+- **Static assets and Socket.IO transport**: not counted
 
 Rate limit headers are included in responses:
 
@@ -230,7 +215,7 @@ X-CSRF-Token: your-csrf-token
 ### Get Monitoring Summary
 
 ```http
-GET /api/monitoring/summary
+GET /api/monitoring/status
 ```
 
 **Query Parameters:**
@@ -257,7 +242,7 @@ GET /api/monitoring/summary
 ### Get Device Monitoring Data
 
 ```http
-GET /api/monitoring/device/{device_id}
+GET /api/monitoring/data?device_id={device_id}&hours=24
 ```
 
 **Query Parameters:**
@@ -315,7 +300,7 @@ GET /api/monitoring/alerts
 ### Resolve Alert
 
 ```http
-PUT /api/monitoring/alerts/{alert_id}/resolve
+POST /api/monitoring/alerts/{alert_id}/resolve
 ```
 
 **Request Headers:**
@@ -326,7 +311,7 @@ X-CSRF-Token: your-csrf-token
 ### Bulk Resolve Alerts
 
 ```http
-POST /api/monitoring/alerts/resolve-all
+POST /api/monitoring/alerts/bulk-resolve
 ```
 
 **Request Headers:**
@@ -405,7 +390,7 @@ GET /api/performance/device/{device_id}
 ### Get Network Health Score
 
 ```http
-GET /api/performance/network-health
+GET /api/analytics/network-health-score
 ```
 
 **Response:**
@@ -486,7 +471,7 @@ GET /api/system/health
 ### Get Configuration
 
 ```http
-GET /api/system/config
+GET /api/config
 ```
 
 **Response:**
@@ -506,7 +491,7 @@ GET /api/system/config
 ### Update Configuration
 
 ```http
-PUT /api/system/config
+PUT /api/config/network  (or PUT /api/config/<key>, PUT /api/config/alerts)
 ```
 
 **Request Headers:**
@@ -590,9 +575,10 @@ socket.on('monitoring_summary', function(data) {
 ### Alert Notifications
 
 ```javascript
-socket.on('new_alert', function(data) {
-  console.log('New alert:', data);
-  // data: { alert_id, device_id, message, severity, timestamp }
+// Join the alerts room first, then listen for the single alert_update event
+socket.emit('subscribe_to_updates', { types: ['alerts', 'device_status', 'monitoring_summary'] });
+socket.on('alert_update', function(payload) {
+  // payload: { action: 'created'|'updated'|'acknowledged'|'resolved'|'deleted', alert: {...}, timestamp }
 });
 ```
 
@@ -614,23 +600,12 @@ import requests
 import json
 
 class HomeNetMonAPI:
-    def __init__(self, base_url, username, password):
-        self.base_url = base_url
+    def __init__(self, base_url):
+        self.base_url = base_url.rstrip('/')
         self.session = requests.Session()
-        self.login(username, password)
 
-    def login(self, username, password):
-        # Get CSRF token
-        csrf_response = self.session.get(f"{self.base_url}/api/csrf-token")
-        csrf_token = csrf_response.json()['csrf_token']
-
-        # Login
-        login_data = {
-            'username': username,
-            'password': password,
-            'csrf_token': csrf_token
-        }
-        self.session.post(f"{self.base_url}/login", data=login_data)
+    def _csrf(self):
+        return self.session.get(f"{self.base_url}/api/csrf-token").json()['csrf_token']
 
     def get_devices(self):
         response = self.session.get(f"{self.base_url}/api/devices")
@@ -648,7 +623,7 @@ class HomeNetMonAPI:
         return response.json()
 
 # Usage
-api = HomeNetMonAPI('http://localhost', 'admin', 'password')
+api = HomeNetMonAPI('http://192.168.1.10:5000')
 devices = api.get_devices()
 scan_result = api.scan_network()
 ```

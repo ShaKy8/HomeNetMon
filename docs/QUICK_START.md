@@ -20,7 +20,6 @@
    ```bash
    # Edit .env.prod
    SECRET_KEY=$(python3 -c "import secrets; print(secrets.token_hex(32))")
-   ADMIN_PASSWORD=your-secure-password-here
    NETWORK_RANGE=192.168.1.0/24  # Your network
    ```
 

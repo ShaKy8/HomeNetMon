@@ -91,7 +91,7 @@ sudo sh -c 'echo 3 > /proc/sys/vm/drop_caches'
 ├── requirements.txt      # Dependencies
 ├── .env                  # Environment variables
 ├── data/                 # Database and data files
-│   └── homeNetMon.db
+│   └── data/homeNetMon.db
 ├── logs/                 # Application logs
 │   ├── app.log
 │   └── error.log
@@ -137,7 +137,6 @@ print(f'New password: {password}')
 
 # Update admin password
 # Edit /opt/homenetmon/.env
-ADMIN_PASSWORD=new-secure-password
 ```
 
 #### Session Management
@@ -254,7 +253,7 @@ python3 -c "import app; print('Configuration valid')"
 # Check required variables
 python3 -c "
 import os
-required = ['SECRET_KEY', 'ADMIN_PASSWORD', 'NETWORK_RANGE']
+required = ['SECRET_KEY', 'NETWORK_RANGE']
 missing = [var for var in required if not os.getenv(var)]
 if missing:
     print(f'Missing: {missing}')
@@ -314,10 +313,10 @@ PRAGMA optimize;
 #### Data Cleanup
 ```bash
 # Run cleanup script
-python3 database_performance_fix.py
+python3 scripts/db/maintenance_window.py
 
 # Emergency cleanup
-python3 emergency_database_cleanup.py
+python3 scripts/db/maintenance_window.py --execute
 
 # Manual cleanup (old data)
 sqlite3 /opt/homenetmon/data/homeNetMon.db "
@@ -331,7 +330,7 @@ WHERE timestamp < datetime('now', '-30 days');
 #### Health Assessment
 ```bash
 # Run health assessment
-python3 comprehensive_database_health_assessment.py
+python3 scripts/db/maintenance_window.py
 
 # Check database statistics
 sqlite3 /opt/homenetmon/data/homeNetMon.db "
@@ -678,7 +677,7 @@ gzip -t /opt/homenetmon/backups/*.gz
 du -h /opt/homenetmon/data/homeNetMon.db
 
 # Clean old data regularly
-python3 database_performance_fix.py
+python3 scripts/db/maintenance_window.py
 ```
 
 #### System Optimization

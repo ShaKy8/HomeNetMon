@@ -15,7 +15,7 @@ backups/homeNetMon_full_20260527_120000.db.gz    # if --compress was used
 ```
 
 These are full SQLite database files (or gzipped copies) created via
-`shutil.copy2`. They are byte-equivalent to the live DB at the moment of
+SQLite's online backup API (`Connection.backup()`), so they are consistent snapshots that include everything in the write-ahead log at that moment.
 backup — no schema export, no SQL dump.
 
 ## Where the live DB lives
@@ -33,7 +33,7 @@ ps eww $(pgrep -f 'python.*app\.py') | tr ' ' '\n' | grep DATABASE_URL
 For the default production setup, this is:
 
 ```
-/home/kyle/ClaudeCode/HomeNetMon/production_data/homeNetMon.db
+<install dir>/production_data/homeNetMon.db
 ```
 
 ## Restore procedure
@@ -53,7 +53,7 @@ pkill -TERM -f 'python.*app\.py'
 backup turns out to be the wrong one:
 
 ```bash
-cd /home/kyle/ClaudeCode/HomeNetMon/production_data
+cd <install dir>/production_data
 mv homeNetMon.db        homeNetMon.db.broken
 mv homeNetMon.db-wal    homeNetMon.db-wal.broken 2>/dev/null || true
 mv homeNetMon.db-shm    homeNetMon.db-shm.broken 2>/dev/null || true
@@ -66,21 +66,21 @@ will confuse SQLite and produce a "database disk image is malformed" error.
 **3. Copy the backup into place.** If the backup is plain `.db`:
 
 ```bash
-cp /home/kyle/ClaudeCode/HomeNetMon/backups/homeNetMon_full_20260527_120000.db \
-   /home/kyle/ClaudeCode/HomeNetMon/production_data/homeNetMon.db
+cp <install dir>/backups/homeNetMon_full_20260527_120000.db \
+   <install dir>/production_data/homeNetMon.db
 ```
 
 If the backup is gzipped:
 
 ```bash
-gunzip -c /home/kyle/ClaudeCode/HomeNetMon/backups/homeNetMon_full_20260527_120000.db.gz \
-       > /home/kyle/ClaudeCode/HomeNetMon/production_data/homeNetMon.db
+gunzip -c <install dir>/backups/homeNetMon_full_20260527_120000.db.gz \
+       > <install dir>/production_data/homeNetMon.db
 ```
 
 **4. Sanity-check the restored DB** before starting the app:
 
 ```bash
-cd /home/kyle/ClaudeCode/HomeNetMon
+cd <install dir>
 source venv/bin/activate
 python - <<'PY'
 import sqlite3
@@ -121,7 +121,7 @@ If the restored backup turns out to be the wrong one, stop the app, swap the
 files back:
 
 ```bash
-cd /home/kyle/ClaudeCode/HomeNetMon/production_data
+cd <install dir>/production_data
 mv homeNetMon.db                       homeNetMon.db.restored-and-rejected
 mv homeNetMon.db.broken                homeNetMon.db
 mv homeNetMon.db-wal.broken            homeNetMon.db-wal 2>/dev/null || true

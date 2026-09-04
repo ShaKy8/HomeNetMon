@@ -19,9 +19,9 @@
 ### Run All New Tests
 ```bash
 source venv/bin/activate
-pytest tests/unit/test_unified_cache.py \
+pytest tests/unit/test_retention.py \
        tests/unit/test_constants.py \
-       tests/unit/test_cache_layer.py \
+       tests/unit/test_request_pipeline.py \
        tests/unit/test_n_plus_one_fixes.py \
        tests/unit/test_performance_optimizations.py \
        tests/integration/test_api_endpoints.py \
@@ -32,7 +32,7 @@ pytest tests/unit/test_unified_cache.py \
 ```bash
 source venv/bin/activate
 pytest tests/unit/test_constants.py \
-       tests/unit/test_cache_layer.py \
+       tests/unit/test_request_pipeline.py \
        tests/unit/test_performance_optimizations.py \
        -v
 # Output: 61 passed in < 1s
@@ -41,7 +41,7 @@ pytest tests/unit/test_constants.py \
 ### Run by Feature
 ```bash
 # Cache testing
-pytest tests/unit/test_unified_cache.py tests/unit/test_cache_layer.py -v
+pytest tests/unit/test_retention.py tests/unit/test_request_pipeline.py -v
 
 # N+1 query fixes
 pytest tests/unit/test_n_plus_one_fixes.py -v
@@ -56,7 +56,7 @@ pytest tests/unit/test_constants.py -v
 ### Run with Coverage
 ```bash
 source venv/bin/activate
-pytest tests/unit/test_unified_cache.py \
+pytest tests/unit/test_retention.py \
        --cov=services.unified_cache \
        --cov-report=html \
        --cov-report=term-missing
@@ -78,7 +78,7 @@ pytest tests/unit/test_unified_cache.py \
 
 **Why it matters**: Ensures caching works correctly and improves performance.
 
-**Run**: `pytest tests/unit/test_unified_cache.py tests/unit/test_cache_layer.py -v`
+**Run**: `pytest tests/unit/test_retention.py tests/unit/test_request_pipeline.py -v`
 
 ---
 
@@ -156,7 +156,7 @@ pytest tests/unit/test_unified_cache.py \
 ### Issue: Tests hang or timeout
 **Solution**: Skip thread safety tests
 ```bash
-pytest tests/unit/test_unified_cache.py -k "not thread" -v
+pytest tests/unit/test_retention.py -k "not thread" -v
 ```
 
 ### Issue: Import errors
@@ -211,8 +211,8 @@ tests/unit/test_constants.py::TestApplicationMetadata::test_app_version_defined 
 ### Running Coverage Reports
 ```bash
 # Generate HTML coverage report
-pytest tests/unit/test_unified_cache.py \
-       tests/unit/test_cache_layer.py \
+pytest tests/unit/test_retention.py \
+       tests/unit/test_request_pipeline.py \
        --cov=services.unified_cache \
        --cov=core.cache_layer \
        --cov-report=html
@@ -229,7 +229,7 @@ Add to `.git/hooks/pre-commit`:
 ```bash
 #!/bin/bash
 source venv/bin/activate
-pytest tests/unit/test_constants.py tests/unit/test_cache_layer.py -q
+pytest tests/unit/test_constants.py tests/unit/test_request_pipeline.py -q
 if [ $? -ne 0 ]; then
     echo "Tests failed! Commit aborted."
     exit 1
@@ -253,22 +253,22 @@ fi
 
 ### 1. Run with verbose output
 ```bash
-pytest tests/unit/test_unified_cache.py::TestMemoryCache::test_lru_eviction_when_at_capacity -vv
+pytest tests/unit/test_retention.py::TestMemoryCache::test_lru_eviction_when_at_capacity -vv
 ```
 
 ### 2. Show print statements
 ```bash
-pytest tests/unit/test_unified_cache.py -s
+pytest tests/unit/test_retention.py -s
 ```
 
 ### 3. Drop into debugger on failure
 ```bash
-pytest tests/unit/test_unified_cache.py --pdb
+pytest tests/unit/test_retention.py --pdb
 ```
 
 ### 4. Show full traceback
 ```bash
-pytest tests/unit/test_unified_cache.py --tb=long
+pytest tests/unit/test_retention.py --tb=long
 ```
 
 ### 5. Run last failed tests only

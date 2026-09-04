@@ -40,9 +40,8 @@ git pull origin main
 log_info "Updating dependencies"
 sudo -u homenetmon $APP_DIR/venv/bin/pip install -r requirements.txt
 
-# Run database migrations if needed
-log_info "Running database migrations"
-sudo -u homenetmon $APP_DIR/venv/bin/python database_schema_fix.py
+# Schema changes are applied by init_db()/create_all() at startup; there is no
+# separate migration step. (The old call ran a script at a path that no longer exists.)
 
 # Start service
 log_info "Starting service"

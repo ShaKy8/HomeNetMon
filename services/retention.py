@@ -66,7 +66,7 @@ RETENTION_TABLES: tuple[RetentionRule, ...] = (
                   label='escalation executions'),
     RetentionRule('escalation_action_logs', 'executed_at', 'execution_retention_days', 30,
                   label='escalation action logs'),
-    RetentionRule('device_ip_history', 'changed_at', 'ip_history_retention_days', 365, label='IP history rows'),
+    RetentionRule('device_ip_history', 'change_detected_at', 'ip_history_retention_days', 365, label='IP history rows'),
     RetentionRule('alerts', 'resolved_at', 'resolved_alert_retention_days', 30,
                   extra_where='resolved = 1', label='resolved alerts'),
 )
