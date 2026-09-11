@@ -195,15 +195,18 @@ def get_monitoring_data():
         # Order by timestamp (newest first)
         query = query.order_by(MonitoringData.timestamp.desc())
 
-        # Get pagination parameters
+        # Pagination: ?limit= (what the device page sends) is an alias of ?per_page=, capped at 2000
         page, per_page = paginator.get_request_pagination()
+        limit = request.args.get('limit', type=int)
+        if limit:
+            per_page = max(1, min(limit, 2000))
 
-        # Apply pagination
         pagination_result = paginator.paginate_query(
             query,
             page=page,
             per_page=per_page,
-            error_out=False
+            error_out=False,
+            max_per_page=2000,
         )
 
         monitoring_data = pagination_result['items']
@@ -593,13 +596,11 @@ def acknowledge_all_alerts():
         data = request.get_json() or {}
         acknowledged_by = data.get('acknowledged_by', 'web_user')
 
-        # Get all unacknowledged alerts
-        active_alerts = Alert.query.filter_by(acknowledged=False).all()
-
-        acknowledged_count = 0
-        for alert in active_alerts:
-            alert.acknowledge(acknowledged_by)
-            acknowledged_count += 1
+        acknowledged_count = Alert.query.filter_by(acknowledged=False, resolved=False).update(
+            {'acknowledged': True, 'acknowledged_at': datetime.utcnow(), 'acknowledged_by': acknowledged_by},
+            synchronize_session=False,
+        )
+        db.session.commit()
 
         return jsonify({
             'message': f'Acknowledged {acknowledged_count} alerts',
@@ -632,7 +633,7 @@ def resolve_alert(alert_id):
         return jsonify({'error': str(e)}), 500
 
 @monitoring_bp.route('/alerts/<int:alert_id>', methods=['DELETE'])
-# @create_endpoint_limiter('critical')  # Temporarily disabled for debugging
+@create_endpoint_limiter('strict')
 def delete_alert(alert_id):
     """Delete a specific alert"""
     try:
@@ -2141,28 +2142,14 @@ def get_monitoring_summary():
         from models import Device, Alert, MonitoringData
         from datetime import datetime, timedelta
 
-        # Get current network range
-        network_range = get_current_network_range()
-
-        # Get device counts
-        total_devices = Device.query.count()
-
-        # Determine status of devices (based on last_seen within 10 minutes)
-        online_threshold = datetime.utcnow() - timedelta(minutes=10)
-        devices_up = Device.query.filter(
-            Device.is_monitored == True,
-            Device.last_seen >= online_threshold
-        ).count()
-
-        devices_down = Device.query.filter(
-            Device.is_monitored == True,
-            Device.last_seen < online_threshold
-        ).count()
-
-        devices_unknown = total_devices - devices_up - devices_down
-
-        # Get active alerts count
-        active_alerts = Alert.query.filter_by(resolved=False).count()
+        from services.device_counts import summarize
+        counts = summarize()
+        network_range = counts['network_range']
+        total_devices = counts['total_devices']
+        devices_up = counts['devices_up']
+        devices_down = counts['devices_down']
+        devices_unknown = counts['devices_unknown']
+        active_alerts = counts['active_alerts']
 
         # Calculate average response time from recent monitoring data
         one_hour_ago = datetime.utcnow() - timedelta(hours=1)
@@ -2176,14 +2163,14 @@ def get_monitoring_summary():
             response_times = [d.response_time for d in recent_data if d.response_time]
             avg_response_time = sum(response_times) / len(response_times) if response_times else 0
 
-        # Calculate network uptime (percentage of devices up)
-        network_uptime = "99.9%"  # Default value
-        if total_devices > 0:
-            uptime_percent = (devices_up / total_devices) * 100
-            network_uptime = f"{uptime_percent:.1f}%"
+        # Network uptime = share of monitored (pinged) devices currently up
+        network_uptime = "0.0%"
+        if counts['monitored_devices'] > 0:
+            network_uptime = f"{(devices_up / counts['monitored_devices']) * 100:.1f}%"
 
         return jsonify({
             'total_devices': total_devices,
+            'monitored_devices': counts['monitored_devices'],
             'devices_up': devices_up,
             'devices_down': devices_down,
             'devices_unknown': devices_unknown,

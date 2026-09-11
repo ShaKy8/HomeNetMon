@@ -17,6 +17,7 @@ from models import db, Device, Alert, Configuration
 from sqlalchemy import and_
 from services.anomaly_detection import AnomalyDetectionEngine
 from config import Config
+from core.health import record_heartbeat
 
 logger = logging.getLogger(__name__)
 
@@ -137,6 +138,7 @@ class NetworkSecurityScanner:
     def __init__(self, app=None):
         self.app = app
         self.running = False
+        self._stop_event = threading.Event()
         self.scan_interval = Config.SECURITY_SCAN_INTERVAL  # daily by default; nmap sweeps can unsettle IoT devices
         self.nm = nmap.PortScanner()
         self.anomaly_detection = AnomalyDetectionEngine()
@@ -230,22 +232,25 @@ class NetworkSecurityScanner:
             return
 
         self.running = True
+        self._stop_event.clear()
         logger.info("Starting network security scanner")
 
         def scanner_loop():
-            while self.running:
+            from core.health import record_heartbeat
+            while not self._stop_event.is_set():
                 try:
+                    record_heartbeat('SecurityScanner')
                     self.run_security_scan()
-                    # Sleep in one-minute slices so the watchdog sees a heartbeat and a
+                    # Idle in one-minute slices so the watchdog sees a heartbeat and a
                     # stop request is honoured promptly even with a daily interval.
-                    from core.health import record_heartbeat
                     deadline = time.time() + self.scan_interval
-                    while self.running and time.time() < deadline:
+                    while not self._stop_event.is_set() and time.time() < deadline:
                         record_heartbeat('SecurityScanner')
-                        time.sleep(min(60, max(1, deadline - time.time())))
+                        self._stop_event.wait(min(60, max(1, deadline - time.time())))
                 except Exception as e:
                     logger.error(f"Error in security scanner loop: {e}")
-                    time.sleep(300)  # Wait 5 minutes on error
+                    self._stop_event.wait(300)  # Wait 5 minutes on error
+            self.running = False
 
         scanner_thread = threading.Thread(
             target=scanner_loop,
@@ -256,12 +261,9 @@ class NetworkSecurityScanner:
 
     def stop_monitoring(self):
         """Stop the security scanner monitoring"""
+        self._stop_event.set()
         self.running = False
         logger.info("Security scanner stopped")
-
-    def get_scan_progress(self):
-        """Get current scan progress"""
-        return dict(self.current_scan)
 
     def stop_current_scan(self):
         """Stop the currently running security scan"""
@@ -371,6 +373,8 @@ class NetworkSecurityScanner:
                 security_alerts = []
 
                 for i, device in enumerate(devices):
+
+                    record_heartbeat('SecurityScanner')
                     try:
                         # Update progress for current device
                         self._update_scan_progress(
@@ -530,6 +534,7 @@ class NetworkSecurityScanner:
             max_scan_time = 300  # 5 minutes maximum per device
 
             try:
+                record_heartbeat('SecurityScanner')
                 scan_result = self.nm.scan(device.ip_address, arguments=nmap_args)
                 scan_duration = time.time() - scan_start_time
 

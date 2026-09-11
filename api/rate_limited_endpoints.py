@@ -166,5 +166,6 @@ def create_endpoint_limiter(limit_type='moderate'):
             # per-endpoint limit was ever enforced.
             return limited(*args, **kwargs)
 
+        decorated_function._rate_limit_tier = limit_type
         return decorated_function
     return decorator

@@ -1,4 +1,5 @@
 import logging
+import re
 import threading
 import time
 import ipaddress
@@ -34,8 +35,6 @@ class ConfigurationService:
 
     def __init__(self, app=None):
         self.app = app
-        self.running = False
-        self._stop_event = threading.Event()
 
         # Service registration for configuration change notifications
         self._service_callbacks = {}
@@ -128,10 +127,22 @@ class ConfigurationService:
                 error_message="To emails must be a comma-separated list of valid email addresses"
             ),
 
-            # Webhook Configuration
-            'webhook_url': ConfigValidationRule(
-                validator=self._validate_webhook_url,
-                error_message="Webhook URL is invalid or unreachable"
+            # Webhook Configuration (alert_webhook_url is the key monitoring/alerts.py reads)
+            'alert_webhook_url': ConfigValidationRule(
+                validator=self._validate_url_format,
+                error_message="Webhook URL must be an http(s) URL"
+            ),
+            'alert_discord_enabled': ConfigValidationRule(
+                validator=self._validate_boolean,
+                error_message="alert_discord_enabled must be true or false"
+            ),
+            'discord_webhook_url': ConfigValidationRule(
+                validator=self._validate_discord_webhook_url,
+                error_message="Discord webhook URL must look like https://discord.com/api/webhooks/..."
+            ),
+            'scan_excluded_ips': ConfigValidationRule(
+                validator=self._validate_ip_list,
+                error_message="Excluded IPs must be a comma-separated list of IP addresses"
             ),
             'webhook_timeout': ConfigValidationRule(
                 validator=lambda v: self._validate_integer_range(v, 1, 60),
@@ -482,6 +493,36 @@ class ConfigurationService:
         except Exception:
             return False
 
+    def _validate_url_format(self, url: str) -> bool:
+        """http(s) URL with a host; empty is allowed (disables the channel). No network call."""
+        if not url:
+            return True
+        from urllib.parse import urlparse
+        parsed = urlparse(str(url).strip())
+        return parsed.scheme in ('http', 'https') and bool(parsed.netloc)
+
+    def _validate_discord_webhook_url(self, url: str) -> bool:
+        if not url:
+            return True
+        from urllib.parse import urlparse
+        parsed = urlparse(str(url).strip())
+        return (parsed.scheme == 'https'
+                and parsed.netloc in ('discord.com', 'discordapp.com', 'ptb.discord.com', 'canary.discord.com')
+                and parsed.path.startswith('/api/webhooks/'))
+
+    def _validate_ip_list(self, value: str) -> bool:
+        """Comma/newline separated IP addresses; empty clears the list."""
+        text = (value or '').strip()
+        if not text:
+            return True
+        try:
+            for item in text.replace('\n', ',').split(','):
+                if item.strip():
+                    ipaddress.ip_address(item.strip())
+            return True
+        except ValueError:
+            return False
+
     def _validate_webhook_url(self, url: str) -> bool:
         """Validate webhook URL"""
         if not url:
@@ -516,16 +557,10 @@ class ConfigurationService:
             return False
 
     def _validate_email_format(self, email: str) -> bool:
-        """Validate email address format"""
+        """Loose shape check (local@domain.tld); the SMTP server is the real judge."""
         if not email:
-            return True  # Empty is valid for optional fields
-
-        try:
-            import re
-            pattern = r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$'
-            return bool(re.match(pattern, email.strip()))
-        except Exception:
-            return False
+            return True
+        return re.match(r'^[^@\s]+@[^@\s]+\.[^@\s]+$', str(email).strip()) is not None
 
     def _validate_email_list(self, emails: str) -> bool:
         """Validate comma-separated list of email addresses"""
@@ -557,38 +592,6 @@ class ConfigurationService:
             return str(value).lower() in ['true', 'false', '1', '0', 'yes', 'no']
         except Exception:
             return False
-
-    def start_monitoring(self):
-        """Start configuration monitoring service"""
-        if self.running:
-            return
-
-        self.running = True
-        logger.info("Starting configuration service")
-
-        def monitoring_loop():
-            from core.health import record_heartbeat
-            while not self._stop_event.is_set():
-                record_heartbeat('ConfigurationService')
-                try:
-                    # Configuration service runs every 30 seconds
-                    self._stop_event.wait(30)
-                except Exception as e:
-                    logger.error(f"Error in configuration service loop: {e}")
-                    time.sleep(60)
-
-        monitoring_thread = threading.Thread(
-            target=monitoring_loop,
-            daemon=True,
-            name='ConfigurationService'
-        )
-        monitoring_thread.start()
-
-    def stop_monitoring(self):
-        """Stop configuration service"""
-        self.running = False
-        self._stop_event.set()
-        logger.info("Configuration service stopped")
 
 # Global configuration service instance
 configuration_service = ConfigurationService()

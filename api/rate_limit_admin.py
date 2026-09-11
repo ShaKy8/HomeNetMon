@@ -138,7 +138,7 @@ def reset_rate_limits(identifier):
         return jsonify({'error': str(e)}), 500
 
 @rate_limit_admin_bp.route('/test', methods=['GET'])
-@create_endpoint_limiter('critical')
+@create_endpoint_limiter('relaxed')
 def test_rate_limiting():
     """Test endpoint to verify rate limiting is working."""
     try:

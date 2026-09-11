@@ -63,6 +63,10 @@ def app():
     Config.SQLALCHEMY_DATABASE_URI = f'sqlite:///{db_path}'
     Config.TESTING = True
     Config.WTF_CSRF_ENABLED = False
+    # Tests create devices in 192.168.1.x; CI sets NETWORK_RANGE the same way. Pin it so a
+    # developer's .env range does not exclude the fixtures from the in-range monitor set.
+    original_network_range = Config.NETWORK_RANGE
+    Config.NETWORK_RANGE = '192.168.1.0/24'
 
     # Disable background services for testing
     Config.PING_INTERVAL = 3600  # Very long interval to prevent background activity
@@ -85,6 +89,7 @@ def app():
         Config.SQLALCHEMY_DATABASE_URI = original_db_uri
         Config.TESTING = False
         Config.WTF_CSRF_ENABLED = True
+        Config.NETWORK_RANGE = original_network_range
 
         # Clean up temp file
         os.close(db_fd)

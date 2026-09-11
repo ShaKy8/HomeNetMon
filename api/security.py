@@ -109,7 +109,7 @@ def get_security_alerts():
         return jsonify({'error': str(e)}), 500
 
 @security_bp.route('/scans', methods=['GET'])
-@create_endpoint_limiter('critical')
+@create_endpoint_limiter('relaxed')
 def get_scan_results():
     """Get recent scan results"""
     try:
@@ -327,7 +327,7 @@ def run_network_scan():
         return jsonify({'error': str(e)}), 500
 
 @security_bp.route('/scan-progress', methods=['GET'])
-@create_endpoint_limiter('critical')
+@create_endpoint_limiter('relaxed')
 def get_scan_progress():
     """Get current scan progress"""
     try:
@@ -361,7 +361,7 @@ def get_scan_progress():
         return jsonify({'error': str(e)}), 500
 
 @security_bp.route('/stop-scan', methods=['POST'])
-@create_endpoint_limiter('critical')
+@create_endpoint_limiter('strict')
 def stop_network_scan():
     """Stop the currently running network security scan"""
     try:

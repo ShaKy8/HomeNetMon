@@ -329,7 +329,7 @@ class Device(db.Model):
             }
 
         except Exception as e:
-            print(f"Error getting performance summary for device {self.id}: {e}")
+            logger.error(f"Error getting performance summary for device {self.id}: {e}")
             return {
                 'device_id': self.id,
                 'device_name': self.display_name,
@@ -354,7 +354,7 @@ class Device(db.Model):
             return round(avg_response, 2) if avg_response else None
 
         except Exception as e:
-            print(f"Error calculating average response time for device {self.id}: {e}")
+            logger.error(f"Error calculating average response time for device {self.id}: {e}")
             return None
 
     def is_online(self):
@@ -397,7 +397,7 @@ class Device(db.Model):
             return history
 
         except Exception as e:
-            print(f"Error getting status history for device {self.id}: {e}")
+            logger.error(f"Error getting status history for device {self.id}: {e}")
             return []
 
     def to_dict(self):
@@ -791,6 +791,34 @@ class Alert(db.Model):
         }
         return severity_weights.get(self.severity, 25)  # Default to 25 for unknown severity
 
+    ALERT_TITLES = {
+        'device_down': 'Device offline',
+        'device_recovery': 'Device back online',
+        'high_latency': 'High latency',
+        'new_device': 'New device discovered',
+        'security_new_service': 'New open port',
+        'security_suspicious_port': 'Suspicious port open',
+        'wan_down': 'Internet down',
+        'wan_recovery': 'Internet restored',
+        'gateway_down': 'Gateway unreachable',
+        'performance': 'Performance degraded',
+    }
+    PERFORMANCE_TITLES = {
+        'performance_critical': 'Performance critical',
+        'performance_warning': 'Performance degraded',
+        'performance_responsiveness': 'Slow responses',
+        'performance_reliability': 'Unreliable connectivity',
+    }
+
+    @property
+    def title(self):
+        """Short human heading for the alert (cards, toasts, email/Discord subjects)."""
+        if self.alert_type == 'performance' and self.alert_subtype in self.PERFORMANCE_TITLES:
+            return self.PERFORMANCE_TITLES[self.alert_subtype]
+        if self.alert_type in self.ALERT_TITLES:
+            return self.ALERT_TITLES[self.alert_type]
+        return (self.alert_type or 'alert').replace('_', ' ').capitalize()
+
     def to_dict(self):
         return {
             'id': self.id,
@@ -799,6 +827,7 @@ class Alert(db.Model):
             'device_ip': self.device.ip_address,
             'alert_type': self.alert_type,
             'alert_subtype': self.alert_subtype,
+            'title': self.title,
             'severity': self.severity,
             'message': self.message,
             'created_at': self.created_at.isoformat() + 'Z',
@@ -1089,7 +1118,7 @@ class NotificationHistory(db.Model):
             return notification
         except Exception as e:
             db.session.rollback()
-            print(f"Error logging notification: {e}")
+            logger.error(f"Error logging notification: {e}")
             return None
 
 class NotificationReceipt(db.Model):
@@ -1196,7 +1225,7 @@ class NotificationReceipt(db.Model):
 
         except Exception as e:
             db.session.rollback()
-            print(f"Error logging notification receipt: {e}")
+            logger.error(f"Error logging notification receipt: {e}")
             return None
 
     def anonymize(self):
@@ -1750,7 +1779,7 @@ def init_db(app):
             try:
                 db.session.execute(db.text("ALTER TABLE configuration ADD COLUMN version INTEGER DEFAULT 1"))
                 db.session.commit()
-                print("Added version column to configuration table")
+                logger.info("Added version column to configuration table")
             except Exception as e:
                 # Never fall back to drop_all()/create_all() here: on a locked or
                 # partially-migrated production database that would destroy every

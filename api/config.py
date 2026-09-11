@@ -1,10 +1,25 @@
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, current_app
 from models import db, Configuration
 from config import Config
 from api.rate_limited_endpoints import create_endpoint_limiter
 from core.error_handler import handle_errors, ResourceNotFoundError, DatabaseError, ValidationError
 
 config_bp = Blueprint('config', __name__)
+
+
+def _set(key, value, description=None):
+    """Write a runtime setting through the configuration service.
+
+    The service validates, records a ConfigurationHistory row (what the
+    Settings > History/rollback UI reads) and fires the hot-reload callbacks the
+    scanner/monitor/alert manager registered. Returns (ok, message).
+    """
+    service = getattr(current_app, 'configuration_service', None)
+    if service is None or service.app is None:
+        Configuration.set_value(key, str(value), description)
+        return True, 'Configuration updated'
+    return service.set_configuration(key, value, description, user='settings_ui')
+
 
 @config_bp.route('', methods=['GET'])
 @create_endpoint_limiter('relaxed')
@@ -160,7 +175,9 @@ def update_network_config():
             import ipaddress
             try:
                 ipaddress.ip_network(data['network_range'], strict=False)
-                Configuration.set_value('network_range', data['network_range'], 'Network range to monitor')
+                ok, msg = _set('network_range', data['network_range'], 'Network range to monitor')
+                if not ok:
+                    return jsonify({'error': msg}), 400
                 updated_fields.append('network_range')
             except ValueError:
                 return jsonify({'error': 'Invalid network range format'}), 400
@@ -169,7 +186,9 @@ def update_network_config():
             try:
                 value = int(data['ping_interval'])
                 if 30 <= value <= 3600:
-                    Configuration.set_value('ping_interval', str(value), 'Ping interval in seconds')
+                    ok, msg = _set('ping_interval', str(value), 'Ping interval in seconds')
+                    if not ok:
+                        return jsonify({'error': msg}), 400
                     updated_fields.append('ping_interval')
                 else:
                     return jsonify({'error': 'Ping interval must be between 30 and 3600 seconds'}), 400
@@ -180,7 +199,9 @@ def update_network_config():
             try:
                 value = int(data['scan_interval'])
                 if 300 <= value <= 604800:
-                    Configuration.set_value('scan_interval', str(value), 'Network scan interval in seconds')
+                    ok, msg = _set('scan_interval', str(value), 'Network scan interval in seconds')
+                    if not ok:
+                        return jsonify({'error': msg}), 400
                     updated_fields.append('scan_interval')
                 else:
                     return jsonify({'error': 'Scan interval must be between 300 seconds and 7 days'}), 400
@@ -191,7 +212,9 @@ def update_network_config():
             try:
                 value = float(data['ping_timeout'])
                 if 1.0 <= value <= 10.0:
-                    Configuration.set_value('ping_timeout', str(value), 'Ping timeout in seconds')
+                    ok, msg = _set('ping_timeout', str(value), 'Ping timeout in seconds')
+                    if not ok:
+                        return jsonify({'error': msg}), 400
                     updated_fields.append('ping_timeout')
                 else:
                     return jsonify({'error': 'Ping timeout must be between 1.0 and 10.0 seconds'}), 400
@@ -202,7 +225,9 @@ def update_network_config():
             try:
                 value = int(data['max_workers'])
                 if 1 <= value <= 100:
-                    Configuration.set_value('max_workers', str(value), 'Maximum worker threads for monitoring')
+                    ok, msg = _set('max_workers', str(value), 'Maximum worker threads for monitoring')
+                    if not ok:
+                        return jsonify({'error': msg}), 400
                     updated_fields.append('max_workers')
                 else:
                     return jsonify({'error': 'Max workers must be between 1 and 100'}), 400
@@ -221,19 +246,22 @@ def update_network_config():
                     for ip in ip_list:
                         ipaddress.ip_address(ip)  # This will raise ValueError if invalid
 
-                    Configuration.set_value('scan_excluded_ips', excluded_ips, 'IP addresses to exclude from network discovery scans')
+                    ok, msg = _set('scan_excluded_ips', excluded_ips, 'IP addresses to exclude from network discovery scans')
+                    if not ok:
+                        return jsonify({'error': msg}), 400
                     updated_fields.append('scan_excluded_ips')
                 except ValueError as e:
                     return jsonify({'error': f'Invalid IP address in exclusion list: {str(e)}'}), 400
             else:
                 # Empty value is valid (clears exclusions)
-                Configuration.set_value('scan_excluded_ips', '', 'IP addresses to exclude from network discovery scans')
+                ok, msg = _set('scan_excluded_ips', '', 'IP addresses to exclude from network discovery scans')
+                if not ok:
+                    return jsonify({'error': msg}), 400
                 updated_fields.append('scan_excluded_ips')
 
         return jsonify({
             'message': f'Updated {len(updated_fields)} network configuration field(s)',
             'updated_fields': updated_fields,
-            'note': 'Changes will take effect after service restart'
         })
 
     except Exception as e:
@@ -277,50 +305,72 @@ def update_alert_config():
         updated_fields = []
 
         if 'email_enabled' in data:
-            Configuration.set_value('alert_email_enabled', str(data['email_enabled']).lower(), 'Enable email alerts')
+            ok, msg = _set('alert_email_enabled', str(data['email_enabled']).lower(), 'Enable email alerts')
+            if not ok:
+                return jsonify({'error': msg}), 400
             updated_fields.append('email_enabled')
 
         if 'webhook_enabled' in data:
-            Configuration.set_value('alert_webhook_enabled', str(data['webhook_enabled']).lower(), 'Enable webhook alerts')
+            ok, msg = _set('alert_webhook_enabled', str(data['webhook_enabled']).lower(), 'Enable webhook alerts')
+            if not ok:
+                return jsonify({'error': msg}), 400
             updated_fields.append('webhook_enabled')
 
         if 'push_enabled' in data:
-            Configuration.set_value('push_notifications_enabled', str(data['push_enabled']).lower(), 'Enable push notifications')
+            ok, msg = _set('push_notifications_enabled', str(data['push_enabled']).lower(), 'Enable push notifications')
+            if not ok:
+                return jsonify({'error': msg}), 400
             updated_fields.append('push_enabled')
 
         if 'ntfy_topic' in data:
-            Configuration.set_value('ntfy_topic', data['ntfy_topic'], 'Ntfy topic name')
+            ok, msg = _set('ntfy_topic', data['ntfy_topic'], 'Ntfy topic name')
+            if not ok:
+                return jsonify({'error': msg}), 400
             updated_fields.append('ntfy_topic')
 
         if 'ntfy_server' in data:
-            Configuration.set_value('ntfy_server', data['ntfy_server'], 'Ntfy server URL')
+            ok, msg = _set('ntfy_server', data['ntfy_server'], 'Ntfy server URL')
+            if not ok:
+                return jsonify({'error': msg}), 400
             updated_fields.append('ntfy_server')
 
         if 'email_from' in data:
-            Configuration.set_value('alert_from_email', data['email_from'], 'From email address for alerts')
+            ok, msg = _set('alert_from_email', data['email_from'], 'From email address for alerts')
+            if not ok:
+                return jsonify({'error': msg}), 400
             updated_fields.append('email_from')
 
         if 'email_to' in data:
-            Configuration.set_value('alert_to_emails', data['email_to'], 'To email addresses for alerts (comma separated)')
+            ok, msg = _set('alert_to_emails', data['email_to'], 'To email addresses for alerts (comma separated)')
+            if not ok:
+                return jsonify({'error': msg}), 400
             updated_fields.append('email_to')
 
         if 'webhook_url' in data:
-            Configuration.set_value('alert_webhook_url', data['webhook_url'], 'Webhook URL for alerts')
+            ok, msg = _set('alert_webhook_url', data['webhook_url'], 'Webhook URL for alerts')
+            if not ok:
+                return jsonify({'error': msg}), 400
             updated_fields.append('webhook_url')
 
         if 'discord_enabled' in data:
-            Configuration.set_value('alert_discord_enabled', str(data['discord_enabled']).lower(), 'Enable Discord alerts')
+            ok, msg = _set('alert_discord_enabled', str(data['discord_enabled']).lower(), 'Enable Discord alerts')
+            if not ok:
+                return jsonify({'error': msg}), 400
             updated_fields.append('discord_enabled')
 
         if 'discord_webhook_url' in data:
-            Configuration.set_value('discord_webhook_url', data['discord_webhook_url'], 'Discord webhook URL for alerts')
+            ok, msg = _set('discord_webhook_url', data['discord_webhook_url'], 'Discord webhook URL for alerts')
+            if not ok:
+                return jsonify({'error': msg}), 400
             updated_fields.append('discord_webhook_url')
 
         if 'device_down_threshold' in data:
             try:
                 value = int(data['device_down_threshold'])
                 if 1 <= value <= 1440:
-                    Configuration.set_value('device_down_threshold_minutes', str(value), 'Minutes before device down alert')
+                    ok, msg = _set('device_down_threshold_minutes', str(value), 'Minutes before device down alert')
+                    if not ok:
+                        return jsonify({'error': msg}), 400
                     updated_fields.append('device_down_threshold')
                 else:
                     return jsonify({'error': 'Device down threshold must be between 1 and 1440 minutes'}), 400
@@ -331,7 +381,9 @@ def update_alert_config():
             try:
                 value = int(data['high_latency_threshold'])
                 if 100 <= value <= 10000:
-                    Configuration.set_value('high_latency_threshold_ms', str(value), 'Milliseconds threshold for high latency alert')
+                    ok, msg = _set('high_latency_threshold_ms', str(value), 'Milliseconds threshold for high latency alert')
+                    if not ok:
+                        return jsonify({'error': msg}), 400
                     updated_fields.append('high_latency_threshold')
                 else:
                     return jsonify({'error': 'High latency threshold must be between 100 and 10000 ms'}), 400
@@ -386,7 +438,7 @@ def reset_configuration():
         return jsonify({'error': str(e)}), 500
 
 @config_bp.route('/test/email', methods=['POST'])
-@create_endpoint_limiter('critical')
+@create_endpoint_limiter('strict')
 def test_email_config():
     """Test email configuration by sending a test email"""
     try:
@@ -460,7 +512,7 @@ def test_email_config():
         return jsonify({'error': f'Email test failed: {str(e)}'}), 500
 
 @config_bp.route('/test/webhook', methods=['POST'])
-@create_endpoint_limiter('critical')
+@create_endpoint_limiter('strict')
 def test_webhook_config():
     """Test webhook configuration by sending a test webhook"""
     try:
@@ -504,7 +556,7 @@ def test_webhook_config():
         return jsonify({'error': f'Webhook test failed: {str(e)}'}), 500
 
 @config_bp.route('/test/push', methods=['POST'])
-@create_endpoint_limiter('critical')
+@create_endpoint_limiter('strict')
 def test_push_config():
     """Test push notification configuration by sending a test notification"""
     try:
@@ -597,6 +649,40 @@ def _request_service_restart(reason: str):
     return {'success': True, 'restarted': False, 'method': 'manual',
             'message': f'{reason} Could not find a systemd unit to restart.', 'instructions': instructions}
 
+
+@config_bp.route('/test/discord', methods=['POST'])
+@create_endpoint_limiter('strict')
+def test_discord_config():
+    """Post a test embed to a Discord webhook (URL from the body, else the saved one)."""
+    try:
+        from datetime import datetime
+        data = request.get_json() or {}
+        webhook_url = (data.get('discord_webhook_url') or Configuration.get_value('discord_webhook_url', '') or '').strip()
+        if not webhook_url:
+            return jsonify({'error': 'No Discord webhook URL provided or saved'}), 400
+
+        from monitoring.alerts import AlertManager
+
+        class MockDevice:
+            display_name = "Test Device"
+            ip_address = "192.168.1.100"
+            id = 0
+
+        class MockAlert:
+            id = 0
+            device = MockDevice()
+            alert_type = "test"
+            severity = "info"
+            title = "Test alert"
+            message = "This is a test alert from HomeNetMon"
+            created_at = datetime.utcnow()
+
+        if AlertManager(current_app).send_discord_alert(MockAlert(), webhook_url=webhook_url):
+            return jsonify({'message': 'Test Discord message sent successfully'})
+        return jsonify({'error': 'Discord rejected the test message; check the webhook URL'}), 502
+
+    except Exception as e:
+        return jsonify({'error': f'Discord test failed: {str(e)}'}), 500
 
 @config_bp.route('/restart-services', methods=['POST'])
 @create_endpoint_limiter('strict')

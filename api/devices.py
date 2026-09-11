@@ -1337,7 +1337,7 @@ def scan_network():
                     scanner.is_scanning = False
                     if hasattr(app, 'socketio'):
                         app.socketio.emit('scan_error', {
-                            'timestamp': datetime.now().isoformat(),
+                            'timestamp': datetime.utcnow().isoformat() + 'Z',
                             'error': 'Scan timed out after 5 minutes'
                         }, namespace='/', broadcast=True)
 
@@ -1347,7 +1347,7 @@ def scan_network():
                 # Emit WebSocket event for scan start
                 if hasattr(app, 'socketio'):
                     app.socketio.emit('scan_started', {
-                        'timestamp': datetime.now().isoformat(),
+                        'timestamp': datetime.utcnow().isoformat() + 'Z',
                         'message': 'Network scan initiated'
                     }, namespace='/', broadcast=True)
 
@@ -1361,7 +1361,7 @@ def scan_network():
                 # Emit WebSocket event for scan complete
                 if hasattr(app, 'socketio'):
                     app.socketio.emit('scan_completed', {
-                        'timestamp': datetime.now().isoformat(),
+                        'timestamp': datetime.utcnow().isoformat() + 'Z',
                         'devices_found': result if isinstance(result, int) else 0,
                         'message': 'Network scan completed successfully'
                     }, namespace='/', broadcast=True)
@@ -1372,7 +1372,7 @@ def scan_network():
                 scan_timeout.cancel()
             if hasattr(app, 'socketio'):
                 app.socketio.emit('scan_error', {
-                    'timestamp': datetime.now().isoformat(),
+                    'timestamp': datetime.utcnow().isoformat() + 'Z',
                     'error': str(e)
                 }, namespace='/', broadcast=True)
         finally:
@@ -1393,7 +1393,7 @@ def scan_network():
         'success': True,
         'message': 'Network scan started',
         'estimated_duration': 120,
-        'scan_id': datetime.now().timestamp()
+        'scan_id': datetime.utcnow().timestamp()
     }), 200
 
 
@@ -1420,5 +1420,5 @@ def get_scan_status():
 
     return jsonify({
         'scan_in_progress': scan_in_progress,
-        'timestamp': datetime.now().isoformat()
+        'timestamp': datetime.utcnow().isoformat() + 'Z'
     }), 200

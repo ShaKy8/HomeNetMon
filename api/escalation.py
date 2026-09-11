@@ -416,7 +416,7 @@ def get_escalation_statistics():
         return jsonify({'error': str(e)}), 500
 
 @escalation_bp.route('/trigger-types', methods=['GET'])
-@create_endpoint_limiter('critical')
+@create_endpoint_limiter('relaxed')
 def get_trigger_types():
     """Get available escalation trigger types"""
     try:

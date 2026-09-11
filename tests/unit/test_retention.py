@@ -132,3 +132,17 @@ class TestRunAll:
         db_session.commit()
         with app.app_context():
             assert MonitoringData.query.count() == 2
+
+
+class TestRunAllIsolation:
+
+    def test_failed_rule_does_not_block_next_rule(self, app, db_session, device, monkeypatch):
+        db_session.add_all(_rows(device, [1, 40]))
+        db_session.commit()
+        bad = retention.RetentionRule('monitoring_data', 'no_such_column', 'nope_days', 1, label='broken')
+        good = _rule('monitoring_data')
+        monkeypatch.setattr(retention, 'RETENTION_TABLES', (bad, good))
+        deleted = retention.run_all(app)
+        assert deleted.get('monitoring_data') == 1
+        with app.app_context():
+            assert MonitoringData.query.count() == 1

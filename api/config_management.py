@@ -105,7 +105,7 @@ def validate_configuration():
         return jsonify({'error': str(e)}), 500
 
 @config_management_bp.route('/backup', methods=['GET'])
-@create_endpoint_limiter('critical')
+@create_endpoint_limiter('relaxed')
 def get_configuration_backup():
     """Get current configuration backup"""
     try:

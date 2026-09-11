@@ -7,7 +7,7 @@ import threading
 speedtest_bp = Blueprint('speedtest', __name__)
 
 @speedtest_bp.route('/status', methods=['GET'])
-@create_endpoint_limiter('critical')
+@create_endpoint_limiter('relaxed')
 def get_speedtest_status():
     """Get speed test service status"""
     try:
@@ -148,7 +148,7 @@ def get_speedtest_statistics():
         return jsonify({'error': str(e)}), 500
 
 @speedtest_bp.route('/benchmark', methods=['GET'])
-@create_endpoint_limiter('critical')
+@create_endpoint_limiter('relaxed')
 def get_speed_benchmark():
     """Get speed benchmarks and ratings"""
     try:

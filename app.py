@@ -17,7 +17,7 @@ from monitoring.bandwidth_monitor import BandwidthMonitor
 from constants import DEVICE_DOWN_AFTER_SECONDS
 
 # Global variable to track server startup time
-SERVER_START_TIME = datetime.now()
+SERVER_START_TIME = datetime.utcnow()
 
 def create_app():
     # Setup centralized logging
@@ -363,14 +363,6 @@ def create_app():
             name='RuleEngine'
         )
         rule_engine_thread.start()
-
-        # Start configuration service
-        configuration_thread = threading.Thread(
-            target=configuration_service.start_monitoring,
-            daemon=True,
-            name='ConfigurationService'
-        )
-        configuration_thread.start()
 
         # Start escalation service
         escalation_thread = threading.Thread(
@@ -732,11 +724,15 @@ def create_app():
                 'device_name': alert.device.display_name,
                 'device_ip': alert.device.ip_address,
                 'alert_type': alert.alert_type,
+                'alert_subtype': getattr(alert, 'alert_subtype', None),
+                'title': getattr(alert, 'title', alert.alert_type),
                 'severity': alert.severity,
                 'message': alert.message,
                 'created_at': alert.created_at.isoformat() + 'Z',
                 'acknowledged': alert.acknowledged,
+                'acknowledged_by': getattr(alert, 'acknowledged_by', None),
                 'resolved': alert.resolved,
+                'priority_level': getattr(alert, 'priority_level', None),
                 'action': action  # 'created', 'updated', 'resolved', 'acknowledged', 'deleted'
             }
 
@@ -768,7 +764,7 @@ def create_app():
                 'status': 'healthy',
                 'database': 'connected',
                 'started_at': SERVER_START_TIME.isoformat(),
-                'uptime_seconds': int((datetime.now() - SERVER_START_TIME).total_seconds()),
+                'uptime_seconds': int((datetime.utcnow() - SERVER_START_TIME).total_seconds()),
                 'services': {
                     'scanner': scanner.is_running if hasattr(scanner, 'is_running') else 'unknown',
                     'monitor': monitor.is_running if hasattr(monitor, 'is_running') else 'unknown',
@@ -833,8 +829,8 @@ def create_app():
         """Simple liveness check - server is running and responding"""
         return jsonify({
             'status': 'alive',
-            'timestamp': datetime.now().isoformat(),
-            'uptime_seconds': int((datetime.now() - SERVER_START_TIME).total_seconds())
+            'timestamp': datetime.utcnow().isoformat() + 'Z',
+            'uptime_seconds': int((datetime.utcnow() - SERVER_START_TIME).total_seconds())
         })
 
     # Network topology endpoint

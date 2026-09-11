@@ -66,9 +66,12 @@ class RateLimiterService:
             on_breach=self._rate_limit_handler
         )
 
-        # Static assets (CSS/JS/icons) and the Socket.IO transport are not API calls.
+        # Static assets (CSS/JS/icons) and the Socket.IO transport are not API calls,
+        # and trusted addresses (localhost + RATE_LIMIT_TRUSTED_IPS) are exempt outright.
         self.limiter.request_filter(
-            lambda: request.endpoint == 'static' or request.path.startswith(('/static/', '/socket.io/'))
+            lambda: request.endpoint == 'static'
+            or request.path.startswith(('/static/', '/socket.io/'))
+            or get_remote_address() in self.trusted_ips
         )
         # Note: Specific endpoint limits will be applied via decorators on route functions
 
@@ -152,16 +155,8 @@ class RateLimiterService:
         Uses IP address by default, but can be extended to use
         API keys, user IDs, etc. for authenticated endpoints.
         """
-        # Check if this is a trusted IP
-        remote_addr = get_remote_address()
-        if remote_addr in self.trusted_ips:
-            return f"trusted-{remote_addr}"
-
-        # For authenticated requests, could use user ID
-        # if hasattr(g, 'user_id'):
-        #     return f"user-{g.user_id}"
-
-        return remote_addr
+        # Trusted addresses never reach the limiter (see request_filter in __init__).
+        return get_remote_address()
 
     def _rate_limit_handler(self, view_func):
         """Handler called when rate limit is exceeded."""
@@ -201,7 +196,7 @@ class RateLimiterService:
 
     def _check_for_abuse_patterns(self, identifier: str):
         """Check for potential abuse patterns and trigger alerts."""
-        if identifier.startswith('trusted-'):
+        if identifier in self.trusted_ips:
             return  # Skip trusted IPs
 
         # Could implement logic to detect:

@@ -21,6 +21,16 @@ from services.anomaly_detection import AnomalyDetectionEngine
 
 analytics_bp = Blueprint('analytics', __name__)
 
+
+def _window_hours(default: int, max_days: int = 90) -> int:
+    """Time window from ``?hours=`` or ``?days=`` (the analytics page sends either)."""
+    days = request.args.get('days', type=int)
+    if days is not None and days > 0:
+        return min(days, max_days) * 24
+    hours = request.args.get('hours', default=default, type=int)
+    return max(1, min(hours, max_days * 24))
+
+
 # Initialize device analytics service
 device_analytics = DeviceBehaviorAnalytics()
 device_learning = DeviceLearningSystem()
@@ -33,22 +43,17 @@ anomaly_detection = AnomalyDetectionEngine()
 def get_network_health_score():
     """Calculate overall network health score"""
     try:
-        hours = request.args.get('hours', default=24, type=int)
+        hours = _window_hours(default=24)
         cutoff = datetime.utcnow() - timedelta(hours=hours)
 
-        # Consolidated query for device stats (2 counts in one query)
-        device_stats = db.session.query(
-            func.count(Device.id).label('total_devices'),
-            func.sum(
-                func.cast(Device.last_seen >= cutoff, db.Integer)
-            ).label('devices_up')
-        ).filter(Device.is_monitored == True).first()
-
-        total_devices = device_stats.total_devices or 0
+        # Device counts share one definition with /api/monitoring/summary and the dashboard
+        from services.device_counts import summarize
+        counts = summarize()
+        total_devices = counts['monitored_devices']
         if total_devices == 0:
             return jsonify({'error': 'No monitored devices found'}), 404
 
-        devices_up = device_stats.devices_up or 0
+        devices_up = counts['devices_up']
 
         # Consolidated query for monitoring metrics (avg, total, successful in one query)
         monitoring_stats = db.session.query(
@@ -64,8 +69,7 @@ def get_network_health_score():
         success_rate = (successful_pings / total_pings * 100) if total_pings > 0 else 0
         uptime_percentage = (devices_up / total_devices * 100)
 
-        # Active alerts count
-        active_alerts = Alert.query.filter_by(resolved=False).count()
+        active_alerts = counts['active_alerts']
 
         # Use standardized health score calculation (consistent with Health Overview)
         health_score = calculate_health_score(
@@ -115,7 +119,7 @@ def get_network_health_score():
 def get_general_device_insights():
     """Get insights about device patterns and behavior"""
     try:
-        hours = request.args.get('hours', default=168, type=int)  # Default 7 days
+        hours = _window_hours(default=168)  # Default 7 days
         uptime_days = hours // 24 if hours >= 24 else 1
 
         # Fetch all monitored devices once

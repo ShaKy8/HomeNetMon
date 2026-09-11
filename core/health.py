@@ -36,10 +36,9 @@ EXPECTED_THREADS: dict[str, int] = {
     'PerformanceMonitor': 300,     # collection_interval default
     'ResourceMonitor':    300,     # _monitor_loop wait
     'RuleEngine':         30,      # services/rule_engine.py loop wait
-    'ConfigurationService': 30,    # services/configuration_service.py loop wait
     'EscalationService':  60,      # execution_interval
     'AnomalyDetection':   300,     # detection_interval (heartbeats even while disabled)
-    'SecurityScanner':    60,      # heartbeats once a minute while sleeping between scans
+    'SecurityScanner':    300,     # heartbeats per device during a sweep and once a minute while idle
     'SpeedTestService':   300,     # heartbeats every minute while idle/sleeping
 }
 
@@ -50,6 +49,8 @@ MAX_AGE_MULTIPLIER = 2.5
 
 _heartbeats: dict[str, float] = {}
 _lock = threading.RLock()
+# When this process started; bounds the "alive but no heartbeat yet" grace.
+_process_started: float = time.time()
 
 
 def record_heartbeat(name: str) -> None:
@@ -95,9 +96,11 @@ def check() -> dict[str, Any]:
         if not alive:
             is_stale = True  # crashed or never started
         elif last is None:
-            # Thread is alive but hasn't recorded a heartbeat yet. Give it
-            # the same budget as one full interval (start-up grace).
-            pass
+            # Thread is alive but has never recorded a heartbeat. Allow the
+            # same start-up grace as a normal stale budget, measured from
+            # process start; after that a silent thread is wedged, not warming up.
+            if now - _process_started > interval * MAX_AGE_MULTIPLIER:
+                is_stale = True
         elif last_ago is not None and last_ago > interval * MAX_AGE_MULTIPLIER:
             is_stale = True
 

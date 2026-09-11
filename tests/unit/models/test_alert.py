@@ -591,3 +591,28 @@ class TestAlertValidation:
         for level in valid_levels:
             alert = AlertFactory.create(device=device, priority_level=level)
             assert alert.priority_level == level
+
+
+class TestAlertTitle:
+    """Alert.title feeds the alerts page cards, toasts and email/Discord subjects."""
+
+    @pytest.mark.parametrize('alert_type,subtype,expected', [
+        ('device_down', None, 'Device offline'),
+        ('device_recovery', None, 'Device back online'),
+        ('high_latency', None, 'High latency'),
+        ('new_device', None, 'New device discovered'),
+        ('performance', 'performance_critical', 'Performance critical'),
+        ('performance', 'performance_responsiveness', 'Slow responses'),
+        ('performance', None, 'Performance degraded'),
+        ('security_suspicious_port', None, 'Suspicious port open'),
+        ('wan_down', None, 'Internet down'),
+        ('something_new', None, 'Something new'),
+    ])
+    def test_title_mapping(self, db_session, alert_type, subtype, expected):
+        device = DeviceFactory.create()
+        alert = Alert(device_id=device.id, alert_type=alert_type, alert_subtype=subtype,
+                      severity='warning', message='m')
+        db_session.add(alert)
+        db_session.commit()
+        assert alert.title == expected
+        assert alert.to_dict()['title'] == expected

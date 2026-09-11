@@ -99,10 +99,43 @@ class NetworkScanner:
     def _handle_network_range_change(self, old_range, new_range):
         """Handle network range configuration change"""
         logger.info(f"Network range changed from {old_range} to {new_range}")
+        self.apply_network_range(new_range)
         # Trigger a network scan with the new range if not currently scanning
         if not self.is_scanning:
             logger.info("Triggering network scan with new range")
             threading.Thread(target=self.scan_network, daemon=True, name='NetworkRangeScan').start()
+
+    def apply_network_range(self, network_range):
+        """Archive devices outside ``network_range`` and resume ones that fall back inside it.
+
+        Devices keep their rows and history; only ``is_monitored`` changes. Returns
+        (archived, resumed) counts. Runs its own app context.
+        """
+        from services.device_counts import ip_in_range, parse_network
+        network = parse_network(network_range)
+        if network is None or not self.app:
+            return 0, 0
+        archived = resumed = 0
+        with self.app.app_context():
+            try:
+                for device in Device.query.filter(Device.ip_address.isnot(None)).all():
+                    inside = ip_in_range(device.ip_address, network)
+                    if device.is_monitored and not inside:
+                        device.is_monitored = False
+                        device.updated_at = datetime.utcnow()
+                        archived += 1
+                    elif inside and not device.is_monitored and device.last_seen and \
+                            device.last_seen >= datetime.utcnow() - timedelta(days=1):
+                        device.is_monitored = True
+                        device.updated_at = datetime.utcnow()
+                        resumed += 1
+                db.session.commit()
+            except Exception as e:
+                logger.error(f"Error applying network range {network_range}: {e}")
+                db.session.rollback()
+        if archived or resumed:
+            logger.info(f"Network range {network_range}: archived {archived}, resumed {resumed} device(s)")
+        return archived, resumed
 
     def get_adaptive_scan_interval(self):
         """Get adaptive scan interval based on network activity and time of day"""
@@ -588,6 +621,8 @@ class NetworkScanner:
         """Process a discovered device and update database using MAC-based identification"""
         try:
             ip = device_info['ip']
+            from services.device_counts import ip_in_range, parse_network
+            in_range = ip_in_range(ip, parse_network(self.get_config_value('network_range', Config.NETWORK_RANGE)))
             mac = device_info.get('mac')
 
             device = None
@@ -716,7 +751,7 @@ class NetworkScanner:
                 # last_seen) has just reappeared on the network: resume monitoring it.
                 # Devices the user disabled while they stayed online keep a fresh
                 # last_seen from scans, so they are not affected.
-                if not device.is_monitored and device.last_seen is not None:
+                if not device.is_monitored and device.last_seen is not None and in_range:
                     stale_days = int(self.get_config_value('stale_device_days', Config.STALE_DEVICE_DAYS))
                     if device.last_seen < datetime.utcnow() - timedelta(days=stale_days):
                         logger.info(f"Stale device {device.display_name} ({ip}) is back; resuming monitoring")
