@@ -53,3 +53,11 @@ def test_recent_heartbeat_is_never_stale(monkeypatch):
 def test_watchdog_does_not_list_removed_threads():
     for gone in ('ConfigurationService',):
         assert gone not in health.EXPECTED_THREADS
+
+
+def test_disabled_security_scanner_is_not_reported(monkeypatch):
+    monkeypatch.setenv('SECURITY_SCANNING_ENABLED', 'false')
+    result = health.check()
+    assert 'SecurityScanner' not in result['threads'] and 'SecurityScanner' not in result['stale']
+    monkeypatch.setenv('SECURITY_SCANNING_ENABLED', 'true')
+    assert 'SecurityScanner' in health.check()['threads']

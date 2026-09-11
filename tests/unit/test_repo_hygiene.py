@@ -68,8 +68,9 @@ class TestDeploymentArtifacts:
     @pytest.mark.parametrize('unit', ['systemd/homenetmon.service', 'systemd/homenetmon.user.service'])
     def test_systemd_units_have_the_essentials(self, unit):
         text = _read(ROOT / unit)
-        assert 'ExecStart=' in text and 'app.py' in text and 'DATABASE_URL=' in text
-        assert 'MemoryDenyWriteExecute=true' not in text   # breaks numpy/scikit-learn
+        assert 'ExecStart=' in text and 'DATABASE_URL=' in text
+        assert 'gunicorn' in text and 'wsgi:app' in text and '--workers 1' in text   # one process: Socket.IO + threads
+        assert 'MemoryDenyWriteExecute=true' not in text
 
     def test_shell_scripts_parse(self):
         for script in ['install.sh', 'health_check.sh', 'run_production.sh', 'setup_backup_cron.sh', 'restart_homenetmon.sh']:

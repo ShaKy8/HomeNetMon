@@ -78,4 +78,4 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=60s --retries=3 \
     CMD /app/healthcheck.sh
 
 # Default command
-CMD ["python", "app.py"]
+CMD ["gunicorn", "--workers", "1", "--worker-class", "gthread", "--threads", "32", "--bind", "0.0.0.0:5000", "--timeout", "120", "--graceful-timeout", "30", "--access-logfile", "-", "--error-logfile", "-", "wsgi:app"]

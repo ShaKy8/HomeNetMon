@@ -62,6 +62,15 @@ def get_heartbeats() -> dict[str, float]:
         return dict(_heartbeats)
 
 
+def _optional_threads_off() -> set[str]:
+    """Threads that are legitimately not running in this deployment."""
+    import os
+    off: set[str] = set()
+    if os.environ.get('SECURITY_SCANNING_ENABLED', 'false').lower() != 'true':
+        off.add('SecurityScanner')
+    return off
+
+
 def check() -> dict[str, Any]:
     """Return overall thread health.
 
@@ -85,6 +94,8 @@ def check() -> dict[str, Any]:
     stale: list[str] = []
 
     for name, interval in EXPECTED_THREADS.items():
+        if name in _optional_threads_off():
+            continue
         last = snapshot.get(name)
         last_ago: float | None = (now - last) if last is not None else None
         alive = name in live_names

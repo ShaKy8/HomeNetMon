@@ -19,4 +19,5 @@ export PORT="${PORT:-5000}"
 export DATABASE_URL="${DATABASE_URL:-sqlite:///$(pwd)/production_data/homeNetMon.db}"
 mkdir -p production_data
 
-exec venv/bin/python app.py
+exec venv/bin/gunicorn --workers 1 --worker-class gthread --threads 32 --bind "${HOST}:${PORT}" \
+    --timeout 120 --graceful-timeout 30 --access-logfile - --error-logfile - wsgi:app
