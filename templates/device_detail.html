@@ -389,9 +389,9 @@ document.addEventListener('DOMContentLoaded', function() {
     deviceId = urlParts[urlParts.length - 1];
 
     if (deviceId) {
-        loadDeviceData();
         initializeCharts();
         setupEventListeners();
+        loadDeviceData();
 
         // Refresh data every 30 seconds
         setInterval(loadDeviceData, 30000);
@@ -418,6 +418,42 @@ function loadDeviceData() {
 }
 
 let currentDevice = null;
+
+function initializeCharts() {
+    if (typeof Chart === 'undefined') return;
+    const rtCanvas = document.getElementById('responseTimeChart');
+    const upCanvas = document.getElementById('uptimeChart');
+    if (rtCanvas && !responseTimeChart) {
+        responseTimeChart = new Chart(rtCanvas.getContext('2d'), {
+            type: 'line',
+            data: { labels: [], datasets: [{
+                label: 'Response time (ms)', data: [], borderColor: '#4dabf7',
+                backgroundColor: 'rgba(77, 171, 247, 0.15)', tension: 0.3, fill: true,
+                pointRadius: 0, spanGaps: false
+            }] },
+            options: {
+                responsive: true, maintainAspectRatio: false, animation: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { ticks: { maxTicksLimit: 8, autoSkip: true } },
+                    y: { beginAtZero: true, title: { display: true, text: 'ms' } }
+                }
+            }
+        });
+    }
+    if (upCanvas && !uptimeChart) {
+        uptimeChart = new Chart(upCanvas.getContext('2d'), {
+            type: 'doughnut',
+            data: { labels: ['Up', 'Down'], datasets: [{
+                data: [0, 100], backgroundColor: ['#40c057', '#fa5252'], borderWidth: 0
+            }] },
+            options: {
+                responsive: true, maintainAspectRatio: false, cutout: '70%',
+                plugins: { legend: { position: 'bottom' } }
+            }
+        });
+    }
+}
 
 function fmtMs(value) {
     return (value === null || value === undefined) ? 'N/A' : `${Math.round(value)} ms`;

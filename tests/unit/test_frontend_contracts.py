@@ -194,3 +194,35 @@ class TestLiveRegressions:
         from services.network_topology import NetworkTopologyEngine
         engine = NetworkTopologyEngine()
         assert hasattr(engine, 'discovery_lock') and hasattr(engine, 'discovery_methods')
+
+
+class TestPhase1Fixes:
+
+    def test_device_page_defines_its_chart_initialiser(self):
+        html = (ROOT / 'templates/device_detail.html').read_text()
+        assert 'function initializeCharts()' in html
+        assert html.index('initializeCharts();') < html.index('loadDeviceData();')
+
+    def test_analytics_page_has_no_toast_stub(self):
+        html = (ROOT / 'templates/analytics.html').read_text()
+        assert 'Toast (${type})' not in html
+        assert 'GlobalFilters' not in html
+
+    def test_dashboard_bulk_ops_use_bulk_update(self):
+        js = (ROOT / 'static/js/dashboard-page.js').read_text()
+        assert '/api/devices/bulk-update' in js
+        assert 'event.stopPropagation();' not in js      # implicit global event broke bulk loops
+        assert '192.168.86.1' not in js
+
+    @pytest.mark.parametrize('path,needle', [
+        ('static/js/security-page.js', '${escapeHtml(device.name)}'),
+        ('static/js/security-page.js', "${escapeHtml(alert.message.replace('[SECURITY] ', ''))}"),
+        ('templates/topology.html', '${escapeHtml(node.vendor'),
+        ('templates/analytics.html', '${escapeHtml(device.device_name)}'),
+    ])
+    def test_lan_strings_are_escaped_on_kept_pages(self, path, needle):
+        assert needle in (ROOT / path).read_text()
+
+    def test_dashboard_hero_reads_shared_summary(self):
+        js = (ROOT / 'static/js/dashboard-page.js').read_text()
+        assert "fetch('/api/monitoring/summary')" in js

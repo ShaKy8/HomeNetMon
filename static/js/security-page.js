@@ -21,7 +21,7 @@
         toastEl.innerHTML = `
             <div class="d-flex">
                 <div class="toast-body">
-                    ${message}
+                    ${escapeHtml(message)}
                 </div>
                 <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
             </div>
@@ -955,10 +955,10 @@
                         ${overview.devices.map(device => `
                             <tr>
                                 <td>
-                                    <span class="fw-bold">${device.name}</span>
+                                    <span class="fw-bold">${escapeHtml(device.name)}</span>
                                 </td>
                                 <td>
-                                    <code>${device.ip_address}</code>
+                                    <code>${escapeHtml(device.ip_address)}</code>
                                 </td>
                                 <td>
                                     <span class="badge bg-info">${device.open_ports}</span>
@@ -972,14 +972,14 @@
                                         <span class="small fw-medium">${device.avg_risk_score.toFixed(1)}</span>
                                     </div>
                                     <div class="mt-1">
-                                        <span class="risk-indicator risk-${device.security_status.replace(' ', '-')}">
-                                            ${getRiskIcon(device.avg_risk_score)} ${device.security_status}
+                                        <span class="risk-indicator risk-${escapeHtml(String(device.security_status).replace(' ', '-'))}">
+                                            ${getRiskIcon(device.avg_risk_score)} ${escapeHtml(device.security_status)}
                                         </span>
                                     </div>
                                 </td>
                                 <td>
                                     <div class="device-security-badge ${getSecurityBadgeClass(device.security_status)}">
-                                        ${device.security_status.replace('-', ' ')}
+                                        ${escapeHtml(String(device.security_status).replace('-', ' '))}
                                     </div>
                                     <div class="mt-1">
                                         <small class="text-muted">
@@ -1082,7 +1082,7 @@
                                 </td>
                                 <td>
                                     <div class="alert-details">
-                                        <div class="mb-1">${alert.message.replace('[SECURITY] ', '')}</div>
+                                        <div class="mb-1">${escapeHtml(alert.message.replace('[SECURITY] ', ''))}</div>
                                         ${alert.port ? `<div><code class="bg-light px-1 rounded">Port ${alert.port}</code></div>` : ''}
                                         ${alert.service ? `<div class="mt-1"><small class="text-muted">Service: ${escapeHtml(alert.service)}</small></div>` : ''}
                                         ${alert.version ? `<div><small class="text-muted">Version: ${escapeHtml(alert.version)}</small></div>` : ''}

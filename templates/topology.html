@@ -2103,7 +2103,7 @@ class NetworkTopology {
                     <div class="modal-content">
                         <div class="modal-header">
                             <h5 class="modal-title text-gradient-primary">
-                                <i class="bi bi-hdd me-2"></i>${node.name}
+                                <i class="bi bi-hdd me-2"></i>${escapeHtml(node.name)}
                             </h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
@@ -2112,13 +2112,13 @@ class NetworkTopology {
                                 <div class="col-md-6">
                                     <h6>Device Information</h6>
                                     <table class="table table-sm">
-                                        <tr><td><strong>Name:</strong></td><td>${node.name}</td></tr>
-                                        <tr><td><strong>IP Address:</strong></td><td>${node.ip}</td></tr>
-                                        <tr><td><strong>MAC Address:</strong></td><td>${node.mac || 'Unknown'}</td></tr>
-                                        <tr><td><strong>Type:</strong></td><td>${node.type}</td></tr>
-                                        <tr><td><strong>Vendor:</strong></td><td>${node.vendor || 'Unknown'}</td></tr>
+                                        <tr><td><strong>Name:</strong></td><td>${escapeHtml(node.name)}</td></tr>
+                                        <tr><td><strong>IP Address:</strong></td><td>${escapeHtml(node.ip)}</td></tr>
+                                        <tr><td><strong>MAC Address:</strong></td><td>${escapeHtml(node.mac || 'Unknown')}</td></tr>
+                                        <tr><td><strong>Type:</strong></td><td>${escapeHtml(node.type)}</td></tr>
+                                        <tr><td><strong>Vendor:</strong></td><td>${escapeHtml(node.vendor || 'Unknown')}</td></tr>
                                         <tr><td><strong>Status:</strong></td><td>
-                                            <span class="badge" style="background-color: ${this.getNodeColor(node)}">${node.status}</span>
+                                            <span class="badge" style="background-color: ${this.getNodeColor(node)}">${escapeHtml(node.status)}</span>
                                         </td></tr>
                                     </table>
                                 </div>
@@ -2282,8 +2282,8 @@ class NetworkTopology {
         const resultHtml = `
             <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
                 <div>
-                    <strong>${device.name}</strong>
-                    <span class="text-muted ms-2">${device.ip}</span>
+                    <strong>${escapeHtml(device.name)}</strong>
+                    <span class="text-muted ms-2">${escapeHtml(device.ip)}</span>
                 </div>
                 <div>
                     ${result.success ?

@@ -487,14 +487,6 @@
 <div class="controls-section">
     <div class="analytics-controls-left">
         <h1><i class="bi bi-graph-up"></i> Network Analytics</h1>
-        <!-- Active Filters Display -->
-        <div id="active-filters" class="mt-2" style="display: none;">
-            <span class="text-muted small">Active filters:</span>
-            <span id="filter-badges"></span>
-            <button class="btn btn-sm btn-link text-decoration-none p-0 ms-2" onclick="GlobalFilters.clearFilters()">
-                <i class="bi bi-x-circle"></i> Clear all
-            </button>
-        </div>
     </div>
 
     <div class="btn-group" role="group">
@@ -1247,7 +1239,7 @@
 
     async function loadDeviceInsights() {
         try {
-            const params = new URLSearchParams({ hours: 168 }); // Always use 1 week for insights
+            const params = new URLSearchParams(currentTimeRange); // follows the global range
             const response = await fetch(`/api/analytics/device-insights?${params}`);
             const data = await response.json();
 
@@ -1423,11 +1415,11 @@
                             <div class="h4 mb-0">${insight.icon}</div>
                         </div>
                         <div class="flex-grow-1">
-                            <h6 class="mb-1">${insight.title}</h6>
-                            <p class="small text-muted mb-1">${insight.description}</p>
+                            <h6 class="mb-1">${escapeHtml(insight.title)}</h6>
+                            <p class="small text-muted mb-1">${escapeHtml(insight.description)}</p>
                             <div class="small">
                                 <i class="bi bi-arrow-right text-primary"></i>
-                                <span class="text-primary">${insight.action}</span>
+                                <span class="text-primary">${escapeHtml(insight.action)}</span>
                             </div>
                         </div>
                     </div>
@@ -1447,8 +1439,8 @@
         if (data.most_reliable && data.most_reliable.length > 0) {
             reliableElement.innerHTML = data.most_reliable.slice(0, 3).map((device, index) => `
                 <div class="device-list-item">
-                    <span>${index + 1}. ${device.name}</span>
-                    <span class="badge bg-success">${device.uptime}%</span>
+                    <span>${index + 1}. ${escapeHtml(device.name)}</span>
+                    <span class="badge bg-success">${escapeHtml(device.uptime)}%</span>
                 </div>
             `).join('');
         } else {
@@ -1460,8 +1452,8 @@
         if (data.fastest_devices && data.fastest_devices.length > 0) {
             fastestElement.innerHTML = data.fastest_devices.slice(0, 3).map((device, index) => `
                 <div class="device-list-item">
-                    <span>${index + 1}. ${device.name}</span>
-                    <span class="badge bg-info">${device.response_time}ms</span>
+                    <span>${index + 1}. ${escapeHtml(device.name)}</span>
+                    <span class="badge bg-info">${escapeHtml(device.response_time)}ms</span>
                 </div>
             `).join('');
         } else {
@@ -2180,8 +2172,8 @@
                                     <span class="badge bg-primary">${index + 1}</span>
                                 </div>
                                 <div>
-                                    <div class="fw-bold">${device.device_name}</div>
-                                    <div class="small text-muted">${device.ip_address}</div>
+                                    <div class="fw-bold">${escapeHtml(device.device_name)}</div>
+                                    <div class="small text-muted">${escapeHtml(device.ip_address)}</div>
                                 </div>
                             </div>
                         </div>
@@ -2229,12 +2221,6 @@
         if (gb < 0.01) return '<0.01 GB';
         if (gb < 1) return (gb * 1024).toFixed(0) + ' MB';
         return gb.toFixed(2) + ' GB';
-    }
-
-    // Utility functions
-    function showToast(message, type = 'info', duration = 3000) {
-        // This function would show toast notifications - implementation depends on your toast system
-        console.log(`Toast (${type}): ${message}`);
     }
 
     // ---- Anomalies tab (folded in from the retired AI dashboard) ----

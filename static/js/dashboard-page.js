@@ -264,6 +264,7 @@ async function loadDevices() {
         updateStats();
         filterAndDisplayDevices();
         document.getElementById('loading-devices').classList.add('hidden');
+        loadSummary();
     } catch (error) {
         const loading = document.getElementById('loading-devices');
         loading.textContent = 'Error loading devices: ' + error.message;
@@ -271,31 +272,57 @@ async function loadDevices() {
     }
 }
 
-// Update hero statistics
+// Hero statistics: counts come from /api/monitoring/summary (one definition shared with
+// the API and the analytics page); the average response time is computed from the grid.
+let latestSummary = null;
+
+async function loadSummary() {
+    try {
+        const response = await fetch('/api/monitoring/summary');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        applySummary(await response.json());
+    } catch (error) {
+        console.error('Summary unavailable:', error);
+    }
+}
+
+function applySummary(summary) {
+    if (!summary) return;
+    latestSummary = summary;
+    const set = (id, value) => { const el = document.getElementById(id); if (el && value !== undefined) el.textContent = value; };
+    set('hero-devices-online', summary.devices_up);
+    set('hero-total-devices', summary.monitored_devices);
+    set('hero-alerts', summary.active_alerts);
+    const totalEl = document.getElementById('hero-total-devices');
+    if (totalEl && summary.total_devices !== undefined) {
+        totalEl.title = `${summary.total_devices} in inventory (incl. archived / out of range)`;
+    }
+    const statusElement = document.getElementById('hero-network-status');
+    if (statusElement && summary.monitored_devices !== undefined) {
+        const pct = summary.monitored_devices ? (summary.devices_up / summary.monitored_devices) * 100 : 0;
+        if (!summary.monitored_devices) {
+            statusElement.innerHTML = '<span class="status-dot status-warning"></span>No devices';
+        } else if (pct >= 90) {
+            statusElement.innerHTML = '<span class="status-dot status-up"></span>Healthy';
+        } else if (pct >= 70) {
+            statusElement.innerHTML = '<span class="status-dot status-warning"></span>Degraded';
+        } else {
+            statusElement.innerHTML = '<span class="status-dot status-down"></span>Critical';
+        }
+    }
+}
+
 function updateStats() {
     const visible = filters.showArchived ? devicesData : devicesData.filter(d => d.is_monitored);
-    const online = visible.filter(d => d.status === 'up').length;
-    const total = visible.length;
-    const alerts = visible.filter(d => (d.active_alerts || 0) > 0).length;
     const avgResponse = visible
         .filter(d => d.latest_response_time > 0)
         .reduce((acc, d, _, arr) => acc + d.latest_response_time / arr.length, 0);
-
-    document.getElementById('hero-devices-online').textContent = online;
-    document.getElementById('hero-total-devices').textContent = total;
     document.getElementById('hero-response-time').textContent =
         avgResponse ? Math.round(avgResponse) + ' ms' : '-- ms';
-    document.getElementById('hero-alerts').textContent = alerts;
-
-    // Update network status
-    const healthPercentage = total ? (online / total) * 100 : 0;
-    const statusElement = document.getElementById('hero-network-status');
-    if (healthPercentage >= 90) {
-        statusElement.innerHTML = '<span class="status-dot status-up"></span>Healthy';
-    } else if (healthPercentage >= 70) {
-        statusElement.innerHTML = '<span class="status-dot status-warning"></span>Degraded';
-    } else {
-        statusElement.innerHTML = '<span class="status-dot status-down"></span>Critical';
+    if (!latestSummary) {
+        // Until the summary arrives, show what the grid knows
+        document.getElementById('hero-devices-online').textContent = visible.filter(d => d.status === 'up').length;
+        document.getElementById('hero-total-devices').textContent = visible.length;
     }
 }
 
@@ -450,7 +477,7 @@ function createDeviceRow(device) {
                 <button class="btn btn-sm btn-outline-light" onclick="openDeviceDetails(${device.id})">
                     <i class="bi bi-eye"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-light" onclick="toggleMonitoring(${device.id})">
+                <button class="btn btn-sm btn-outline-light" onclick="toggleMonitoring(${device.id}, event)">
                     <i class="bi bi-power"></i>
                 </button>
             </td>
@@ -846,37 +873,47 @@ function openDeviceDetails(deviceId) {
     window.location.href = `/device/${deviceId}`;
 }
 
-async function toggleMonitoring(deviceId) {
-    event.stopPropagation();
+async function toggleMonitoring(deviceId, ev) {
+    if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();
     const device = devicesData.find(d => d.id === deviceId);
     if (!device) return;
 
     try {
-        await fetch(`/api/devices/${deviceId}`, {
+        const response = await fetch(`/api/devices/${deviceId}`, {
             method: 'PUT',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ is_monitored: !device.is_monitored })
         });
-        loadDevices();
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        await loadDevices();
     } catch (error) {
+        showError(`Could not update monitoring: ${error.message}`);
     }
 }
 
-// Bulk operations
-async function bulkEnableMonitoring() {
-    const devices = devicesData.filter(d => !d.is_monitored);
-    for (const device of devices) {
-        await toggleMonitoring(device.id);
+// Bulk operations: one request for all devices, one reload
+async function setMonitoring(deviceIds, isMonitored) {
+    if (!deviceIds.length) return;
+    try {
+        const response = await fetch('/api/devices/bulk-update', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ device_ids: deviceIds, is_monitored: isMonitored })
+        });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        showSuccess(`${isMonitored ? 'Enabled' : 'Disabled'} monitoring for ${deviceIds.length} device(s)`);
+    } catch (error) {
+        showError(`Bulk update failed: ${error.message}`);
     }
+    await loadDevices();
+}
+
+async function bulkEnableMonitoring() {
+    await setMonitoring(devicesData.filter(d => !d.is_monitored).map(d => d.id), true);
 }
 
 async function bulkDisableMonitoring() {
-    const devices = devicesData.filter(d => d.is_monitored);
-    for (const device of devices) {
-        await toggleMonitoring(device.id);
-    }
+    await setMonitoring(devicesData.filter(d => d.is_monitored).map(d => d.id), false);
 }
 
 // Apply monitoring preset
@@ -895,20 +932,14 @@ async function applyMonitoringPreset(preset) {
             devicesToEnable = devicesData.filter(d => {
                 const name = (d.display_name || d.hostname || '').toLowerCase();
                 return name.includes('router') || name.includes('gateway') ||
-                       d.ip_address === '192.168.86.1';
+                       d.device_type === 'router';
             });
             break;
     }
 
-    // Disable all first
-    await bulkDisableMonitoring();
-
-    // Enable selected devices
-    for (const device of devicesToEnable) {
-        if (!device.is_monitored) {
-            await toggleMonitoring(device.id);
-        }
-    }
+    const keep = new Set(devicesToEnable.map(d => d.id));
+    await setMonitoring(devicesData.filter(d => d.is_monitored && !keep.has(d.id)).map(d => d.id), false);
+    await setMonitoring(devicesData.filter(d => keep.has(d.id) && !d.is_monitored).map(d => d.id), true);
 }
 
 // Export to CSV
@@ -989,20 +1020,11 @@ function updateDeviceCardInPlace(device) {
 }
 
 function handleMonitoringSummary(data) {
-    // Update hero stats with real-time data
-    if (data.devices_up !== undefined) {
-        document.getElementById('hero-devices-online').textContent = data.devices_up;
-    }
-    if (data.total_devices !== undefined) {
-        document.getElementById('hero-total-devices').textContent = data.total_devices;
-    }
+    // Server push carries the same keys as /api/monitoring/summary
+    applySummary(data);
 }
 
 function updateNetworkStatus(connected) {
-    const statusElement = document.getElementById('hero-network-status');
-    if (connected) {
-        statusElement.innerHTML = '<span class="status-dot status-up"></span>Connected';
-    } else {
-        statusElement.innerHTML = '<span class="status-dot status-down"></span>Disconnected';
-    }
+    // Socket connectivity belongs to the navbar badge, not the network-health tile
+    if (typeof updateConnectionStatus === 'function') updateConnectionStatus(connected);
 }
