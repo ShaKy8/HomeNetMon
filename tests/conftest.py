@@ -541,8 +541,6 @@ STALE_TEST_SKIPS = {
         "consolidated query call count changed after caching",
     "test_n_plus_one_fixes.py::TestMonitoringN1QueryFixes::test_monitoring_data_pagination_doesnt_cause_n1":
         "pagination path goes through cache; query count differs",
-    "test_n_plus_one_fixes.py::TestHealthN1QueryFixes::test_health_overview_uses_efficient_queries":
-        "health-overview now hits cached aggregates; query count differs",
 
     # performance_optimizations: hardcoded /home/kyle paths (env-specific).
     # All assertions reference /home/kyle/ClaudeCode/HomeNetMon/... literally,

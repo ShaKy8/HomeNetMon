@@ -61,36 +61,18 @@ jobs:
         continue-on-error: true
         run: pip-audit -r requirements.txt
 
-      # Run the full unit suite. tests/conftest.py:STALE_TEST_SKIPS holds a
-      # centralized list of tests that were written for APIs that have since
-      # been renamed/removed; each entry has a reason. To revive a skipped
-      # test, refactor it to match the current API and remove its entry from
-      # the dict. Pytest options live in pyproject.toml [tool.pytest.ini_options].
-      - name: Run unit tests
+      # Unit + integration suites are the gate. tests/conftest.py:STALE_TEST_SKIPS holds
+      # the centralized list of unit tests written for renamed/removed APIs; each entry
+      # has a reason. Pytest options live in pyproject.toml [tool.pytest.ini_options].
+      - name: Run tests
         env:
           DATABASE_URL: "sqlite:///:memory:"
           SECRET_KEY: ci-test-secret-key-not-for-production-use
           NETWORK_RANGE: "192.168.1.0/24"
         run: |
-          pytest tests/unit \
-            --cov=. --cov-report=term --cov-fail-under=28 \
+          pytest tests/unit tests/integration \
+            --cov=. --cov-report=term --cov-fail-under=47 \
             --timeout=15 \
             -q \
             --tb=short
-      # Coverage floor: unit tests measured 30.5% on 2026-09-04 (background threads no longer run under test); raise it as coverage grows.
-
-      # tests/api + tests/integration (209 tests) were written against endpoints
-      # and service attributes that never existed (162 fail, 47 pass as of
-      # 2026-09-04). They stay advisory until rewritten against the real API.
-      - name: Run API + integration tests (advisory)
-        continue-on-error: true
-        env:
-          DATABASE_URL: "sqlite:///:memory:"
-          SECRET_KEY: ci-test-secret-key-not-for-production-use
-          NETWORK_RANGE: "192.168.1.0/24"
-        run: |
-          pytest tests/api tests/integration \
-            --no-cov \
-            --timeout=15 \
-            -q \
-            --tb=short
+      # Coverage floor: measured 50% on 2026-09-11 after the 2.5.0 removals; raise it as coverage grows.

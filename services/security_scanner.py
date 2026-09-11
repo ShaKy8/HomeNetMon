@@ -190,6 +190,10 @@ class NetworkSecurityScanner:
         self.running = False
         logger.info("Security scanner stopped")
 
+    def get_scan_progress(self):
+        """Get current scan progress"""
+        return dict(self.current_scan)
+
     def stop_current_scan(self):
         """Stop the currently running security scan"""
         if not self.current_scan['active']:
