@@ -815,14 +815,6 @@ class DeviceMonitor:
 
                 logger.debug(f"Batch processed {len(monitoring_records)} monitoring records and {len(device_updates)} device updates")
 
-                # Process status changes for rule engine (outside transaction)
-                for change in status_changes:
-                    self._trigger_rule_engine_for_status_change(
-                        change['device'],
-                        change['previous_status'],
-                        change['current_status'],
-                        change['response_time']
-                    )
 
                 # Emit WebSocket events with throttling
                 if self.socketio:

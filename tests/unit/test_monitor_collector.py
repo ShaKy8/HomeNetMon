@@ -190,3 +190,26 @@ class TestSummaryPush:
         assert payload['monitored_devices'] == 2
         assert payload['devices_up'] == 2
         assert payload['timestamp'].endswith('Z')
+
+
+class TestBatchProcessing:
+
+    def test_real_batch_path_persists_results_without_errors(self, app, db_session, caplog):
+        """Runs monitor_all_devices with the real _batch_process_monitoring_results (the
+        collector tests mock it); a leftover rule-engine hook made every cycle log an error."""
+        import logging
+        devices = _make_devices(db_session, 3)
+
+        def ping(device):
+            return {'device_id': device.id, 'response_time': 7.0, 'success': True, 'timestamp': datetime.utcnow()}
+
+        monitor = DeviceMonitor(app=app, socketio=Mock())
+        with caplog.at_level(logging.ERROR), \
+             patch.object(monitor, 'get_config_value', side_effect=_config({'max_workers': 2, 'ping_timeout': 0.05})), \
+             patch.object(monitor, '_ping_device_for_batch', side_effect=ping):
+            monitor.monitor_all_devices()
+
+        with app.app_context():
+            assert MonitoringData.query.filter(MonitoringData.device_id.in_([d.id for d in devices])).count() == 3
+            assert all(db.session.get(Device, d.id).last_seen is not None for d in devices)
+        assert not [r for r in caplog.records if r.levelno >= logging.ERROR], [r.getMessage() for r in caplog.records]
