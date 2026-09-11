@@ -649,6 +649,22 @@ def create_app():
     # Store the emit function in app context for use by alert manager
     app.emit_alert_update = emit_alert_update
 
+    def emit_alerts_changed(action, count):
+        """Bulk alert change (acknowledge-all, bulk resolve, deletes): pages reload once."""
+        try:
+            socketio.emit('alert_update', {
+                'type': 'alert_update',
+                'alert': None,
+                'action': 'bulk',
+                'bulk_action': action,
+                'count': count,
+                'timestamp': datetime.utcnow().isoformat() + 'Z'
+            })
+        except Exception as e:
+            logger.error(f"Error emitting alerts_changed: {e}")
+
+    app.emit_alerts_changed = emit_alerts_changed
+
     # Error handlers
     # Comprehensive error handling
     # Error handling lives in core.error_handler (JSON for /api/*, HTML otherwise).

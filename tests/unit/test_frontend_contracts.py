@@ -291,3 +291,28 @@ class TestPhase6Cleanup:
                         headers={'X-CSRF-Token': _token(client)})
         assert r.status_code == 200 and r.get_json()['count'] == 1
         assert Alert.query.filter_by(alert_type='device_down').first().acknowledged is False
+
+
+class TestAlertsPage:
+
+    def test_offers_every_severity_and_status(self, client):
+        html = client.get('/alerts').get_data(as_text=True)
+        for sev in ('critical', 'high', 'warning', 'medium', 'low', 'info'):
+            assert f'<option value="{sev}">' in html, sev
+        for status in ('active', 'unacknowledged', 'acknowledged', 'resolved', 'all'):
+            assert f'value="{status}"' in html, status
+        assert '.alert-card.warning' in html and '.status-badge.info' in html
+
+    def test_has_acknowledge_controls_and_pager(self, client):
+        html = client.get('/alerts').get_data(as_text=True)
+        assert 'alertsManager.acknowledge(' in html and 'acknowledgeAllFiltered' in html
+        assert 'id="alerts-pager"' in html and '/api/notifications/history' in html
+
+    def test_uses_shared_helpers_only(self, client):
+        html = client.get('/alerts').get_data(as_text=True)
+        assert 'this.showToast' not in html and 'this.escapeHtml' not in html
+        assert 'X-CSRFToken' not in html
+
+    def test_navbar_badge_uses_server_side_status_filter(self, client):
+        html = client.get('/').get_data(as_text=True)
+        assert '/api/monitoring/alerts?status=active&hours=0&per_page=1' in html

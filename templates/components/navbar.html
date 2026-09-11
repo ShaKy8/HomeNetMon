@@ -254,10 +254,10 @@ document.addEventListener('DOMContentLoaded', function() {
 // Load active alerts count for navbar badge
 async function loadActiveAlertsCount() {
     try {
-        const response = await fetch('/api/monitoring/alerts?resolved=false');
+        const response = await fetch('/api/monitoring/alerts?status=active&hours=0&per_page=1');
         const data = await response.json();
 
-        const count = data.count || 0;
+        const count = (data.pagination && data.pagination.total) || 0;
         const badge = document.getElementById('alert-count-badge');
 
         if (count > 0) {

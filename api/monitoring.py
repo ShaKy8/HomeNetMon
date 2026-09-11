@@ -8,7 +8,7 @@ from datetime import datetime, timedelta
 from functools import lru_cache
 
 from flask import Blueprint, current_app, jsonify, request
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 
 from api.rate_limited_endpoints import create_endpoint_limiter
@@ -190,43 +190,131 @@ def get_live_network_stats(network_range):
     }
 
 
+ALERT_STATUSES = ('active', 'unacknowledged', 'acknowledged', 'resolved', 'all')
+ALERT_SEVERITIES = ('critical', 'high', 'warning', 'medium', 'low', 'info')
+
+
+def _alert_params(source):
+    """Normalise filter parameters from request.args (GET) or a JSON body (POST)."""
+    get = source.get
+    def as_int(key):
+        value = get(key)
+        try:
+            return int(value) if value not in (None, '') else None
+        except (TypeError, ValueError):
+            return None
+    severity = get('severity') or ''
+    severities = [x.strip().lower() for x in severity.split(',') if x.strip()] if isinstance(severity, str) else list(severity or [])
+    status = (get('status') or '').lower()
+    if not status:
+        # legacy ?resolved=true|false
+        resolved = get('resolved')
+        if isinstance(resolved, bool):
+            status = 'resolved' if resolved else 'active'
+        elif isinstance(resolved, str) and resolved:
+            status = 'resolved' if resolved.lower() == 'true' else 'active'
+        else:
+            status = 'active'
+    if status not in ALERT_STATUSES:
+        status = 'active'
+    hours = as_int('hours')
+    return {
+        'severities': [x for x in severities if x in ALERT_SEVERITIES],
+        'status': status,
+        'hours': 168 if hours is None else max(0, hours),
+        'device_id': as_int('device_id'),
+        'alert_type': (get('alert_type') or '').strip() or None,
+        'alert_type_prefix': (get('alert_type_prefix') or '').strip() or None,
+        'q': (get('q') or '').strip() or None,
+        'sort': 'priority_score' if get('sort') == 'priority_score' else 'created_at',
+    }
+
+
+def _alert_base_query(params):
+    """Alert query with every filter except severity and status applied."""
+    query = Alert.query.options(joinedload(Alert.device))
+    if params['hours']:
+        query = query.filter(Alert.created_at >= datetime.utcnow() - timedelta(hours=params['hours']))
+    if params['device_id']:
+        query = query.filter(Alert.device_id == params['device_id'])
+    if params['alert_type']:
+        query = query.filter(Alert.alert_type == params['alert_type'])
+    if params['alert_type_prefix']:
+        query = query.filter(Alert.alert_type.like(f"{params['alert_type_prefix']}%"))
+    if params['q']:
+        needle = f"%{params['q']}%"
+        query = query.join(Device, Alert.device_id == Device.id).filter(or_(
+            Alert.message.ilike(needle), Alert.alert_type.ilike(needle),
+            Device.hostname.ilike(needle), Device.custom_name.ilike(needle), Device.ip_address.ilike(needle),
+        ))
+    return query
+
+
+def _apply_status(query, status):
+    if status == 'active':
+        return query.filter(Alert.resolved == False)
+    if status == 'unacknowledged':
+        return query.filter(Alert.resolved == False, Alert.acknowledged == False)
+    if status == 'acknowledged':
+        return query.filter(Alert.resolved == False, Alert.acknowledged == True)
+    if status == 'resolved':
+        return query.filter(Alert.resolved == True)
+    return query
+
+
+def _alert_query(params):
+    query = _alert_base_query(params)
+    if params['severities']:
+        query = query.filter(Alert.severity.in_(params['severities']))
+    return _apply_status(query, params['status'])
+
+
 @monitoring_bp.route('/alerts', methods=['GET'])
 @create_endpoint_limiter('relaxed')
 def get_alerts():
-    """Get alerts with optional filtering"""
+    """List alerts with server-side filtering, facets and paging.
+
+    Query: severity (csv of critical|high|warning|medium|low|info), status
+    (active default | unacknowledged | acknowledged | resolved | all), hours
+    (168 default, 0 = all time), device_id, alert_type, alert_type_prefix, q
+    (message / device name / IP substring), sort (created_at | priority_score),
+    page, per_page (50 default, 200 max).
+    """
     try:
-        # Query parameters
-        device_id = request.args.get('device_id', type=int)
-        severity = request.args.get('severity')
-        resolved = request.args.get('resolved')
-        hours = request.args.get('hours', default=168, type=int)  # Default 7 days
-        limit = request.args.get('limit', default=50, type=int)
+        params = _alert_params(request.args)
+        page = max(1, request.args.get('page', default=1, type=int) or 1)
+        per_page = request.args.get('per_page', type=int) or request.args.get('limit', type=int) or 50
+        per_page = max(1, min(per_page, 200))
 
-        # Build query
-        query = Alert.query
-
-        if device_id:
-            query = query.filter(Alert.device_id == device_id)
-
-        if severity:
-            query = query.filter(Alert.severity == severity)
-
-        if resolved is not None:
-            resolved_bool = resolved.lower() == 'true'
-            query = query.filter(Alert.resolved == resolved_bool)
-
-        if hours:
-            cutoff = datetime.utcnow() - timedelta(hours=hours)
-            query = query.filter(Alert.created_at >= cutoff)
-
-        alerts = query.order_by(Alert.created_at.desc()).limit(limit).all()
-
-        # Convert to dict format
+        query = _alert_query(params)
+        if params['sort'] == 'priority_score':
+            query = query.order_by(Alert.priority_score.desc().nullslast(), Alert.created_at.desc())
+        else:
+            query = query.order_by(Alert.created_at.desc())
+        total = query.order_by(None).count()
+        alerts = query.offset((page - 1) * per_page).limit(per_page).all()
         alerts_data = [alert.to_dict() for alert in alerts]
 
+        base = _alert_base_query(params)
+        by_status = {
+            'active': base.filter(Alert.resolved == False).order_by(None).count(),
+            'unacknowledged': base.filter(Alert.resolved == False, Alert.acknowledged == False).order_by(None).count(),
+            'resolved': base.filter(Alert.resolved == True).order_by(None).count(),
+        }
+        severity_rows = _apply_status(base, params['status']).with_entities(Alert.severity, func.count(Alert.id))\
+            .group_by(Alert.severity).all()
+        by_severity = {sev: 0 for sev in ALERT_SEVERITIES}
+        for sev, n in severity_rows:
+            by_severity[sev or 'info'] = by_severity.get(sev or 'info', 0) + n
+
+        pages = max(1, (total + per_page - 1) // per_page)
         return jsonify({
             'alerts': alerts_data,
-            'count': len(alerts_data)
+            'count': len(alerts_data),
+            'pagination': {'page': page, 'per_page': per_page, 'total': total, 'pages': pages,
+                           'has_prev': page > 1, 'has_next': page < pages},
+            'facets': {'severity': by_severity, 'status': by_status},
+            'filters': {k: v for k, v in params.items()},
         })
 
     except Exception as e:
@@ -260,28 +348,43 @@ def acknowledge_alert(alert_id):
 @monitoring_bp.route('/alerts/acknowledge-all', methods=['POST'])
 @create_endpoint_limiter('bulk')
 def acknowledge_all_alerts():
-    """Acknowledge all active alerts"""
+    """Acknowledge every open alert matching the body's filters (same keys as GET /alerts)."""
     try:
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         acknowledged_by = data.get('acknowledged_by', 'web_user')
-
-        query = Alert.query.filter_by(acknowledged=False, resolved=False)
-        prefix = data.get('alert_type_prefix')
-        if prefix:
-            query = query.filter(Alert.alert_type.like(f"{prefix}%"))
-        acknowledged_count = query.update(
-            {'acknowledged': True, 'acknowledged_at': datetime.utcnow(), 'acknowledged_by': acknowledged_by},
-            synchronize_session=False,
-        )
+        params = _alert_params(data)
+        if params['status'] in ('resolved', 'all'):
+            params['status'] = 'active'
+        if not data.get('hours') and 'hours' not in data:
+            params['hours'] = 0   # "all" means every open alert unless a window is given
+        ids = [row[0] for row in _alert_query(params).filter(Alert.acknowledged == False)
+               .with_entities(Alert.id).order_by(None).all()]
+        acknowledged_count = 0
+        if ids:
+            acknowledged_count = Alert.query.filter(Alert.id.in_(ids)).update(
+                {'acknowledged': True, 'acknowledged_at': datetime.utcnow(), 'acknowledged_by': acknowledged_by},
+                synchronize_session=False,
+            )
         db.session.commit()
-
+        _emit_alerts_changed('acknowledged', acknowledged_count)
         return jsonify({
             'message': f'Acknowledged {acknowledged_count} alerts',
             'count': acknowledged_count
         })
 
     except Exception as e:
+        db.session.rollback()
         return jsonify({'error': str(e)}), 500
+
+
+def _emit_alerts_changed(action, count):
+    """One Socket.IO event after a bulk change so open pages reload once."""
+    try:
+        emit = getattr(current_app, 'emit_alerts_changed', None)
+        if emit and count:
+            emit(action, count)
+    except Exception as e:
+        current_app.logger.debug(f"alerts_changed emit skipped: {e}")
 
 @monitoring_bp.route('/alerts/<int:alert_id>/resolve', methods=['POST'])
 @create_endpoint_limiter('strict')
@@ -619,30 +722,23 @@ def get_device_bandwidth_rankings():
 @monitoring_bp.route('/alerts/bulk-acknowledge', methods=['POST'])
 @create_endpoint_limiter('bulk')
 def bulk_acknowledge_alerts():
-    """Acknowledge multiple alerts at once"""
+    """Acknowledge the alerts listed in alert_ids."""
     try:
-        data = request.get_json()
-
-        if not data or 'alert_ids' not in data:
+        data = request.get_json(silent=True) or {}
+        alert_ids = data.get('alert_ids')
+        if not isinstance(alert_ids, list) or not alert_ids:
             return jsonify({'error': 'alert_ids list is required'}), 400
-
-        alert_ids = data['alert_ids']
+        try:
+            alert_ids = [int(x) for x in alert_ids][:1000]
+        except (TypeError, ValueError):
+            return jsonify({'error': 'alert_ids must be integers'}), 400
         acknowledged_by = data.get('acknowledged_by', 'bulk_operation')
-
-        if not isinstance(alert_ids, list):
-            return jsonify({'error': 'alert_ids must be a list'}), 400
-
-        # Find alerts to acknowledge
-        alerts = Alert.query.filter(
-            Alert.id.in_(alert_ids),
-            Alert.acknowledged == False
-        ).all()
-
-        acknowledged_count = 0
-        for alert in alerts:
-            alert.acknowledge(acknowledged_by)
-            acknowledged_count += 1
-
+        acknowledged_count = Alert.query.filter(Alert.id.in_(alert_ids), Alert.acknowledged == False).update(
+            {'acknowledged': True, 'acknowledged_at': datetime.utcnow(), 'acknowledged_by': acknowledged_by},
+            synchronize_session=False,
+        )
+        db.session.commit()
+        _emit_alerts_changed('acknowledged', acknowledged_count)
         return jsonify({
             'success': True,
             'message': f'Acknowledged {acknowledged_count} alerts',
@@ -657,29 +753,22 @@ def bulk_acknowledge_alerts():
 @monitoring_bp.route('/alerts/bulk-resolve', methods=['POST'])
 @create_endpoint_limiter('bulk')
 def bulk_resolve_alerts():
-    """Resolve multiple alerts at once"""
+    """Resolve the alerts listed in alert_ids."""
     try:
-        data = request.get_json()
-
-        if not data or 'alert_ids' not in data:
+        data = request.get_json(silent=True) or {}
+        alert_ids = data.get('alert_ids')
+        if not isinstance(alert_ids, list) or not alert_ids:
             return jsonify({'error': 'alert_ids list is required'}), 400
-
-        alert_ids = data['alert_ids']
-
-        if not isinstance(alert_ids, list):
-            return jsonify({'error': 'alert_ids must be a list'}), 400
-
-        # Find alerts to resolve
-        alerts = Alert.query.filter(
-            Alert.id.in_(alert_ids),
-            Alert.resolved == False
-        ).all()
-
-        resolved_count = 0
-        for alert in alerts:
-            alert.resolve()
-            resolved_count += 1
-
+        try:
+            alert_ids = [int(x) for x in alert_ids][:1000]
+        except (TypeError, ValueError):
+            return jsonify({'error': 'alert_ids must be integers'}), 400
+        resolved_count = Alert.query.filter(Alert.id.in_(alert_ids), Alert.resolved == False).update(
+            {'resolved': True, 'resolved_at': datetime.utcnow()},
+            synchronize_session=False,
+        )
+        db.session.commit()
+        _emit_alerts_changed('resolved', resolved_count)
         return jsonify({
             'success': True,
             'message': f'Resolved {resolved_count} alerts',
@@ -690,7 +779,6 @@ def bulk_resolve_alerts():
     except Exception as e:
         db.session.rollback()
         return jsonify({'error': str(e)}), 500
-
 
 @monitoring_bp.route('/alerts/suppressions', methods=['GET'])
 @create_endpoint_limiter('relaxed')
