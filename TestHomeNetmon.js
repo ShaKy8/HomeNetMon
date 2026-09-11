@@ -26,7 +26,7 @@ test.describe('Pages render without script errors', () => {
       const errors = collectPageErrors(page);
       const response = await page.goto(path);
       expect(response && response.status()).toBe(200);
-      await expect(page.locator('nav')).toBeVisible();
+      await expect(page.locator('nav').first()).toBeVisible();
       await page.waitForTimeout(1500);
       // CDN assets are blocked in some sandboxes; only script errors from our own code count.
       const own = errors.filter((e) => !/cdn\.jsdelivr|cdn\.socket\.io|fonts\.googleapis|ERR_/.test(e));
@@ -42,7 +42,7 @@ test.describe('Pages render without script errors', () => {
     await expect(page.locator('#responseTimeChart')).toBeVisible();
     await expect(page.locator('#uptimeChart')).toBeVisible();
     await expect(page.locator('#performanceChart')).toBeVisible();
-    await expect(page.locator('#ping-device-btn')).toBeVisible();
+    await expect(page.locator('#ping-device-btn')).toBeAttached();   // inside an actions dropdown
     await page.waitForTimeout(1500);
     expect(errors.filter((e) => !/cdn\.|ERR_/.test(e))).toEqual([]);
   });
