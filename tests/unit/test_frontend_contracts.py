@@ -163,10 +163,14 @@ class TestSerializerContract:
 
 class TestEndpointsFixedBySweep:
 
-    def test_performance_devices_no_longer_selects_properties(self, client, device):
-        r = client.get('/api/performance/devices?hours=24')
+    def test_device_performance_payload_shape(self, client, device):
+        r = client.get(f'/api/performance/device/{device.id}?hours=24')
         assert r.status_code == 200, r.get_json()
-        assert 'devices' in r.get_json()
+        body = r.get_json()
+        assert set(body) >= {'device', 'latest', 'window'}
+        assert body['window']['checks'] == 0 and body['window']['uptime_pct'] is None
+        html = client.get(f'/device/{device.id}').get_data(as_text=True)
+        assert 'id="performanceChart"' in html and '/api/performance/device/' in html
 
     def test_topology_engine_has_an_app_context_without_an_attached_app(self, app):
         from services.network_topology import NetworkTopologyEngine

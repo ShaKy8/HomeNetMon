@@ -239,6 +239,26 @@
     </div>
 </div>
 
+<!-- Performance (collector scores + ping percentiles) -->
+<div class="row">
+    <div class="col-12 mb-4">
+        <div class="chart-card">
+            <div class="chart-header">
+                <h3><i class="bi bi-speedometer2"></i> Performance</h3>
+                <div class="time-period-buttons" id="perf-range">
+                    <button class="time-period-btn perf-range-btn" data-hours="24">24H</button>
+                    <button class="time-period-btn perf-range-btn active" data-hours="168">7D</button>
+                    <button class="time-period-btn perf-range-btn" data-hours="720">30D</button>
+                </div>
+            </div>
+            <div class="chart-body">
+                <div class="row text-center mb-3" id="perf-tiles"><div class="col text-muted">Loading…</div></div>
+                <canvas id="performanceChart" height="220" aria-label="Health score and response time over time"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Statistics and Alerts -->
 <div class="row">
     <div class="col-lg-6 mb-4">
@@ -403,6 +423,7 @@ document.addEventListener('DOMContentLoaded', function() {
         setupEventListeners();
         loadDeviceData();
         loadIpHistory();
+        loadPerformance(168);
 
         // Refresh data every 30 seconds
         setInterval(loadDeviceData, 30000);
@@ -500,6 +521,55 @@ async function loadIpHistory() {
         ipHistorySummary = 'unavailable';
     }
     if (currentDevice) updateDeviceInfoCards(currentDevice);
+}
+
+let performanceChart = null;
+let perfHours = 168;
+
+function perfTile(value, label, sub) {
+    return `<div class="col-6 col-md-3"><div class="p-2"><div class="h4 mb-0">${escapeHtml(value)}</div>` +
+           `<div class="small text-muted">${escapeHtml(label)}</div>${sub ? `<div class="small text-muted">${escapeHtml(sub)}</div>` : ''}</div></div>`;
+}
+
+async function loadPerformance(hours) {
+    perfHours = hours || perfHours;
+    const tiles = document.getElementById('perf-tiles');
+    try {
+        const granularity = perfHours > 168 ? 'day' : 'hour';
+        const [summary, timeline] = await Promise.all([
+            apiRequest(`/api/performance/device/${deviceId}?hours=${perfHours}`),
+            apiRequest(`/api/performance/device/${deviceId}/timeline?hours=${perfHours}&granularity=${granularity}`)
+        ]);
+        const w = summary.window || {};
+        const latest = summary.latest;
+        const health = latest && latest.health_score != null ? `${Math.round(latest.health_score)}` : '—';
+        tiles.innerHTML =
+            perfTile(health, 'Health score', latest ? `${latest.grade || ''} ${latest.status || ''}`.trim() : 'no collector data yet') +
+            perfTile(w.uptime_pct != null ? `${w.uptime_pct}%` : '—', 'Availability', w.checks ? `${w.checks} checks, ${w.failed} failed` : 'no pings in window') +
+            perfTile(w.p50_ms != null ? `${w.p50_ms} ms` : '—', 'Median response', w.avg_ms != null ? `avg ${w.avg_ms} ms` : '') +
+            perfTile(w.p95_ms != null ? `${w.p95_ms} ms` : '—', '95th percentile', w.max_ms != null ? `worst ${w.max_ms} ms` : '');
+        const points = timeline.timeline || [];
+        const labels = points.map(p => granularity === 'day' ? new Date(p.timestamp).toLocaleDateString() : new Date(p.timestamp).toLocaleString());
+        const canvas = document.getElementById('performanceChart');
+        if (typeof Chart === 'undefined' || !canvas) return;
+        const data = {
+            labels,
+            datasets: [
+                { label: 'Health score', data: points.map(p => p.health_score), borderColor: '#40c057', backgroundColor: 'rgba(64,192,80,0.15)', yAxisID: 'y', tension: 0.3, pointRadius: 2, spanGaps: true },
+                { label: 'Avg response (ms)', data: points.map(p => p.avg_response_time), borderColor: '#4dabf7', backgroundColor: 'rgba(77,171,247,0.15)', yAxisID: 'y1', tension: 0.3, pointRadius: 2, spanGaps: true }
+            ]
+        };
+        if (performanceChart) { performanceChart.data = data; performanceChart.update(); return; }
+        performanceChart = new Chart(canvas.getContext('2d'), {
+            type: 'line', data,
+            options: { responsive: true, maintainAspectRatio: false, animation: false,
+                scales: { y: { min: 0, max: 100, title: { display: true, text: 'health' } },
+                          y1: { position: 'right', beginAtZero: true, grid: { drawOnChartArea: false }, title: { display: true, text: 'ms' } },
+                          x: { ticks: { maxTicksLimit: 8, autoSkip: true } } } }
+        });
+    } catch (error) {
+        tiles.innerHTML = `<div class="col text-danger">Performance data unavailable: ${escapeHtml(error.message)}</div>`;
+    }
 }
 
 function updateDeviceInfoCards(device) {
@@ -641,6 +711,13 @@ function setupEventListeners() {
     on('delete-device-btn', deleteDevice);
     on('save-device-btn', saveDeviceChanges);
     on('export-data-btn', exportData);
+    document.querySelectorAll('.perf-range-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            document.querySelectorAll('.perf-range-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            loadPerformance(parseInt(this.dataset.hours, 10));
+        });
+    });
 }
 
 async function loadChartData(period) {

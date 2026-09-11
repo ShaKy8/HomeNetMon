@@ -262,105 +262,6 @@ class Device(db.Model):
         except Exception:
             return []
 
-    def get_performance_summary(self, hours=24):
-        """Get summarized performance metrics"""
-        try:
-            cutoff = datetime.utcnow() - timedelta(hours=hours)
-
-            # Get response time statistics
-            response_stats = db.session.execute(
-                db.text("""
-                    SELECT
-                        AVG(response_time) as avg_response,
-                        MIN(response_time) as min_response,
-                        MAX(response_time) as max_response,
-                        COUNT(*) as total_checks,
-                        COUNT(CASE WHEN response_time IS NOT NULL THEN 1 END) as successful_checks
-                    FROM monitoring_data
-                    WHERE device_id = :device_id AND timestamp >= :cutoff
-                """),
-                {'device_id': self.id, 'cutoff': cutoff}
-            ).fetchone()
-
-            # Get bandwidth statistics
-            bandwidth_stats = db.session.execute(
-                db.text("""
-                    SELECT
-                        AVG(bandwidth_in_mbps) as avg_in,
-                        AVG(bandwidth_out_mbps) as avg_out,
-                        MAX(bandwidth_in_mbps) as peak_in,
-                        MAX(bandwidth_out_mbps) as peak_out,
-                        SUM(bytes_in) as total_bytes_in,
-                        SUM(bytes_out) as total_bytes_out
-                    FROM bandwidth_data
-                    WHERE device_id = :device_id AND timestamp >= :cutoff
-                """),
-                {'device_id': self.id, 'cutoff': cutoff}
-            ).fetchone()
-
-            # Get latest performance metrics
-            latest_performance = PerformanceMetrics.query.filter_by(device_id=self.id)\
-                                                         .order_by(PerformanceMetrics.timestamp.desc())\
-                                                         .first()
-
-            # Calculate uptime percentage
-            uptime_pct = 0
-            if response_stats and response_stats[3] > 0:  # total_checks > 0
-                uptime_pct = (response_stats[4] / response_stats[3]) * 100  # successful/total
-
-            return {
-                'device_id': self.id,
-                'device_name': self.display_name,
-                'device_ip': self.ip_address,
-                'period_hours': hours,
-                'summary_timestamp': datetime.utcnow().isoformat() + 'Z',
-
-                # Response time metrics
-                'response_metrics': {
-                    'avg_ms': round(response_stats[0], 2) if response_stats and response_stats[0] else None,
-                    'min_ms': round(response_stats[1], 2) if response_stats and response_stats[1] else None,
-                    'max_ms': round(response_stats[2], 2) if response_stats and response_stats[2] else None,
-                    'total_checks': response_stats[3] if response_stats else 0,
-                    'successful_checks': response_stats[4] if response_stats else 0
-                },
-
-                # Availability metrics
-                'availability_metrics': {
-                    'uptime_percentage': round(uptime_pct, 2),
-                    'status': self.status
-                },
-
-                # Bandwidth metrics
-                'bandwidth_metrics': {
-                    'avg_in_mbps': round(bandwidth_stats[0], 2) if bandwidth_stats and bandwidth_stats[0] else 0,
-                    'avg_out_mbps': round(bandwidth_stats[1], 2) if bandwidth_stats and bandwidth_stats[1] else 0,
-                    'peak_in_mbps': round(bandwidth_stats[2], 2) if bandwidth_stats and bandwidth_stats[2] else 0,
-                    'peak_out_mbps': round(bandwidth_stats[3], 2) if bandwidth_stats and bandwidth_stats[3] else 0,
-                    'total_gb_in': round((bandwidth_stats[4] or 0) / (1024**3), 3),
-                    'total_gb_out': round((bandwidth_stats[5] or 0) / (1024**3), 3)
-                },
-
-                # Health scores
-                'health_scores': {
-                    'overall_health': latest_performance.health_score if latest_performance else None,
-                    'responsiveness': latest_performance.responsiveness_score if latest_performance else None,
-                    'reliability': latest_performance.reliability_score if latest_performance else None,
-                    'efficiency': latest_performance.efficiency_score if latest_performance else None,
-                    'stability': latest_performance.connection_stability_score if latest_performance else None,
-                    'performance_grade': self.performance_grade,
-                    'performance_status': self.performance_status
-                }
-            }
-
-        except Exception as e:
-            logger.error(f"Error getting performance summary for device {self.id}: {e}")
-            return {
-                'device_id': self.id,
-                'device_name': self.display_name,
-                'device_ip': self.ip_address,
-                'error': str(e)
-            }
-
     def get_avg_response_time(self, hours=24):
         """Get average response time for specified time period, excluding timeouts"""
         try:
@@ -389,40 +290,6 @@ class Device(db.Model):
         # Consider device online if seen within last 10 minutes (600 seconds)
         threshold = datetime.utcnow() - timedelta(seconds=600)
         return self.last_seen > threshold
-
-    def get_status_history(self, hours=6):
-        """Get device status history for specified time period"""
-        try:
-            cutoff = datetime.utcnow() - timedelta(hours=hours)
-
-            # Get monitoring data ordered by timestamp
-            monitoring_data = MonitoringData.query.filter(
-                MonitoringData.device_id == self.id,
-                MonitoringData.timestamp >= cutoff
-            ).order_by(MonitoringData.timestamp).all()
-
-            history = []
-            for data in monitoring_data:
-                # Determine status based on response time and packet loss
-                if data.response_time is None:
-                    status = 'down'
-                elif data.response_time > 1000:  # 1 second threshold
-                    status = 'warning'
-                else:
-                    status = 'up'
-
-                history.append({
-                    'timestamp': data.timestamp,
-                    'status': status,
-                    'response_time': data.response_time,
-                    'packet_loss': data.packet_loss
-                })
-
-            return history
-
-        except Exception as e:
-            logger.error(f"Error getting status history for device {self.id}: {e}")
-            return []
 
     def to_dict(self):
         """Serialize one device with a bounded number of queries.
@@ -1283,15 +1150,6 @@ class PerformanceMetrics(db.Model):
             },
 
             # Bandwidth metrics
-            'bandwidth_metrics': {
-                'avg_in_mbps': self.avg_bandwidth_in_mbps,
-                'avg_out_mbps': self.avg_bandwidth_out_mbps,
-                'peak_in_mbps': self.peak_bandwidth_in_mbps,
-                'peak_out_mbps': self.peak_bandwidth_out_mbps,
-                'total_gb_in': round((self.total_bytes_in or 0) / (1024**3), 3),
-                'total_gb_out': round((self.total_bytes_out or 0) / (1024**3), 3),
-                'total_gb': round(((self.total_bytes_in or 0) + (self.total_bytes_out or 0)) / (1024**3), 3)
-            },
 
             # Health scores
             'health_scores': {

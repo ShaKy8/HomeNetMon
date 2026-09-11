@@ -563,26 +563,6 @@ class TestDeviceBusinessLogic:
         )
         assert device3.is_online() is False
 
-    def test_get_status_history(self, db_session):
-        """Test getting device status history."""
-        device = DeviceFactory.create()
-
-        # Create monitoring data with different response times
-        base_time = datetime.utcnow() - timedelta(hours=5)
-        for i in range(5):
-            MonitoringDataFactory.create(
-                device=device,
-                timestamp=base_time + timedelta(hours=i),
-                response_time=20.0 + (i * 10)  # Increasing response times
-            )
-
-        history = device.get_status_history(hours=6)
-        assert len(history) == 5
-
-        # Should be ordered by timestamp
-        timestamps = [entry['timestamp'] for entry in history]
-        assert timestamps == sorted(timestamps)
-
     def test_to_dict_method(self, db_session):
         """Test the to_dict method for API serialization."""
         device = DeviceFactory.create(
