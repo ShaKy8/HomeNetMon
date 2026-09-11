@@ -496,6 +496,9 @@
         <button class="btn-modern" id="scan-network">
             <i class="bi bi-radar"></i> Scan Network
         </button>
+        <button class="btn-modern" id="add-device">
+            <i class="bi bi-plus-circle"></i> Add Device
+        </button>
         <div class="scan-status hidden" id="scan-status">
             <i class="bi bi-arrow-repeat spin"></i>
             <span>Scanning network...</span>
@@ -584,6 +587,9 @@
                 </button>
                 <button class="btn-modern btn-sm" id="monitor-preset-essential">
                     <i class="bi bi-star"></i> Monitor Essential Only
+                </button>
+                <button class="btn-modern btn-sm" id="reclassify-devices" title="Re-run device type detection for devices still typed unknown">
+                    <i class="bi bi-tags"></i> Reclassify unknown
                 </button>
             </div>
         </div>
@@ -693,5 +699,77 @@
 {% endblock %}
 
 {% block extra_js %}
+
+<!-- Add device modal -->
+<div class="modal fade" id="addDeviceModal" tabindex="-1" aria-labelledby="addDeviceTitle">
+    <div class="modal-dialog">
+        <div class="modal-content bg-dark text-light">
+            <div class="modal-header border-secondary">
+                <h5 class="modal-title" id="addDeviceTitle">Add device</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="add-device-form" onsubmit="return false;">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label for="add-device-ip" class="form-label">IP address *</label>
+                            <input type="text" class="form-control" id="add-device-ip" required placeholder="192.168.1.50" inputmode="numeric">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="add-device-mac" class="form-label">MAC address</label>
+                            <input type="text" class="form-control" id="add-device-mac" placeholder="aa:bb:cc:dd:ee:ff">
+                            <div class="form-text">Used for vendor lookup and to keep the device across DHCP changes.</div>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="add-device-name" class="form-label">Name</label>
+                            <input type="text" class="form-control" id="add-device-name" maxlength="255" placeholder="Living room TV">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="add-device-type" class="form-label">Type</label>
+                            <select class="form-select" id="add-device-type">
+                                <option value="">Detect automatically</option>
+                                <option value="router">Router</option>
+                                <option value="computer">Computer</option>
+                                <option value="phone">Phone</option>
+                                <option value="printer">Printer</option>
+                                <option value="camera">Camera</option>
+                                <option value="smart_home">Smart home</option>
+                                <option value="iot">IoT</option>
+                                <option value="media">Media</option>
+                                <option value="gaming">Gaming</option>
+                                <option value="storage">Storage</option>
+                                <option value="apple">Apple</option>
+                                <option value="unknown">Unknown</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="add-device-group" class="form-label">Group</label>
+                            <input type="text" class="form-control" id="add-device-group" maxlength="100" placeholder="e.g. Cameras">
+                        </div>
+                        <div class="col-md-6">
+                            <label for="add-device-tags" class="form-label">Tags</label>
+                            <input type="text" class="form-control" id="add-device-tags" maxlength="255" placeholder="comma, separated">
+                        </div>
+                        <div class="col-12">
+                            <label for="add-device-notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="add-device-notes" rows="2" maxlength="2000"></textarea>
+                        </div>
+                        <div class="col-12">
+                            <div class="form-check form-switch">
+                                <input class="form-check-input" type="checkbox" id="add-device-monitor" checked>
+                                <label class="form-check-label" for="add-device-monitor">Monitor this device</label>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-secondary">
+                <button type="button" class="btn-modern btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn-modern btn-primary" id="add-device-save"><i class="bi bi-plus-circle"></i> Add device</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="{{ url_for('static', filename='js/dashboard-page.js') }}?v={{ app_version }}"></script>
 {% endblock %}

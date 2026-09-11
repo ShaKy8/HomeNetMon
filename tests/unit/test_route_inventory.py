@@ -38,6 +38,7 @@ ALLOWED = {
     '/api/devices/<int:device_id>/ping',
     '/api/devices/bulk-update',
     '/api/devices/ping-all',
+    '/api/devices/reclassify',
     '/api/devices/scan-now',
     '/api/devices/scan-status',
     '/api/devices/types',

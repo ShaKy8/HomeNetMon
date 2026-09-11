@@ -21,6 +21,7 @@ redis==7.4.0
 python-nmap==0.7.1               # also needs the `nmap` binary
 ping3==4.0.4
 manuf==1.1.5                     # MAC vendor lookup
+dnspython==2.7.0                 # unicast mDNS probes (monitoring/mdns.py)
 psutil==5.9.8
 
 # HTTP requests (webhooks, ntfy, device probes)

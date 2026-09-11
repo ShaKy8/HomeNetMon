@@ -360,6 +360,16 @@
                             <input type="text" class="form-control" id="edit-device-room" maxlength="100" placeholder="e.g. Living room">
                         </div>
                     </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-12">
+                            <label for="edit-device-tags" class="form-label">Tags (comma separated)</label>
+                            <input type="text" class="form-control" id="edit-device-tags" maxlength="255" placeholder="e.g. kids, iot, critical">
+                        </div>
+                        <div class="col-md-12">
+                            <label for="edit-device-notes" class="form-label">Notes</label>
+                            <textarea class="form-control" id="edit-device-notes" rows="3" maxlength="2000" placeholder="Anything worth remembering about this device"></textarea>
+                        </div>
+                    </div>
                     <div class="mb-3">
                         <div class="form-check form-switch">
                             <input class="form-check-input" type="checkbox" id="edit-device-monitor">
@@ -392,6 +402,7 @@ document.addEventListener('DOMContentLoaded', function() {
         initializeCharts();
         setupEventListeners();
         loadDeviceData();
+        loadIpHistory();
 
         // Refresh data every 30 seconds
         setInterval(loadDeviceData, 30000);
@@ -474,6 +485,23 @@ function updateDeviceInfo(device) {
         (device.is_monitored ? '' : ' <span class="badge bg-secondary ms-2">not monitored</span>');
 }
 
+let ipHistorySummary = 'loading…';
+async function loadIpHistory() {
+    try {
+        const data = await apiRequest(`/api/devices/${deviceId}/ip-history`);
+        const rows = data.ip_history || [];
+        if (!rows.length) { ipHistorySummary = 'none recorded'; }
+        else {
+            const last = rows[0];
+            const when = last.change_detected_at || last.changed_at || last.timestamp;
+            ipHistorySummary = `${rows.length} (last: ${last.old_ip_address || last.old_ip || '?'} → ${last.new_ip_address || last.new_ip || '?'}${when ? ' on ' + formatDate(when) : ''})`;
+        }
+    } catch (error) {
+        ipHistorySummary = 'unavailable';
+    }
+    if (currentDevice) updateDeviceInfoCards(currentDevice);
+}
+
 function updateDeviceInfoCards(device) {
     const cards = [
         ['IP Address', device.ip_address || 'none (address reassigned)'],
@@ -486,6 +514,10 @@ function updateDeviceInfoCards(device) {
         ['Response Time', fmtMs(device.latest_response_time)],
         ['Uptime (7d)', fmtPct(device.uptime_percentage)],
         ['Health Score', device.health_score != null ? `${Math.round(device.health_score)} (${device.performance_grade || ''})` : 'N/A'],
+        ['Tags', (device.tags || []).join(', ') || '—'],
+        ['mDNS services', (device.mdns_services || []).join(', ') || 'none seen'],
+        ['Notes', device.notes || '—'],
+        ['IP changes', ipHistorySummary],
     ];
     document.getElementById('device-info').innerHTML = cards.map(([label, value]) => `
         <div class="info-card">
@@ -701,6 +733,8 @@ function openEditModal() {
     document.getElementById('edit-device-group').value = currentDevice.device_group || '';
     document.getElementById('edit-device-room').value = currentDevice.room_location || '';
     document.getElementById('edit-device-monitor').checked = !!currentDevice.is_monitored;
+    document.getElementById('edit-device-tags').value = (currentDevice.tags || []).join(', ');
+    document.getElementById('edit-device-notes').value = currentDevice.notes || '';
 }
 
 async function saveDeviceChanges() {
@@ -710,7 +744,9 @@ async function saveDeviceChanges() {
         device_priority: document.getElementById('edit-device-priority').value,
         device_group: document.getElementById('edit-device-group').value.trim(),
         room_location: document.getElementById('edit-device-room').value.trim(),
-        is_monitored: document.getElementById('edit-device-monitor').checked
+        is_monitored: document.getElementById('edit-device-monitor').checked,
+        tags: document.getElementById('edit-device-tags').value.trim(),
+        notes: document.getElementById('edit-device-notes').value.trim()
     };
     try {
         await apiRequest(`/api/devices/${deviceId}`, { method: 'PUT', body });

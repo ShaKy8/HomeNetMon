@@ -61,6 +61,27 @@ class Device(db.Model):
     def display_name(self):
         return self.custom_name or self.hostname or self.ip_address
 
+    @property
+    def tag_list(self):
+        return [t.strip() for t in (self.tags or '').split(',') if t.strip()]
+
+    @property
+    def mdns_service_list(self):
+        return [t.strip() for t in (self.mdns_services or '').split(',') if t.strip()]
+
+    @staticmethod
+    def normalize_tags(value):
+        """Accept a list or a comma-separated string; return the stored csv (or None)."""
+        if value is None:
+            return None
+        items = value if isinstance(value, (list, tuple)) else str(value).split(',')
+        seen = []
+        for item in items:
+            tag = str(item).strip().lower()[:40]
+            if tag and tag not in seen:
+                seen.append(tag)
+        return ','.join(seen)[:255] or None
+
     @cached_property(ttl=30, key_func=lambda self: f"device_{self.id}_status")
     def status(self):
         if not self.last_seen:
@@ -424,6 +445,9 @@ class Device(db.Model):
             'room_location': self.room_location,
             'device_priority': self.device_priority,
             'display_name': self.display_name,
+            'tags': self.tag_list,
+            'notes': self.notes,
+            'mdns_services': self.mdns_service_list,
             'is_monitored': self.is_monitored,
             'status': self.status,
             'active_alerts': self.active_alerts,
@@ -470,6 +494,9 @@ class Device(db.Model):
             'room_location': self.room_location,
             'device_priority': self.device_priority,
             'display_name': self.display_name,
+            'tags': self.tag_list,
+            'notes': self.notes,
+            'mdns_services': self.mdns_service_list,
             'is_monitored': self.is_monitored,
             'status': status,
             'uptime_percentage': uptime_pct if uptime_pct is not None else 0,

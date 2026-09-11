@@ -395,15 +395,42 @@ def create_device():
     if existing:
         raise ValidationError('Device with this IP already exists', field='ip_address', value=data['ip_address'])
 
-    # Create new device
+    mac = None
+    if data.get('mac_address'):
+        try:
+            mac = InputValidator.validate_mac_address(data['mac_address']).lower()
+        except ValueError:
+            raise ValidationError('Invalid MAC address format', field='mac_address', value=data['mac_address'])
+        if Device.query.filter_by(mac_address=mac).first():
+            raise ValidationError('Device with this MAC already exists', field='mac_address', value=mac)
+
+    scanner = getattr(current_app, '_scanner', None)
+    hostname = (data.get('hostname') or '').strip() or None
+    vendor = (data.get('vendor') or '').strip() or None
+    if scanner is not None:
+        if not hostname:
+            hostname = scanner.resolve_hostname(data['ip_address'])
+        if not vendor and mac:
+            vendor = scanner.get_mac_vendor(mac)
+    device_type = (data.get('device_type') or '').strip() or None
+    if device_type:
+        device_type = InputValidator.validate_device_type(device_type)
+    if not device_type or device_type == 'unknown':
+        from monitoring.device_classifier import classify
+        device_type = classify(hostname=hostname, vendor=vendor, mac=mac)
+
     device = Device(
         ip_address=data['ip_address'],
-        mac_address=data.get('mac_address'),
-        hostname=data.get('hostname'),
-        custom_name=data.get('custom_name'),
-        device_type=data.get('device_type', 'unknown'),
-        device_group=data.get('device_group'),
-        is_monitored=data.get('is_monitored', True)
+        mac_address=mac,
+        hostname=hostname,
+        vendor=vendor,
+        custom_name=InputValidator.sanitize_string(data.get('custom_name'), max_length=255) if data.get('custom_name') else None,
+        device_type=device_type,
+        device_group=InputValidator.sanitize_string(data.get('device_group'), max_length=100) if data.get('device_group') else None,
+        room_location=InputValidator.sanitize_string(data.get('room_location'), max_length=100) if data.get('room_location') else None,
+        notes=InputValidator.sanitize_string(data.get('notes'), max_length=2000) if data.get('notes') else None,
+        tags=Device.normalize_tags(data.get('tags')),
+        is_monitored=bool(data.get('is_monitored', True))
     )
 
     db.session.add(device)
@@ -422,7 +449,7 @@ def create_device():
 
 @devices_bp.route('/<int:device_id>', methods=['PUT', 'PATCH'])
 @create_endpoint_limiter('strict')
-@validate_request(allowed_fields=['ip_address', 'custom_name', 'device_type', 'device_group', 'room_location', 'device_priority', 'is_monitored', 'hostname'])
+@validate_request(allowed_fields=['ip_address', 'custom_name', 'device_type', 'device_group', 'room_location', 'device_priority', 'is_monitored', 'hostname', 'notes', 'tags'])
 @handle_errors()
 def update_device(device_id):
     """Update device details with validation"""
@@ -454,7 +481,7 @@ def update_device(device_id):
         device.ip_address = new_ip
 
     # Update and validate allowed fields
-    allowed_fields = ['custom_name', 'device_type', 'device_group', 'room_location', 'device_priority', 'is_monitored', 'hostname']
+    allowed_fields = ['custom_name', 'device_type', 'device_group', 'room_location', 'device_priority', 'is_monitored', 'hostname', 'notes', 'tags']
 
     for field in allowed_fields:
         if field in data:
@@ -467,6 +494,10 @@ def update_device(device_id):
                 value = InputValidator.sanitize_string(data[field], max_length=100)
             elif field == 'room_location':
                 value = InputValidator.sanitize_string(data[field], max_length=100) if data[field] else None
+            elif field == 'notes':
+                value = InputValidator.sanitize_string(data[field], max_length=2000) if data[field] else None
+            elif field == 'tags':
+                value = Device.normalize_tags(data[field])
             elif field == 'device_priority':
                 valid_priorities = ['critical', 'important', 'normal', 'optional']
                 if data[field] not in valid_priorities:
@@ -977,6 +1008,33 @@ def scan_network():
         'scan_id': datetime.utcnow().timestamp()
     }), 200
 
+
+@devices_bp.route('/reclassify', methods=['POST'])
+@create_endpoint_limiter('strict')
+def reclassify_devices():
+    """Re-run device type classification. Body {"all": true} redoes every auto-classified
+    device; default is only devices still typed 'unknown'. User-set types on the device page
+    are kept because they are never 'unknown'."""
+    try:
+        data = request.get_json(silent=True) or {}
+        scanner = getattr(current_app, '_scanner', None)
+        if scanner is None:
+            return jsonify({'error': 'Scanner not available'}), 503
+        result = scanner.reclassify(include_all=bool(data.get('all')))
+        try:
+            invalidate_device_cache()
+        except Exception:
+            pass
+        return jsonify({
+            'success': True,
+            'checked': result['checked'],
+            'changed': result['changed'],
+            'changes': [{'id': i, 'old': o, 'new': n} for i, o, n in result['changes']],
+            'by_type': result['by_type'],
+            'message': f"Reclassified {result['changed']} device(s)",
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 @devices_bp.route('/scan-status', methods=['GET'])
 @create_endpoint_limiter('relaxed')

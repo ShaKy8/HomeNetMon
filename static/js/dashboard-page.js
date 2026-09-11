@@ -226,6 +226,64 @@ function setupEventListeners() {
     // Presets
     document.getElementById('monitor-preset-security').addEventListener('click', () => applyMonitoringPreset('security'));
     document.getElementById('monitor-preset-essential').addEventListener('click', () => applyMonitoringPreset('essential'));
+
+    // Add device + reclassify
+    document.getElementById('add-device').addEventListener('click', openAddDeviceModal);
+    document.getElementById('add-device-save').addEventListener('click', submitAddDevice);
+    document.getElementById('add-device-form').addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); submitAddDevice(); } });
+    document.getElementById('reclassify-devices').addEventListener('click', reclassifyDevices);
+}
+
+function openAddDeviceModal() {
+    document.getElementById('add-device-form').reset();
+    document.getElementById('add-device-monitor').checked = true;
+    new bootstrap.Modal(document.getElementById('addDeviceModal')).show();
+    setTimeout(() => document.getElementById('add-device-ip').focus(), 300);
+}
+
+async function submitAddDevice() {
+    const val = (id) => document.getElementById(id).value.trim();
+    const body = { ip_address: val('add-device-ip'), is_monitored: document.getElementById('add-device-monitor').checked };
+    if (!body.ip_address) { showError('IP address is required'); return; }
+    if (val('add-device-mac')) body.mac_address = val('add-device-mac');
+    if (val('add-device-name')) body.custom_name = val('add-device-name');
+    if (val('add-device-type')) body.device_type = val('add-device-type');
+    if (val('add-device-group')) body.device_group = val('add-device-group');
+    if (val('add-device-tags')) body.tags = val('add-device-tags');
+    if (val('add-device-notes')) body.notes = val('add-device-notes');
+    const btn = document.getElementById('add-device-save');
+    btn.disabled = true;
+    try {
+        const result = await apiRequest('/api/devices', { method: 'POST', body });
+        const device = result.device || {};
+        showSuccess(`Added ${device.display_name || body.ip_address} (${device.device_type || 'unknown'})`);
+        bootstrap.Modal.getInstance(document.getElementById('addDeviceModal')).hide();
+        await loadDevices();
+    } catch (error) {
+        showError(`Could not add device: ${error.message}`);
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+async function reclassifyDevices() {
+    const btn = document.getElementById('reclassify-devices');
+    btn.disabled = true;
+    try {
+        const result = await apiRequest('/api/devices/reclassify', { method: 'POST', body: {} });
+        showSuccess(`${result.message} (${result.checked} checked)`);
+        await loadDevices();
+    } catch (error) {
+        showError(`Reclassify failed: ${error.message}`);
+    } finally {
+        btn.disabled = false;
+    }
+}
+
+function tagChips(device) {
+    const tags = Array.isArray(device.tags) ? device.tags : [];
+    if (!tags.length) return '';
+    return `<div class="device-tags">${tags.map(t => `<span class="badge bg-secondary me-1">${esc(t)}</span>`).join('')}</div>`;
 }
 
 // Load devices from API
@@ -321,11 +379,15 @@ function filterAndDisplayDevices() {
     if (filters.search) {
         filtered = filtered.filter(device => {
             const name = (device.display_name || device.hostname || '').toLowerCase();
-            const ip = device.ip_address.toLowerCase();
-            const status = device.status.toLowerCase();
+            const ip = (device.ip_address || '').toLowerCase();
+            const status = (device.status || '').toLowerCase();
+            const tags = (Array.isArray(device.tags) ? device.tags : []).join(' ').toLowerCase();
+            const notes = (device.notes || '').toLowerCase();
             return name.includes(filters.search) ||
                    ip.includes(filters.search) ||
-                   status.includes(filters.search);
+                   status.includes(filters.search) ||
+                   tags.includes(filters.search) ||
+                   notes.includes(filters.search);
         });
     }
 
@@ -424,6 +486,7 @@ function createDeviceCard(device) {
                 ${esc(name)}${groupBadge(device)}
             </div>
             <div class="device-ip">${esc(device.ip_address)}</div>
+            ${tagChips(device)}
             <div class="device-stats">
                 <span><i class="bi bi-lightning"></i> ${responseTime}</span>
                 <span><i class="bi bi-clock"></i> ${lastSeen}</span>

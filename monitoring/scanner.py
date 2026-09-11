@@ -17,6 +17,8 @@ class NetworkScanner:
     def __init__(self, app=None):
         self.nm = nmap.PortScanner()
         self.mac_parser = manuf.MacParser()
+        self._mdns_budget = 0          # unicast mDNS probes allowed in the current scan
+        self._dhcp_leases = None       # cached DHCP_LEASES_FILE contents for the current scan
         self.is_running = False
         self.is_scanning = False  # Track manual scan status
         self.scan_thread = None
@@ -391,129 +393,70 @@ class NetworkScanner:
             return None
 
     def get_mac_vendor(self, mac):
-        """Get vendor information from MAC address"""
+        """Vendor from the MAC OUI; None for randomized (locally administered) MACs,
+        which resolve to junk like 'MS-NLB-PhysServer-27'."""
+        from monitoring.device_classifier import is_locally_administered
+        if not mac or is_locally_administered(mac):
+            return None
         try:
             return self.mac_parser.get_manuf(mac)
         except Exception as e:
             logger.debug(f"Failed to get vendor for MAC {mac}: {e}")
             return None
 
+    def enrich_identity(self, ip, mac=None):
+        """Best-effort extra identity for one address: mDNS hostname + service list, and a
+        DHCP-lease hostname when DHCP_LEASES_FILE is set. Budgeted per scan so a large
+        network does not add minutes to discovery. Returns {'hostname', 'services'}."""
+        from monitoring.mdns import query_mdns, read_dhcp_leases
+        info = {'hostname': None, 'services': []}
+        if mac and Config.DHCP_LEASES_FILE:
+            if self._dhcp_leases is None:
+                self._dhcp_leases = read_dhcp_leases(Config.DHCP_LEASES_FILE)
+            info['hostname'] = self._dhcp_leases.get(mac.lower())
+        if ip and self._mdns_budget > 0:
+            self._mdns_budget -= 1
+            probe = query_mdns(ip)
+            info['hostname'] = info['hostname'] or probe.get('hostname')
+            info['services'] = probe.get('services') or []
+        return info
+
+    def reclassify(self, include_all=False):
+        """Re-run classification over stored devices (unknown / untyped ones by default).
+
+        Returns {'checked', 'changed', 'changes': [(id, old, new)], 'by_type': {...}}.
+        Must run inside an app context; commits.
+        """
+        query = Device.query
+        if not include_all:
+            query = query.filter((Device.device_type == None) | (Device.device_type == 'unknown'))
+        candidates = query.all()
+        changes = []
+        for device in candidates:
+            new_type = self.classify_device_type({
+                'hostname': device.hostname, 'vendor': device.vendor, 'mac': device.mac_address,
+                'ip': device.ip_address, 'services': device.mdns_service_list,
+            })
+            if new_type != 'unknown' and new_type != (device.device_type or 'unknown'):
+                changes.append((device.id, device.device_type, new_type))
+                device.device_type = new_type
+                device.updated_at = datetime.utcnow()
+        db.session.commit()
+        by_type = {(t or 'unknown'): n for t, n in
+                   db.session.query(Device.device_type, db.func.count(Device.id)).group_by(Device.device_type).all()}
+        return {'checked': len(candidates), 'changed': len(changes), 'changes': changes, 'by_type': by_type}
+
     def classify_device_type(self, device_info):
-        """Attempt to classify device type based on available information"""
-        hostname = (device_info.get('hostname') or '').lower()
-        vendor = (device_info.get('vendor') or '').lower()
-        ip = device_info.get('ip') or ''
-
-        # Camera detection (highest priority)
-        camera_keywords = [
-            'camera', 'cam', 'ring', 'wyze', 'nest-cam', 'arlo', 'surveillance',
-            'doorbell', 'spotlight', 'security', 'webcam', 'ipcam'
-        ]
-        if any(keyword in hostname for keyword in camera_keywords):
-            return 'camera'
-        if any(keyword in vendor for keyword in ['wyzelabs', 'ring', 'arlo', 'hikvision', 'dahua']):
-            return 'camera'
-        # Ring devices often have ring- prefix or specific patterns
-        if 'ring-' in hostname or 'ringspotlight' in hostname or 'ringdoorbell' in hostname:
-            return 'camera'
-
-        # Network Infrastructure
-        router_keywords = ['router', 'gateway', 'gw', 'modem', 'switch', 'access-point', 'ap']
-        if any(keyword in hostname for keyword in router_keywords):
-            return 'router'
-        if any(keyword in vendor for keyword in ['cisco', 'netgear', 'linksys', 'tp-link', 'asus', 'ubiquiti']):
-            return 'router'
-        # Google Nest WiFi points
-        if 'nest-wifi' in hostname or 'google-wifi' in hostname:
-            return 'router'
-
-        # Smart Home & IoT Devices
-        iot_keywords = [
-            'nest', 'thermostat', 'smart', 'hub', 'sensor', 'switch', 'plug',
-            'bulb', 'light', 'alexa', 'echo', 'google-home', 'google-nest',
-            'chromecast', 'sonos', 'speaker', 'litter-robot', 'fridge',
-            'dishwasher', 'washer', 'dryer', 'hvac', 'irrigation', 'sprinkler'
-        ]
-        if any(keyword in hostname for keyword in iot_keywords):
-            return 'smart_home'
-        if any(keyword in vendor for keyword in ['sonos', 'nestlabs', 'google', 'amazon', 'philips', 'wemo']):
-            return 'smart_home'
-        # Specific IoT device patterns
-        if 'esp' in hostname or 'arduino' in hostname or 'raspberry' in hostname:
-            return 'iot'
-
-        # Apple/Mac devices
-        mac_keywords = ['macbook', 'imac', 'mac.', 'macos', 'iphone', 'ipad', 'apple']
-        if any(keyword in hostname for keyword in mac_keywords):
-            return 'apple'
-        if 'apple' in vendor:
-            return 'apple'
-        # Check for Apple-like MAC addresses (common patterns)
-        mac = device_info.get('mac') or ''
-        if mac:
-            mac = mac.lower()
-            apple_ouis = ['00:1b:63', '00:1f:f3', '00:23:df', '00:25:00', '3c:07:54', '4c:8d:79']
-            if any(mac.startswith(oui) for oui in apple_ouis):
-                return 'apple'
-
-        # Mobile/Phone detection
-        phone_keywords = ['android', 'phone', 'mobile', 'samsung', 'pixel', 'oneplus']
-        if any(keyword in hostname for keyword in phone_keywords):
-            return 'phone'
-        if any(keyword in vendor for keyword in ['samsung', 'samsunge', 'lg', 'motorola', 'huawei']):
-            return 'phone'
-
-        # Computer/Laptop detection
-        computer_keywords = [
-            'pc', 'laptop', 'desktop', 'workstation', 'server', 'nuc',
-            'dell', 'hp', 'lenovo', 'asus', 'thinkpad', 'surface'
-        ]
-        if any(keyword in hostname for keyword in computer_keywords):
-            return 'computer'
-        if any(keyword in vendor for keyword in ['dell', 'hewletthp', 'hewlettp', 'lenovo', 'asus', 'microsoft']):
-            return 'computer'
-
-        # Gaming Consoles
-        gaming_keywords = ['xbox', 'playstation', 'ps4', 'ps5', 'nintendo', 'switch', 'steam']
-        if any(keyword in hostname for keyword in gaming_keywords):
-            return 'gaming'
-        if any(keyword in vendor for keyword in ['microsoft', 'sony', 'nintendo']):
-            return 'gaming'
-
-        # TV/Media devices
-        media_keywords = ['tv', 'roku', 'appletv', 'firetv', 'nvidia-shield', 'media-player']
-        if any(keyword in hostname for keyword in media_keywords):
-            return 'media'
-        if any(keyword in vendor for keyword in ['roku', 'nvidia', 'lg', 'samsung', 'sony']):
-            # Only classify as media if it's clearly a TV/media device
-            if any(keyword in hostname for keyword in ['tv', 'roku', 'shield', 'chromecast']):
-                return 'media'
-
-        # Printers - Enhanced detection to catch all printer models
-        printer_keywords = ['printer', 'print', 'canon', 'epson', 'brother', 'hp-printer',
-                           'laserjet', 'deskjet', 'officejet', 'envy', 'pixma', 'imageclass',
-                           'ultrathink', 'xerox', 'lexmark', 'ricoh', 'sharp', 'kyocera',
-                           'samsung-printer', 'dell-printer', 'konica', 'minolta', 'toshiba']
-        if any(keyword in hostname for keyword in printer_keywords):
-            return 'printer'
-        # Check vendor names for printer manufacturers
-        printer_vendors = ['canon', 'epson', 'brother', 'hewlett', 'hp', 'xerox',
-                          'lexmark', 'ricoh', 'sharp', 'kyocera', 'konica', 'minolta']
-        if any(keyword in vendor for keyword in printer_vendors):
-            return 'printer'
-
-        # Storage/NAS
-        storage_keywords = ['nas', 'storage', 'synology', 'qnap', 'drobo', 'freenas']
-        if any(keyword in hostname for keyword in storage_keywords):
-            return 'storage'
-        if any(keyword in vendor for keyword in ['synology', 'qnap', 'drobo']):
-            return 'storage'
-
-        return 'unknown'
+        """Classify from hostname, vendor, MAC and mDNS services (monitoring/device_classifier.py)."""
+        from monitoring.device_classifier import classify
+        return classify(hostname=device_info.get('hostname'), vendor=device_info.get('vendor'),
+                        mac=device_info.get('mac'), services=device_info.get('services'))
 
     def scan_network(self):
         """Perform complete network scan and update database"""
         logger.info("Starting network discovery scan")
+        self._mdns_budget = 40
+        self._dhcp_leases = None
 
         # Set scanning flag
         self.is_scanning = True
@@ -732,16 +675,27 @@ class NetworkScanner:
                         device.vendor = vendor
                         updated = True
 
-                # Classify device type if not set
-                if not device.device_type:
+                # Devices created before their hostname resolved stay 'unknown' forever
+                # unless re-classified; probe mDNS for the ones we still cannot name.
+                if device.device_type in (None, 'unknown'):
+                    if not device.mdns_services and (not device.hostname or not device.vendor):
+                        extra = self.enrich_identity(ip, device.mac_address)
+                        if extra['hostname'] and not device.hostname:
+                            device.hostname = extra['hostname']
+                            updated = True
+                        if extra['services']:
+                            device.mdns_services = ','.join(extra['services'])[:500]
+                            updated = True
                     device_type = self.classify_device_type({
                         'hostname': device.hostname,
                         'vendor': device.vendor,
                         'mac': device.mac_address,
-                        'ip': device.ip_address
+                        'ip': device.ip_address,
+                        'services': device.mdns_service_list,
                     })
-                    device.device_type = device_type
-                    updated = True
+                    if device_type != (device.device_type or 'unknown'):
+                        device.device_type = device_type
+                        updated = True
 
                 # A device that was archived for staleness (is_monitored=False with an old
                 # last_seen) has just reappeared on the network: resume monitoring it.
@@ -763,16 +717,17 @@ class NetworkScanner:
                 # Create new device
                 is_new_device = True
                 hostname = device_info.get('hostname') or self.resolve_hostname(ip)
-                vendor = None
-
-                if mac:
-                    vendor = self.get_mac_vendor(mac)
+                vendor = self.get_mac_vendor(mac) if mac else None
+                extra = self.enrich_identity(ip, mac)
+                hostname = hostname or extra['hostname']
+                mdns_services = ','.join(extra['services'])[:500] if extra['services'] else None
 
                 device_type = self.classify_device_type({
                     'hostname': hostname,
                     'vendor': vendor,
                     'mac': mac,
-                    'ip': ip
+                    'ip': ip,
+                    'services': extra['services'],
                 })
 
                 # Check if another device already has this IP (collision handling)
@@ -798,6 +753,7 @@ class NetworkScanner:
                     hostname=hostname,
                     vendor=vendor,
                     device_type=device_type,
+                    mdns_services=mdns_services,
                     last_seen=datetime.utcnow()
                 )
 

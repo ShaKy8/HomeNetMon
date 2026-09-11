@@ -28,6 +28,8 @@ class Config:
     # and are hidden from the default dashboard view. They are re-enabled
     # automatically the next time a scan sees their MAC address.
     STALE_DEVICE_DAYS = int(os.environ.get('STALE_DEVICE_DAYS', '30'))
+    # Optional dnsmasq / Pi-hole leases file: MAC -> hostname for devices that never answer DNS/mDNS
+    DHCP_LEASES_FILE = os.environ.get('DHCP_LEASES_FILE', '')
     # nmap security scan cadence (only used when SECURITY_SCANNING_ENABLED=true)
     SECURITY_SCAN_INTERVAL = int(os.environ.get('SECURITY_SCAN_INTERVAL', '86400'))
 
