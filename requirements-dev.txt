@@ -8,3 +8,4 @@ factory-boy==3.3.3
 faker==20.1.0
 ruff==0.15.14                    # keep in sync with .pre-commit-config.yaml and ci.yml
 pip-audit==2.10.1
+PyYAML==6.0.3                    # tests/unit/test_repo_hygiene.py parses docker-compose.yml

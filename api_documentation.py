@@ -5,375 +5,85 @@ Auto-generates interactive API documentation
 
 from flask import Flask, jsonify, send_from_directory
 from flask_swagger_ui import get_swaggerui_blueprint
-from constants import *
-import json
-import os
+import re
+
+from constants import APP_VERSION
 
 
-def generate_openapi_spec():
-    """Generate OpenAPI 3.0 specification for HomeNetMon API"""
+TAG_BY_PREFIX = {
+    '/api/devices': 'devices', '/api/device-control': 'devices', '/api/monitoring/alerts': 'alerts',
+    '/api/monitoring': 'monitoring', '/api/analytics': 'analytics', '/api/performance': 'analytics',
+    '/api/config': 'config', '/api/config-management': 'config', '/api/security': 'security',
+    '/api/notifications': 'alerts', '/api/system': 'health', '/api/csrf-token': 'health',
+}
 
-    spec = {
+
+def _tag_for(rule):
+    for prefix in sorted(TAG_BY_PREFIX, key=len, reverse=True):
+        if rule.startswith(prefix):
+            return TAG_BY_PREFIX[prefix]
+    return 'other'
+
+
+def generate_openapi_spec(app=None):
+    """OpenAPI 3.0 document built from the registered routes, so /api/docs can never
+    list an endpoint that does not exist (2.4.0 hand-maintained six paths of ~250).
+    Summaries come from each view's docstring."""
+    from flask import current_app
+    app = app or current_app
+    paths = {}
+    for rule in sorted(app.url_map.iter_rules(), key=lambda r: r.rule):
+        if not rule.rule.startswith('/api/') or rule.rule.startswith(('/api/docs', '/api/redoc', '/api/openapi.json')):
+            continue
+        view = app.view_functions.get(rule.endpoint)
+        doc = (view.__doc__ or '').strip().splitlines() if view else []
+        summary = doc[0].strip() if doc else rule.endpoint
+        description = ' '.join(line.strip() for line in doc[1:]).strip()
+        openapi_path = re.sub(r'<(?:[a-z]+:)?([a-z_]+)>', r'{\1}', rule.rule)
+        params = [{'name': m.group(1), 'in': 'path', 'required': True,
+                   'schema': {'type': 'integer' if m.group(0).startswith('<int:') else 'string'}}
+                  for m in re.finditer(r'<(?:(?:int|string):)?([a-z_]+)>', rule.rule)]
+        tier = getattr(view, '_rate_limit_tier', None)
+        for method in sorted((rule.methods or set()) - {'HEAD', 'OPTIONS'}):
+            op = {
+                'tags': [_tag_for(rule.rule)],
+                'summary': summary,
+                'description': (description + (f' Rate limit tier: {tier}.' if tier else '')).strip(),
+                'operationId': f"{method.lower()}_{rule.endpoint.replace('.', '_')}",
+                'responses': {'200': {'description': 'Success'}, '400': {'description': 'Validation error'},
+                              '404': {'description': 'Not found'}, '429': {'description': 'Rate limited'}},
+            }
+            if params:
+                op['parameters'] = params
+            if method in ('POST', 'PUT', 'PATCH', 'DELETE'):
+                op['responses']['403'] = {'description': 'Missing or invalid X-CSRF-Token'}
+                op['requestBody'] = {'required': False, 'content': {'application/json': {'schema': {'type': 'object'}}}}
+            paths.setdefault(openapi_path, {})[method.lower()] = op
+
+    return {
         "openapi": "3.0.0",
         "info": {
             "title": "HomeNetMon API",
-            "description": "Comprehensive Home Network Monitoring REST API",
+            "description": ("REST API of the home network monitor. No authentication (trusted LAN); "
+                            "state-changing requests need the X-CSRF-Token header from GET /api/csrf-token. "
+                            "Response envelopes vary: older routes return {success: true, ...}, newer ones the "
+                            "core.error_handler shape."),
             "version": APP_VERSION,
-            "contact": {
-                "name": "HomeNetMon Project",
-                "url": "https://github.com/homenetmon/homenetmon"
-            },
-            "license": {
-                "name": "MIT",
-                "url": "https://opensource.org/licenses/MIT"
-            }
+            "contact": {"name": "HomeNetMon Project", "url": "https://github.com/ShaKy8/HomeNetMon"},
+            "license": {"name": "MIT", "url": "https://opensource.org/licenses/MIT"},
         },
-        "servers": [
-            {
-                "url": "http://localhost:5000",
-                "description": "Development server"
-            },
-            {
-                "url": "http://0.0.0.0:5000",
-                "description": "Local network server"
-            }
-        ],
+        "servers": [{"url": "/", "description": "This server"}],
         "tags": [
-            {"name": "devices", "description": "Device management operations"},
-            {"name": "monitoring", "description": "Network monitoring operations"},
-            {"name": "alerts", "description": "Alert management"},
-            {"name": "analytics", "description": "Network analytics and statistics"},
-            {"name": "config", "description": "Configuration management"},
-            {"name": "health", "description": "System health and status"}
+            {"name": "devices", "description": "Device inventory and control"},
+            {"name": "monitoring", "description": "Ping data, summary counts, bandwidth, internet check"},
+            {"name": "alerts", "description": "Alerts, suppression rules, notification log"},
+            {"name": "analytics", "description": "Health score, trends, topology, per-device performance"},
+            {"name": "config", "description": "Runtime configuration and its history"},
+            {"name": "security", "description": "Port scans and security alerts"},
+            {"name": "health", "description": "System information and thread health"},
         ],
-        "paths": {
-            "/api/devices": {
-                "get": {
-                    "tags": ["devices"],
-                    "summary": "List all devices",
-                    "description": "Get all network devices with optional filtering",
-                    "parameters": [
-                        {
-                            "name": "group",
-                            "in": "query",
-                            "description": "Filter by device group",
-                            "schema": {"type": "string"}
-                        },
-                        {
-                            "name": "type",
-                            "in": "query",
-                            "description": "Filter by device type",
-                            "schema": {"type": "string", "enum": ["router", "switch", "computer", "camera", "iot"]}
-                        },
-                        {
-                            "name": "status",
-                            "in": "query",
-                            "description": "Filter by status",
-                            "schema": {"type": "string", "enum": ["up", "down", "warning", "unknown"]}
-                        },
-                        {
-                            "name": "monitored",
-                            "in": "query",
-                            "description": "Filter by monitoring status",
-                            "schema": {"type": "boolean"}
-                        },
-                        {
-                            "name": "page",
-                            "in": "query",
-                            "description": "Page number for pagination",
-                            "schema": {"type": "integer", "minimum": 1}
-                        },
-                        {
-                            "name": "per_page",
-                            "in": "query",
-                            "description": "Items per page",
-                            "schema": {"type": "integer", "minimum": 10, "maximum": 1000}
-                        }
-                    ],
-                    "responses": {
-                        "200": {
-                            "description": "Successful response",
-                            "content": {
-                                "application/json": {
-                                    "schema": {
-                                        "$ref": "#/components/schemas/DeviceListResponse"
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "/api/devices/{device_id}": {
-                "get": {
-                    "tags": ["devices"],
-                    "summary": "Get device details",
-                    "description": "Get detailed information about a specific device",
-                    "parameters": [
-                        {
-                            "name": "device_id",
-                            "in": "path",
-                            "required": True,
-                            "description": "Device ID",
-                            "schema": {"type": "integer"}
-                        }
-                    ],
-                    "responses": {
-                        "200": {
-                            "description": "Successful response",
-                            "content": {
-                                "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/Device"}
-                                }
-                            }
-                        },
-                        "404": {"description": "Device not found"}
-                    }
-                },
-                "put": {
-                    "tags": ["devices"],
-                    "summary": "Update device",
-                    "description": "Update device configuration",
-                    "parameters": [
-                        {
-                            "name": "device_id",
-                            "in": "path",
-                            "required": True,
-                            "schema": {"type": "integer"}
-                        }
-                    ],
-                    "requestBody": {
-                        "required": True,
-                        "content": {
-                            "application/json": {
-                                "schema": {"$ref": "#/components/schemas/DeviceUpdate"}
-                            }
-                        }
-                    },
-                    "responses": {
-                        "200": {"description": "Device updated successfully"},
-                        "400": {"description": "Invalid input"},
-                        "404": {"description": "Device not found"}
-                    }
-                },
-                "delete": {
-                    "tags": ["devices"],
-                    "summary": "Delete device",
-                    "description": "Remove a device from monitoring",
-                    "parameters": [
-                        {
-                            "name": "device_id",
-                            "in": "path",
-                            "required": True,
-                            "schema": {"type": "integer"}
-                        }
-                    ],
-                    "responses": {
-                        "200": {"description": "Device deleted successfully"},
-                        "404": {"description": "Device not found"}
-                    }
-                }
-            },
-            "/api/devices/scan-now": {
-                "post": {
-                    "tags": ["devices"],
-                    "summary": "Trigger network scan",
-                    "description": "Initiate an immediate network scan for device discovery",
-                    "responses": {
-                        "200": {
-                            "description": "Scan initiated successfully",
-                            "content": {
-                                "application/json": {
-                                    "schema": {
-                                        "type": "object",
-                                        "properties": {
-                                            "success": {"type": "boolean"},
-                                            "message": {"type": "string"},
-                                            "estimated_duration": {"type": "integer"}
-                                        }
-                                    }
-                                }
-                            }
-                        },
-                        "409": {"description": "Scan already in progress"}
-                    }
-                }
-            },
-            "/api/monitoring/summary": {
-                "get": {
-                    "tags": ["monitoring"],
-                    "summary": "Get monitoring summary",
-                    "description": "Get real-time network monitoring statistics",
-                    "responses": {
-                        "200": {
-                            "description": "Successful response",
-                            "content": {
-                                "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/MonitoringSummary"}
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "/api/monitoring/alerts": {
-                "get": {
-                    "tags": ["alerts"],
-                    "summary": "List alerts",
-                    "description": "Get all alerts with optional filtering",
-                    "parameters": [
-                        {
-                            "name": "resolved",
-                            "in": "query",
-                            "description": "Filter by resolved status",
-                            "schema": {"type": "boolean"}
-                        },
-                        {
-                            "name": "device_id",
-                            "in": "query",
-                            "description": "Filter by device",
-                            "schema": {"type": "integer"}
-                        },
-                        {
-                            "name": "priority",
-                            "in": "query",
-                            "description": "Filter by priority",
-                            "schema": {"type": "string", "enum": ["critical", "high", "medium", "low"]}
-                        }
-                    ],
-                    "responses": {
-                        "200": {
-                            "description": "Successful response",
-                            "content": {
-                                "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/AlertListResponse"}
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            "/api/system/health": {
-                "get": {
-                    "tags": ["health"],
-                    "summary": "Health check",
-                    "description": "Get system health status",
-                    "responses": {
-                        "200": {
-                            "description": "System healthy",
-                            "content": {
-                                "application/json": {
-                                    "schema": {"$ref": "#/components/schemas/HealthStatus"}
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        },
-        "components": {
-            "schemas": {
-                "Device": {
-                    "type": "object",
-                    "properties": {
-                        "id": {"type": "integer", "description": "Unique device identifier"},
-                        "ip_address": {"type": "string", "format": "ipv4", "description": "Device IP address"},
-                        "mac_address": {"type": "string", "description": "Device MAC address"},
-                        "hostname": {"type": "string", "description": "Device hostname"},
-                        "display_name": {"type": "string", "description": "User-friendly device name"},
-                        "device_type": {"type": "string", "description": "Device type classification"},
-                        "device_group": {"type": "string", "description": "Device group/category"},
-                        "manufacturer": {"type": "string", "description": "Device manufacturer"},
-                        "model": {"type": "string", "description": "Device model"},
-                        "status": {"type": "string", "enum": ["up", "down", "warning", "unknown"]},
-                        "monitor_enabled": {"type": "boolean", "description": "Monitoring enabled flag"},
-                        "last_seen": {"type": "string", "format": "date-time"},
-                        "first_discovered": {"type": "string", "format": "date-time"},
-                        "latest_response_time": {"type": "number", "description": "Latest ping response in ms"},
-                        "active_alerts": {"type": "integer", "description": "Number of active alerts"}
-                    }
-                },
-                "DeviceListResponse": {
-                    "type": "object",
-                    "properties": {
-                        "success": {"type": "boolean"},
-                        "devices": {
-                            "type": "array",
-                            "items": {"$ref": "#/components/schemas/Device"}
-                        },
-                        "total": {"type": "integer"},
-                        "pagination": {
-                            "type": "object",
-                            "properties": {
-                                "page": {"type": "integer"},
-                                "per_page": {"type": "integer"},
-                                "total": {"type": "integer"},
-                                "pages": {"type": "integer"}
-                            }
-                        }
-                    }
-                },
-                "DeviceUpdate": {
-                    "type": "object",
-                    "properties": {
-                        "display_name": {"type": "string"},
-                        "device_type": {"type": "string"},
-                        "device_group": {"type": "string"},
-                        "monitor_enabled": {"type": "boolean"},
-                        "notes": {"type": "string"}
-                    }
-                },
-                "MonitoringSummary": {
-                    "type": "object",
-                    "properties": {
-                        "total_devices": {"type": "integer"},
-                        "devices_up": {"type": "integer"},
-                        "devices_down": {"type": "integer"},
-                        "devices_warning": {"type": "integer"},
-                        "avg_response_time": {"type": "number"},
-                        "active_alerts": {"type": "integer"},
-                        "network_health": {"type": "number", "description": "Health percentage 0-100"}
-                    }
-                },
-                "Alert": {
-                    "type": "object",
-                    "properties": {
-                        "id": {"type": "integer"},
-                        "device_id": {"type": "integer"},
-                        "alert_type": {"type": "string"},
-                        "priority": {"type": "string", "enum": ["critical", "high", "medium", "low"]},
-                        "message": {"type": "string"},
-                        "resolved": {"type": "boolean"},
-                        "created_at": {"type": "string", "format": "date-time"},
-                        "resolved_at": {"type": "string", "format": "date-time"}
-                    }
-                },
-                "AlertListResponse": {
-                    "type": "object",
-                    "properties": {
-                        "success": {"type": "boolean"},
-                        "alerts": {
-                            "type": "array",
-                            "items": {"$ref": "#/components/schemas/Alert"}
-                        },
-                        "total": {"type": "integer"}
-                    }
-                },
-                "HealthStatus": {
-                    "type": "object",
-                    "properties": {
-                        "status": {"type": "string", "enum": ["healthy", "degraded", "unhealthy"]},
-                        "uptime": {"type": "integer", "description": "System uptime in seconds"},
-                        "database": {"type": "string", "enum": ["connected", "disconnected"]},
-                        "monitoring": {"type": "string", "enum": ["active", "inactive"]},
-                        "version": {"type": "string"}
-                    }
-                }
-            }
-        }
+        "paths": paths,
     }
-
-    return spec
 
 
 def setup_swagger_ui(app: Flask):
@@ -409,8 +119,7 @@ def setup_swagger_ui(app: Flask):
     @app.route(API_SPEC_URL)
     def get_openapi_spec():
         """Serve OpenAPI specification as JSON"""
-        spec = generate_openapi_spec()
-        return jsonify(spec)
+        return jsonify(generate_openapi_spec(app))
 
     # Route for ReDoc alternative documentation
     @app.route('/api/redoc')
@@ -433,7 +142,7 @@ def setup_swagger_ui(app: Flask):
         </head>
         <body>
             <redoc spec-url='{API_SPEC_URL}'></redoc>
-            <script src="https://cdn.jsdelivr.net/npm/redoc@latest/bundles/redoc.standalone.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/redoc@2.1.5/bundles/redoc.standalone.js"></script>
         </body>
         </html>
         '''

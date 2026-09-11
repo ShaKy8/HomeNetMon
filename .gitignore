@@ -186,3 +186,4 @@ node_modules/
 test-results/
 playwright-report/
 static/bundles/*.gz
+.env.bak*

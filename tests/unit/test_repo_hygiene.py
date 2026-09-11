@@ -23,7 +23,14 @@ class TestDocsNameRealThings:
 
     @pytest.mark.parametrize('ghost', ['database_performance_fix.py', 'optimize_db_queries.py', 'build_assets.py',
                                        'run_http2.py', 'comprehensive_database_health_assessment.py',
-                                       'emergency_database_cleanup.py', 'PHASE_2_AUDIT_REPORT.md'])
+                                       'emergency_database_cleanup.py', 'PHASE_2_AUDIT_REPORT.md',
+                                       'backup_production.py', 'deploy_production.py', 'performance_monitor_live.py',
+                                       'optimize_database_performance.py', 'database_performance_monitor.py',
+                                       'comprehensive_load_stress_test_suite.py', 'resolve_alerts.py',
+                                       'reclassify_devices.py', 'production_health_check.sh', 'restart_homenetmon.sh',
+                                       'startup_notification.py', 'setup_ssl.sh', 'docker-compose.prod.yml',
+                                       '.env.prod.template', 'fix_ping_permissions.sh', 'logs/app.log', 'Config.load_from_file',
+                                       'security/configure-firewall.sh', 'security/vulnerability-scanner.py'])
     def test_no_doc_references_deleted_files(self, ghost):
         hits = [p.name for p in DOCS if ghost in _read(p) and f'scripts/db/{ghost}' not in _read(p)
                 and f'scripts/ops/{ghost}' not in _read(p) and f'scripts/perf/{ghost}' not in _read(p)]
@@ -42,7 +49,7 @@ class TestDocsNameRealThings:
 
     def test_unit_name_is_lowercase_everywhere(self):
         hits = []
-        for p in DOCS + [ROOT / 'install.sh', ROOT / 'restart_homenetmon.sh', ROOT / 'health_check.sh']:
+        for p in DOCS + [ROOT / 'install.sh', ROOT / 'health_check.sh']:
             for m in re.finditer(r'homeNetMon\.service|systemctl [a-z -]*homeNetMon\b|journalctl -u homeNetMon\b', _read(p)):
                 hits.append(f'{p.name}: {m.group(0)}')
         assert not hits, hits
@@ -73,7 +80,7 @@ class TestDeploymentArtifacts:
         assert 'MemoryDenyWriteExecute=true' not in text
 
     def test_shell_scripts_parse(self):
-        for script in ['install.sh', 'health_check.sh', 'run_production.sh', 'setup_backup_cron.sh', 'restart_homenetmon.sh']:
+        for script in ['install.sh', 'health_check.sh', 'run_production.sh', 'setup_backup_cron.sh']:
             r = subprocess.run(['bash', '-n', str(ROOT / script)], capture_output=True, text=True)
             assert r.returncode == 0, f'{script}: {r.stderr}'
 
@@ -89,7 +96,7 @@ class TestEnvExample:
         keys = re.findall(r'^#?\s*([A-Z][A-Z0-9_]+)=', _read(ROOT / '.env.example'), re.M)
         code = ''.join(_read(p) for p in [ROOT / 'config.py', ROOT / 'app.py', ROOT / 'api/config.py',
                                             ROOT / 'services/rate_limiter.py', ROOT / 'services/push_notifications.py',
-                                            ROOT / 'core/security_middleware.py'])
+                                            ROOT / 'core/security_middleware.py', ROOT / 'services/cdn_manager.py'])
         unread = [k for k in set(keys) if k not in code]
         assert not unread, f'.env.example documents keys nothing reads: {sorted(unread)}'
 

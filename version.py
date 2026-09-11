@@ -14,12 +14,12 @@ from typing import Dict, Any, Optional, Tuple
 
 # Semantic Versioning for HomeNetMon
 VERSION_MAJOR = 2
-VERSION_MINOR = 4
+VERSION_MINOR = 5
 VERSION_PATCH = 0
 VERSION_BUILD = "stable"
 
 # Build information (fallback values when Git is not available)
-BUILD_DATE = "2026-09-04"
+BUILD_DATE = "2026-09-11"
 BUILD_AUTHOR = "Envisioned & Designed by ShaKy8 • Coded by Claude Code"
 
 # Git repository information

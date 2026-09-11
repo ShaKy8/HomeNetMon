@@ -29,5 +29,4 @@ psutil==5.9.8
 requests==2.34.2
 
 # Configuration
-PyYAML==6.0.3
 python-dotenv==1.2.3

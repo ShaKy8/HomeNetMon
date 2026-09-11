@@ -1,5 +1,4 @@
 import os
-import yaml
 import logging
 import logging.handlers
 from pathlib import Path
@@ -112,7 +111,7 @@ class Config:
 
     # Logging Configuration
     LOG_LEVEL = os.environ.get('LOG_LEVEL', 'INFO').upper()
-    LOG_FILE = os.environ.get('LOG_FILE', 'homeNetMon.log')
+    LOG_FILE = os.environ.get('LOG_FILE', 'homenetmon.log')
     LOG_MAX_SIZE = int(os.environ.get('LOG_MAX_SIZE', '10485760'))  # 10MB
     LOG_BACKUP_COUNT = int(os.environ.get('LOG_BACKUP_COUNT', '5'))
 
@@ -139,44 +138,6 @@ class Config:
     # Printer Protection Settings
     EXCLUDE_PRINTERS_FROM_SECURITY_SCAN = os.environ.get('EXCLUDE_PRINTERS_FROM_SECURITY_SCAN', 'true').lower() == 'true'
     PRINTER_SAFE_MODE = os.environ.get('PRINTER_SAFE_MODE', 'true').lower() == 'true'  # Extra protection for printers
-
-    @classmethod
-    def load_from_file(cls, config_file='config.yaml'):
-        config_path = cls.BASE_DIR / config_file
-        if config_path.exists():
-            with open(config_path, 'r') as f:
-                config_data = yaml.safe_load(f)
-
-            # Update class attributes with YAML data
-            for key, value in config_data.items():
-                if hasattr(cls, key.upper()):
-                    setattr(cls, key.upper(), value)
-
-    @classmethod
-    def save_to_file(cls, config_file='config.yaml'):
-        config_path = cls.BASE_DIR / config_file
-        config_data = {
-            'network_range': cls.NETWORK_RANGE,
-            'ping_interval': cls.PING_INTERVAL,
-            'scan_interval': cls.SCAN_INTERVAL,
-            'ping_timeout': cls.PING_TIMEOUT,
-            'max_workers': cls.MAX_WORKERS,
-            'data_retention_days': cls.DATA_RETENTION_DAYS,
-            'host': cls.HOST,
-            'port': cls.PORT,
-            'debug': cls.DEBUG,
-            'smtp_server': cls.SMTP_SERVER,
-            'smtp_port': cls.SMTP_PORT,
-            'smtp_username': cls.SMTP_USERNAME,
-            'smtp_use_tls': cls.SMTP_USE_TLS,
-            'alert_from_email': cls.ALERT_FROM_EMAIL,
-            'alert_to_emails': cls.ALERT_TO_EMAILS,
-            'webhook_url': cls.WEBHOOK_URL,
-            'webhook_timeout': cls.WEBHOOK_TIMEOUT,
-        }
-
-        with open(config_path, 'w') as f:
-            yaml.dump(config_data, f, default_flow_style=False, indent=2)
 
     @classmethod
     def setup_logging(cls):
@@ -291,8 +252,6 @@ class Config:
 # Set SECRET_KEY after class definition to avoid circular reference
 Config.SECRET_KEY = Config._get_validated_secret_key()
 
-# Load configuration from file if it exists
-Config.load_from_file()
 
 if not Config.BASE_URL:
     Config.BASE_URL = f"http://{Config._detect_primary_ip()}:{Config.PORT}"

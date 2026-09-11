@@ -2,6 +2,52 @@
 
 All notable changes to HomeNetMon will be documented in this file.
 
+## [2.5.0] - 2026-09-11
+
+A second full review of the running system (see git history for the per-phase detail). The API surface
+went from ~257 routes to 70, all with a caller; 11 empty tables are gone; every finding was verified live.
+
+### Fixed
+- Alert auto-resolution and alert retention had never run (called without an app context); 105 of 139
+  open alerts closed on the first pass. `AlertManager.resolve_alerts()` now owns the lifecycle
+  (device_down, high_latency, performance, new_device, stale after `alert_max_open_days`).
+- The device page called an undefined `initializeCharts()`, leaving every button inert and both charts
+  blank; the analytics page shadowed `showToast` with a console stub; dashboard bulk enable/disable
+  stopped after one device.
+- Read-only GETs the pages poll were on the 1-per-5-minute rate-limit tier (security scan progress
+  never updated); the trusted-IP bypass only changed the limiter key.
+- Settings > Network / Alerts wrote around the configuration service, so history, rollback and
+  hot-reload callbacks never fired. `POST /api/config/reset` seeded 30 s / 300 s intervals.
+- Three different device counts (145 / 107 / 60) and two alert counts across endpoints: one
+  definition in `services/device_counts.py`, used by the summary API, the health score, the dashboard
+  tiles and the Socket.IO push. Devices outside `NETWORK_RANGE` are archived, not pinged.
+- Watchdog: a thread that never heartbeated was never reported stale; `SecurityScanner` now heartbeats
+  per device and is skipped when scanning is disabled (health returned 503 on default installs).
+- Naive local timestamps in the scan-status API (7 h skew), `print()` in model methods, unbounded
+  alert queries, the 8.9 s `quick-stats` sweep, stale `v2.0.0` strings, unpinned Chart.js / d3, XSS
+  sinks on the security, topology and analytics pages.
+
+### Added
+- Alerts page overhaul: server-side severity / status / time / search filters with facets and paging,
+  Acknowledge (single, selected, all-filtered), all six severities styled, alert titles, notification log.
+- Device identification: mDNS probes, DHCP-lease names, a rule-based classifier that ignores randomized
+  MACs, re-classification of unknowns, `POST /api/devices/reclassify`, Add-device form, notes and tags.
+- Internet / gateway reachability monitor (`monitoring/wan_monitor.py`, `GET /api/monitoring/wan`) with a
+  dashboard tile and `wan_down` / `gateway_down` / `wan_recovery` alerts.
+- Per-device Performance card (health score, availability, p50 / p95, 24h / 7d / 30d chart).
+- gunicorn (`wsgi.py`) as the production server in the systemd units, Dockerfile and `run_production.sh`.
+- `scripts/db/v250_schema_cleanup.py` one-shot; `init_db` adds missing columns idempotently.
+- Discord test button, security settings that persist, a Service Health card on /about, a gated
+  integration suite (`tests/integration`), a real non-destructive Playwright suite, an OpenAPI spec
+  generated from the live route map.
+
+### Removed
+- Escalation (3 pages, 13 routes, 3 tables), automation rule engine, anomaly / ML analytics (incl.
+  `/api/ai/*` and numpy / scikit-learn), speed test, notification read receipts, the vulnerability /
+  compliance / OS-info half of the security scanner, the `/system-info` and `/notifications/analytics`
+  pages, four dead blueprints, ~170 uncalled routes, the YAML config loader, 20 dead one-shot scripts,
+  and `constants.py` entries nothing read.
+
 ## [2.4.0] - 2026-09-04
 
 A full-codebase review of the running system. Highlights (see git history for the per-phase detail):

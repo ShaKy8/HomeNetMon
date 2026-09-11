@@ -27,7 +27,7 @@ The path depends on how the app was launched. Inspect the unit file or env:
 grep DATABASE_URL ~/.config/systemd/user/homenetmon.service
 
 # Or check the running process
-ps eww $(pgrep -f 'python.*app\.py') | tr ' ' '\n' | grep DATABASE_URL
+ps eww $(pgrep -f 'wsgi:app' | head -1) | tr ' ' '\n' | grep DATABASE_URL
 ```
 
 For the default production setup, this is:

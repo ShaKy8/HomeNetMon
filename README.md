@@ -28,17 +28,17 @@ A comprehensive, self-hosted network monitoring solution designed for home netwo
 
 ### 🔍 **Network Discovery & Device Management**
 - Automatic device discovery using ARP table parsing and nmap scanning
-- Device type classification (router, computer, phone, IoT, etc.)
-- MAC address vendor lookup
-- Custom device naming and grouping
-- Persistent device information storage
+- Device identification from mDNS services, DHCP hostnames and MAC vendor lookup (randomized MACs handled)
+- Device type classification (router, computer, phone, camera, printer, smart home, …) with one-click re-classification
+- Custom names, groups, tags and notes; an Add-device form for hosts discovery cannot see
+- Persistent device information storage; devices that leave the configured range are archived, not pinged
 
 ### 📊 **Real-time Monitoring**
 - Continuous ping monitoring with configurable intervals
-- Response time tracking and statistics
-- Device availability status (up/down/warning/unknown)
-- Historical data collection and analysis
-- Performance trend visualization
+- Internet and gateway reachability check with an outage alert
+- Response time tracking, availability and p50 / p95 percentiles per device
+- Device availability status (up/down/warning/unknown) from one shared definition
+- Historical data collection with a single retention policy
 
 ### 🌐 **Web Dashboard**
 - Modern, responsive web interface
@@ -49,18 +49,14 @@ A comprehensive, self-hosted network monitoring solution designed for home netwo
 - Mobile-friendly design
 
 ### 🔔 **Alerting System**
-- Configurable alert rules (device down, high latency)
-- Multiple notification methods:
-  - Email notifications via SMTP
-  - Webhook integrations
-  - In-dashboard notifications
-- Alert acknowledgment and management
-- Escalation policies for critical devices
+- Alert rules for device down / recovery, high latency, new devices, performance, security findings and internet loss
+- Notification channels: ntfy push, email via SMTP, webhooks, Discord (each with a test button)
+- Alert acknowledgement, resolution, bulk actions, server-side filters and quiet-hours suppression rules
+- Automatic resolution when the condition clears
 
 ### ⚙️ **Configuration & Management**
-- Web-based configuration interface
-- YAML configuration file support
-- Environment variable overrides
+- Web-based configuration with history and rollback
+- Environment variables seed a fresh install; Settings values win afterwards
 - Data retention policies
 - Export capabilities (CSV)
 
@@ -124,7 +120,7 @@ The fastest way to get HomeNetMon running:
 
 ### Production Installation (Ubuntu/Debian)
 
-1. **Run the automated installer** (as your normal user; it uses sudo where needed):
+1. **Run the automated installer** (as your normal user; it uses sudo where needed). The service runs under gunicorn from `wsgi.py`:
    ```bash
    ./install.sh            # system service in /opt/homenetmon
    ./install.sh --user     # or: per-user service from this checkout, no root
@@ -469,10 +465,12 @@ Content-Type: application/json
 
 {
   "network_range": "192.168.1.0/24",
-  "ping_interval": 30,
-  "scan_interval": 300
+  "ping_interval": 600,
+  "scan_interval": 86400
 }
 ```
+
+The full, generated route list is in [docs/API_REFERENCE.md](docs/API_REFERENCE.md); interactive docs at `/api/docs`.
 
 ## Troubleshooting
 
@@ -519,9 +517,8 @@ pip install -r requirements.txt
 **3. Permission Issues**
 
 *Problem: Permission errors for ping operations*
-- For development: Run `./fix_ping_permissions.sh` (requires sudo)
-- For production: Use the systemd service which handles permissions
-- Alternative: Run with sudo (not recommended for production)
+- On Debian/Ubuntu `ping` and `nmap` carry `cap_net_raw`, so no privileges are needed; check with `getcap $(which ping)`
+- Otherwise grant it once: `sudo setcap cap_net_raw+ep $(which ping)`
 
 **4. Application Startup Issues**
 
@@ -598,24 +595,9 @@ tail -f /opt/homenetmon/logs/homenetmon.log
 
 ### Performance Tuning
 
-**For Large Networks (100+ devices):**
-```yaml
-network:
-  ping_interval: 60    # Increase interval
-  max_workers: 25      # Reduce workers
-  ping_timeout: 2.0    # Reduce timeout
-
-database:
-  retention_days: 7    # Keep less data
-```
-
-**For Small Networks (<20 devices):**
-```yaml
-network:
-  ping_interval: 15    # More frequent checks
-  max_workers: 10      # Fewer workers needed
-  scan_interval: 180   # More frequent scans
-```
+Intervals live in **Settings → Network** (they override the environment). For large networks raise
+`ping_interval`, lower `max_workers` and shorten `DATA_RETENTION_DAYS`; for tiny networks a shorter
+`ping_interval` is fine. The defaults (600 s ping, daily scan) are deliberately gentle on IoT devices.
 
 ### Database Maintenance
 
@@ -634,7 +616,7 @@ venv/bin/python scripts/backup_database.py   # online, WAL-safe backup into back
 sudo systemctl stop homenetmon
 
 # Restore
-cp backups/homeNetMon_full_<timestamp>.db /opt/homenetmon/data/homeNetMon.db
+cp backups/homeNetMon_full_<timestamp>.db production_data/homeNetMon.db   # /opt/homenetmon/data/ for the system install
 
 # Restart service
 sudo systemctl start homenetmon
@@ -691,27 +673,20 @@ sudo systemctl start homenetmon
 
 ```
 HomeNetMon/
-├── app.py                  # Main Flask application
-├── config.py              # Configuration management
-├── models.py               # Database models
-├── requirements.txt        # Python dependencies
-├── monitoring/             # Monitoring modules
-│   ├── scanner.py         # Network discovery
-│   ├── monitor.py         # Device monitoring
-│   └── alerts.py          # Alert management
-├── api/                   # REST API endpoints
-│   ├── devices.py         # Device management API
-│   ├── monitoring.py      # Monitoring data API
-│   └── config.py          # Configuration API
-├── static/                # Static web assets
-│   ├── js/               # JavaScript (no build step)
-│   └── icons/            # App icons + web manifest
-├── templates/             # HTML templates
-├── docker-compose.yml     # Docker deployment
-├── Dockerfile            # Container build
-├── install.sh           # Installation script
-├── systemd/             # systemd units (system + per-user)
-└── README.md           # Documentation
+├── app.py                 # create_app(): middleware, blueprints, singleton services, threads
+├── wsgi.py                # gunicorn entry point (production)
+├── config.py / constants.py / models.py / version.py
+├── monitoring/            # scanner (discovery + identification), monitor (pings), alerts,
+│                          # bandwidth_monitor, wan_monitor, device_classifier, mdns, ping
+├── services/              # security_scanner, performance_monitor, retention, device_counts,
+│                          # configuration_service, rate_limiter, notifications, health_score, …
+├── api/                   # REST blueprints (devices, monitoring, analytics, config, security, …)
+├── core/                  # CSRF/security headers, error handler, thread-heartbeat watchdog, validators
+├── templates/ + static/   # Jinja + Bootstrap 5 + Chart.js + vanilla JS (no build step)
+├── scripts/               # operational one-shots (backup, maintenance window, schema cleanup)
+├── tests/                 # unit + integration (pytest), TestHomeNetmon.js (Playwright)
+├── systemd/, Dockerfile, docker-compose.yml, install.sh
+└── docs/                  # deployment, operations, security, troubleshooting, user and API guides
 ```
 
 ### Contributing
@@ -725,26 +700,23 @@ HomeNetMon/
 ### Testing
 
 ```bash
-# Install test dependencies
-pip install pytest pytest-flask
-
-# Run tests
-pytest tests/
-
-# Run with coverage
-pytest --cov=. tests/
+pip install -r requirements-dev.txt
+pytest tests/unit tests/integration          # what CI runs (with --cov-fail-under=47)
+pytest tests/unit/test_alerts_api.py -q      # one file
+ruff check .
+BASE_URL=http://127.0.0.1:5001 npx playwright test   # browser suite against a dev instance, never production
 ```
 
 ## FAQ
 
 **Q: Can HomeNetMon monitor devices on different subnets?**
-A: Currently, HomeNetMon monitors a single subnet. For multiple subnets, you'll need separate instances or modify the network range to include multiple networks.
+A: One `NETWORK_RANGE` per instance. Devices outside it are archived (kept, not pinged) and come back automatically if you widen the range in Settings.
 
 **Q: How accurate is the device type detection?**
-A: Device type detection uses hostname patterns and MAC vendor lookup. It's reasonably accurate but may require manual correction for some devices.
+A: It combines mDNS service types, DHCP/DNS hostnames and MAC vendor lookup (skipped for randomized MACs). Devices that expose none of those stay *unknown*; set the type by hand on the device page and it is never overwritten. "Reclassify unknown" on the dashboard re-runs detection.
 
 **Q: Can I monitor devices outside my network?**
-A: HomeNetMon is designed for local network monitoring. For external monitoring, consider dedicated uptime monitoring services.
+A: Only the internet reachability check (gateway plus one external target, see Settings → Network). For monitoring remote hosts use a dedicated uptime service.
 
 **Q: What happens if HomeNetMon goes down?**
 A: Monitoring stops, but no data is lost. Historical data remains in the database, and monitoring resumes when the service restarts.

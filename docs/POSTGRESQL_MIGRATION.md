@@ -79,15 +79,15 @@ psql "postgresql://homeNetMon_user:secure_password@localhost:5432/homeNetMon" -c
 
 ```bash
 # Basic migration
-python migrate_to_postgresql.py --postgres-url "postgresql://homeNetMon_user:secure_password@localhost:5432/homeNetMon"
+venv/bin/python scripts/migrations/migrate_to_postgresql.py --postgres-url "postgresql://homeNetMon_user:secure_password@localhost:5432/homeNetMon"
 
 # Migration with custom SQLite path
-python migrate_to_postgresql.py \
+venv/bin/python scripts/migrations/migrate_to_postgresql.py \
   --postgres-url "postgresql://homeNetMon_user:secure_password@localhost:5432/homeNetMon" \
   --sqlite-path "path/to/your/homeNetMon.db"
 
 # Migration with larger chunk size (for better performance on large datasets)
-python migrate_to_postgresql.py \
+venv/bin/python scripts/migrations/migrate_to_postgresql.py \
   --postgres-url "postgresql://homeNetMon_user:secure_password@localhost:5432/homeNetMon" \
   --chunk-size 5000
 ```
@@ -96,7 +96,7 @@ python migrate_to_postgresql.py \
 
 ```bash
 # Run validation only (checks row counts match)
-python migrate_to_postgresql.py \
+venv/bin/python scripts/migrations/migrate_to_postgresql.py \
   --postgres-url "postgresql://homeNetMon_user:secure_password@localhost:5432/homeNetMon" \
   --validate-only
 ```
@@ -115,7 +115,7 @@ echo "SQLALCHEMY_DATABASE_URI=postgresql://homeNetMon_user:secure_password@local
 
 ```bash
 # Start the application with PostgreSQL
-python app.py
+systemctl --user restart homenetmon   # or: HOST=0.0.0.0 python app.py for a dev run
 
 # Verify functionality:
 # - Check dashboard loads correctly

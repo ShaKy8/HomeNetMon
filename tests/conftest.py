@@ -542,17 +542,8 @@ STALE_TEST_SKIPS = {
     "test_n_plus_one_fixes.py::TestMonitoringN1QueryFixes::test_monitoring_data_pagination_doesnt_cause_n1":
         "pagination path goes through cache; query count differs",
 
-    # performance_optimizations: hardcoded /home/kyle paths (env-specific).
     # All assertions reference /home/kyle/ClaudeCode/HomeNetMon/... literally,
     # so the whole file is unrunnable outside the dev box. Skip class-wide.
-    "test_performance_optimizations.py::TestConsoleLogRemoval::test_no_console_logs_in_production_js":
-        "hardcoded dev paths; environment-specific",
-    "test_performance_optimizations.py::TestAssetOptimization":
-        "hardcoded /home/kyle/... paths; needs Path(__file__) rewrite",
-    "test_performance_optimizations.py::TestToastNotificationSystem":
-        "hardcoded /home/kyle/... template paths; needs Path(__file__) rewrite",
-    "test_performance_optimizations.py::TestDeferredJavaScriptLoading":
-        "hardcoded /home/kyle/... static paths; needs Path(__file__) rewrite",
 
     # MonitoringData.is_successful() returns True when response_time is set;
     # FailedMonitoringDataFactory produces a row with a high response_time, so
