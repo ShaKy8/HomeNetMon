@@ -274,7 +274,7 @@ def get_application_info() -> Dict[str, Any]:
         'description': 'Comprehensive Home Network Monitoring Solution',
         'author': BUILD_AUTHOR,
         'license': 'MIT License',
-        'repository': 'https://github.com/homeNetMon/homeNetMon',
+        'repository': 'https://github.com/ShaKy8/HomeNetMon',
         'documentation': 'Built-in help system and contextual guides',
         'features': [
             'Real-time Device Monitoring',

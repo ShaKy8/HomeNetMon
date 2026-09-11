@@ -693,5 +693,5 @@
 {% endblock %}
 
 {% block extra_js %}
-<script src="{{ url_for('static', filename='js/dashboard-page.js') }}"></script>
+<script src="{{ url_for('static', filename='js/dashboard-page.js') }}?v={{ app_version }}"></script>
 {% endblock %}

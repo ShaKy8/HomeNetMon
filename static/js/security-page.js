@@ -2,76 +2,12 @@
     let securityCharts = {};
     let currentTimeFilter = 24; // Default 24 hours
 
-    // Toast notification function
-    function showToast(message, type = 'info') {
-        // Create toast container if it doesn't exist
-        let toastContainer = document.getElementById('toast-container');
-        if (!toastContainer) {
-            toastContainer = document.createElement('div');
-            toastContainer.id = 'toast-container';
-            toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
-            toastContainer.style.zIndex = '1055';
-            document.body.appendChild(toastContainer);
-        }
-
-        // Create toast element
-        const toastEl = document.createElement('div');
-        toastEl.className = `toast align-items-center text-bg-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'primary'} border-0`;
-        toastEl.setAttribute('role', 'alert');
-        toastEl.innerHTML = `
-            <div class="d-flex">
-                <div class="toast-body">
-                    ${escapeHtml(message)}
-                </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button>
-            </div>
-        `;
-
-        toastContainer.appendChild(toastEl);
-
-        // Initialize and show toast
-        const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
-        toast.show();
-
-        // Remove toast element after it's hidden
-        toastEl.addEventListener('hidden.bs.toast', function () {
-            toastEl.remove();
-        });
-    }
-
-    // CSRF Token Helper Functions
-    function getCSRFToken() {
-        // Try meta tag first
-        const metaToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
-        if (metaToken) return metaToken;
-
-        // Fallback to cookie
-        return document.cookie
-            .split('; ')
-            .find(row => row.startsWith('csrf_token='))
-            ?.split('=')[1];
-    }
-
+    // csrf-handler.js adds X-CSRF-Token to every unsafe fetch; only the content type is needed here.
     function getHeaders(additionalHeaders = {}) {
-        const headers = {
-            'Content-Type': 'application/json',
-            ...additionalHeaders
-        };
-
-        const csrfToken = getCSRFToken();
-        if (csrfToken) {
-            headers['X-CSRF-Token'] = csrfToken;
-        }
-
-        return headers;
+        return { 'Content-Type': 'application/json', ...additionalHeaders };
     }
 
     document.addEventListener('DOMContentLoaded', function() {
-        // Debug CSRF token
-        console.log('CSRF Token from meta:', document.querySelector('meta[name="csrf-token"]')?.getAttribute('content'));
-        console.log('CSRF Token from cookie:', document.cookie.split('; ').find(row => row.startsWith('csrf_token=')));
-        console.log('Final CSRF Token:', getCSRFToken());
-
         // Initialize Bootstrap tooltips
         const tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
         const tooltipList = tooltipTriggerList.map(function (tooltipTriggerEl) {
@@ -89,6 +25,9 @@
         document.getElementById('run-security-scan').addEventListener('click', runNetworkScan);
         document.getElementById('stop-security-scan').addEventListener('click', stopNetworkScan);
         document.getElementById('security-settings-form').addEventListener('submit', updateSecuritySettings);
+        loadSecuritySettings();
+        const ackAll = document.getElementById('acknowledge-all-alerts');
+        if (ackAll) ackAll.addEventListener('click', acknowledgeAllSecurityAlerts);
 
         // Time filter buttons
         document.querySelectorAll('.time-filter').forEach(btn => {
@@ -110,24 +49,6 @@
         // Auto-refresh every 60 seconds
         setInterval(loadSecurityData, 60000);
 
-        // Re-initialize tooltips after dynamic content updates
-        document.addEventListener('DOMContentLoaded', function() {
-            const observer = new MutationObserver(function(mutations) {
-                mutations.forEach(function(mutation) {
-                    if (mutation.addedNodes.length > 0) {
-                        // Re-initialize tooltips for new elements
-                        const newTooltips = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]:not([data-bs-original-title])'));
-                        newTooltips.forEach(function (tooltipTriggerEl) {
-                            new bootstrap.Tooltip(tooltipTriggerEl, {
-                                trigger: 'hover focus',
-                                delay: { "show": 500, "hide": 100 }
-                            });
-                        });
-                    }
-                });
-            });
-            observer.observe(document.body, { childList: true, subtree: true });
-        });
     });
 
     async function checkScanStatus() {
@@ -1563,24 +1484,59 @@
         }
     }
 
+    const SECURITY_SETTING_KEYS = {
+        'scan-interval': 'security_scan_interval_hours',
+        'top-ports': 'security_top_ports',
+        'service-detection': 'security_service_detection',
+        'version-detection': 'security_version_detection'
+    };
+
+    async function loadSecuritySettings() {
+        try {
+            const cfg = await apiRequest('/api/config');
+            const db = cfg.database_config || {};
+            const val = (key) => (db[key] && db[key].value !== undefined) ? String(db[key].value) : null;
+            const hours = val('security_scan_interval_hours');
+            if (hours) document.getElementById('scan-interval').value = hours;
+            const ports = val('security_top_ports');
+            if (ports) document.getElementById('top-ports').value = ports;
+            const svc = val('security_service_detection');
+            if (svc !== null) document.getElementById('service-detection').checked = svc === 'true';
+            const ver = val('security_version_detection');
+            if (ver !== null) document.getElementById('version-detection').checked = ver === 'true';
+        } catch (error) {
+            console.error('Could not load security settings:', error);
+        }
+    }
+
     async function updateSecuritySettings(event) {
         event.preventDefault();
-
+        const values = {
+            'scan-interval': String(parseInt(document.getElementById('scan-interval').value, 10)),
+            'top-ports': String(parseInt(document.getElementById('top-ports').value, 10)),
+            'service-detection': document.getElementById('service-detection').checked ? 'true' : 'false',
+            'version-detection': document.getElementById('version-detection').checked ? 'true' : 'false'
+        };
         try {
-            const settings = {
-                scan_interval: parseInt(document.getElementById('scan-interval').value) * 3600, // Convert to seconds
-                top_ports: parseInt(document.getElementById('top-ports').value),
-                service_detection: document.getElementById('service-detection').checked,
-                version_detection: document.getElementById('version-detection').checked
-            };
-
-            // For now, just show a success message
-            // In production, this would update the scanner configuration
-            showToast('Security settings updated successfully', 'success');
-
+            for (const [id, key] of Object.entries(SECURITY_SETTING_KEYS)) {
+                await apiRequest(`/api/config/${key}`, { method: 'PUT', body: { value: values[id] } });
+            }
+            showToast('Security settings saved; they apply from the next scan', 'success');
         } catch (error) {
             console.error('Error updating settings:', error);
-            showToast('Error updating security settings', 'error');
+            showToast(`Security settings not saved: ${error.message}`, 'error');
+        }
+    }
+
+    async function acknowledgeAllSecurityAlerts() {
+        if (!confirm('Acknowledge every open security alert?')) return;
+        try {
+            const result = await apiRequest('/api/monitoring/alerts/acknowledge-all',
+                { method: 'POST', body: { alert_type_prefix: 'security_', acknowledged_by: 'security_page' } });
+            showToast(result.message || 'Security alerts acknowledged', 'success');
+            loadSecurityData();
+        } catch (error) {
+            showToast(`Could not acknowledge alerts: ${error.message}`, 'error');
         }
     }
 
@@ -1602,157 +1558,6 @@
     }
 
     // Alert Management Functions
-    function toggleAlertFilters() {
-        const filtersDiv = document.getElementById('alert-filters');
-        const button = document.getElementById('filter-alerts-btn');
-
-        if (filtersDiv.style.display === 'none') {
-            filtersDiv.style.display = 'block';
-            button.classList.add('btn-primary');
-            button.classList.remove('btn-outline-primary');
-        } else {
-            filtersDiv.style.display = 'none';
-            button.classList.remove('btn-primary');
-            button.classList.add('btn-outline-primary');
-        }
-    }
-
-    function clearAlertFilters() {
-        document.getElementById('severity-filter').value = '';
-        document.getElementById('type-filter').value = '';
-        document.getElementById('status-filter').value = '';
-        applyAlertFilters();
-    }
-
-    function handleAlertSelection(event) {
-        const alertId = parseInt(event.target.value);
-
-        if (event.target.checked) {
-            selectedAlerts.add(alertId);
-        } else {
-            selectedAlerts.delete(alertId);
-        }
-
-        updateBulkActionsBar();
-        updateSelectAllCheckbox();
-    }
-
-    function toggleSelectAllAlerts(event) {
-        const checkboxes = document.querySelectorAll('.alert-checkbox');
-
-        checkboxes.forEach(checkbox => {
-            checkbox.checked = event.target.checked;
-            const alertId = parseInt(checkbox.value);
-
-            if (event.target.checked) {
-                selectedAlerts.add(alertId);
-            } else {
-                selectedAlerts.delete(alertId);
-            }
-        });
-
-        updateBulkActionsBar();
-    }
-
-    function updateSelectAllCheckbox() {
-        const selectAllCheckbox = document.getElementById('select-all-alerts');
-        const checkboxes = document.querySelectorAll('.alert-checkbox');
-
-        if (checkboxes.length === 0) {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = false;
-        } else if (selectedAlerts.size === checkboxes.length) {
-            selectAllCheckbox.checked = true;
-            selectAllCheckbox.indeterminate = false;
-        } else if (selectedAlerts.size > 0) {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = true;
-        } else {
-            selectAllCheckbox.checked = false;
-            selectAllCheckbox.indeterminate = false;
-        }
-    }
-
-    function updateBulkActionsBar() {
-        const bulkActionsBar = document.getElementById('bulk-actions-bar');
-        const selectedCount = document.getElementById('selected-count');
-
-        if (selectedAlerts.size > 0) {
-            bulkActionsBar.style.display = 'block';
-            selectedCount.textContent = selectedAlerts.size;
-        } else {
-            bulkActionsBar.style.display = 'none';
-        }
-    }
-
-    function clearAlertSelection() {
-        selectedAlerts.clear();
-        document.querySelectorAll('.alert-checkbox').forEach(checkbox => {
-            checkbox.checked = false;
-        });
-        updateBulkActionsBar();
-        updateSelectAllCheckbox();
-    }
-
-    async function bulkAcknowledgeAlerts() {
-        if (selectedAlerts.size === 0) return;
-
-        try {
-            const promises = Array.from(selectedAlerts).map(alertId =>
-                fetch(`/api/monitoring/alerts/${alertId}/acknowledge`, {
-                    method: 'POST',
-                    headers: getHeaders()
-                })
-            );
-
-            await Promise.all(promises);
-
-            showToast(`Successfully acknowledged ${selectedAlerts.size} alert${selectedAlerts.size > 1 ? 's' : ''}`, 'success');
-
-            // Refresh alerts and clear selection
-            clearAlertSelection();
-            loadSecurityAlerts();
-
-        } catch (error) {
-            console.error('Error acknowledging alerts:', error);
-            showToast('Error acknowledging selected alerts', 'error');
-        }
-    }
-
-    async function acknowledgeAllVisibleAlerts() {
-        const unacknowledgedAlerts = filteredAlerts.filter(alert => !alert.acknowledged);
-
-        if (unacknowledgedAlerts.length === 0) {
-            showToast('No unacknowledged alerts to process', 'info');
-            return;
-        }
-
-        if (!confirm(`Are you sure you want to acknowledge all ${unacknowledgedAlerts.length} visible alert${unacknowledgedAlerts.length > 1 ? 's' : ''}?`)) {
-            return;
-        }
-
-        try {
-            const promises = unacknowledgedAlerts.map(alert =>
-                fetch(`/api/monitoring/alerts/${alert.id}/acknowledge`, {
-                    method: 'POST',
-                    headers: getHeaders()
-                })
-            );
-
-            await Promise.all(promises);
-
-            showToast(`Successfully acknowledged ${unacknowledgedAlerts.length} alert${unacknowledgedAlerts.length > 1 ? 's' : ''}`, 'success');
-
-            // Refresh alerts
-            loadSecurityAlerts();
-
-        } catch (error) {
-            console.error('Error acknowledging all alerts:', error);
-            showToast('Error acknowledging alerts', 'error');
-        }
-    }
-
-    // Security Education Modal
     function showSecurityGuideModal() {
         const modalHtml = `
             <div class="modal fade" id="securityGuideModal" tabindex="-1">
@@ -1833,14 +1638,3 @@
     }
 
     // Debounce utility function
-    function debounce(func, wait) {
-        let timeout;
-        return function executedFunction(...args) {
-            const later = () => {
-                clearTimeout(timeout);
-                func(...args);
-            };
-            clearTimeout(timeout);
-            timeout = setTimeout(later, wait);
-        };
-    }

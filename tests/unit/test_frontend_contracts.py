@@ -227,3 +227,67 @@ class TestPhase1Fixes:
     def test_dashboard_hero_reads_shared_summary(self):
         js = (ROOT / 'static/js/dashboard-page.js').read_text()
         assert "fetch('/api/monitoring/summary')" in js
+
+
+class TestPhase6Cleanup:
+
+    def test_one_toast_and_debounce_implementation(self):
+        clones = []
+        for path in ROOT.glob('static/js/*.js'):
+            if path.name == 'ui-feedback.js':
+                continue
+            js = path.read_text()
+            if 'function debounce(' in js or 'toastContainer.appendChild' in js:
+                clones.append(path.name)
+        assert clones == []
+        assert 'window.debounce = debounce' in (ROOT / 'static/js/ui-feedback.js').read_text()
+
+    def test_no_page_script_hand_rolls_csrf(self):
+        for path in ROOT.glob('static/js/*.js'):
+            if path.name == 'csrf-handler.js':
+                continue
+            assert 'csrf_token=' not in path.read_text(), path.name
+
+    @pytest.mark.parametrize('path', ['templates/dashboard.html', 'templates/security.html'])
+    def test_page_scripts_carry_cache_buster(self, path):
+        html = (ROOT / path).read_text()
+        for line in html.splitlines():
+            if "url_for('static', filename='js/" in line:
+                assert 'app_version' in line, line
+
+    def test_cdn_assets_are_pinned(self):
+        assert 'chart.js@4.4.1' in (ROOT / 'templates/base_beautiful.html').read_text()
+        assert 'd3@7.9.0' in (ROOT / 'templates/topology.html').read_text()
+
+    def test_no_stale_version_strings(self, client):
+        for path in ('/about', '/settings'):
+            html = client.get(path).get_data(as_text=True)
+            assert 'v2.0.0' not in html and 'v2.0<' not in html and 'your-repo' not in html, path
+            assert 'v2.' in html
+
+    def test_topology_dead_controls_are_gone(self, client):
+        html = client.get('/network-map').get_data(as_text=True)
+        assert 'ping-by-type' not in html and 'ping-export-results' not in html
+        assert 'High Traffic' not in html and 'Gateway dependency' in html
+
+    def test_security_settings_persist_through_config_api(self, client, app, db_session):
+        from models import Configuration
+        token = _token(client)
+        for key, value in (('security_scan_interval_hours', '12'), ('security_top_ports', '200'),
+                           ('security_service_detection', 'false')):
+            r = client.put(f'/api/config/{key}', json={'value': value}, headers={'X-CSRF-Token': token})
+            assert r.status_code == 200, (key, r.get_json())
+        with app.app_context():
+            assert Configuration.get_value('security_scan_interval_hours') == '12'
+        r = client.put('/api/config/security_top_ports', json={'value': '5'}, headers={'X-CSRF-Token': token})
+        assert r.status_code == 400
+
+    def test_acknowledge_all_accepts_a_type_prefix(self, client, db_session, device):
+        from models import Alert, db
+        db.session.add_all([Alert(device_id=device.id, alert_type='security_new_service', severity='low', message='a'),
+                            Alert(device_id=device.id, alert_type='device_down', severity='warning', message='b')])
+        db.session.commit()
+        r = client.post('/api/monitoring/alerts/acknowledge-all', json={'alert_type_prefix': 'security_'},
+                        headers={'X-CSRF-Token': _token(client)})
+        assert r.status_code == 200 and r.get_json()['count'] == 1
+        assert Alert.query.filter_by(alert_type='device_down').first().acknowledged is False

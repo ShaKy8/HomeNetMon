@@ -225,7 +225,7 @@
 <div class="page-header">
     <h1 class="page-title">About HomeNetMon</h1>
     <p class="page-subtitle">Comprehensive Home Network Monitoring Solution</p>
-    <div class="page-version">v2.0.0</div>
+    <div class="page-version">v{{ app_version }}</div>
 </div>
 
 <!-- SHAKY8 Logo Hero Section -->
@@ -234,6 +234,17 @@
         <img src="{{ url_for('static', filename='images/shaky8-logo.jpg') }}?v=20250830fix" alt="SHAKY8" height="200" width="200" class="mb-4 shaky8-logo">
         <h2 class="text-gradient mb-3">SHAKY8 HomeNetMon</h2>
         <p class="mb-0" style="opacity: 0.8;">Professional-grade network monitoring for home and small business environments</p>
+    </div>
+</div>
+
+<!-- Service health (background threads) -->
+<div class="modern-card mb-4">
+    <div class="card-header">
+        <h3><i class="bi bi-heart-pulse"></i> Service Health</h3>
+    </div>
+    <div class="card-body">
+        <p class="mb-2" id="thread-health-summary">Loading...</p>
+        <ul class="list-unstyled mb-0" id="thread-health"></ul>
     </div>
 </div>
 
@@ -249,7 +260,7 @@
                     <h5 class="mb-3">Version Information</h5>
                     <div class="mb-2">
                         <strong>Version:</strong>
-                        <span class="badge bg-success ms-2" id="version-info">v2.0.0</span>
+                        <span class="badge bg-success ms-2" id="version-info">v{{ app_version }}</span>
                     </div>
                     <div class="mb-2">
                         <strong>Build:</strong>
@@ -317,7 +328,7 @@
                     </div>
                     <div class="stat-item">
                         <div class="stat-value" id="app-uptime">Loading...</div>
-                        <div class="stat-label">Uptime</div>
+                        <div class="stat-label">Host uptime</div>
                     </div>
                 </div>
             </div>
@@ -370,7 +381,35 @@
 // Load system information
 document.addEventListener('DOMContentLoaded', function() {
     loadSystemInfo();
+    loadThreadHealth();
 });
+
+function loadThreadHealth() {
+    fetch('/api/system/health')
+        .then(response => response.json())
+        .then(data => {
+            const threads = data.threads || {};
+            const names = Object.keys(threads).sort();
+            const stale = names.filter(n => threads[n].stale);
+            const summary = document.getElementById('thread-health-summary');
+            summary.textContent = stale.length
+                ? `${stale.length} of ${names.length} background threads are stale: ${stale.join(', ')}`
+                : `All ${names.length} background threads are alive.`;
+            summary.className = stale.length ? 'mb-2 text-danger' : 'mb-2 text-success';
+            const list = document.getElementById('thread-health');
+            list.innerHTML = '';
+            names.forEach(name => {
+                const t = threads[name];
+                const li = document.createElement('li');
+                const ago = t.last_heartbeat_ago_s === null || t.last_heartbeat_ago_s === undefined
+                    ? 'no heartbeat yet' : `${Math.round(t.last_heartbeat_ago_s)} s ago`;
+                li.textContent = `${name}: ${t.stale ? 'STALE' : (t.alive ? 'alive' : 'not running')} (${ago})`;
+                li.className = t.stale ? 'text-danger' : '';
+                list.appendChild(li);
+            });
+        })
+        .catch(() => { document.getElementById('thread-health-summary').textContent = 'Health endpoint unavailable'; });
+}
 
 function loadSystemInfo() {
     fetch('/api/system/info')

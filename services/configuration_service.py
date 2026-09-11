@@ -132,6 +132,22 @@ class ConfigurationService:
                 validator=self._validate_discord_webhook_url,
                 error_message="Discord webhook URL must look like https://discord.com/api/webhooks/..."
             ),
+            'security_scan_interval_hours': ConfigValidationRule(
+                validator=lambda v: self._validate_integer_range(v, 1, 168),
+                error_message="Security scan interval must be between 1 and 168 hours"
+            ),
+            'security_top_ports': ConfigValidationRule(
+                validator=lambda v: self._validate_integer_range(v, 10, 65535),
+                error_message="Top ports must be between 10 and 65535"
+            ),
+            'security_service_detection': ConfigValidationRule(
+                validator=self._validate_boolean,
+                error_message="security_service_detection must be true or false"
+            ),
+            'security_version_detection': ConfigValidationRule(
+                validator=self._validate_boolean,
+                error_message="security_version_detection must be true or false"
+            ),
             'scan_excluded_ips': ConfigValidationRule(
                 validator=self._validate_ip_list,
                 error_message="Excluded IPs must be a comma-separated list of IP addresses"

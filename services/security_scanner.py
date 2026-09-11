@@ -252,6 +252,23 @@ class NetworkSecurityScanner:
             overall_progress = device_progress + (current_device_progress / self.current_scan['total_devices'])
             self.current_scan['progress'] = min(100, int(overall_progress * 100))
 
+    def reload_config(self):
+        """Apply the Settings-page security keys (must run inside an app context)."""
+        try:
+            hours = int(Configuration.get_value('security_scan_interval_hours', '') or 0)
+            if hours > 0:
+                self.scan_interval = hours * 3600
+            top_ports = int(Configuration.get_value('security_top_ports', '') or 0)
+            if top_ports > 0:
+                self.scan_config['top_ports'] = top_ports
+            for key, setting in (('service_detection', 'security_service_detection'),
+                                 ('version_detection', 'security_version_detection')):
+                value = Configuration.get_value(setting, '')
+                if value in ('true', 'false'):
+                    self.scan_config[key] = value == 'true'
+        except Exception as e:
+            logger.warning(f"Could not apply security settings: {e}")
+
     def run_security_scan(self):
         """Run a complete security scan of the network"""
         logger.info("Starting network security scan")
@@ -271,6 +288,7 @@ class NetworkSecurityScanner:
 
         try:
             with self.app.app_context():
+                self.reload_config()
                 # Check if printer exclusion is enabled (default: true)
                 exclude_printers = Configuration.get_value('exclude_printers_from_security_scan', 'true').lower() == 'true'
 

@@ -6,6 +6,7 @@
  *   showSuccess(message) / showError(message)
  *   showGlobalLoading(message) / hideGlobalLoading()
  *   apiRequest(url, {method, body})  -> fetch + JSON; throws Error(message) on !ok
+ *   debounce(fn, wait)               -> trailing-edge debounce
  *
  * A page may define its own function with one of these names; a function
  * declaration in a page script wins over these assignments, which is the
@@ -117,7 +118,16 @@
         return data;
     }
 
-    window.HNM = { escapeHtml, showToast, showSuccess, showError, showGlobalLoading, hideGlobalLoading, apiRequest };
+    function debounce(func, wait) {
+        let timeout;
+        return function debounced(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), wait);
+        };
+    }
+
+    window.HNM = { escapeHtml, showToast, showSuccess, showError, showGlobalLoading, hideGlobalLoading, apiRequest, debounce };
+    window.debounce = debounce;
     window.escapeHtml = escapeHtml;
     window.showToast = showToast;
     window.showSuccess = showSuccess;

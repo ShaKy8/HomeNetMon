@@ -18,19 +18,6 @@ let filters = {
 };
 const esc = (v) => (window.escapeHtml ? window.escapeHtml(v) : String(v == null ? '' : v));
 
-// Utility: Debounce function for performance
-function debounce(func, wait) {
-    let timeout;
-    return function executedFunction(...args) {
-        const later = () => {
-            clearTimeout(timeout);
-            func(...args);
-        };
-        clearTimeout(timeout);
-        timeout = setTimeout(later, wait);
-    };
-}
-
 // Page Visibility API state
 let pollingInterval = null;
 let isPageVisible = true;
@@ -573,39 +560,11 @@ async function scanNetwork() {
     }
 
     try {
-        // Get CSRF token from multiple sources
-        let csrfToken = null;
-
-        // Try meta tag first
-        const metaTag = document.querySelector('meta[name="csrf-token"]');
-        if (metaTag) {
-            csrfToken = metaTag.getAttribute('content');
-        }
-
-        // If not found, try cookie
-        if (!csrfToken) {
-            const cookies = document.cookie.split(';');
-            for (let cookie of cookies) {
-                const [name, value] = cookie.trim().split('=');
-                if (name === 'csrf_token') {
-                    csrfToken = value;
-                    break;
-                }
-            }
-        }
-
-
-        const headers = {};
-
-        // Add CSRF token if available
-        if (csrfToken) {
-            headers['X-CSRF-Token'] = csrfToken;
-        }
-
-
+        // csrf-handler.js adds X-CSRF-Token to every unsafe fetch
         const response = await fetch('/api/devices/scan-now', {
             method: 'POST',
-            headers: headers
+            headers: { 'Content-Type': 'application/json' },
+            body: '{}'
         });
 
         const data = await response.json();
@@ -790,52 +749,7 @@ function completeScanProgress(devicesFound = 0, newDevices = 0) {
 }
 
 function showNotification(message, type = 'info') {
-    // Create toast container if it doesn't exist
-    let toastContainer = document.getElementById('toast-container');
-    if (!toastContainer) {
-        toastContainer = document.createElement('div');
-        toastContainer.id = 'toast-container';
-        toastContainer.className = 'toast-container position-fixed top-0 end-0 p-3';
-        toastContainer.style.zIndex = '1055';
-        document.body.appendChild(toastContainer);
-    }
-
-    // Map type to Bootstrap color class
-    const typeMap = {
-        'success': 'success',
-        'error': 'danger',
-        'warning': 'warning',
-        'info': 'primary'
-    };
-    const bgClass = typeMap[type] || 'primary';
-
-    // Create toast element with escaped message
-    const toastEl = document.createElement('div');
-    toastEl.className = `toast align-items-center text-bg-${bgClass} border-0`;
-    toastEl.setAttribute('role', 'alert');
-    toastEl.setAttribute('aria-live', 'assertive');
-    toastEl.setAttribute('aria-atomic', 'true');
-
-    const toastBody = document.createElement('div');
-    toastBody.className = 'd-flex';
-    toastBody.innerHTML = `
-        <div class="toast-body"></div>
-        <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-    `;
-    // Set message text safely (prevents XSS)
-    toastBody.querySelector('.toast-body').textContent = message;
-    toastEl.appendChild(toastBody);
-
-    toastContainer.appendChild(toastEl);
-
-    // Initialize and show toast using Bootstrap
-    const toast = new bootstrap.Toast(toastEl, { delay: 5000 });
-    toast.show();
-
-    // Remove toast element after it's hidden
-    toastEl.addEventListener('hidden.bs.toast', function() {
-        toastEl.remove();
-    });
+    showToast(message, type);   // shared implementation in ui-feedback.js
 }
 
 // Scan status indicator functions

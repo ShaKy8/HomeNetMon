@@ -296,6 +296,20 @@ document.addEventListener('keydown', function(e) {
         document.getElementById('global-search').focus();
     }
 
+    // Ctrl+R reloads the device list, Ctrl+N starts a scan (dashboard only)
+    if ((e.ctrlKey || e.metaKey) && !e.altKey && !typing) {
+        if (e.key.toLowerCase() === 'r' && typeof loadDevices === 'function') {
+            e.preventDefault();
+            loadDevices();
+            return;
+        }
+        if (e.key.toLowerCase() === 'n' && typeof scanNetwork === 'function') {
+            e.preventDefault();
+            scanNetwork();
+            return;
+        }
+    }
+
     // Clear search on 'Escape' key
     if (e.key === 'Escape') {
         const searchInput = document.getElementById('global-search');

@@ -577,7 +577,7 @@
                     <div class="col-md-6">
                         <div class="info-card">
                             <h6>Application Version</h6>
-                            <p class="mb-0">HomeNetMon v2.0</p>
+                            <p class="mb-0">HomeNetMon v{{ app_version }}</p>
                         </div>
                     </div>
                     <div class="col-md-6">
@@ -633,7 +633,7 @@
             </div>
 
             <div class="settings-actions">
-                <a href="https://github.com/your-repo/homenetmon" class="btn-modern" target="_blank">
+                <a href="https://github.com/ShaKy8/HomeNetMon" class="btn-modern" target="_blank">
                     <i class="bi bi-github"></i> View on GitHub
                 </a>
                 <button type="button" class="btn-modern btn-primary" onclick="checkForUpdates()">
@@ -742,7 +742,7 @@ async function saveNetworkSettings() {
     }
 }
 function resetNetworkSettings() {
-    setValue('network-range', '192.168.1.0/24');
+    setValue('network-range', document.body.dataset.defaultNetworkRange || '192.168.1.0/24');
     setValue('ping-interval', '600');
     setValue('scan-interval', '86400');
 }

@@ -265,7 +265,11 @@ def acknowledge_all_alerts():
         data = request.get_json() or {}
         acknowledged_by = data.get('acknowledged_by', 'web_user')
 
-        acknowledged_count = Alert.query.filter_by(acknowledged=False, resolved=False).update(
+        query = Alert.query.filter_by(acknowledged=False, resolved=False)
+        prefix = data.get('alert_type_prefix')
+        if prefix:
+            query = query.filter(Alert.alert_type.like(f"{prefix}%"))
+        acknowledged_count = query.update(
             {'acknowledged': True, 'acknowledged_at': datetime.utcnow(), 'acknowledged_by': acknowledged_by},
             synchronize_session=False,
         )

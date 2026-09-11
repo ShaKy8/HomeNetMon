@@ -425,6 +425,10 @@ def create_app():
 
 
     # Web routes (protected)
+    @app.context_processor
+    def inject_defaults():
+        return {'default_network_range': Config.NETWORK_RANGE}
+
     @app.route('/')
     def dashboard():
         """Clean, fast-loading dashboard focused on network health overview"""

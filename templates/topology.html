@@ -2,26 +2,9 @@
 
 {% block title %}Network Map - HomeNetMon{% endblock %}
 
-{% block navbar %}
-<!-- Override standard navigation with topology-specific header -->
-<nav class="top-nav">
-    <div class="nav-brand">
-        <h2>HomeNetMon</h2>
-    </div>
-    <div class="nav-links">
-        <a href="/" class="nav-link">Dashboard</a>
-        <a href="/devices" class="nav-link">Devices</a>
-        <a href="/network-map" class="nav-link active">Network Map</a>
-        <a href="/security" class="nav-link">Security</a>
-        <a href="/analytics" class="nav-link">Reports</a>
-        <a href="/settings" class="nav-link">Settings</a>
-    </div>
-</nav>
-{% endblock %}
-
 {% block extra_head %}
 <!-- D3.js Library for Network Visualization -->
-<script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+<script src="https://cdn.jsdelivr.net/npm/d3@7.9.0/dist/d3.min.js"></script>
 {% endblock %}
 
 {% block extra_css %}
@@ -1042,16 +1025,6 @@ body::before {
                             <li><a class="dropdown-item" href="#" id="ping-all-devices">
                                 <i class="bi bi-broadcast me-2"></i>All Devices
                             </a></li>
-                            <li><hr class="dropdown-divider"></li>
-                            <li><a class="dropdown-item" href="#" id="ping-by-type-router">
-                                <i class="bi bi-router me-2"></i>Routers
-                            </a></li>
-                            <li><a class="dropdown-item" href="#" id="ping-by-type-computer">
-                                <i class="bi bi-pc-display me-2"></i>Computers
-                            </a></li>
-                            <li><a class="dropdown-item" href="#" id="ping-by-type-mobile">
-                                <i class="bi bi-phone me-2"></i>Mobile Devices
-                            </a></li>
                         </ul>
                     </div>
 
@@ -1116,10 +1089,9 @@ body::before {
                         <div class="col-6">
                             <h6>Connections</h6>
                             <ul class="list-unstyled">
-                                <li><span class="me-2">━━━</span>Direct Link</li>
-                                <li><span class="me-2">┅┅┅</span>Wireless</li>
-                                <li><span class="me-2">═══</span>High Traffic</li>
-                                <li><span class="me-2">───</span>Low Traffic</li>
+                                <li><span class="me-2">━━━</span>Gateway dependency</li>
+                                <li><span class="me-2">┅┅┅</span>Similar latency (peers)</li>
+                                <li><span class="me-2">───</span>Subnet gateway</li>
                             </ul>
                         </div>
                     </div>
@@ -1196,9 +1168,6 @@ body::before {
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-                <button type="button" class="btn btn-primary-modern" id="ping-export-results" style="display: none;">
-                    <i class="bi bi-download me-2"></i>Export Results
-                </button>
             </div>
         </div>
     </div>
@@ -2269,7 +2238,6 @@ class NetworkTopology {
         d3.select('#ping-progress-bar').style('width', '0%');
         d3.select('#ping-results').html('');
         d3.select('#ping-summary').style('display', 'none');
-        d3.select('#ping-export-results').style('display', 'none');
     }
 
     updatePingProgress(current, total) {
@@ -2299,7 +2267,6 @@ class NetworkTopology {
 
     completePingOperation(total) {
         d3.select('#ping-summary').style('display', 'block');
-        d3.select('#ping-export-results').style('display', 'inline-block');
 
         const results = d3.selectAll('#ping-results .badge');
         const successful = results.filter(function() { return this.classList.contains('bg-success'); }).size();
