@@ -158,11 +158,9 @@ def create_app():
     from api.anomaly import anomaly_bp
     from api.security import security_bp
     from api.notifications import notifications_bp
-    from api.automation import automation_bp
     from api.config_management import config_management_bp
     from api.system import system_bp
     from api.health import health_bp
-    from api.escalation import escalation_bp
     from api.performance import performance_bp
     from api.performance_optimization import performance_optimization_bp
     from api.rate_limit_admin import rate_limit_admin_bp
@@ -178,10 +176,8 @@ def create_app():
     app.register_blueprint(anomaly_bp, url_prefix='/api/anomaly')
     app.register_blueprint(security_bp, url_prefix='/api/security')
     app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
-    app.register_blueprint(automation_bp, url_prefix='/api/automation')
     app.register_blueprint(system_bp, url_prefix='/api/system')
     app.register_blueprint(health_bp, url_prefix='/api/health')
-    app.register_blueprint(escalation_bp, url_prefix='/api/escalation')
     app.register_blueprint(performance_bp, url_prefix='/api/performance')
     app.register_blueprint(performance_optimization_bp, url_prefix='/api/performance-optimization')
     app.register_blueprint(rate_limit_admin_bp, url_prefix='/api/rate-limit')
@@ -214,16 +210,11 @@ def create_app():
     security_scanner.app = app
 
     # Initialize rule engine service
-    from services.rule_engine import rule_engine_service
-    rule_engine_service.app = app
 
     # Initialize configuration service
     from services.configuration_service import configuration_service
     configuration_service.app = app
 
-    # Initialize escalation service
-    from services.escalation_service import escalation_service
-    escalation_service.init_app(app)
 
     # Initialize rate limiter service for production security
     try:
@@ -252,9 +243,7 @@ def create_app():
     app.speed_test_service = speed_test_service
     app.anomaly_detection_service = anomaly_detection_service
     app.security_scanner = security_scanner
-    app.rule_engine_service = rule_engine_service
     app.configuration_service = configuration_service
-    app.escalation_service = escalation_service
     app.rate_limiter = rate_limiter
     app.performance_monitor = performance_monitor
 
@@ -355,22 +344,6 @@ def create_app():
             name='BandwidthMonitor'
         )
         bandwidth_thread.start()
-
-        # Start rule engine service
-        rule_engine_thread = threading.Thread(
-            target=rule_engine_service.start_monitoring,
-            daemon=True,
-            name='RuleEngine'
-        )
-        rule_engine_thread.start()
-
-        # Start escalation service
-        escalation_thread = threading.Thread(
-            target=escalation_service.start_monitoring,
-            daemon=True,
-            name='EscalationService'
-        )
-        escalation_thread.start()
 
         # Start performance monitor service
         performance_thread = threading.Thread(
@@ -616,26 +589,6 @@ def create_app():
             return render_template('security.html')
         except Exception as e:
             return f'<html><body><h1>Template Error</h1><p>{str(e)}</p></body></html>', 500
-
-    @app.route('/escalation-rules')
-    def escalation_rules():
-        """Escalation rules management page"""
-        return render_template('escalation_rules.html')
-
-    @app.route('/escalation-rules/new')
-    def new_escalation_rule():
-        """Create new escalation rule page"""
-        return render_template('escalation_rule_form.html', rule_id=None)
-
-    @app.route('/escalation-rules/<int:rule_id>/edit')
-    def edit_escalation_rule(rule_id):
-        """Edit existing escalation rule page"""
-        return render_template('escalation_rule_form.html', rule_id=rule_id)
-
-    @app.route('/escalation-executions')
-    def escalation_executions():
-        """Escalation executions monitoring page"""
-        return render_template('escalation_executions.html')
 
     @app.route('/static/images/<path:filename>')
     def serve_image(filename):

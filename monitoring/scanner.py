@@ -22,7 +22,6 @@ class NetworkScanner:
         self.scan_thread = None
         self._stop_event = threading.Event()
         self.app = app
-        self.rule_engine_service = None
 
         # Configuration caching for hot-reload
         self._config_cache = {}
@@ -595,9 +594,6 @@ class NetworkScanner:
                     # Send push notifications for scan completion and new devices
                     self._send_scan_completion_notifications(len(all_devices))
 
-                    # Trigger rule engine for scan completion
-                    self._trigger_rule_engine_for_scan_completion(len(all_devices), len(self._new_devices_found))
-
                     # Emit final 100% completion
                     self._emit_scan_progress(100, 'Scan completed successfully!', len(all_devices), len(self._new_devices_found))
 
@@ -813,9 +809,6 @@ class NetworkScanner:
                 else:
                     logger.warning(f"Added new device without MAC: {ip} ({hostname or 'unknown'}) - may create duplicates")
 
-                # Trigger rule engine for new device discovery
-                self._trigger_rule_engine_for_new_device(device)
-
                 # Track new device for notifications (use MAC if available, otherwise IP)
                 device_key = mac if mac else ip
                 if device_key not in self._devices_before_scan:
@@ -961,86 +954,3 @@ class NetworkScanner:
         logger.info("Stopping network scanner")
         self._stop_event.set()
         self.is_running = False
-
-    def _trigger_rule_engine_for_new_device(self, device):
-        """Trigger rule engine evaluation for new device discovery"""
-        try:
-            # Get rule engine service from app if available
-            if self.app and hasattr(self.app, 'rule_engine_service'):
-                rule_engine_service = self.app.rule_engine_service
-
-                # Import here to avoid circular imports
-                from services.rule_engine import TriggerContext
-
-                # Create trigger context for the new device event
-                context = TriggerContext(
-                    event_type='new_device_discovered',
-                    device_id=device.id,
-                    device={
-                        'id': device.id,
-                        'display_name': device.display_name,
-                        'ip_address': device.ip_address,
-                        'mac_address': device.mac_address,
-                        'hostname': device.hostname,
-                        'vendor': device.vendor,
-                        'device_type': device.device_type,
-                        'is_monitored': device.is_monitored
-                    },
-                    metadata={
-                        'discovery_method': 'network_scan',
-                        'scan_timestamp': datetime.utcnow().isoformat()
-                    }
-                )
-
-                # Evaluate rules in background thread to avoid blocking scan processing
-                import threading
-                rule_thread = threading.Thread(
-                    target=rule_engine_service.evaluate_rules,
-                    args=(context,),
-                    daemon=True,
-                    name='RuleEngine-NewDevice'
-                )
-                rule_thread.start()
-
-                logger.debug(f"Triggered rule engine for new device discovery: {device.display_name}")
-
-        except Exception as e:
-            logger.error(f"Error triggering rule engine for new device: {e}")
-            # Don't let rule engine errors affect scan processing
-
-    def _trigger_rule_engine_for_scan_completion(self, total_devices, new_devices):
-        """Trigger rule engine evaluation for scan completion"""
-        try:
-            # Get rule engine service from app if available
-            if self.app and hasattr(self.app, 'rule_engine_service'):
-                rule_engine_service = self.app.rule_engine_service
-
-                # Import here to avoid circular imports
-                from services.rule_engine import TriggerContext
-
-                # Create trigger context for the scan completion event
-                context = TriggerContext(
-                    event_type='scan_complete',
-                    metadata={
-                        'total_devices': total_devices,
-                        'new_devices': new_devices,
-                        'scan_type': 'network',
-                        'scan_timestamp': datetime.utcnow().isoformat()
-                    }
-                )
-
-                # Evaluate rules in background thread to avoid blocking scan processing
-                import threading
-                rule_thread = threading.Thread(
-                    target=rule_engine_service.evaluate_rules,
-                    args=(context,),
-                    daemon=True,
-                    name='RuleEngine-ScanComplete'
-                )
-                rule_thread.start()
-
-                logger.debug(f"Triggered rule engine for scan completion: {total_devices} total, {new_devices} new")
-
-        except Exception as e:
-            logger.error(f"Error triggering rule engine for scan completion: {e}")
-            # Don't let rule engine errors affect scan processing

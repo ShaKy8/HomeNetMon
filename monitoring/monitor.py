@@ -31,7 +31,6 @@ class DeviceMonitor:
         self.app = app
         self.is_running = False
         self._stop_event = threading.Event()
-        self.rule_engine_service = None
 
     def get_config_value(self, key, default):
         """Get configuration value from database or use default"""
@@ -201,11 +200,6 @@ class DeviceMonitor:
                     except Exception as e:
                         # Don't let cache issues break monitoring, but log for debugging
                         logger.debug(f"Cache invalidation failed (non-critical): {e}")
-
-                    # Check for status changes and trigger rule engine
-                    current_status = device_obj.status
-                    if previous_status != current_status:
-                        self._trigger_rule_engine_for_status_change(device_obj, previous_status, current_status, response_time)
 
             # PERFORMANCE OPTIMIZATION: Emit real-time update via SocketIO with throttling
             if self.socketio and self.app:
@@ -431,15 +425,13 @@ class DeviceMonitor:
                 successful_pings = sum(1 for r in results if r['success'])
                 total_devices = len(results)
 
-                # Get active alerts count with app context
+                # Shared count definitions (services/device_counts.py); needs an app context
+                from services.device_counts import summarize
                 with self.app.app_context():
-                    from models import Alert
-                    active_alerts = Alert.query.filter_by(resolved=False).count()
+                    summary = summarize()
 
                 # PERFORMANCE OPTIMIZATION: Throttle monitoring summary updates
                 from services.websocket_throttle import websocket_throttle
-                from services.device_counts import summarize
-                summary = summarize()
                 if websocket_throttle.should_emit_global_event('monitoring_summary'):
                     self.socketio.emit('monitoring_summary', {
                         **summary,
@@ -619,61 +611,6 @@ class DeviceMonitor:
     def queue_immediate_ping(self, device_id):
         """Queue an immediate ping for a device (alias for force_monitor_device)"""
         return self.force_monitor_device(device_id)
-
-    def _trigger_rule_engine_for_status_change(self, device, previous_status, current_status, response_time):
-        """Trigger rule engine evaluation for device status changes"""
-        try:
-            # Get rule engine service from app if available
-            if self.app and hasattr(self.app, 'rule_engine_service'):
-                rule_engine_service = self.app.rule_engine_service
-
-                # Import here to avoid circular imports
-                from services.rule_engine import TriggerContext
-
-                # Create trigger context for the device status change event
-                context = TriggerContext(
-                    event_type='device_status_change',
-                    device_id=device.id,
-                    device={
-                        'id': device.id,
-                        'display_name': device.display_name,
-                        'ip_address': device.ip_address,
-                        'mac_address': device.mac_address,
-                        'hostname': device.hostname,
-                        'vendor': device.vendor,
-                        'device_type': device.device_type,
-                        'status': current_status,
-                        'is_monitored': device.is_monitored
-                    },
-                    monitoring_data={
-                        'response_time': response_time,
-                        'previous_status': previous_status,
-                        'current_status': current_status,
-                        'timestamp': datetime.utcnow().isoformat()
-                    },
-                    metadata={
-                        'status_changed_from': previous_status,
-                        'status_changed_to': current_status,
-                        'response_time_ms': response_time,
-                        'monitoring_timestamp': datetime.utcnow().isoformat()
-                    }
-                )
-
-                # Evaluate rules in background thread to avoid blocking monitoring
-                import threading
-                rule_thread = threading.Thread(
-                    target=rule_engine_service.evaluate_rules,
-                    args=(context,),
-                    daemon=True,
-                    name=f'RuleEngine-StatusChange-{device.display_name}'
-                )
-                rule_thread.start()
-
-                logger.debug(f"Triggered rule engine for status change: {device.display_name} {previous_status} -> {current_status}")
-
-        except Exception as e:
-            logger.error(f"Error triggering rule engine for status change: {e}")
-            # Don't let rule engine errors affect monitoring
 
     def _emit_chart_data_updates(self, monitoring_results):
         """Emit real-time chart data updates for the interactive chart system"""

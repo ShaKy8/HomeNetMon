@@ -38,7 +38,6 @@ class TestNetworkScannerInitialization:
         assert scanner.is_running is False
         assert scanner.is_scanning is False
         assert scanner.scan_thread is None
-        assert scanner.rule_engine_service is None
         assert isinstance(scanner._stop_event, threading.Event)
         assert isinstance(scanner._config_cache, dict)
         assert isinstance(scanner._config_versions, dict)
@@ -893,36 +892,6 @@ class TestNewDeviceNotifications:
 
 class TestNetworkScannerIntegration:
     """Test NetworkScanner integration with other components."""
-
-    @patch('monitoring.scanner.nmap.PortScanner')
-    @patch('monitoring.scanner.manuf.MacParser')
-    def test_integration_with_rule_engine(self, mock_mac_parser, mock_nmap, app, db_session):
-        """Test integration with rule engine service."""
-        scanner = NetworkScanner(app=app)
-
-        # Mock rule engine service
-        mock_rule_engine = Mock()
-        scanner.rule_engine_service = mock_rule_engine
-
-        device_info = {
-            'ip': '192.168.1.100',
-            'mac': '00:11:22:33:44:55',
-            'vendor': 'Test Vendor',
-            'hostname': 'test-device',
-            'device_type': 'computer'
-        }
-
-        with app.app_context():
-            scanner.process_discovered_device(device_info)
-
-            # Query the database for the created device
-            from models import Device
-            device = Device.query.filter_by(ip_address='192.168.1.100').first()
-            assert device is not None
-
-        # Rule engine integration is tested by setting the mock
-        # This tests the integration point
-        assert scanner.rule_engine_service == mock_rule_engine
 
     @patch('monitoring.scanner.nmap.PortScanner')
     @patch('monitoring.scanner.manuf.MacParser')

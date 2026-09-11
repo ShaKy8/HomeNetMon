@@ -21,7 +21,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))))
 
 from core.security_middleware import SecurityMiddleware
-from models import AutomationRule, RuleExecution, db
+from models import db
 from flask import Flask
 
 
@@ -96,141 +96,6 @@ class TestCSRFCookieSecurity:
                     "Must have SameSite=Strict flag"
 
 
-
-
-class TestJSONParsingErrorHandling:
-    """Tests for JSON parsing error handling in models."""
-
-    def test_automation_rule_conditions_invalid_json(self, db_session):
-        """Should catch json.JSONDecodeError when parsing invalid condition JSON."""
-        # Create automation rule with invalid JSON
-        rule = AutomationRule(
-            name='test_rule',
-            description='Test rule',
-            enabled=True,
-            condition_json='{"invalid": json}',  # Invalid JSON
-            action_json='{"action": "notify"}'
-        )
-        db_session.add(rule)
-        db_session.commit()
-
-        # Access conditions property - should not raise exception
-        conditions = rule.conditions
-
-        # Should return empty dict when JSON is invalid
-        assert conditions == {}, f"Expected empty dict for invalid JSON, got {conditions}"
-
-    def test_automation_rule_actions_invalid_json(self, db_session):
-        """Should catch json.JSONDecodeError when parsing invalid action JSON."""
-        rule = AutomationRule(
-            name='test_rule',
-            description='Test rule',
-            enabled=True,
-            condition_json='{"condition": "device_down"}',
-            action_json='not valid json at all'  # Invalid JSON
-        )
-        db_session.add(rule)
-        db_session.commit()
-
-        # Access actions property - should not raise exception
-        actions = rule.actions
-
-        # Should return empty dict when JSON is invalid
-        assert actions == {}, f"Expected empty dict for invalid JSON, got {actions}"
-
-    def test_automation_rule_conditions_empty_string(self, db_session):
-        """Should handle empty string values gracefully when parsing conditions."""
-        rule = AutomationRule(
-            name='test_rule',
-            description='Test rule',
-            enabled=True,
-            condition_json='',  # Empty string (None is not allowed due to nullable=False)
-            action_json='{"action": "notify"}'
-        )
-        db_session.add(rule)
-        db_session.commit()
-
-        # Access conditions property - should not raise exception
-        conditions = rule.conditions
-
-        # Should return empty dict when value is empty string
-        assert conditions == {}
-
-    def test_rule_execution_trigger_data_invalid_json(self, db_session):
-        """Should catch json.JSONDecodeError when parsing invalid trigger context."""
-        # First create an automation rule
-        rule = AutomationRule(
-            name='test_rule',
-            description='Test rule',
-            enabled=True,
-            condition_json='{"condition": "device_down"}',
-            action_json='{"action": "notify"}'
-        )
-        db_session.add(rule)
-        db_session.commit()
-
-        # Create rule execution with invalid trigger context JSON
-        execution = RuleExecution(
-            rule_id=rule.id,
-            executed_at=datetime.utcnow(),
-            success=True,
-            trigger_context='{"incomplete":',  # Invalid JSON
-            action_results='{"success": true}'
-        )
-        db_session.add(execution)
-        db_session.commit()
-
-        # Access trigger_data property - should not raise exception
-        trigger_data = execution.trigger_data
-
-        # Should return empty dict when JSON is invalid
-        assert trigger_data == {}
-
-    def test_rule_execution_results_invalid_json(self, db_session):
-        """Should catch json.JSONDecodeError when parsing invalid action results."""
-        rule = AutomationRule(
-            name='test_rule',
-            description='Test rule',
-            enabled=True,
-            condition_json='{"condition": "device_down"}',
-            action_json='{"action": "notify"}'
-        )
-        db_session.add(rule)
-        db_session.commit()
-
-        execution = RuleExecution(
-            rule_id=rule.id,
-            executed_at=datetime.utcnow(),
-            success=True,
-            trigger_context='{"trigger": "down"}',
-            action_results='[invalid json array'  # Invalid JSON
-        )
-        db_session.add(execution)
-        db_session.commit()
-
-        # Access results property - should not raise exception
-        results = execution.results
-
-        # Should return empty dict when JSON is invalid
-        assert results == {}
-
-    def test_json_parsing_catches_typeerror(self, db_session):
-        """Should catch TypeError in addition to JSONDecodeError."""
-        rule = AutomationRule(
-            name='test_rule',
-            description='Test rule',
-            enabled=True,
-            condition_json='{"valid": "json"}',
-            action_json='{"action": "notify"}'
-        )
-        db_session.add(rule)
-        db_session.commit()
-
-        # Mock json.loads to raise TypeError
-        with patch('json.loads', side_effect=TypeError("Mock type error")):
-            # Should not raise exception - should catch TypeError
-            conditions = rule.conditions
-            assert conditions == {}
 
 
 class TestSocketIOConfigurationValidation:
@@ -376,24 +241,6 @@ class TestSecurityMiddlewareIntegration:
 
 class TestRegressionCoverage:
     """Additional tests to ensure comprehensive coverage of security fixes."""
-
-    def test_all_json_properties_have_error_handling(self, db_session):
-        """Should verify all JSON properties in models have proper error handling."""
-        # Test AutomationRule.conditions
-        rule = AutomationRule(
-            name='test',
-            description='test',
-            enabled=True,
-            condition_json='invalid',
-            action_json='invalid'
-        )
-        db_session.add(rule)
-        db_session.commit()
-
-        # All these should return empty dict instead of raising
-        assert isinstance(rule.conditions, dict)
-        assert isinstance(rule.actions, dict)
-
 
     def test_csrf_cookie_set_on_all_get_requests(self, app, client):
         """Should set CSRF cookie on all GET requests."""

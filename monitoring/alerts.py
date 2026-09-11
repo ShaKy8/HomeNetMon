@@ -17,7 +17,6 @@ class AlertManager:
         self.app = app
         self.is_running = False
         self._stop_event = threading.Event()
-        self.rule_engine_service = None
         self.correlation_service = None
         # Optimized alert thresholds with adaptive logic
         self.alert_thresholds = {
@@ -166,9 +165,6 @@ class AlertManager:
                                 # Emit real-time update
                                 self._emit_alert_update(alert, 'created')
 
-                                # Trigger rule engine for device down event
-                                self._trigger_rule_engine_for_alert(alert, device, 'device_down')
-
                                 logger.warning(f"ALERT CREATED: Device down alert for {device.display_name} (threshold: {threshold_minutes}min, type: {device_type}, last_seen: {device.last_seen}, cutoff: {cutoff_time})")
                             else:
                                 logger.debug(f"ALERT SUPPRESSED: Device down alert for {device.display_name} due to correlation rules")
@@ -243,9 +239,6 @@ class AlertManager:
                         # Send enhanced push notification for high latency
                         self._send_high_latency_push_notification(device, avg_latency)
 
-                        # Trigger rule engine for high latency event
-                        self._trigger_rule_engine_for_alert(alert, device, 'high_latency', {'avg_latency': avg_latency})
-
                         logger.warning(f"High latency alert created for {device.display_name}")
 
             except Exception as e:
@@ -306,9 +299,6 @@ class AlertManager:
 
                             # Send dedicated device recovery push notification
                             self._send_device_recovery_push_notification(device)
-
-                            # Trigger rule engine for device recovery event
-                            self._trigger_rule_engine_for_alert(recovery_alert, device, 'device_recovery')
 
                             logger.info(f"Device recovery alert created for {device.display_name}")
 
@@ -823,54 +813,6 @@ This is an automated message from HomeNetMon.
         self._stop_event.set()
         self.is_running = False
 
-    def _trigger_rule_engine_for_alert(self, alert, device, event_type, metadata=None):
-        """Trigger rule engine evaluation for alert events"""
-        try:
-            # Get rule engine service from app if available
-            if self.app and hasattr(self.app, 'rule_engine_service'):
-                rule_engine_service = self.app.rule_engine_service
-
-                # Import here to avoid circular imports
-                from services.rule_engine import TriggerContext
-
-                # Create trigger context for the alert event
-                context = TriggerContext(
-                    event_type=f'alert_{event_type}',
-                    device_id=device.id,
-                    device={
-                        'id': device.id,
-                        'display_name': device.display_name,
-                        'ip_address': device.ip_address,
-                        'status': device.status,
-                        'device_type': device.device_type,
-                        'is_monitored': device.is_monitored
-                    },
-                    alert={
-                        'id': alert.id,
-                        'alert_type': alert.alert_type,
-                        'severity': alert.severity,
-                        'message': alert.message,
-                        'created_at': alert.created_at.isoformat()
-                    },
-                    metadata=metadata or {}
-                )
-
-                # Evaluate rules in background thread to avoid blocking alert processing
-                import threading
-                rule_thread = threading.Thread(
-                    target=rule_engine_service.evaluate_rules,
-                    args=(context,),
-                    daemon=True,
-                    name=f'RuleEngine-Alert-{event_type}'
-                )
-                rule_thread.start()
-
-                logger.debug(f"Triggered rule engine for {event_type} alert on device {device.display_name}")
-
-        except Exception as e:
-            logger.error(f"Error triggering rule engine for alert: {e}")
-            # Don't let rule engine errors affect alert processing
-
     def create_alert(self, device_id, alert_type, severity, message, subtype=None, notify=True):
         """Create an alert through the shared pipeline: dedup, suppression rules,
         correlation, priority, commit, notifications, WebSocket emit, rule engine.
@@ -904,12 +846,6 @@ This is an automated message from HomeNetMon.
             except Exception as e:
                 logger.error(f"Notification dispatch failed for alert {alert.id}: {e}")
         self._emit_alert_update(alert, 'created')
-        try:
-            device = Device.query.get(device_id)
-            if device:
-                self._trigger_rule_engine_for_alert(alert, device, alert_type)
-        except Exception as e:
-            logger.debug(f"Rule engine trigger skipped: {e}")
         return alert
 
     def _should_create_alert(self, alert_type: str, device_id: int, message: str, severity: str = 'warning') -> bool:

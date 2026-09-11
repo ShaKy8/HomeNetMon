@@ -243,26 +243,6 @@ def retry_notification(notification_id):
                     'notification': notification.to_dict()
                 })
             else:
-                # Trigger escalation for repeated failure
-                try:
-                    from flask import current_app
-                    escalation_service = current_app.escalation_service
-
-                    escalation_context = {
-                        'triggered_by_type': 'notification',
-                        'triggered_by_id': notification.id,
-                        'notification_type': notification.notification_type,
-                        'device_id': notification.device_id,
-                        'device_type': notification.device.device_type if notification.device else None,
-                        'failure_count': 2,  # Original failure + retry failure
-                        'error_message': 'Retry failed'
-                    }
-
-                    escalation_service.trigger_escalation('notification_failure', escalation_context)
-
-                except Exception as e:
-                    logger.warning(f"Error triggering escalation for notification retry failure: {e}")
-
                 return jsonify({
                     'success': False,
                     'error': 'Failed to resend notification'

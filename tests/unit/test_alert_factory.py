@@ -28,7 +28,6 @@ def manager(app):
     m = AlertManager(app=app)
     m.send_alert_notifications = Mock()
     m._emit_alert_update = Mock()
-    m._trigger_rule_engine_for_alert = Mock()
     return m
 
 
@@ -40,7 +39,6 @@ class TestCreateAlert:
             assert a is not None and a.id
             manager.send_alert_notifications.assert_called_once()
             manager._emit_alert_update.assert_called_once_with(a, 'created')
-            manager._trigger_rule_engine_for_alert.assert_called_once()
 
     def test_duplicate_unresolved_alert_is_not_created(self, app, db_session, device, manager):
         with app.app_context():

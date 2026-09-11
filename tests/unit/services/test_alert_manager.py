@@ -37,7 +37,6 @@ class TestAlertManagerInitialization:
 
         assert manager.app is None
         assert manager.is_running is False
-        assert manager.rule_engine_service is None
         assert manager.correlation_service is None
         assert isinstance(manager._stop_event, threading.Event)
 

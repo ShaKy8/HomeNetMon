@@ -402,26 +402,6 @@ class TestAlertBusinessLogic:
         assert age_minutes >= 120   # At least 2 hours in minutes
         assert age_hours >= 2       # At least 2 hours
 
-    def test_should_escalate_method(self, db_session):
-        """Test escalation logic for alerts."""
-        # New critical alert should escalate
-        critical_alert = AlertFactory.create(
-            severity='critical',
-            created_at=datetime.utcnow() - timedelta(minutes=30)
-        )
-        assert critical_alert.should_escalate() is True
-
-        # Old warning alert might not escalate
-        warning_alert = AlertFactory.create(
-            severity='warning',
-            created_at=datetime.utcnow() - timedelta(minutes=5)
-        )
-        assert warning_alert.should_escalate() is False
-
-        # Resolved alert should not escalate
-        resolved_alert = ResolvedAlertFactory.create()
-        assert resolved_alert.should_escalate() is False
-
     def test_get_severity_weight(self, db_session):
         """Test getting numeric weight for severity levels."""
         critical_alert = AlertFactory.create(severity='critical')
