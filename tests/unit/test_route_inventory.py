@@ -58,6 +58,7 @@ ALLOWED = {
     '/api/monitoring/bandwidth/timeline',
     '/api/monitoring/data',
     '/api/monitoring/summary',
+    '/api/monitoring/wan',
     '/api/notifications/history',
     '/api/performance/alerts/summary',
     '/api/performance/collect',

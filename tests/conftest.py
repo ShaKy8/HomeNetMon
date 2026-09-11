@@ -23,7 +23,7 @@ from app import create_app
 from models import (
     db, Device, MonitoringData, PerformanceMetrics, Alert, Configuration,
     DeviceIpHistory, ConfigurationHistory, InterfaceBandwidth, NotificationHistory,
-    AlertSuppression, SecurityScan, SecurityEvent
+    AlertSuppression, SecurityScan, SecurityEvent, WanCheck
 )
 from config import Config
 
@@ -124,6 +124,7 @@ def db_session(app):
         db.session.query(MonitoringData).delete()
         db.session.query(PerformanceMetrics).delete()
         db.session.query(InterfaceBandwidth).delete()
+        db.session.query(WanCheck).delete()
         db.session.query(SecurityScan).delete()
         db.session.query(SecurityEvent).delete()
         db.session.query(AlertSuppression).delete()
@@ -139,6 +140,7 @@ def db_session(app):
             db.session.query(MonitoringData).delete()
             db.session.query(PerformanceMetrics).delete()
             db.session.query(InterfaceBandwidth).delete()
+            db.session.query(WanCheck).delete()
             db.session.query(SecurityScan).delete()
             db.session.query(SecurityEvent).delete()
             db.session.query(AlertSuppression).delete()

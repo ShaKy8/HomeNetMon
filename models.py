@@ -1423,6 +1423,28 @@ class PerformanceMetrics(db.Model):
             logging.getLogger(__name__).error(f"Error calculating health score: {e}")
             return None
 
+
+class WanCheck(db.Model):
+    """One internet / gateway reachability probe (monitoring/wan_monitor.py)."""
+    __tablename__ = 'wan_checks'
+
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    gateway_ip = db.Column(db.String(45))
+    gateway_rtt_ms = db.Column(db.Float)
+    gateway_up = db.Column(db.Boolean, default=False, nullable=False)
+    target = db.Column(db.String(255))
+    target_rtt_ms = db.Column(db.Float)
+    internet_up = db.Column(db.Boolean, default=False, nullable=False)
+
+    def to_dict(self):
+        return {
+            'timestamp': self.timestamp.isoformat() + 'Z',
+            'gateway_ip': self.gateway_ip, 'gateway_rtt_ms': self.gateway_rtt_ms, 'gateway_up': self.gateway_up,
+            'target': self.target, 'target_rtt_ms': self.target_rtt_ms, 'internet_up': self.internet_up,
+        }
+
+
 # Retention (deleting old rows from the time-series tables) is handled by
 # services/retention.py on a schedule -- never from insert hooks.
 
@@ -1501,6 +1523,9 @@ def seed_default_configuration():
         ('scan_interval', str(Config.SCAN_INTERVAL), 'Network scan interval in seconds'),
         ('bandwidth_interval', str(Config.BANDWIDTH_INTERVAL), 'Bandwidth monitoring interval in seconds'),
         ('alert_email_enabled', 'false', 'Enable email alerts'),
+        ('wan_check_target', Config.WAN_CHECK_TARGET, 'External host pinged to decide whether the internet is up'),
+        ('wan_check_interval', str(Config.WAN_CHECK_INTERVAL), 'Seconds between internet / gateway checks'),
+        ('wan_down_after_checks', '3', 'Consecutive failed checks before an internet-down alert'),
         ('alert_webhook_enabled', 'false', 'Enable webhook alerts'),
     ]
 

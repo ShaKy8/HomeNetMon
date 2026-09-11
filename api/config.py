@@ -129,6 +129,10 @@ def get_network_config():
     """Get network-related configuration"""
     try:
         network_config = {
+            'wan_check_target': Configuration.get_value('wan_check_target', Config.WAN_CHECK_TARGET),
+            'wan_check_interval': int(Configuration.get_value('wan_check_interval', str(Config.WAN_CHECK_INTERVAL))),
+            'wan_down_after_checks': int(Configuration.get_value('wan_down_after_checks', '3')),
+            'wan_gateway_ip': Configuration.get_value('wan_gateway_ip', ''),
             'network_range': Configuration.get_value('network_range', Config.NETWORK_RANGE),
             'ping_interval': int(Configuration.get_value('ping_interval', str(Config.PING_INTERVAL))),
             'scan_interval': int(Configuration.get_value('scan_interval', str(Config.SCAN_INTERVAL))),
@@ -218,6 +222,13 @@ def update_network_config():
                     return jsonify({'error': 'Max workers must be between 1 and 100'}), 400
             except ValueError:
                 return jsonify({'error': 'Max workers must be a number'}), 400
+
+        for key in ('wan_check_target', 'wan_check_interval', 'wan_down_after_checks', 'wan_gateway_ip'):
+            if key in data:
+                ok, msg = _set(key, str(data[key]).strip(), f'WAN monitor setting {key}')
+                if not ok:
+                    return jsonify({'error': msg}), 400
+                updated_fields.append(key)
 
         if 'scan_excluded_ips' in data:
             # Basic validation for IP addresses

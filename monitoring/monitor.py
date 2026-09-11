@@ -89,35 +89,14 @@ class DeviceMonitor:
                 # Use more generous timeout for critical devices
                 actual_timeout = ping_timeout * 1.5 if is_critical_device else ping_timeout
 
-                # Use system ping command (works without root privileges)
-                cmd = ['ping', '-c', '1', '-W', str(int(actual_timeout)), device.ip_address]
+                from monitoring.ping import ping_host
+                response_time_ms = ping_host(device.ip_address, actual_timeout)
 
-                result = subprocess.run(
-                    cmd,
-                    capture_output=True,
-                    text=True,
-                    timeout=actual_timeout + 2,
-                    shell=False
-                )
-
-                if result.returncode == 0:
-                    # Parse ping output to extract response time
-                    # Look for patterns like "time=1.23 ms"
-                    time_match = re.search(r'time=([0-9.]+)\s*ms', result.stdout)
-                    if time_match:
-                        response_time_ms = float(time_match.group(1))
-                        # Note: last_seen is updated in monitor_device() inside the transaction
-                        logger.debug(f"Ping successful for {device.ip_address} on attempt {attempt + 1}: {response_time_ms}ms")
-                        # Record success for optimization
-                        iot_optimizer.record_ping_result(device, True, response_time_ms)
-                        return response_time_ms
-                    else:
-                        # Ping succeeded but couldn't parse time, return 0
-                        # Note: last_seen is updated in monitor_device() inside the transaction
-                        logger.debug(f"Ping successful for {device.ip_address} on attempt {attempt + 1} (no time parsed)")
-                        # Record success for optimization
-                        iot_optimizer.record_ping_result(device, True, 0)
-                        return 0.0
+                if response_time_ms is not None:
+                    # Note: last_seen is updated in monitor_device() inside the transaction
+                    logger.debug(f"Ping successful for {device.ip_address} on attempt {attempt + 1}: {response_time_ms}ms")
+                    iot_optimizer.record_ping_result(device, True, response_time_ms)
+                    return response_time_ms
                 else:
                     # Ping failed, try again if we have retries left
                     if attempt < max_retries:
@@ -126,7 +105,6 @@ class DeviceMonitor:
                         continue
                     else:
                         logger.debug(f"Ping failed for {device.ip_address} after {max_retries + 1} attempts")
-                        # Record failure for optimization
                         iot_optimizer.record_ping_result(device, False, None)
                         return None
 

@@ -145,6 +145,10 @@ function initializeSocket() {
         showNotification(`Scan error: ${data.error || 'Unknown error'}`, 'error');
     });
 
+    socket.on('wan_status', function(data) { applyWan(Object.assign({}, wanState || {}, {
+        status: data.status, gateway: { ip: data.gateway_ip, up: data.gateway_up, rtt_ms: data.gateway_rtt_ms },
+        internet: { target: data.target, up: data.internet_up, rtt_ms: data.target_rtt_ms }
+    })); });
     socket.on('device_status_update', handleDeviceStatusUpdate);
     socket.on('monitoring_summary', handleMonitoringSummary);
     socket.on('alert_update', debounce(loadDevices, 1500));
@@ -310,6 +314,7 @@ async function loadDevices() {
         filterAndDisplayDevices();
         document.getElementById('loading-devices').classList.add('hidden');
         loadSummary();
+        loadWan();
     } catch (error) {
         const loading = document.getElementById('loading-devices');
         loading.textContent = 'Error loading devices: ' + error.message;
@@ -354,6 +359,37 @@ function applySummary(summary) {
         } else {
             statusElement.innerHTML = '<span class="status-dot status-down"></span>Critical';
         }
+    }
+}
+
+let wanState = null;
+
+async function loadWan() {
+    try {
+        const response = await fetch('/api/monitoring/wan?hours=24');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        applyWan(await response.json());
+    } catch (error) {
+        console.error('WAN status unavailable:', error);
+    }
+}
+
+function applyWan(data) {
+    if (!data) return;
+    wanState = data;
+    const el = document.getElementById('hero-internet');
+    const tile = document.getElementById('hero-internet-tile');
+    if (!el) return;
+    const status = data.status || 'unknown';
+    const internet = data.internet || {};
+    const gateway = data.gateway || {};
+    const rtt = internet.rtt_ms != null ? `${Math.round(internet.rtt_ms)} ms` : '';
+    const dot = status === 'up' ? 'status-up' : status === 'down' ? 'status-down' : status === 'degraded' ? 'status-warning' : 'status-unknown';
+    const label = status === 'up' ? `Up ${rtt}`.trim() : status === 'down' ? (gateway.up === false ? 'Gateway down' : 'Down') : status === 'degraded' ? 'Flaky' : '--';
+    el.innerHTML = `<span class="status-dot ${dot}"></span>${esc(label)}`;
+    if (tile) {
+        const avail = data.availability_pct != null ? `${data.availability_pct}% available over ${data.hours} h` : 'no checks yet';
+        tile.title = `Gateway ${esc(gateway.ip || '?')}: ${gateway.up ? 'up' : 'down'}; target ${esc(internet.target || '?')}: ${internet.up ? 'up' : 'down'}. ${avail}.`;
     }
 }
 
@@ -908,8 +944,9 @@ async function applyMonitoringPreset(preset) {
         case 'essential':
             devicesToEnable = devicesData.filter(d => {
                 const name = (d.display_name || d.hostname || '').toLowerCase();
+                const gatewayIp = wanState && wanState.gateway ? wanState.gateway.ip : null;
                 return name.includes('router') || name.includes('gateway') ||
-                       d.device_type === 'router';
+                       d.device_type === 'router' || (gatewayIp && d.ip_address === gatewayIp);
             });
             break;
     }

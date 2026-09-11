@@ -30,6 +30,9 @@ class Config:
     STALE_DEVICE_DAYS = int(os.environ.get('STALE_DEVICE_DAYS', '30'))
     # Optional dnsmasq / Pi-hole leases file: MAC -> hostname for devices that never answer DNS/mDNS
     DHCP_LEASES_FILE = os.environ.get('DHCP_LEASES_FILE', '')
+    # Internet / gateway reachability check (monitoring/wan_monitor.py)
+    WAN_CHECK_TARGET = os.environ.get('WAN_CHECK_TARGET', '1.1.1.1')
+    WAN_CHECK_INTERVAL = int(os.environ.get('WAN_CHECK_INTERVAL', '60'))
     # nmap security scan cadence (only used when SECURITY_SCANNING_ENABLED=true)
     SECURITY_SCAN_INTERVAL = int(os.environ.get('SECURITY_SCAN_INTERVAL', '86400'))
 

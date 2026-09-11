@@ -35,6 +35,7 @@ EXPECTED_THREADS: dict[str, int] = {
     'BandwidthMonitor':   300,     # Config.BANDWIDTH_INTERVAL
     'PerformanceMonitor': 300,     # collection_interval default
     'ResourceMonitor':    300,     # _monitor_loop wait
+    'WanMonitor':         60,      # monitoring/wan_monitor.py check interval (runtime wan_check_interval)
     'SecurityScanner':    300,     # heartbeats per device during a sweep and once a minute while idle
 }
 

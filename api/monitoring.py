@@ -953,6 +953,19 @@ def delete_alert_suppression(suppression_id):
         return jsonify({'error': str(e)}), 500
 
 
+@monitoring_bp.route('/wan', methods=['GET'])
+@create_endpoint_limiter('relaxed')
+def get_wan_status():
+    """Internet / gateway reachability: current state plus availability over ?hours= (24)."""
+    try:
+        hours = max(1, min(request.args.get('hours', default=24, type=int) or 24, 24 * 30))
+        wan = getattr(current_app, 'wan_monitor', None)
+        if wan is None:
+            return jsonify({'error': 'WAN monitor not available'}), 503
+        return jsonify(wan.status(hours))
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
 @monitoring_bp.route('/summary', methods=['GET'])
 @create_endpoint_limiter('relaxed')
 def get_monitoring_summary():

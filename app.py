@@ -192,6 +192,11 @@ def create_app():
     from services.security_scanner import security_scanner
     security_scanner.app = app
 
+    # Internet / gateway reachability monitor
+    from monitoring.wan_monitor import WanMonitor
+    wan_monitor = WanMonitor(app)
+    app.wan_monitor = wan_monitor
+
     # Initialize rule engine service
 
     # Initialize configuration service
@@ -313,6 +318,13 @@ def create_app():
         performance_thread.start()
 
         # Start resource monitor (DB retention + system resource cleanup)
+        wan_thread = threading.Thread(
+            target=wan_monitor.start_monitoring,
+            daemon=True,
+            name='WanMonitor'
+        )
+        wan_thread.start()
+
         resource_monitor_thread = threading.Thread(
             target=resource_monitor.start_monitoring,
             daemon=True,

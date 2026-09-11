@@ -132,6 +132,22 @@ class ConfigurationService:
                 validator=self._validate_discord_webhook_url,
                 error_message="Discord webhook URL must look like https://discord.com/api/webhooks/..."
             ),
+            'wan_check_target': ConfigValidationRule(
+                validator=self._validate_host_or_ip,
+                error_message="WAN check target must be an IP address or hostname"
+            ),
+            'wan_check_interval': ConfigValidationRule(
+                validator=lambda v: self._validate_integer_range(v, 30, 3600),
+                error_message="WAN check interval must be between 30 and 3600 seconds"
+            ),
+            'wan_down_after_checks': ConfigValidationRule(
+                validator=lambda v: self._validate_integer_range(v, 1, 20),
+                error_message="WAN failure threshold must be between 1 and 20 checks"
+            ),
+            'wan_gateway_ip': ConfigValidationRule(
+                validator=lambda v: (not v) or self._validate_ip_list(v),
+                error_message="Gateway override must be an IP address (or empty to auto-detect)"
+            ),
             'security_scan_interval_hours': ConfigValidationRule(
                 validator=lambda v: self._validate_integer_range(v, 1, 168),
                 error_message="Security scan interval must be between 1 and 168 hours"
@@ -500,6 +516,16 @@ class ConfigurationService:
 
         except Exception:
             return False
+
+    def _validate_host_or_ip(self, value: str) -> bool:
+        text = (value or '').strip()
+        if not text:
+            return False
+        try:
+            ipaddress.ip_address(text)
+            return True
+        except ValueError:
+            return re.match(r'^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$', text.lower()) is not None
 
     def _validate_url_format(self, url: str) -> bool:
         """http(s) URL with a host; empty is allowed (disables the channel). No network call."""

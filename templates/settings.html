@@ -378,6 +378,26 @@
                     </div>
                 </div>
 
+                <h3 class="h6 text-uppercase text-muted mt-4">Internet check</h3>
+                <div class="row g-3 mb-3">
+                    <div class="col-md-4">
+                        <label for="wan-check-target" class="form-label">External target</label>
+                        <input type="text" class="form-control" id="wan-check-target" placeholder="1.1.1.1">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="wan-check-interval" class="form-label">Every (seconds)</label>
+                        <input type="number" class="form-control" id="wan-check-interval" min="30" max="3600" step="10">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="wan-down-after" class="form-label">Alert after</label>
+                        <input type="number" class="form-control" id="wan-down-after" min="1" max="20" title="consecutive failed checks">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="wan-gateway-ip" class="form-label">Gateway (blank = detect)</label>
+                        <input type="text" class="form-control" id="wan-gateway-ip" placeholder="auto">
+                    </div>
+                </div>
+
                 <div class="info-card alert-info">
                     <h6><i class="bi bi-info-circle me-2"></i>Automatic Monitoring Settings</h6>
                     <p class="mb-2">HomeNetMon continuously monitors your network in the background. Configure how frequently monitoring operations run:</p>
@@ -688,6 +708,10 @@ async function loadCurrentSettings() {
         const get = (key, fallback) => (db[key] && db[key].value !== undefined) ? db[key].value : fallback;
         setValue('network-range', get('network_range', rt.network_range));
         setValue('ping-interval', get('ping_interval', rt.ping_interval));
+        setValue('wan-check-target', get('wan_check_target', '1.1.1.1'));
+        setValue('wan-check-interval', get('wan_check_interval', '60'));
+        setValue('wan-down-after', get('wan_down_after_checks', '3'));
+        setValue('wan-gateway-ip', get('wan_gateway_ip', ''));
         setValue('scan-interval', get('scan_interval', rt.scan_interval));
         setValue('dashboard-title', get('dashboard_title', 'Home Network Monitor'));
         setChecked('auto-refresh', String(get('auto_refresh', 'true')) === 'true');
@@ -734,7 +758,11 @@ async function saveNetworkSettings() {
         const result = await apiRequest('/api/config/network', { method: 'PUT', body: {
             network_range: val('network-range').value.trim(),
             ping_interval: parseInt(val('ping-interval').value, 10),
-            scan_interval: parseInt(val('scan-interval').value, 10)
+            scan_interval: parseInt(val('scan-interval').value, 10),
+            wan_check_target: val('wan-check-target').value.trim() || '1.1.1.1',
+            wan_check_interval: parseInt(val('wan-check-interval').value, 10) || 60,
+            wan_down_after_checks: parseInt(val('wan-down-after').value, 10) || 3,
+            wan_gateway_ip: val('wan-gateway-ip').value.trim()
         }});
         showSuccess(result.message || 'Network settings saved');
     } catch (error) {
