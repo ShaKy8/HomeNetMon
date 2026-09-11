@@ -320,3 +320,13 @@ class TestAlertsPage:
     def test_navbar_badge_uses_server_side_status_filter(self, client):
         html = client.get('/').get_data(as_text=True)
         assert '/api/monitoring/alerts?status=active&hours=0&per_page=1' in html
+
+
+class TestAnalyticsScriptDeclarations:
+
+    def test_every_chart_variable_is_declared(self, client):
+        """Removing the speed-test block took the bandwidthChart declaration with it; the
+        Bandwidth tab then threw a ReferenceError on every load."""
+        html = client.get('/analytics').get_data(as_text=True)
+        for name in ('bandwidthChart', 'healthChart', 'trendsChart'):
+            assert re.search(rf'\blet [^;]*\b{name}\b', html), name
