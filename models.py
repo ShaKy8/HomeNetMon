@@ -42,6 +42,9 @@ class Device(db.Model):
     device_group = db.Column(db.String(100))  # Custom grouping
     room_location = db.Column(db.String(100))  # Home-friendly room assignment (Living Room, Kitchen, etc.)
     device_priority = db.Column(db.String(20), default='normal')  # critical, important, normal, optional
+    notes = db.Column(db.Text)  # free-form operator notes
+    tags = db.Column(db.String(255))  # comma-separated labels; exposed as a list
+    mdns_services = db.Column(db.String(500))  # comma-separated mDNS service types seen (e.g. _googlecast._tcp)
     is_monitored = db.Column(db.Boolean, default=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -1419,27 +1422,41 @@ def init_db(app):
 
         db.create_all()
 
-        # Handle schema migrations
-        try:
-            # Check if version column exists by trying to access it
-            db.session.execute(db.text("SELECT version FROM configuration LIMIT 1"))
-        except Exception:
-            # Version column doesn't exist, add it
-            try:
-                db.session.execute(db.text("ALTER TABLE configuration ADD COLUMN version INTEGER DEFAULT 1"))
-                db.session.commit()
-                logger.info("Added version column to configuration table")
-            except Exception as e:
-                # Never fall back to drop_all()/create_all() here: on a locked or
-                # partially-migrated production database that would destroy every
-                # table. Fail loudly instead so the operator can intervene.
-                db.session.rollback()
-                raise RuntimeError(
-                    "Could not add 'version' column to configuration table; "
-                    "refusing to start with an inconsistent schema"
-                ) from e
+        # Columns added after a table already existed. create_all() never alters
+        # tables, so each is added idempotently here (and by
+        # scripts/db/v250_schema_cleanup.py during a maintenance window).
+        _ensure_columns('configuration', {'version': 'INTEGER DEFAULT 1'})
+        _ensure_columns('devices', {'notes': 'TEXT', 'tags': 'VARCHAR(255)', 'mdns_services': 'VARCHAR(500)'})
 
         seed_default_configuration()
+
+
+def _ensure_columns(table, columns):
+    """Add any of ``columns`` ({name: ddl}) missing from ``table``. Returns the names added.
+
+    Never falls back to drop_all()/create_all(): on a locked or partially migrated
+    production database that would destroy every table. Fails loudly instead.
+    """
+    if db.engine.url.get_backend_name() == 'sqlite':
+        rows = db.session.execute(db.text(f"PRAGMA table_info({table})")).fetchall()
+        existing = {row[1] for row in rows}
+    else:
+        rows = db.session.execute(db.text(
+            "SELECT column_name FROM information_schema.columns WHERE table_name = :t"), {'t': table}).fetchall()
+        existing = {row[0] for row in rows}
+    added = []
+    for name, ddl in columns.items():
+        if name in existing:
+            continue
+        try:
+            db.session.execute(db.text(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}"))
+            db.session.commit()
+            logger.info(f"Added column {table}.{name}")
+            added.append(name)
+        except Exception as e:
+            db.session.rollback()
+            raise RuntimeError(f"Could not add column {table}.{name}; refusing to start with an inconsistent schema") from e
+    return added
 
 
 def seed_default_configuration():
