@@ -246,10 +246,6 @@ class RateLimiterService:
         """Rate limiting for bulk operations."""
         return self.limiter.limit("1 per minute, 10 per hour")
 
-    def speedtest(self):
-        """Rate limiting for speed test operations (resource intensive)."""
-        return self.limiter.limit("1 per 5 minutes, 6 per hour")
-
     def security_scan(self):
         """Rate limiting for security scanning operations."""
         return self.limiter.limit("1 per 10 minutes, 3 per hour")

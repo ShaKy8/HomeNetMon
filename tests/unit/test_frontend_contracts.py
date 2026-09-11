@@ -119,15 +119,16 @@ class TestRetiredPagesAndConsolidation:
 
     @pytest.mark.parametrize('path,target', [('/full-view', '/'), ('/noc', '/'), ('/dashboard/full', '/'),
                                              ('/performance-dashboard', '/analytics#performance'),
-                                             ('/ai-dashboard', '/analytics#anomalies'), ('/ai_dashboard', '/analytics#anomalies')])
+                                             ('/ai-dashboard', '/analytics'), ('/ai_dashboard', '/analytics')])
     def test_retired_pages_redirect_permanently(self, client, path, target):
         r = client.get(path)
         assert r.status_code == 301
         assert r.headers['Location'].endswith(target)
 
-    def test_analytics_has_anomalies_tab(self, client):
+    def test_analytics_has_no_anomaly_or_speedtest_remnants(self, client):
         html = client.get('/analytics').get_data(as_text=True)
-        assert 'id="anomalies-tab"' in html and '/api/anomaly/alerts' in html
+        assert 'anomalies-tab' not in html and '/api/anomaly/' not in html
+        assert '/api/speedtest/' not in html and 'speedtest-btn' not in html
 
     def test_network_map_uses_topology_engine(self, client):
         html = client.get('/network-map').get_data(as_text=True)

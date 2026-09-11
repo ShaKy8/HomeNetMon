@@ -7,6 +7,7 @@ import psutil
 import threading
 import time
 from api.rate_limited_endpoints import create_endpoint_limiter
+from services.health_score import calculate_health_score
 from constants import DEVICE_DOWN_AFTER_SECONDS
 
 health_bp = Blueprint('health', __name__)
@@ -298,35 +299,6 @@ def get_network_topology():
             'error': 'Failed to get network topology'
         }), 500
 
-def calculate_health_score(devices_online, total_devices, avg_response_time, active_alerts, uptime_percentage):
-    """Calculate overall network health score (0-100)"""
-    if total_devices == 0:
-        return 0
-
-    # Device availability score (40% weight)
-    availability_score = (devices_online / total_devices) * 40
-
-    # Response time score (25% weight) - Good: <50ms, Fair: <200ms, Poor: >200ms
-    if avg_response_time == 0:
-        response_score = 25  # No data, assume neutral
-    elif avg_response_time < 50:
-        response_score = 25
-    elif avg_response_time < 200:
-        response_score = 15
-    else:
-        response_score = 5
-
-    # Alert impact score (20% weight) - Penalty for active alerts
-    alert_penalty = min(active_alerts * 5, 20)  # Max 20 points penalty
-    alert_score = 20 - alert_penalty
-
-    # Uptime score (15% weight)
-    uptime_score = (uptime_percentage / 100) * 15
-
-    # Calculate total score
-    total_score = availability_score + response_score + alert_score + uptime_score
-
-    return round(max(0, min(100, total_score)), 1)
 
 def get_recent_network_activity(limit=50):
     """Get recent network activity events"""

@@ -164,3 +164,29 @@ class TestRetryCap:
             opt.should_skip_monitoring.return_value = (False, None)
             assert monitor.ping_device(device) is None
             assert run.call_count == 2
+
+
+class TestSummaryPush:
+
+    def test_summary_push_uses_shared_counts(self, app, db_session):
+        """The Socket.IO summary must carry services/device_counts keys and be built
+        inside an app context (it raised 'Working outside of application context'
+        once per cycle after the first attempt)."""
+        _make_devices(db_session, 2)
+        monitor = DeviceMonitor(app=app, socketio=Mock())
+
+        def ping(device):
+            return {'device_id': device.id, 'response_time': 5.0, 'success': True, 'timestamp': datetime.utcnow()}
+
+        with patch.object(monitor, 'get_config_value', side_effect=_config({'max_workers': 2, 'ping_timeout': 0.05})), \
+             patch.object(monitor, '_ping_device_for_batch', side_effect=ping), \
+             patch.object(monitor, '_batch_process_monitoring_results', Mock()), \
+             patch('services.websocket_throttle.websocket_throttle.should_emit_global_event', return_value=True):
+            monitor.monitor_all_devices()
+
+        pushes = [c for c in monitor.socketio.emit.call_args_list if c.args and c.args[0] == 'monitoring_summary']
+        assert pushes, 'no monitoring_summary push'
+        payload = pushes[0].args[1]
+        assert payload['monitored_devices'] == 2
+        assert payload['devices_up'] == 2
+        assert payload['timestamp'].endswith('Z')

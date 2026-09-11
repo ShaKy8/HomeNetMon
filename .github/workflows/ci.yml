@@ -17,7 +17,7 @@ jobs:
       - name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: "3.12"  # requires-python >=3.11 (numpy 2.x / scikit-learn 1.7 floor)
+          python-version: "3.12"  # requires-python >=3.11
           cache: pip
 
       - name: Install system deps

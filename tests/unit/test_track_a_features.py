@@ -6,50 +6,11 @@ from unittest.mock import patch
 
 import pytest
 
-from models import Alert, AlertSuppression, Device, SpeedTestResult, db
+from models import Alert, AlertSuppression, Device, db
 
 
 def _token(client):
     return client.get('/api/csrf-token').get_json()['csrf_token']
-
-
-class TestSpeedTestPersistence:
-
-    def test_results_survive_in_the_database(self, app, db_session):
-        from services.speedtest import SpeedTestService
-        svc = SpeedTestService(app=app)
-        fake = {'timestamp': datetime.utcnow(), 'success': True, 'test_type': 'comprehensive', 'duration': 12.3,
-                'download_mbps': 480.5, 'upload_mbps': 22.1, 'ping_ms': 9.4,
-                'server': {'name': 'srv', 'location': 'City, CC'}, 'client': {'isp': 'ISP'}}
-        with app.app_context():
-            db.session.query(SpeedTestResult).delete(); db.session.commit()
-        svc._persist(fake)
-        fresh = SpeedTestService(app=app)          # a new process would start with empty memory
-        results = fresh.get_recent_results(5)
-        assert len(results) == 1 and results[0]['download_mbps'] == 480.5
-        stats = fresh.get_speed_statistics(hours=24)
-        assert stats['count'] == 1 and stats['avg_upload'] == 22.1
-
-    def test_results_endpoint_reads_persisted_rows(self, client, app, db_session):
-        with app.app_context():
-            db.session.query(SpeedTestResult).delete()
-            db.session.add(SpeedTestResult(timestamp=datetime.utcnow() - timedelta(hours=1), download_mbps=100, upload_mbps=10, ping_ms=5))
-            db.session.commit()
-        with patch('api.speedtest.speed_test_service.app', app):
-            r = client.get('/api/speedtest/results?limit=5')
-        assert r.status_code == 200 and r.get_json()['count'] >= 1
-
-    def test_scheduler_is_watched_and_has_a_retention_rule(self):
-        from core.health import EXPECTED_THREADS
-        from services import retention
-        assert 'SpeedTestService' in EXPECTED_THREADS
-        assert any(r.table == 'speed_test_results' for r in retention.RETENTION_TABLES)
-
-    def test_schedule_settings_validate(self, app):
-        from services.configuration_service import ConfigurationService
-        rules = ConfigurationService(app)._validation_rules
-        assert rules['speedtest_auto_enabled'].validator('true') and not rules['speedtest_auto_enabled'].validator('maybe')
-        assert rules['speedtest_interval_hours'].validator('6') and not rules['speedtest_interval_hours'].validator('0.1')
 
 
 class TestSuppressionRulesUi:

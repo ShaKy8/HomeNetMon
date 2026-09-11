@@ -15,7 +15,6 @@ from enum import Enum
 from collections import defaultdict
 from models import db, Device, Alert, Configuration
 from sqlalchemy import and_
-from services.anomaly_detection import AnomalyDetectionEngine
 from config import Config
 from core.health import record_heartbeat
 
@@ -141,7 +140,6 @@ class NetworkSecurityScanner:
         self._stop_event = threading.Event()
         self.scan_interval = Config.SECURITY_SCAN_INTERVAL  # daily by default; nmap sweeps can unsettle IoT devices
         self.nm = nmap.PortScanner()
-        self.anomaly_detection = AnomalyDetectionEngine()
 
         # Scan progress tracking
         self.current_scan = {
@@ -1224,11 +1222,6 @@ class NetworkSecurityScanner:
             config_findings = self._assess_configuration_security(device)
             findings.extend(config_findings)
 
-            # 5. Network behavior anomaly assessment
-            if self.anomaly_detection:
-                anomaly_findings = self._assess_anomaly_based_vulnerabilities(device)
-                findings.extend(anomaly_findings)
-
             logger.info(f"Vulnerability assessment completed: {len(findings)} findings for {device.display_name}")
             return findings
 
@@ -1495,49 +1488,6 @@ class NetworkSecurityScanner:
 
         except Exception as e:
             logger.error(f"Error assessing configuration security: {e}")
-
-        return findings
-
-    def _assess_anomaly_based_vulnerabilities(self, device: Device) -> List[VulnerabilityFinding]:
-        """Assess vulnerabilities based on anomaly detection"""
-        findings = []
-
-        try:
-            # Get anomaly detection results for this device
-            anomalies = self.anomaly_detection.detect_device_anomalies(device.id, hours=24)
-
-            for anomaly in anomalies:
-                if anomaly.get('security_relevant', False):
-                    severity_map = {
-                        'low': SecuritySeverity.LOW,
-                        'medium': SecuritySeverity.MEDIUM,
-                        'high': SecuritySeverity.HIGH,
-                        'critical': SecuritySeverity.CRITICAL
-                    }
-
-                    finding = VulnerabilityFinding(
-                        finding_id=f"anomaly_{device.id}_{anomaly['type']}_{int(datetime.utcnow().timestamp())}",
-                        device_id=device.id,
-                        device_name=device.display_name,
-                        category=VulnerabilityCategory.NETWORK,
-                        severity=severity_map.get(anomaly.get('severity', 'medium'), SecuritySeverity.MEDIUM),
-                        title=f"Security-Relevant Anomaly: {anomaly['type']}",
-                        description=anomaly.get('description', 'Anomalous behavior detected that may indicate security issues'),
-                        evidence={
-                            'anomaly_type': anomaly['type'],
-                            'detection_details': anomaly.get('details', {}),
-                            'confidence_score': anomaly.get('confidence', 0),
-                            'detection_time': anomaly.get('timestamp')
-                        },
-                        risk_score=anomaly.get('risk_score', 5.0),
-                        remediation=['Investigate anomalous behavior', 'Review device activity logs', 'Consider device isolation if necessary', 'Monitor for continued anomalies'],
-                        discovered_at=datetime.utcnow(),
-                        last_verified=datetime.utcnow()
-                    )
-                    findings.append(finding)
-
-        except Exception as e:
-            logger.error(f"Error assessing anomaly-based vulnerabilities: {e}")
 
         return findings
 

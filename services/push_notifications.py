@@ -274,29 +274,6 @@ class PushNotificationService:
             click_url=dashboard_url
         )
 
-    def send_anomaly_alert(self, device_name: str, ip_address: str, anomaly_type: str, message: str, severity: str = "medium", dashboard_url: str = None) -> bool:
-        """Send notification for AI anomaly detection"""
-        severity_emoji = {
-            "low": "🔵",
-            "medium": "🟡",
-            "high": "🟠",
-            "critical": "🔴"
-        }.get(severity, "⚪")
-
-        title = f"{severity_emoji} AI Alert: {device_name}"
-        full_message = f"Anomaly detected on {device_name} ({ip_address}): {message}"
-
-        priority = "high" if severity in ["high", "critical"] else "default"
-        tags = f"robot_face,{severity}_circle,warning"
-
-        return self.send_notification(
-            title=title,
-            message=full_message,
-            priority=priority,
-            tags=tags,
-            click_url=dashboard_url
-        )
-
     def send_security_alert(self, device_name: str, ip_address: str, vulnerability: str, risk_score: float, dashboard_url: str = None) -> bool:
         """Send notification for security vulnerability"""
         risk_emoji = "🔴" if risk_score >= 7.0 else "🟡" if risk_score >= 4.0 else "🔵"

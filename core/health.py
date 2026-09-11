@@ -35,9 +35,7 @@ EXPECTED_THREADS: dict[str, int] = {
     'BandwidthMonitor':   300,     # Config.BANDWIDTH_INTERVAL
     'PerformanceMonitor': 300,     # collection_interval default
     'ResourceMonitor':    300,     # _monitor_loop wait
-    'AnomalyDetection':   300,     # detection_interval (heartbeats even while disabled)
     'SecurityScanner':    300,     # heartbeats per device during a sweep and once a minute while idle
-    'SpeedTestService':   300,     # heartbeats every minute while idle/sleeping
 }
 
 # A thread is "stale" once its last heartbeat is older than

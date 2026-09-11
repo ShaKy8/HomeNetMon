@@ -153,9 +153,7 @@ def create_app():
     from api.monitoring import monitoring_bp
     from api.config import config_bp
     from api.analytics import analytics_bp
-    from api.speedtest import speedtest_bp
     from api.device_control import device_control_bp
-    from api.anomaly import anomaly_bp
     from api.security import security_bp
     from api.notifications import notifications_bp
     from api.config_management import config_management_bp
@@ -171,9 +169,7 @@ def create_app():
     app.register_blueprint(config_bp, url_prefix='/api/config')
     app.register_blueprint(config_management_bp, url_prefix='/api/config-management')
     app.register_blueprint(analytics_bp, url_prefix='/api/analytics')
-    app.register_blueprint(speedtest_bp, url_prefix='/api/speedtest')
     app.register_blueprint(device_control_bp, url_prefix='/api/device-control')
-    app.register_blueprint(anomaly_bp, url_prefix='/api/anomaly')
     app.register_blueprint(security_bp, url_prefix='/api/security')
     app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
     app.register_blueprint(system_bp, url_prefix='/api/system')
@@ -198,12 +194,7 @@ def create_app():
     bandwidth_monitor = BandwidthMonitor(app)
 
     # Initialize speed test service
-    from services.speedtest import speed_test_service
-    speed_test_service.app = app
 
-    # Initialize anomaly detection service
-    from services.anomaly_detection import anomaly_detection_service
-    anomaly_detection_service.app = app
 
     # Initialize security scanner service
     from services.security_scanner import security_scanner
@@ -240,8 +231,6 @@ def create_app():
     app._monitor = monitor
     app.alert_manager = alert_manager
     app.bandwidth_monitor = bandwidth_monitor
-    app.speed_test_service = speed_test_service
-    app.anomaly_detection_service = anomaly_detection_service
     app.security_scanner = security_scanner
     app.configuration_service = configuration_service
     app.rate_limiter = rate_limiter
@@ -316,14 +305,6 @@ def create_app():
         )
         alert_thread.start()
 
-        # Start anomaly detection service
-        anomaly_thread = threading.Thread(
-            target=anomaly_detection_service.start_monitoring,
-            daemon=True,
-            name='AnomalyDetection'
-        )
-        anomaly_thread.start()
-
         # Security scanner service - conditionally start based on environment variable
         security_enabled = os.environ.get('SECURITY_SCANNING_ENABLED', 'false').lower() == 'true'
         if security_enabled:
@@ -354,12 +335,6 @@ def create_app():
         performance_thread.start()
 
         # Start resource monitor (DB retention + system resource cleanup)
-        # Scheduled internet speed tests (idles until speedtest_auto_enabled is set in Settings)
-        try:
-            speed_test_service.start_automatic_testing(interval_hours=6)
-        except Exception as e:
-            logger.error(f"Speed test service failed to start: {e}")
-
         resource_monitor_thread = threading.Thread(
             target=resource_monitor.start_monitoring,
             daemon=True,
@@ -491,10 +466,9 @@ def create_app():
         """Serve favicon from static folder"""
         return send_from_directory(app.static_folder, 'favicon.ico', mimetype='image/vnd.microsoft.icon')
 
-    # Retired pages. The NOC view had 5 of 8 API calls pointing at URLs that never
-    # existed, the performance dashboard duplicated the home page tiles, and the
-    # AI dashboard depends on the (disabled) anomaly service; their useful panels
-    # live under /analytics. Old bookmarks are redirected.
+    # Retired pages. The NOC view, performance dashboard and AI dashboard were
+    # consolidated into / and /analytics (anomaly detection was removed in 2.5.0).
+    # Old bookmarks are redirected.
     @app.route('/dashboard/full')
     @app.route('/full-view')
     @app.route('/noc')
@@ -508,7 +482,7 @@ def create_app():
     @app.route('/ai-dashboard')
     @app.route('/ai_dashboard')
     def retired_ai_dashboard():
-        return redirect(url_for('analytics') + '#anomalies', code=301)
+        return redirect(url_for('analytics'), code=301)
 
     @app.route('/device/<int:device_id>')
     def device_detail(device_id):
@@ -785,411 +759,6 @@ def create_app():
             'timestamp': datetime.utcnow().isoformat() + 'Z',
             'uptime_seconds': int((datetime.utcnow() - SERVER_START_TIME).total_seconds())
         })
-
-    # Network topology endpoint
-    @app.route('/api/ai/dashboard', methods=['GET'])
-    def get_ai_dashboard():
-        """AI Dashboard API endpoint that consolidates anomaly detection data"""
-        try:
-            from models import Alert, Device
-            from datetime import datetime, timedelta
-            import json
-
-            # Get time period parameter (default 24 hours)
-            period_hours = request.args.get('period', default=24, type=int)
-            period_hours = min(period_hours, 720)  # Cap at 30 days
-
-            start_time = datetime.utcnow() - timedelta(hours=period_hours)
-
-            # Get anomaly detection status
-            detection_status = "Unknown"
-            avg_confidence = "N/A"
-            model_accuracy = "N/A"
-
-            try:
-                if hasattr(anomaly_detection_service, 'running') and anomaly_detection_service.running:
-                    detection_status = "Active"
-                elif hasattr(anomaly_detection_service, 'running'):
-                    detection_status = "Inactive"
-                else:
-                    detection_status = "Unavailable"
-            except:
-                detection_status = "Error"
-
-            # Get recent anomaly alerts
-            recent_anomalies = []
-            anomalies_count = 0
-
-            try:
-                anomaly_alerts = db.session.query(Alert).filter(
-                    Alert.alert_type.like('anomaly_%'),
-                    Alert.created_at >= start_time
-                ).order_by(Alert.created_at.desc()).limit(10).all()
-
-                anomalies_count = len(anomaly_alerts)
-
-                # Calculate average confidence from recent anomalies
-                confidence_values = []
-                for alert in anomaly_alerts:
-                    try:
-                        metadata = json.loads(alert.metadata or '{}')
-                        confidence = metadata.get('confidence', 0)
-                        if confidence > 0:
-                            confidence_values.append(confidence)
-
-                        # Format anomaly for frontend
-                        recent_anomalies.append({
-                            'id': alert.id,
-                            'device_name': alert.device.display_name if alert.device else f"Device {alert.device_id}",
-                            'type': alert.alert_type.replace('anomaly_', '').title(),
-                            'severity': alert.severity,
-                            'confidence': f"{confidence:.1f}%" if confidence > 0 else "N/A",
-                            'message': alert.message,
-                            'created_at': alert.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                            'acknowledged': alert.acknowledged
-                        })
-                    except:
-                        continue
-
-                if confidence_values:
-                    avg_confidence = f"{sum(confidence_values) / len(confidence_values):.1f}%"
-            except Exception as e:
-                logger.error(f"Error fetching anomaly alerts: {e}")
-
-            # Generate trend data for charts (last 7 days)
-            trend_labels = []
-            trend_values = []
-
-            try:
-                for i in range(6, -1, -1):
-                    day_start = datetime.utcnow() - timedelta(days=i)
-                    day_end = day_start + timedelta(days=1)
-
-                    daily_count = db.session.query(Alert).filter(
-                        Alert.alert_type.like('anomaly_%'),
-                        Alert.created_at >= day_start,
-                        Alert.created_at < day_end
-                    ).count()
-
-                    trend_labels.append(day_start.strftime('%m/%d'))
-                    trend_values.append(daily_count)
-            except:
-                trend_labels = ['N/A'] * 7
-                trend_values = [0] * 7
-
-            # Get detection types distribution
-            detection_types = {'response_time': 0, 'uptime_pattern': 0, 'connectivity': 0, 'other': 0}
-
-            try:
-                for alert in anomaly_alerts:
-                    alert_type = alert.alert_type.replace('anomaly_', '')
-                    if 'response' in alert_type:
-                        detection_types['response_time'] += 1
-                    elif 'uptime' in alert_type:
-                        detection_types['uptime_pattern'] += 1
-                    elif 'connectivity' in alert_type:
-                        detection_types['connectivity'] += 1
-                    else:
-                        detection_types['other'] += 1
-            except:
-                pass
-
-            # Calculate mock model accuracy based on system health
-            try:
-                total_devices = Device.query.filter_by(is_monitored=True).count()
-                online_devices = Device.query.filter_by(is_monitored=True, status='up').count()
-                if total_devices > 0:
-                    health_ratio = online_devices / total_devices
-                    model_accuracy = f"{min(85 + (health_ratio * 15), 99):.1f}%"
-            except:
-                pass
-
-            # Prepare response data
-            dashboard_data = {
-                'detection_status': detection_status,
-                'anomalies_24h': anomalies_count,
-                'avg_confidence': avg_confidence,
-                'model_accuracy': model_accuracy,
-                'recent_anomalies': recent_anomalies[:5],  # Limit to 5 for dashboard
-                'trends': {
-                    'labels': trend_labels,
-                    'values': trend_values
-                },
-                'detection_types': detection_types,
-                'period_hours': period_hours,
-                'timestamp': datetime.utcnow().isoformat() + 'Z'
-            }
-
-            return jsonify(dashboard_data)
-
-        except Exception as e:
-            logger.error(f"Error in AI dashboard endpoint: {e}")
-            return jsonify({
-                'error': 'Failed to load AI dashboard data',
-                'detection_status': 'Error',
-                'anomalies_24h': 0,
-                'avg_confidence': 'N/A',
-                'model_accuracy': 'N/A',
-                'recent_anomalies': [],
-                'trends': {'labels': [], 'values': []},
-                'detection_types': {'response_time': 0, 'uptime_pattern': 0, 'connectivity': 0, 'other': 0}
-            }), 500
-
-    # AI Run Detection API endpoint
-    @app.route('/api/ai/run-detection', methods=['POST'])
-    def run_ai_detection():
-        """Manually trigger anomaly detection"""
-        try:
-            from models import Device
-
-            # Get all monitored devices
-            devices = Device.query.filter_by(is_monitored=True).all()
-
-            detection_results = []
-
-            # Run detection for each device if anomaly service is available
-            try:
-                if hasattr(anomaly_detection_service, 'detect_device_anomalies'):
-                    for device in devices[:5]:  # Limit to 5 devices for demo
-                        anomalies = anomaly_detection_service.detect_device_anomalies(device)
-                        if anomalies:
-                            anomaly_detection_service.process_anomalies(anomalies)
-                            detection_results.extend([{
-                                'device': device.display_name,
-                                'type': a.anomaly_type,
-                                'severity': a.severity,
-                                'confidence': a.confidence
-                            } for a in anomalies])
-                else:
-                    # Simulate detection for demo
-                    import random
-                    for device in devices[:3]:
-                        if random.random() > 0.8:  # 20% chance of anomaly
-                            detection_results.append({
-                                'device': device.display_name,
-                                'type': 'response_time',
-                                'severity': random.choice(['low', 'medium', 'high']),
-                                'confidence': round(random.uniform(0.7, 0.95), 2)
-                            })
-
-            except Exception as e:
-                logger.error(f"Detection error: {e}")
-
-            return jsonify({
-                'success': True,
-                'message': 'AI detection completed successfully',
-                'devices_scanned': len(devices),
-                'anomalies_detected': len(detection_results),
-                'results': detection_results,
-                'timestamp': datetime.utcnow().isoformat() + 'Z'
-            })
-
-        except Exception as e:
-            logger.error(f"Error in AI detection endpoint: {e}")
-            return jsonify({
-                'success': False,
-                'error': 'Failed to run AI detection',
-                'message': str(e)
-            }), 500
-
-    # AI Model Status API endpoint
-    @app.route('/api/ai/model-status', methods=['GET'])
-    def get_ai_model_status():
-        """Get AI model status information"""
-        try:
-            model_status = {
-                'status': 'Active',
-                'model_version': '1.0.0',
-                'last_update': datetime.utcnow().isoformat() + 'Z',
-                'accuracy': '92.5%',
-                'training_data_size': '10,000+ samples',
-                'detection_types': [
-                    'Response Time Anomalies',
-                    'Uptime Pattern Anomalies',
-                    'Connectivity Pattern Anomalies'
-                ],
-                'performance_metrics': {
-                    'precision': 0.925,
-                    'recall': 0.891,
-                    'f1_score': 0.908
-                }
-            }
-
-            # Check if anomaly detection service is actually running
-            try:
-                if hasattr(anomaly_detection_service, 'running'):
-                    if anomaly_detection_service.running:
-                        model_status['status'] = 'Active'
-                    else:
-                        model_status['status'] = 'Inactive'
-                else:
-                    model_status['status'] = 'Unavailable'
-            except:
-                model_status['status'] = 'Error'
-
-            return jsonify(model_status)
-
-        except Exception as e:
-            logger.error(f"Error in AI model status endpoint: {e}")
-            return jsonify({
-                'status': 'Error',
-                'error': 'Failed to get model status',
-                'message': str(e)
-            }), 500
-
-    # AI Export Anomalies API endpoint
-    @app.route('/api/ai/export-anomalies', methods=['GET'])
-    def export_ai_anomalies():
-        """Export anomalies data as CSV"""
-        try:
-            from models import Alert
-            import csv
-            from io import StringIO
-
-            # Get anomaly alerts from last 30 days
-            start_date = datetime.utcnow() - timedelta(days=30)
-            alerts = Alert.query.filter(
-                Alert.alert_type.like('anomaly_%'),
-                Alert.created_at >= start_date
-            ).order_by(Alert.created_at.desc()).all()
-
-            # Create CSV content
-            output = StringIO()
-            writer = csv.writer(output)
-
-            # Header
-            writer.writerow([
-                'Date', 'Device', 'Anomaly Type', 'Severity',
-                'Message', 'Confidence', 'Acknowledged'
-            ])
-
-            # Data rows
-            for alert in alerts:
-                try:
-                    metadata = json.loads(alert.metadata or '{}')
-                    confidence = metadata.get('confidence', 'N/A')
-                except:
-                    confidence = 'N/A'
-
-                writer.writerow([
-                    alert.created_at.strftime('%Y-%m-%d %H:%M:%S'),
-                    alert.device.display_name if alert.device else f"Device {alert.device_id}",
-                    alert.alert_type.replace('anomaly_', '').title(),
-                    alert.severity,
-                    alert.message,
-                    confidence,
-                    'Yes' if alert.acknowledged else 'No'
-                ])
-
-            response = app.response_class(
-                output.getvalue(),
-                mimetype='text/csv',
-                headers={'Content-Disposition': 'attachment; filename=anomalies_export.csv'}
-            )
-
-            return response
-
-        except Exception as e:
-            logger.error(f"Error in export anomalies endpoint: {e}")
-            return jsonify({
-                'error': 'Failed to export anomalies',
-                'message': str(e)
-            }), 500
-
-    @app.route('/api/ai/configure', methods=['POST'])
-    def configure_ai_settings():
-        """Configure AI detection settings"""
-        try:
-            data = request.get_json()
-            if not data:
-                return jsonify({'success': False, 'error': 'No configuration data provided'}), 400
-
-            # Log the configuration (in production, this would be saved to database/config file)
-            logger.info(f"AI Configuration received: sensitivity={data.get('sensitivity')}, enabled_detection_types={len(data.get('detection_types', []))}")
-
-            # Validate configuration data
-            valid_sensitivities = ['low', 'medium', 'high']
-            valid_intervals = [5, 15, 30, 60]
-
-            if data.get('detection_sensitivity') not in valid_sensitivities:
-                return jsonify({'success': False, 'error': 'Invalid detection sensitivity'}), 400
-
-            if data.get('analysis_interval') not in valid_intervals:
-                return jsonify({'success': False, 'error': 'Invalid analysis interval'}), 400
-
-            if data.get('confidence_threshold') is not None:
-                threshold = data.get('confidence_threshold')
-                if not isinstance(threshold, int) or threshold < 50 or threshold > 95:
-                    return jsonify({'success': False, 'error': 'Confidence threshold must be between 50 and 95'}), 400
-
-            # In a real implementation, you would save these settings to a database or configuration file
-            # For now, we'll just simulate a successful save
-            config = {
-                'detection_sensitivity': data.get('detection_sensitivity', 'medium'),
-                'analysis_interval': data.get('analysis_interval', 15),
-                'detection_types': data.get('detection_types', {
-                    'response_time': True,
-                    'uptime': True,
-                    'connectivity': True
-                }),
-                'notifications': data.get('notifications', {
-                    'email': True,
-                    'webhook': False,
-                    'dashboard': True
-                }),
-                'confidence_threshold': data.get('confidence_threshold', 75),
-                'last_updated': datetime.utcnow().isoformat() + 'Z'
-            }
-
-            return jsonify({
-                'success': True,
-                'message': 'AI configuration saved successfully',
-                'config': config
-            })
-
-        except Exception as e:
-            logger.error(f"Error in AI configure endpoint: {e}")
-            return jsonify({
-                'success': False,
-                'error': 'Failed to save AI configuration',
-                'message': str(e)
-            }), 500
-
-    @app.route('/api/ai/configure', methods=['GET'])
-    def get_ai_configuration():
-        """Get current AI detection settings"""
-        try:
-            # In a real implementation, this would load from database/config file
-            # For now, return default configuration
-            config = {
-                'detection_sensitivity': 'medium',
-                'analysis_interval': 15,
-                'detection_types': {
-                    'response_time': True,
-                    'uptime': True,
-                    'connectivity': True
-                },
-                'notifications': {
-                    'email': True,
-                    'webhook': False,
-                    'dashboard': True
-                },
-                'confidence_threshold': 75,
-                'last_updated': datetime.utcnow().isoformat() + 'Z'
-            }
-
-            return jsonify({
-                'success': True,
-                'config': config
-            })
-
-        except Exception as e:
-            logger.error(f"Error in get AI configuration endpoint: {e}")
-            return jsonify({
-                'success': False,
-                'error': 'Failed to load AI configuration',
-                'message': str(e)
-            }), 500
 
     return app, socketio
 

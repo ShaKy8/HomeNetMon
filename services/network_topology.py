@@ -21,7 +21,6 @@ from datetime import datetime, timedelta
 from typing import Dict, List, Optional, Tuple, Any, Set
 
 from models import db, Device, MonitoringData, Configuration
-from services.device_analytics import DeviceBehaviorAnalytics
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +30,6 @@ class NetworkTopologyEngine:
 
     def __init__(self, app=None):
         self.app = app
-        self.device_analytics = DeviceBehaviorAnalytics()
 
         # Topology data structures
         self.device_relationships = {}

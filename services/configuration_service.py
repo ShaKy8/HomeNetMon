@@ -92,14 +92,6 @@ class ConfigurationService:
                 validator=lambda v: self._validate_integer_range(v, 1, 365),
                 error_message="Data retention must be between 1 and 365 days"
             ),
-            'speedtest_auto_enabled': ConfigValidationRule(
-                validator=lambda v: str(v).lower() in ('true', 'false'),
-                error_message="speedtest_auto_enabled must be true or false"
-            ),
-            'speedtest_interval_hours': ConfigValidationRule(
-                validator=lambda v: self._validate_float_range(v, 0.5, 168),
-                error_message="Speed test interval must be between 0.5 and 168 hours"
-            ),
             'stale_device_days': ConfigValidationRule(
                 validator=lambda v: self._validate_integer_range(v, 1, 3650),
                 error_message="Stale device threshold must be between 1 and 3650 days"
