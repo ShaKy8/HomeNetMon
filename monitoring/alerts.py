@@ -6,7 +6,7 @@ import requests
 from datetime import datetime, timedelta
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from models import db, Device, Alert, MonitoringData, Configuration
+from models import db, Device, Alert, MonitoringData, Configuration, PerformanceMetrics
 from config import Config
 from services.push_notifications import push_service
 
@@ -319,64 +319,134 @@ class AlertManager:
                 logger.error(f"Error checking device recovery alerts: {e}")
                 db.session.rollback()
 
-    def resolve_alerts(self):
-        """Resolve alerts for devices that are back to normal"""
+    def resolve_alerts(self, dry_run=False):
+        """Resolve open alerts whose condition has cleared.
+
+        Runs once per AlertManager cycle (every 10 minutes) inside an app
+        context. This is the single owner of alert auto-resolution; the old
+        alert_auto_resolver / alert_retention_policy services were invoked
+        without an app context and never completed a cycle.
+
+        Rules:
+        - device_down: the device was seen in the last 5 minutes.
+        - high_latency: no sample above the latency threshold in the last 5 minutes.
+        - performance: the device is unmonitored or gone, has produced no
+          PerformanceMetrics row in 24 h, or its latest scores are back above the
+          recovery thresholds used by services/performance_monitor.py.
+        - new_device (informational): older than 24 h.
+        - stale: any open alert older than ``alert_max_open_days`` (default 30).
+
+        Returns a dict of counts per rule. With ``dry_run=True`` nothing is
+        written or emitted; the counts say what a real run would do.
+        """
+        counts = {'device_down': 0, 'high_latency': 0, 'performance': 0, 'new_device': 0, 'stale': 0}
         if not self.app:
             logger.error("No Flask app context available for alert resolving")
-            return
+            return counts
 
         with self.app.app_context():
             try:
-                # Resolve device down alerts for devices that are back up
-                # Use shorter threshold for resolution to resolve alerts faster
-                recent_time = datetime.utcnow() - timedelta(minutes=5)  # If seen in last 5 minutes, resolve alert
-
-                # Find active device down alerts where device is now responding
-                # Use eager loading to prevent N+1 queries
                 from sqlalchemy.orm import joinedload
-                active_down_alerts = Alert.query.options(joinedload(Alert.device)).filter(
-                    Alert.alert_type == 'device_down',
-                    Alert.resolved == False
-                ).all()
 
-                for alert in active_down_alerts:
+                now = datetime.utcnow()
+                recent_time = now - timedelta(minutes=5)
+                max_open_days = max(1, self.runtime_int('alert_max_open_days', 30))
+                stale_cutoff = now - timedelta(days=max_open_days)
+                resolved_ids = set()
+
+                def _resolve(alert, rule, note=None):
+                    if alert.id in resolved_ids:
+                        return
+                    resolved_ids.add(alert.id)
+                    counts[rule] += 1
+                    if dry_run:
+                        return
+                    alert.resolved = True
+                    alert.resolved_at = now
+                    if note and note not in (alert.message or ''):
+                        alert.message = f"{alert.message} {note}".strip()
+                    self._emit_alert_update(alert, 'resolved')
+
+                def _open(alert_type):
+                    return Alert.query.options(joinedload(Alert.device)).filter(
+                        Alert.alert_type == alert_type,
+                        Alert.resolved == False,
+                        Alert.created_at >= stale_cutoff,
+                    ).all()
+
+                # device_down: device is answering again
+                for alert in _open('device_down'):
                     device = alert.device
                     if device and device.last_seen and device.last_seen >= recent_time:
-                        alert.resolve()
-                        self._emit_alert_update(alert, 'resolved')
-                        logger.info(f"ALERT RESOLVED: Device down alert for {device.display_name} (last_seen: {device.last_seen}, recent_time: {recent_time})")
-                    else:
-                        logger.debug(f"Alert NOT resolved for {device.display_name}: device={device is not None}, last_seen={device.last_seen if device else None}, recent_time={recent_time}")
+                        _resolve(alert, 'device_down')
+                        logger.info(f"ALERT RESOLVED: Device down alert for {device.display_name}")
 
-                # Resolve high latency alerts for devices with normal latency
+                # high_latency: no recent sample above threshold
                 threshold_ms = self.runtime_int('high_latency_threshold_ms', self.alert_thresholds['high_latency_ms'])
-                cutoff_time = datetime.utcnow() - timedelta(minutes=5)  # Check last 5 minutes
-
-                active_latency_alerts = Alert.query.options(joinedload(Alert.device)).filter(
-                    Alert.alert_type == 'high_latency',
-                    Alert.resolved == False
-                ).all()
-
-                for alert in active_latency_alerts:
+                for alert in _open('high_latency'):
                     device = alert.device
-                    if device:
-                        # Check recent latency measurements
-                        recent_high_latency = MonitoringData.query.filter(
-                            MonitoringData.device_id == device.id,
-                            MonitoringData.timestamp >= cutoff_time,
-                            MonitoringData.response_time > threshold_ms
-                        ).count()
+                    if not device:
+                        continue
+                    recent_high = MonitoringData.query.filter(
+                        MonitoringData.device_id == device.id,
+                        MonitoringData.timestamp >= recent_time,
+                        MonitoringData.response_time > threshold_ms,
+                    ).count()
+                    if recent_high == 0:
+                        _resolve(alert, 'high_latency')
+                        logger.info(f"Resolved high latency alert for {device.display_name}")
 
-                        if recent_high_latency == 0:
-                            alert.resolve()
-                            self._emit_alert_update(alert, 'resolved')
-                            logger.info(f"Resolved high latency alert for {device.display_name}")
+                # performance: scores recovered, or nothing left to measure
+                recovery_threshold = float(self.runtime_setting('performance_alert_recovery_threshold', 40))
+                metrics_cutoff = now - timedelta(hours=24)
+                for alert in _open('performance'):
+                    device = alert.device
+                    if device is None or not device.is_monitored:
+                        _resolve(alert, 'performance', '[auto-resolved: device no longer monitored]')
+                        continue
+                    latest = PerformanceMetrics.query.filter_by(device_id=device.id)\
+                        .order_by(PerformanceMetrics.timestamp.desc()).first()
+                    if latest is None or latest.timestamp is None or latest.timestamp < metrics_cutoff:
+                        _resolve(alert, 'performance', '[auto-resolved: no recent performance data]')
+                        continue
+                    subtype = alert.alert_subtype or ''
+                    if subtype == 'performance_responsiveness':
+                        recovered = (latest.responsiveness_score or 0) >= 25
+                    elif subtype == 'performance_reliability':
+                        recovered = (latest.reliability_score or 0) >= 30
+                    else:
+                        recovered = (latest.health_score or 0) >= recovery_threshold
+                    if recovered:
+                        _resolve(alert, 'performance')
+                        logger.info(f"Resolved performance alert for {device.display_name} (health {latest.health_score})")
 
-                db.session.commit()
+                # new_device: informational, self-expires after a day
+                for alert in _open('new_device'):
+                    if alert.created_at and alert.created_at < now - timedelta(hours=24):
+                        _resolve(alert, 'new_device')
+
+                # stale: nothing should stay open for more than alert_max_open_days
+                stale_alerts = Alert.query.filter(
+                    Alert.resolved == False,
+                    Alert.created_at < stale_cutoff,
+                ).all()
+                for alert in stale_alerts:
+                    _resolve(alert, 'stale', '[auto-resolved: stale]')
+
+                if dry_run:
+                    db.session.rollback()
+                else:
+                    db.session.commit()
+
+                total = sum(counts.values())
+                if total:
+                    logger.info(f"Alert resolution{' (dry run)' if dry_run else ''}: {counts}")
 
             except Exception as e:
                 logger.error(f"Error resolving alerts: {e}")
                 db.session.rollback()
+
+        return counts
 
     def send_email_alert(self, alert):
         """Send email notification for alert"""
@@ -394,7 +464,7 @@ class AlertManager:
             msg = MIMEMultipart()
             msg['From'] = from_email
             msg['To'] = ', '.join(to_emails)
-            msg['Subject'] = f"[HomeNetMon] {alert.severity.upper()}: {alert.alert_type.replace('_', ' ').title()}"
+            msg['Subject'] = f"[HomeNetMon] {alert.severity.upper()}: {getattr(alert, 'title', alert.alert_type)}"
 
             # Email body
             body = f"""
@@ -468,15 +538,16 @@ This is an automated message from HomeNetMon.
             logger.error(f"Error sending webhook alert: {e}")
             return False
 
-    def send_discord_alert(self, alert):
+    def send_discord_alert(self, alert, webhook_url=None):
         """Send alert via Discord webhook.
 
         Configured via the ``discord_webhook_url`` runtime setting (Settings UI
-        or ``Configuration.set_value``). Best-effort; logs and returns False on
+        or ``Configuration.set_value``); ``webhook_url`` overrides it (used by
+        the Settings "send test" button). Best-effort; logs and returns False on
         any failure so a Discord outage never blocks the dispatch chain.
         """
         try:
-            webhook_url = Configuration.get_value('discord_webhook_url', '').strip()
+            webhook_url = (webhook_url or Configuration.get_value('discord_webhook_url', '') or '').strip()
             if not webhook_url:
                 logger.debug("No Discord webhook URL configured, skipping Discord alert")
                 return False
@@ -487,7 +558,7 @@ This is an automated message from HomeNetMon.
                 'info':     0x3498DB,  # blue
             }
             embed = {
-                'title': f"{alert.severity.title()}: {alert.alert_type.replace('_', ' ').title()}",
+                'title': f"{alert.severity.title()}: {getattr(alert, 'title', alert.alert_type)}",
                 'description': alert.message,
                 'color': colors.get(alert.severity, 0x95A5A6),
                 'timestamp': alert.created_at.isoformat() + 'Z',

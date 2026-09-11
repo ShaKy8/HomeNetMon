@@ -812,7 +812,7 @@ class PerformanceMonitor:
                     if should_resolve:
                         alert.resolved = True
                         alert.resolved_at = datetime.utcnow()
-                        alert.resolution_message = f"Performance improved: Health score now {current_health_score:.1f}%"
+                        resolution_message = f"Performance improved: Health score now {current_health_score:.1f}%"
 
                         logger.info(f"Resolved performance alert for {device.display_name}: {alert.message}")
 
@@ -826,7 +826,7 @@ class PerformanceMonitor:
                                         'device_id': device.id,
                                         'device_name': device.display_name,
                                         'resolved': True,
-                                        'resolution_message': alert.resolution_message
+                                        'resolution_message': resolution_message
                                     },
                                     'action': 'resolved',
                                     'timestamp': datetime.utcnow().isoformat() + 'Z'
@@ -840,7 +840,7 @@ class PerformanceMonitor:
                                         'ip': device.ip_address
                                     },
                                     'alert_id': alert.id,
-                                    'resolution_message': alert.resolution_message,
+                                    'resolution_message': resolution_message,
                                     'timestamp': datetime.utcnow().isoformat() + 'Z'
                                 })
                             except Exception as e:

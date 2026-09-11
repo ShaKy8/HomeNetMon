@@ -372,9 +372,9 @@ class DeviceMonitor:
                 return
 
             with self.app.app_context():
-                # Get all devices that should be monitored
-                all_devices = Device.query.filter(Device.is_monitored == True,  # SQLAlchemy expression
-                                                  Device.ip_address.isnot(None)).all()
+                # Monitored, addressed and inside the configured range (services/device_counts.py)
+                from services.device_counts import monitored_devices
+                all_devices = monitored_devices()
 
             if not all_devices:
                 logger.debug("No devices to monitor")
@@ -438,13 +438,12 @@ class DeviceMonitor:
 
                 # PERFORMANCE OPTIMIZATION: Throttle monitoring summary updates
                 from services.websocket_throttle import websocket_throttle
+                from services.device_counts import summarize
+                summary = summarize()
                 if websocket_throttle.should_emit_global_event('monitoring_summary'):
                     self.socketio.emit('monitoring_summary', {
-                        'timestamp': datetime.utcnow().isoformat(),
-                        'total_devices': total_devices,
-                        'devices_up': successful_pings,
-                        'devices_down': total_devices - successful_pings,
-                        'active_alerts': active_alerts,
+                        **summary,
+                        'timestamp': datetime.utcnow().isoformat() + 'Z',
                         'success_rate': (successful_pings / total_devices * 100) if total_devices > 0 else 0
                     }, room='updates_monitoring_summary')
 
@@ -575,41 +574,6 @@ class DeviceMonitor:
                 # Retire devices nobody has seen in a long time, then monitor the rest
                 self.archive_stale_devices()
                 self.monitor_all_devices()
-
-                # Alert lifecycle housekeeping (every 10 cycles). Table retention is
-                # handled by services/retention.py from ResourceMonitor.
-                if hasattr(self, '_cleanup_counter'):
-                    self._cleanup_counter += 1
-                else:
-                    self._cleanup_counter = 1
-
-                if self._cleanup_counter >= 10:
-                    try:
-                        from services.alert_retention_policy import alert_retention_policy
-                        if self.app:
-                            alert_retention_policy.app = self.app
-                        alert_retention_policy.run_retention_cleanup()
-                    except Exception as e:
-                        logger.error(f"Error in alert retention cleanup: {e}")
-
-                    self._cleanup_counter = 0
-
-                # Run alert auto-resolution periodically (every 5 cycles)
-                if hasattr(self, '_auto_resolve_counter'):
-                    self._auto_resolve_counter += 1
-                else:
-                    self._auto_resolve_counter = 1
-
-                if self._auto_resolve_counter >= 5:
-                    try:
-                        from services.alert_auto_resolver import alert_auto_resolver
-                        if self.app:
-                            alert_auto_resolver.app = self.app
-                        alert_auto_resolver.run_auto_resolution_cycle()
-                        self._auto_resolve_counter = 0
-                    except Exception as e:
-                        logger.error(f"Error in alert auto-resolution: {e}")
-                        self._auto_resolve_counter = 0
 
                 # Flush any pending WebSocket updates
                 if self.socketio:
