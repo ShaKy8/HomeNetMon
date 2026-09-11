@@ -29,56 +29,6 @@ def get_system_info_endpoint():
             'error': str(e)
         }), 500
 
-@system_bp.route('/version', methods=['GET'])
-@create_endpoint_limiter('relaxed')
-def get_version_endpoint():
-    """Get version information only"""
-    try:
-        version_info = get_version_info()
-        return jsonify({
-            'success': True,
-            **version_info
-        })
-    except Exception as e:
-        logger.error(f"Error getting version info: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@system_bp.route('/stats', methods=['GET'])
-@create_endpoint_limiter('relaxed')
-def get_system_stats_endpoint():
-    """Get system statistics only"""
-    try:
-        system_info = get_system_info()
-        return jsonify({
-            'success': True,
-            **system_info
-        })
-    except Exception as e:
-        logger.error(f"Error getting system stats: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
-
-@system_bp.route('/about', methods=['GET'])
-@create_endpoint_limiter('relaxed')
-def get_application_info_endpoint():
-    """Get application information only"""
-    try:
-        app_info = get_application_info()
-        return jsonify({
-            'success': True,
-            **app_info
-        })
-    except Exception as e:
-        logger.error(f"Error getting application info: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
 
 @system_bp.route('/health', methods=['GET'])
 @create_endpoint_limiter('relaxed')

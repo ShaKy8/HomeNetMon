@@ -138,7 +138,7 @@ class CSRFHandler {
 
         // URL-based exemptions for specific endpoints (read-only or token endpoints only)
         const exemptPaths = [
-            '/api/health',      // Read-only health check
+            '/api/system/health',  // Read-only health check
             '/api/csrf-token'   // Token refresh endpoint
         ];
 

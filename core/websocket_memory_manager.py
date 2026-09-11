@@ -327,11 +327,5 @@ def fix_websocket_memory_leaks(app, socketio):
             # Don't shutdown on every request, just clean up if needed
             pass
 
-    # Add stats endpoint
-    @app.route('/api/websocket/stats')
-    def websocket_stats():
-        stats = connection_manager.get_connection_stats()
-        return jsonify(stats)
-
     logger.info("WebSocket memory leak fixes applied")
     return connection_manager

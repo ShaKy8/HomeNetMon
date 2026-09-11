@@ -158,11 +158,7 @@ def create_app():
     from api.notifications import notifications_bp
     from api.config_management import config_management_bp
     from api.system import system_bp
-    from api.health import health_bp
     from api.performance import performance_bp
-    from api.performance_optimization import performance_optimization_bp
-    from api.rate_limit_admin import rate_limit_admin_bp
-    from api.maintenance import maintenance_bp
 
     app.register_blueprint(devices_bp, url_prefix='/api/devices')
     app.register_blueprint(monitoring_bp, url_prefix='/api/monitoring')
@@ -173,11 +169,7 @@ def create_app():
     app.register_blueprint(security_bp, url_prefix='/api/security')
     app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
     app.register_blueprint(system_bp, url_prefix='/api/system')
-    app.register_blueprint(health_bp, url_prefix='/api/health')
     app.register_blueprint(performance_bp, url_prefix='/api/performance')
-    app.register_blueprint(performance_optimization_bp, url_prefix='/api/performance-optimization')
-    app.register_blueprint(rate_limit_admin_bp, url_prefix='/api/rate-limit')
-    app.register_blueprint(maintenance_bp, url_prefix='/api/maintenance')
 
     # Setup API documentation (Swagger/OpenAPI)
     try:
@@ -260,20 +252,6 @@ def create_app():
     from services.resource_monitor import ResourceMonitor
     resource_monitor = ResourceMonitor(app)
     app.resource_monitor = resource_monitor
-
-    # Initialize frontend resource optimization - NUCLEAR DISABLED FOR DEBUGGING
-    # from services.resource_optimizer import init_resource_optimization, generate_service_worker
-    # from version import __version__
-    # resource_bundler, static_optimizer = init_resource_optimization(app)
-    # if resource_bundler and static_optimizer:
-    #     app.resource_bundler = resource_bundler
-    #     app.static_optimizer = static_optimizer
-    #
-    #     # Generate service worker for PWA caching - TEMPORARILY DISABLED FOR CACHE DEBUGGING
-    #     # try:
-    #     #     generate_service_worker(app, __version__)
-    #     # except Exception as e:
-    #     #     logger.warning(f"Failed to generate service worker: {e}")
 
     app.socketio = socketio
 
@@ -501,11 +479,6 @@ def create_app():
         # Redirect to alerts page - notifications functionality consolidated there
         return redirect(url_for('alerts'))
 
-    @app.route('/notifications/analytics')
-    def notification_analytics():
-        """Advanced notification analytics dashboard"""
-        return render_template('notification_analytics.html')
-
     @app.route('/analytics')
     def analytics():
         return render_template('analytics.html')
@@ -516,10 +489,6 @@ def create_app():
         return redirect(url_for('security'), code=301)
 
     # Health overview functionality has been merged into the main dashboard
-
-    @app.route('/system-info')
-    def system_info():
-        return render_template('system_info.html')
 
     @app.route('/about')
     def about():
@@ -703,62 +672,6 @@ def create_app():
                 'status': 'unhealthy',
                 'error': str(e)
             }), 500
-
-    # Readiness check endpoint (for Kubernetes/Docker)
-    @app.route('/ready')
-    def readiness_check():
-        try:
-            # Check database connectivity
-            from sqlalchemy import text
-            db.session.execute(text('SELECT 1'))
-
-            # Check critical services are initialized
-            services_ready = True
-            service_status = {}
-
-            # Check scanner service
-            if hasattr(scanner, 'is_running'):
-                service_status['scanner'] = scanner.is_running
-                services_ready = services_ready and scanner.is_running
-
-            # Check monitor service
-            if hasattr(monitor, 'is_running'):
-                service_status['monitor'] = monitor.is_running
-                services_ready = services_ready and monitor.is_running
-
-            # Check if we have devices to monitor
-            from models import Device
-            device_count = Device.query.filter_by(is_monitored=True).count()
-            service_status['devices_configured'] = device_count > 0
-
-            if services_ready:
-                return jsonify({
-                    'status': 'ready',
-                    'services': service_status,
-                    'devices_monitored': device_count
-                })
-            else:
-                return jsonify({
-                    'status': 'not_ready',
-                    'services': service_status,
-                    'devices_monitored': device_count
-                }), 503
-
-        except Exception as e:
-            return jsonify({
-                'status': 'not_ready',
-                'error': str(e)
-            }), 503
-
-    # Liveness check endpoint (for Kubernetes/Docker)
-    @app.route('/live')
-    def liveness_check():
-        """Simple liveness check - server is running and responding"""
-        return jsonify({
-            'status': 'alive',
-            'timestamp': datetime.utcnow().isoformat() + 'Z',
-            'uptime_seconds': int((datetime.utcnow() - SERVER_START_TIME).total_seconds())
-        })
 
     return app, socketio
 

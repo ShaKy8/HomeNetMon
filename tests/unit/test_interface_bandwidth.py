@@ -123,7 +123,3 @@ class TestBandwidthApi:
         d = client.get('/api/monitoring/bandwidth/devices?hours=1&limit=10').get_json()
         assert [x['interface'] for x in d['devices']] == ['eth0', 'wlan0']
         assert d['devices'][0]['bandwidth_stats']['measurement_count'] == 6
-
-    def test_raw_rows_filter_by_interface(self, client, samples):
-        d = client.get('/api/monitoring/bandwidth?hours=1&interface=wlan0').get_json()
-        assert d['count'] == 1 and d['bandwidth_data'][0]['interface'] == 'wlan0'

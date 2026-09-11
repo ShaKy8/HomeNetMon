@@ -23,8 +23,7 @@ from app import create_app
 from models import (
     db, Device, MonitoringData, PerformanceMetrics, Alert, Configuration,
     DeviceIpHistory, ConfigurationHistory, InterfaceBandwidth, NotificationHistory,
-    NotificationReceipt, AlertSuppression, SecurityScan,
-    SecurityVulnerability, SecurityEvent, ComplianceResult, DeviceOSInfo
+    AlertSuppression, SecurityScan, SecurityEvent
 )
 from config import Config
 

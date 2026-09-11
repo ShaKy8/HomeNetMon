@@ -7,26 +7,6 @@ import json
 
 security_bp = Blueprint('security', __name__)
 
-@security_bp.route('/status', methods=['GET'])
-@create_endpoint_limiter('relaxed')
-def get_security_status():
-    """Get security scanner status"""
-    try:
-        status = {
-            'running': security_scanner.running,
-            'scan_interval': security_scanner.scan_interval,
-            'scan_config': security_scanner.scan_config,
-            'suspicious_ports': list(security_scanner.suspicious_ports.keys()),
-            'last_scan': 'unknown'  # Could be enhanced with actual last scan time
-        }
-
-        return jsonify({
-            'success': True,
-            'status': status
-        })
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 @security_bp.route('/summary', methods=['GET'])
 @create_endpoint_limiter('relaxed')
@@ -108,46 +88,6 @@ def get_security_alerts():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@security_bp.route('/scans', methods=['GET'])
-@create_endpoint_limiter('relaxed')
-def get_scan_results():
-    """Get recent scan results"""
-    try:
-        device_id = request.args.get('device_id', type=int)
-        hours = request.args.get('hours', default=24, type=int)
-        limit = request.args.get('limit', default=100, type=int)
-
-        # Cap limits
-        if hours > 720:
-            hours = 720
-        if limit > 500:
-            limit = 500
-
-        start_time = datetime.utcnow() - timedelta(hours=hours)
-
-        # Build query
-        query = db.session.query(SecurityScan).filter(
-            SecurityScan.scanned_at >= start_time
-        )
-
-        if device_id:
-            query = query.filter(SecurityScan.device_id == device_id)
-
-        scans = query.order_by(
-            SecurityScan.scanned_at.desc()
-        ).limit(limit).all()
-
-        scans_data = [scan.to_dict() for scan in scans]
-
-        return jsonify({
-            'success': True,
-            'scans': scans_data,
-            'count': len(scans_data),
-            'period_hours': hours
-        })
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 @security_bp.route('/device/<int:device_id>/scan', methods=['POST'])
 @create_endpoint_limiter('critical')

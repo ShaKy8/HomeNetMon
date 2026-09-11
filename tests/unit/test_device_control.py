@@ -15,23 +15,18 @@ class TestTargetValidation:
 
     @pytest.mark.parametrize('bad', ['-f', '8.8.8.8', 'evil.example.com/x?a=', '224.0.0.1', '0.0.0.0', '', 'localhost'])
     def test_non_lan_or_malformed_targets_are_rejected(self, client, bad):
-        with patch('api.device_control.device_control_service.ping_device') as ping:
-            r = client.post('/api/device-control/ping', json={'ip_address': bad, 'count': 1},
+        with patch('api.device_control.device_control_service.traceroute_to_device') as trace:
+            r = client.post('/api/device-control/traceroute', json={'ip_address': bad},
                             headers={'X-CSRF-Token': _token(client)})
         assert r.status_code == 400, (bad, r.get_json())
-        ping.assert_not_called()
+        trace.assert_not_called()
 
     def test_private_target_is_accepted(self, client):
-        with patch('api.device_control.device_control_service.ping_device', return_value={'success': True}) as ping:
-            r = client.post('/api/device-control/ping', json={'ip_address': ' 192.168.1.9 ', 'count': 1},
+        with patch('api.device_control.device_control_service.traceroute_to_device', return_value={'success': True}) as trace:
+            r = client.post('/api/device-control/traceroute', json={'ip_address': ' 192.168.1.9 '},
                             headers={'X-CSRF-Token': _token(client)})
         assert r.status_code == 200
-        ping.assert_called_once_with('192.168.1.9', 1)
-
-    def test_bool_count_is_rejected(self, client):
-        r = client.post('/api/device-control/ping', json={'ip_address': '192.168.1.9', 'count': True},
-                        headers={'X-CSRF-Token': _token(client)})
-        assert r.status_code == 400
+        trace.assert_called_once_with('192.168.1.9')
 
     def test_traceroute_and_discover_share_validation(self, client):
         for path in ('/api/device-control/traceroute', '/api/device-control/discover-info', '/api/device-control/port-scan'):

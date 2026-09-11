@@ -253,7 +253,7 @@ def generate_openapi_spec():
                     }
                 }
             },
-            "/api/health": {
+            "/api/system/health": {
                 "get": {
                     "tags": ["health"],
                     "summary": "Health check",

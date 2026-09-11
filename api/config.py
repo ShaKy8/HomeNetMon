@@ -55,21 +55,6 @@ def get_configuration():
     except Exception as e:
         raise DatabaseError("Failed to retrieve configuration", operation="get_configuration") from e
 
-@config_bp.route('/<string:key>', methods=['GET'])
-@create_endpoint_limiter('relaxed')
-@handle_errors()
-def get_config_value(key):
-    """Get specific configuration value"""
-    try:
-        config = Configuration.query.filter_by(key=key).first()
-
-        if not config:
-            raise ResourceNotFoundError("Configuration", key)
-
-        return jsonify(config.to_dict())
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
 
 @config_bp.route('/<string:key>', methods=['PUT'])
 @create_endpoint_limiter('strict')
@@ -398,44 +383,6 @@ def update_alert_config():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-@config_bp.route('/reset', methods=['POST'])
-@create_endpoint_limiter('critical')
-def reset_configuration():
-    """Reset configuration to defaults"""
-    try:
-        data = request.get_json() or {}
-        confirm = data.get('confirm', False)
-
-        if not confirm:
-            return jsonify({'error': 'Please confirm reset by sending {"confirm": true}'}), 400
-
-        # Delete all configuration entries
-        Configuration.query.delete()
-        db.session.commit()
-
-        # Reinitialize default configuration
-        default_configs = [
-            ('network_range', '192.168.86.0/24', 'Network range to monitor'),
-            ('ping_interval', '30', 'Ping interval in seconds'),
-            ('scan_interval', '300', 'Network scan interval in seconds'),
-            ('alert_email_enabled', 'false', 'Enable email alerts'),
-            ('alert_webhook_enabled', 'false', 'Enable webhook alerts'),
-            ('push_notifications_enabled', 'false', 'Enable push notifications'),
-            ('ntfy_topic', '', 'Ntfy topic name (e.g., your-unique-topic)'),
-            ('ntfy_server', 'https://ntfy.sh', 'Ntfy server URL'),
-        ]
-
-        for key, value, description in default_configs:
-            Configuration.set_value(key, value, description)
-
-        return jsonify({
-            'message': 'Configuration reset to defaults',
-            'note': 'Restart required for changes to take effect'
-        })
-
-    except Exception as e:
-        db.session.rollback()
-        return jsonify({'error': str(e)}), 500
 
 @config_bp.route('/test/email', methods=['POST'])
 @create_endpoint_limiter('strict')
@@ -684,15 +631,6 @@ def test_discord_config():
     except Exception as e:
         return jsonify({'error': f'Discord test failed: {str(e)}'}), 500
 
-@config_bp.route('/restart-services', methods=['POST'])
-@create_endpoint_limiter('strict')
-def restart_services():
-    """Restart monitoring services to apply configuration changes"""
-    try:
-        return jsonify(_request_service_restart('Configuration saved.'))
-    except Exception as e:
-        return jsonify({'success': False, 'error': f'Error restarting services: {str(e)}'}), 500
-
 
 @config_bp.route('/restart-system', methods=['POST'])
 @create_endpoint_limiter('strict')
@@ -765,30 +703,3 @@ def reset_monitoring_data():
             'success': False,
             'error': f'Error resetting monitoring data: {str(e)}'
         }), 500
-
-@config_bp.route('/dashboard-title', methods=['PUT'])
-@create_endpoint_limiter('strict')
-def update_dashboard_title():
-    """Update dashboard title configuration"""
-    try:
-        data = request.get_json()
-
-        if not data or 'title' not in data:
-            return jsonify({'error': 'Title is required'}), 400
-
-        title = data['title'].strip()
-
-        # Validate title
-        if not title or len(title) < 1:
-            return jsonify({'error': 'Title cannot be empty'}), 400
-
-        if len(title) > 50:
-            return jsonify({'error': 'Title must be 50 characters or less'}), 400
-
-        # Update configuration
-        Configuration.set_value('dashboard_title', title, 'Custom title displayed on the main dashboard header')
-
-        return jsonify({'success': True, 'message': 'Dashboard title updated successfully'})
-
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500

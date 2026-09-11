@@ -100,62 +100,6 @@ class InputValidator:
 
         return hostname
 
-    @classmethod
-    def validate_username(cls, username: str) -> str:
-        """Validate username format."""
-        if not username:
-            raise ValueError("Username cannot be empty")
-
-        username = username.strip()
-
-        if len(username) > cls.MAX_LENGTHS['username']:
-            raise ValueError(f"Username too long (max {cls.MAX_LENGTHS['username']} chars)")
-
-        if not cls.USERNAME_REGEX.match(username):
-            raise ValueError("Username can only contain letters, numbers, underscore and hyphen")
-
-        return username
-
-    @classmethod
-    def validate_email(cls, email: str) -> str:
-        """Validate email address format."""
-        if not email:
-            raise ValueError("Email cannot be empty")
-
-        email = email.strip().lower()
-
-        if len(email) > cls.MAX_LENGTHS['email']:
-            raise ValueError(f"Email too long (max {cls.MAX_LENGTHS['email']} chars)")
-
-        if not cls.EMAIL_REGEX.match(email):
-            raise ValueError(f"Invalid email format: {email}")
-
-        return email
-
-    @classmethod
-    def validate_password(cls, password: str) -> str:
-        """Validate password strength."""
-        if not password:
-            raise ValueError("Password cannot be empty")
-
-        if len(password) < 8:
-            raise ValueError("Password must be at least 8 characters long")
-
-        if len(password) > cls.MAX_LENGTHS['password']:
-            raise ValueError(f"Password too long (max {cls.MAX_LENGTHS['password']} chars)")
-
-        # Check for password complexity
-        has_upper = any(c.isupper() for c in password)
-        has_lower = any(c.islower() for c in password)
-        has_digit = any(c.isdigit() for c in password)
-        has_special = any(c in '!@#$%^&*()_+-=[]{}|;:,.<>?' for c in password)
-
-        complexity_score = sum([has_upper, has_lower, has_digit, has_special])
-
-        if complexity_score < 3:
-            raise ValueError("Password must contain at least 3 of: uppercase, lowercase, digit, special character")
-
-        return password
 
     @classmethod
     def sanitize_string(cls, input_str: str, max_length: int = 255,
@@ -197,22 +141,6 @@ class InputValidator:
 
         return int_val
 
-    @classmethod
-    def validate_float(cls, value: Any, min_val: Optional[float] = None,
-                      max_val: Optional[float] = None) -> float:
-        """Validate float input within bounds."""
-        try:
-            float_val = float(value)
-        except (ValueError, TypeError):
-            raise ValueError(f"Invalid float value: {value}")
-
-        if min_val is not None and float_val < min_val:
-            raise ValueError(f"Value must be at least {min_val}")
-
-        if max_val is not None and float_val > max_val:
-            raise ValueError(f"Value must be at most {max_val}")
-
-        return float_val
 
     @classmethod
     def validate_boolean(cls, value: Any) -> bool:
@@ -249,63 +177,6 @@ class InputValidator:
 
         return device_type
 
-    @classmethod
-    def validate_url(cls, url: str, allowed_schemes: List[str] = None) -> str:
-        """Validate URL format and scheme."""
-        if not url:
-            raise ValueError("URL cannot be empty")
-
-        url = url.strip()
-
-        if len(url) > cls.MAX_LENGTHS['url']:
-            raise ValueError(f"URL too long (max {cls.MAX_LENGTHS['url']} chars)")
-
-        # Parse URL
-        try:
-            parsed = urllib.parse.urlparse(url)
-        except Exception:
-            raise ValueError(f"Invalid URL format: {url}")
-
-        # Check scheme
-        if allowed_schemes is None:
-            allowed_schemes = ['http', 'https']
-
-        if parsed.scheme not in allowed_schemes:
-            raise ValueError(f"URL scheme must be one of: {', '.join(allowed_schemes)}")
-
-        # Check for basic URL structure
-        if not parsed.netloc:
-            raise ValueError(f"Invalid URL: missing domain")
-
-        return url
-
-    @classmethod
-    def validate_port(cls, port: Any) -> int:
-        """Validate network port number."""
-        port = cls.validate_integer(port, min_val=1, max_val=65535)
-        return port
-
-    @classmethod
-    def validate_pagination(cls, page: Any = 1, per_page: Any = 50) -> tuple:
-        """Validate pagination parameters."""
-        page = cls.validate_integer(page, min_val=1, max_val=10000)
-        per_page = cls.validate_integer(per_page, min_val=1, max_val=500)
-        return page, per_page
-
-    @classmethod
-    def validate_search_query(cls, query: str) -> str:
-        """Validate and sanitize search query."""
-        if not query:
-            return ""
-
-        query = cls.sanitize_string(query, max_length=cls.MAX_LENGTHS['search_query'])
-
-        # Remove SQL-like keywords
-        dangerous_keywords = ['DROP', 'DELETE', 'INSERT', 'UPDATE', 'ALTER', 'CREATE', 'EXEC', 'EXECUTE']
-        for keyword in dangerous_keywords:
-            query = re.sub(rf'\b{keyword}\b', '', query, flags=re.IGNORECASE)
-
-        return query.strip()
 
     @classmethod
     def validate_json_input(cls, data: Dict[str, Any], required_fields: List[str] = None,

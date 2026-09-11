@@ -711,44 +711,6 @@ This is an automated message from HomeNetMon.
         except Exception as e:
             logger.error(f"Error sending high latency push notification: {e}")
 
-    def cleanup_old_alerts(self, days=30):
-        """Clean up resolved alerts older than specified days"""
-        if not self.app:
-            return
-
-        try:
-            with self.app.app_context():
-                cutoff_date = datetime.utcnow() - timedelta(days=days)
-
-                deleted_count = db.session.query(Alert).filter(
-                    Alert.resolved == True,
-                    Alert.resolved_at < cutoff_date
-                ).delete()
-
-                db.session.commit()
-
-                if deleted_count > 0:
-                    logger.info(f"Cleaned up {deleted_count} old resolved alerts")
-
-        except Exception as e:
-            logger.error(f"Error cleaning up old alerts: {e}")
-            if self.app:
-                with self.app.app_context():
-                    db.session.rollback()
-
-    def get_active_alerts(self):
-        """Get all active (unresolved) alerts"""
-        if not self.app:
-            logger.error("No Flask app context available for getting alerts")
-            return []
-
-        with self.app.app_context():
-            try:
-                return Alert.query.filter(Alert.resolved == False).order_by(Alert.created_at.desc()).all()
-            except Exception as e:
-                logger.error(f"Error getting active alerts: {e}")
-                return []
-
     def set_alert_pause(self, minutes):
         """Pause alert generation for specified minutes (called after bulk deletion)"""
         self.alert_pause_until = datetime.utcnow() + timedelta(minutes=minutes)

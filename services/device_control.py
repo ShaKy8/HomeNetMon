@@ -330,40 +330,6 @@ class DeviceControlService:
                 'timestamp': datetime.utcnow().isoformat() + 'Z'
             }
 
-    def get_device_capabilities(self, device):
-        """Determine what control capabilities a device has"""
-        capabilities = []
-
-        # All devices can be pinged
-        capabilities.append('ping')
-
-        # If MAC address is known, Wake-on-LAN is possible
-        if device.mac_address:
-            capabilities.append('wake_on_lan')
-
-        # All devices can be port scanned
-        capabilities.append('port_scan')
-
-        # All devices can have info discovered
-        capabilities.append('discover_info')
-
-        # All devices can be traced
-        capabilities.append('traceroute')
-
-        # Add device-type specific capabilities
-        if device.device_type:
-            device_type = device.device_type.lower()
-
-            if 'router' in device_type or 'gateway' in device_type:
-                capabilities.extend(['web_interface', 'snmp'])
-            elif 'computer' in device_type or 'server' in device_type:
-                capabilities.extend(['ssh', 'rdp', 'web_interface'])
-            elif 'printer' in device_type:
-                capabilities.extend(['web_interface', 'snmp'])
-            elif 'camera' in device_type:
-                capabilities.extend(['web_interface', 'rtsp'])
-
-        return capabilities
 
 # Global device control service instance
 device_control_service = DeviceControlService()
