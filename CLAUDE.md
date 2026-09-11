@@ -11,11 +11,11 @@ HomeNetMon is a Flask + SQLAlchemy + Socket.IO web app for monitoring devices on
 ### Run the app
 ```bash
 source venv/bin/activate
-HOST=0.0.0.0 DEBUG=true python app.py     # dev
-./run_production.sh                       # foreground with .env loaded
+HOST=0.0.0.0 DEBUG=true PORT=5001 python app.py   # dev; the deployed service already owns port 5000 on this machine
+./run_production.sh                       # foreground with .env loaded, DB defaults to production_data/
 ./install.sh --user                       # install as a per-user systemd service (no root)
 ```
-Defaults (`config.py`): port 5000, network `192.168.86.0/24`, ping every 600 s, scan every 86400 s, SQLite at `homeNetMon.db` in the checkout. Override via `.env` (see `.env.example`). **Runtime settings saved from the Settings page (the `Configuration` table) win over `.env`** for `network_range`, `ping_interval`, `scan_interval` and `bandwidth_interval`; `init_db` only seeds them on a fresh database and logs a WARNING when they differ from the environment.
+`app.py` runs `socketio.run()` with `use_reloader=False`, so code changes need a restart. Defaults (`config.py`): port 5000, network `192.168.86.0/24`, ping every 600 s, scan every 86400 s, SQLite at `homeNetMon.db` in the checkout. Override via `.env` (see `.env.example`). **Runtime settings saved from the Settings page (the `Configuration` table) win over `.env`** for `network_range`, `ping_interval`, `scan_interval` and `bandwidth_interval`; `init_db` only seeds them on a fresh database and logs a WARNING when they differ from the environment.
 
 The deployment on this machine runs as the **user** unit `~/.config/systemd/user/homenetmon.service` with `DATABASE_URL` pointing at `production_data/homeNetMon.db` (gitignored). Do not commit database files.
 
@@ -24,11 +24,16 @@ The deployment on this machine runs as the **user** unit `~/.config/systemd/user
 pytest tests/unit                         # what CI requires (~390 pass / ~90 skip); config in pyproject.toml
 pytest tests/unit --cov=. --cov-fail-under=28   # coverage floor CI enforces (measured 30.5% on 2026-09-04)
 pytest tests/unit/test_retention.py       # one file
+pytest tests/unit/test_retention.py::TestPurgeTable::test_deletes_only_rows_older_than_default   # one test; or -k <substring>
 pytest --no-cov -q                        # quick iteration
 pytest tests/api tests/integration        # advisory in CI: 162 of 209 fail (written against endpoints that never existed)
-npx playwright test TestHomeNetmon.js     # E2E (auto-starts the app; see playwright.config.js)
+npx playwright test TestHomeNetmon.js     # E2E; see playwright.config.js
 ```
-Skipped unit tests are listed in `tests/conftest.py:STALE_TEST_SKIPS` with a reason each; to revive one, fix it and remove its entry. Pytest options (`--strict-markers`, `timeout=15`, markers) live in `pyproject.toml [tool.pytest.ini_options]` — there is no `pytest.ini`.
+CI (`.github/workflows/ci.yml`) runs the unit suite with `DATABASE_URL=sqlite:///:memory:`, `SECRET_KEY` and `NETWORK_RANGE=192.168.1.0/24` set, and installs the `nmap` binary because conftest touches the scanner at import time. Skipped unit tests are listed in `tests/conftest.py:STALE_TEST_SKIPS` with a reason each; to revive one, fix it and remove its entry. Pytest options (`--strict-markers`, `timeout=15`, markers) live in `pyproject.toml [tool.pytest.ini_options]` — there is no `pytest.ini`.
+
+The session-scoped `app` fixture sets `Config.TESTING = True` **before** `create_app()`, which makes `create_app()` skip `start_monitoring_services()` entirely (no background threads under test) and disables CSRF. A test that needs a service loop must drive one iteration directly (e.g. `current_app._monitor.monitor_all_devices()` inside `app.app_context()`).
+
+Playwright reuses any server already answering on `localhost:5000` unless `CI` is set — on this machine that is the **deployed** instance and its production database. Point `BASE_URL` at a dev instance on another port before running E2E against uncommitted changes.
 
 Fixtures: `tests/fixtures/factories.py` imports `factories_original.py` (factory_boy) and falls back to `simple_factories.py` when factory_boy is unavailable. Every `SQLAlchemyModelFactory` sets `sqlalchemy_session = db.session`; keep that.
 
@@ -45,7 +50,7 @@ venv/bin/python scripts/backup_database.py            # online, WAL-safe backup 
 venv/bin/python scripts/db/maintenance_window.py      # dry run: duplicate indexes, dead tables, VACUUM plan
 venv/bin/python scripts/db/maintenance_window.py --execute   # only with the service stopped
 ```
-Schema is created by `init_db()`/`create_all()` at startup; there is no migration framework. Adding a column means an `ALTER TABLE` migration (SQLite cannot alter constraints in place — see the `devices` rebuild in `maintenance_window.py` for the pattern).
+Schema is created by `init_db()`/`create_all()` at startup; there is no migration framework (`scripts/migrations/` holds historical one-shots, not a runner). Adding a column means an idempotent `ALTER TABLE` step (SQLite cannot alter constraints in place — see the `devices` rebuild in `maintenance_window.py` for the pattern).
 
 ### Service control (this machine)
 ```bash
@@ -98,7 +103,9 @@ Server-rendered Jinja + Bootstrap 5 + Chart.js + vanilla JS; no build step (temp
 - **`db.session` across threads** needs `with app.app_context():` per iteration.
 - **Runtime `Configuration` overrides `.env`** (see above) — when a setting "does not change", check the Settings page / `/api/config`.
 - **Dependencies**: `requirements.txt` is runtime-only and pinned; dev tools in `requirements-dev.txt`; Python ≥ 3.11. Run `pip-audit -r requirements.txt` after bumps.
-- **Root-level `*.sh`/`*.py` helpers and everything under `scripts/` are operational one-shots**, not runtime. The runtime is `app.py` + `api/` + `core/` + `monitoring/` + `services/` + `models.py` + `config.py` + `constants.py`.
+- **Root-level `*.sh`/`*.py` helpers and everything under `scripts/` are operational one-shots**, not runtime. The runtime is `app.py` + `api/` + `core/` + `monitoring/` + `services/` + `models.py` + `config.py` + `constants.py` + `version.py` + `performance_middleware.py`.
+- **Ruff is deliberately narrow** (`E9`, `F`, `B`, `S`, `PIE`, `PLE`, `RUF` with many ignores; `scripts/`, `static/`, `templates/` excluded). A clean `ruff check` is not a style guarantee; don't widen the ruleset in a feature commit.
+- **`AGENTS.md`** is the short orientation for other coding agents and defers to this file; keep the two consistent when changing commands or conventions.
 - **Version** lives in `version.py`, `pyproject.toml` and `package.json` (keep them equal) plus a `CHANGELOG.md` entry.
 
 ## Configuration
@@ -109,5 +116,5 @@ Read `config.py` and `.env.example`. Most-edited keys: `NETWORK_RANGE`, `PING_IN
 
 - `README.md` — features and install walkthrough
 - `docs/API_REFERENCE.md`, `docs/DEPLOYMENT_GUIDE.md`, `docs/TROUBLESHOOTING_GUIDE.md`, `docs/RESTORE.md`
-- `tests/QUICK_START.md` — test commands by area
 - `CHANGELOG.md` — 2.4.0 summarises the 2026-09 review
+- `tests/QUICK_START.md` is stale (names test files that no longer exist); use the commands above instead
