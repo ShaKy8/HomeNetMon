@@ -21,6 +21,7 @@ def _with_live_thread(name, fn):
 
 
 def test_no_heartbeat_is_grace_right_after_start(monkeypatch):
+    monkeypatch.setenv('SECURITY_SCANNING_ENABLED', 'true')   # CI has no .env; the thread is optional otherwise
     name = 'SecurityScanner'
     monkeypatch.setattr(health, '_process_started', time.time())
     with health._lock:
@@ -31,6 +32,7 @@ def test_no_heartbeat_is_grace_right_after_start(monkeypatch):
 
 
 def test_no_heartbeat_becomes_stale_after_one_budget(monkeypatch):
+    monkeypatch.setenv('SECURITY_SCANNING_ENABLED', 'true')   # CI has no .env; the thread is optional otherwise
     name = 'SecurityScanner'
     budget = health.EXPECTED_THREADS[name] * health.MAX_AGE_MULTIPLIER
     monkeypatch.setattr(health, '_process_started', time.time() - budget - 5)
@@ -43,6 +45,7 @@ def test_no_heartbeat_becomes_stale_after_one_budget(monkeypatch):
 
 
 def test_recent_heartbeat_is_never_stale(monkeypatch):
+    monkeypatch.setenv('SECURITY_SCANNING_ENABLED', 'true')   # CI has no .env; the thread is optional otherwise
     name = 'SecurityScanner'
     monkeypatch.setattr(health, '_process_started', time.time() - 10 ** 6)
     health.record_heartbeat(name)
