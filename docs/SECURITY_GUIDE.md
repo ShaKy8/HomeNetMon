@@ -8,7 +8,11 @@ authentication, add network boundaries instead:
 
 - Bind to the LAN only (`HOST=0.0.0.0` on the LAN interface; never port-forward 5000).
 - For remote access use a VPN or an overlay network (WireGuard, Tailscale), or a reverse proxy that
-  terminates TLS **and** authenticates (Caddy + basic auth, nginx + auth_request, Authelia).
+  terminates TLS **and** authenticates (Caddy + basic auth, nginx + auth_request, Authelia). Tailscale
+  needs no configuration (see the Deployment Guide); never expose the port with `tailscale funnel`.
+- Live updates (Socket.IO) accept only origins that are this host: private, link-local and
+  `100.64.0.0/10` addresses, `*.local` names, the host's Tailscale MagicDNS name and
+  `ALLOWED_ORIGIN_HOSTS`. A page on any other site cannot open a socket to the dashboard.
 - Keep the host's firewall closed to everything but the LAN.
 
 ## What the application does protect

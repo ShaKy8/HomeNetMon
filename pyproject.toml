@@ -1,6 +1,6 @@
 [project]
 name = "homenetmon"
-version = "2.5.0"
+version = "2.5.1"
 description = "Home network monitoring dashboard (Flask + SQLAlchemy + Socket.IO)"
 requires-python = ">=3.11"
 

@@ -118,6 +118,34 @@ systemctl --user daemon-reload && systemctl --user restart homenetmon
 
 ## HTTPS and remote access
 
-HomeNetMon serves HTTP only. If you want TLS or access from outside the LAN, put it behind a reverse
-proxy that terminates TLS and adds authentication (Caddy, nginx with basic auth, Tailscale, a VPN).
-Set `BASE_URL` so notification links use the public address. See the [Security Guide](SECURITY_GUIDE.md).
+HomeNetMon serves HTTP only and has no login, so remote access must come from a private network
+boundary, never from a port forward. See the [Security Guide](SECURITY_GUIDE.md).
+
+### Tailscale
+
+The simplest path. Install Tailscale on the HomeNetMon host and on each device you want to use it
+from, then open the host's MagicDNS name on the app port:
+
+```
+http://<host>.<tailnet>.ts.net:5000
+```
+
+Everything works over the tailnet, including live updates: the Socket.IO origin check accepts
+`100.64.0.0/10` addresses and the host's own MagicDNS name (read from `tailscale status --json`,
+cached 30 s, no configuration). The About page shows the URL and which peers are online.
+
+- Set `BASE_URL=http://<host>.<tailnet>.ts.net:5000` in `.env` so notification links (ntfy, email,
+  webhooks) open from a phone that is off the LAN. The name also resolves on the LAN for any device
+  running Tailscale.
+- Optional HTTPS: enable *HTTPS Certificates* in the Tailscale admin console, run
+  `tailscale serve --bg 5000` on the host, set `HTTPS_ENABLED=true`, and use
+  `https://<host>.<tailnet>.ts.net`. The proxy arrives from loopback; the rate limiter keys on the
+  forwarded client address in that case only.
+- **Never `tailscale funnel`.** Funnel publishes the port to the internet, and the app has no
+  authentication.
+
+### Other reverse proxies
+
+A proxy on another name (Caddy, nginx) must terminate TLS **and** authenticate. Add its hostname to
+`ALLOWED_ORIGIN_HOSTS` (comma-separated) or live updates will be refused as a foreign origin, and set
+`BASE_URL` to the proxied address.

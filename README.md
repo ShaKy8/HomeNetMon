@@ -62,7 +62,7 @@ A comprehensive, self-hosted network monitoring solution designed for home netwo
 
 ## Security Model
 
-**HomeNetMon has no authentication by design.** Anyone who can reach the dashboard on your LAN has full access to the UI and API. This is intentional — the app is meant for trusted home and small-business networks behind a router/firewall. **Do not expose it to the public internet.** If you need remote access, put it behind a reverse proxy with authentication (e.g., Tailscale, Authelia, basic auth in nginx) or a VPN. The repo has rate limiting, CSRF protection on state-changing endpoints, and input validation as defense in depth, but it is not designed to withstand an internet-facing attacker.
+**HomeNetMon has no authentication by design.** Anyone who can reach the dashboard on your LAN has full access to the UI and API. This is intentional — the app is meant for trusted home and small-business networks behind a router/firewall. **Do not expose it to the public internet.** If you need remote access, use Tailscale (works as-is, see [Deployment Guide](docs/DEPLOYMENT_GUIDE.md#tailscale)), a VPN, or a reverse proxy that authenticates (Authelia, basic auth in nginx). The repo has rate limiting, CSRF protection on state-changing endpoints, and input validation as defense in depth, but it is not designed to withstand an internet-facing attacker.
 
 ## Quick Start
 

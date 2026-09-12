@@ -2,6 +2,28 @@
 
 All notable changes to HomeNetMon will be documented in this file.
 
+## [2.5.1] - 2026-09-11
+
+Remote access over Tailscale. The documented path (open the dashboard through the tailnet) rendered
+every page but the Socket.IO handshake refused the tailnet origin, so nothing ever live-updated.
+
+### Fixed
+- The Socket.IO origin check accepts `100.64.0.0/10` explicitly (CPython 3.12.4+ stopped calling that
+  range private) and this host's own Tailscale MagicDNS name, read from `tailscale status --json` and
+  cached 30 s. Other hostnames still need `ALLOWED_ORIGIN_HOSTS`; public addresses are still refused.
+- Behind a reverse proxy on this host (`tailscale serve`, Caddy) every request arrived from loopback,
+  a trusted address, so rate limiting was off for all remote clients. The limiter now keys on the
+  first `X-Forwarded-For` hop, only when the connection itself comes from loopback.
+- `Strict-Transport-Security` was sent over plain HTTP; it is now sent only with `HTTPS_ENABLED=true`.
+- Device-control targets are checked with `core.validators.is_lan_address`, which excludes the
+  Tailscale range on every Python version instead of depending on `ipaddress.is_private`.
+
+### Added
+- `GET /api/system/tailscale` and a *Remote Access (Tailscale)* card on the About page: the tailnet
+  URL of this host and each peer's online state (no thread, no table, no alerts).
+- `ALLOWED_ORIGIN_HOSTS` setting; Tailscale section in the Deployment Guide (`BASE_URL`, optional
+  `tailscale serve`, never Funnel).
+
 ## [2.5.0] - 2026-09-11
 
 A second full review of the running system (see git history for the per-phase detail). The API surface
