@@ -36,11 +36,13 @@ def test_latest_collector_scores(client, db_session, device):
 
 
 def test_timeline_day_granularity(client, db_session, device):
-    now = datetime.utcnow()
+    # Anchored at 12:00 UTC so "one and two hours earlier" always share a day bucket
+    # (the run at 01:05 UTC put them on different days and saw three buckets).
+    noon = datetime.utcnow().replace(hour=12, minute=0, second=0, microsecond=0)
     db_session.add_all([
-        PerformanceMetrics(device_id=device.id, timestamp=now - timedelta(hours=1), health_score=80, avg_response_time=10),
-        PerformanceMetrics(device_id=device.id, timestamp=now - timedelta(hours=2), health_score=60, avg_response_time=30),
-        PerformanceMetrics(device_id=device.id, timestamp=now - timedelta(days=2), health_score=50, avg_response_time=50),
+        PerformanceMetrics(device_id=device.id, timestamp=noon - timedelta(hours=1), health_score=80, avg_response_time=10),
+        PerformanceMetrics(device_id=device.id, timestamp=noon - timedelta(hours=2), health_score=60, avg_response_time=30),
+        PerformanceMetrics(device_id=device.id, timestamp=noon - timedelta(days=2), health_score=50, avg_response_time=50),
     ])
     db_session.commit()
     body = client.get(f'/api/performance/device/{device.id}/timeline?hours=168&granularity=day').get_json()
