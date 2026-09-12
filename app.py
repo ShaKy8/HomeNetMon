@@ -86,13 +86,17 @@ def create_app():
         logger.warning("Error handler not available - using default Flask error handling")
 
     # Initialize SocketIO for real-time updates.
-    # CORS: restrict to the configured NETWORK_RANGE (the subnet this deployment
-    # actually serves) + localhost. The previous version allowed ANY RFC1918
-    # origin, which meant a 10.x attacker could forge an Origin header and join
-    # WebSocket rooms even when the dashboard only ran on 192.168.x.
+    # CORS: the pages are served from this host, so a legitimate Origin is whatever
+    # address the browser used to reach it: a private/link-local IP, a *.local or bare
+    # hostname, a Tailscale address (100.64.0.0/10 or this node's MagicDNS name) or a
+    # name listed in ALLOWED_ORIGIN_HOSTS. Public addresses are refused so a page on
+    # another site cannot open a socket to the dashboard from a visiting browser.
     import ipaddress
     import re
     from urllib.parse import urlparse
+
+    from constants import CGNAT_NETWORK
+    from services import tailscale
 
     try:
         _allowed_network = ipaddress.ip_network(Config.NETWORK_RANGE, strict=False)
@@ -126,16 +130,22 @@ def create_app():
         if _local_hostname_pattern.match(host) and '.' not in host.replace('.local', ''):
             return True
 
-        # IP literal: any private / link-local / loopback address. The pages are
-        # served from this host, so the origin is whatever LAN address the browser
-        # used to reach it -- that may be another local subnet (a second interface,
-        # a VLAN or a VPN range) than the one being monitored. Public addresses are
-        # still refused.
+        lowered = host.lower()
+        if lowered in Config.ALLOWED_ORIGIN_HOSTS:
+            return True
+
+        # Other hostnames: only this node's own Tailscale MagicDNS name (cached lookup,
+        # one subprocess per 30 s at most). Not *.ts.net wholesale: those names resolve
+        # publicly, so any tailnet could otherwise host a page that reaches this socket.
         try:
             ip = ipaddress.ip_address(host)
         except ValueError:
-            return False
-        if ip.is_private or ip.is_loopback or ip.is_link_local:
+            return lowered in tailscale.own_hostnames()
+
+        # IP literal: any private / link-local / loopback / CGNAT address -- that may be
+        # another local subnet (a second interface, a VLAN, a VPN or the tailnet) than
+        # the one being monitored.
+        if ip.is_private or ip.is_loopback or ip.is_link_local or ip in CGNAT_NETWORK:
             return True
         if _allowed_network is not None and ip in _allowed_network:
             return True

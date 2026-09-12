@@ -11,7 +11,20 @@ from werkzeug.exceptions import BadRequest
 import html
 import urllib.parse
 
+from constants import CGNAT_NETWORK
+
 logger = logging.getLogger(__name__)
+
+
+def is_lan_address(ip) -> bool:
+    """True for a unicast address on a directly reachable local network: RFC 1918 /
+    IPv6 ULA or link-local. The 100.64.0.0/10 range Tailscale uses is excluded on
+    purpose (a tailnet peer is not a LAN device: Wake-on-LAN cannot reach it and
+    probes would cross the tunnel), and explicitly so that the answer does not depend
+    on which CPython version classifies that range as private."""
+    if ip.is_multicast or ip.is_unspecified or ip in CGNAT_NETWORK:
+        return False
+    return bool(ip.is_private or ip.is_link_local)
 
 
 class InputValidator:

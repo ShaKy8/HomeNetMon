@@ -34,4 +34,4 @@ def test_nothing_else_is_exported():
     public = {n for n in dir(constants) if n.isupper()}
     assert public == {'APP_NAME', 'APP_VERSION', 'APP_DESCRIPTION', 'DEFAULT_NETWORK_RANGE', 'DEFAULT_PING_INTERVAL',
                       'DEVICE_DOWN_AFTER_SECONDS', 'DEVICE_STATUS_UP', 'DEVICE_STATUS_DOWN', 'DEVICE_STATUS_WARNING',
-                      'DEVICE_STATUS_UNKNOWN'}
+                      'DEVICE_STATUS_UNKNOWN', 'CGNAT_NETWORK'}

@@ -120,3 +120,60 @@ class TestSocketIoOrigins:
             assert cb(ok), ok
         for bad in ('http://8.8.8.8:5000', 'https://evil.example.com', 'ftp://192.168.1.1', ''):
             assert not cb(bad), bad
+
+    def test_tailscale_origins(self, app):
+        cb = app.socketio.server.eio.cors_allowed_origins
+        assert cb('http://100.99.81.103:5000')      # CGNAT literal, whatever CPython says about is_private
+        assert cb('http://[fd7a:115c:a1e0::d329:5168]:5000')
+        with patch('services.tailscale.own_hostnames', return_value={'geekom1.tail52dabf.ts.net'}):
+            assert cb('http://geekom1.tail52dabf.ts.net:5000')
+            assert cb('https://GEEKOM1.tail52dabf.ts.net')
+            assert not cb('http://other.tail52dabf.ts.net:5000')   # only this node's own name
+            assert not cb('https://evil.ts.net')
+        with patch('services.tailscale.own_hostnames', return_value=set()):
+            assert not cb('http://geekom1.tail52dabf.ts.net:5000')
+
+    def test_allowed_origin_hosts_setting(self, app, monkeypatch):
+        import app as app_module   # the Config class the callback reads (test_config_coherence reloads config)
+        cb = app.socketio.server.eio.cors_allowed_origins
+        monkeypatch.setattr(app_module.Config, 'ALLOWED_ORIGIN_HOSTS', ('netmon.example.com',))
+        with patch('services.tailscale.own_hostnames', return_value=set()):
+            assert cb('https://netmon.example.com')
+            assert cb('https://NetMon.example.com')
+            assert not cb('https://other.example.com')
+
+
+class TestRateLimitIdentity:
+    """A proxy on this host (tailscale serve, Caddy) makes every client loopback, which is
+    trusted; the forwarded address counts then and only then."""
+
+    def _addr(self, app, remote, forwarded=None):
+        from services.rate_limiter import client_address
+        headers = {'X-Forwarded-For': forwarded} if forwarded else {}
+        with app.test_request_context('/', environ_base={'REMOTE_ADDR': remote}, headers=headers):
+            return client_address()
+
+    def test_loopback_uses_first_forwarded_hop(self, app):
+        assert self._addr(app, '127.0.0.1', '100.99.41.23, 10.0.0.1') == '100.99.41.23'
+
+    def test_plain_loopback_stays_loopback(self, app):
+        assert self._addr(app, '127.0.0.1') == '127.0.0.1'
+
+    def test_lan_client_cannot_spoof_its_way_to_trusted(self, app):
+        assert self._addr(app, '192.168.86.57', '127.0.0.1') == '192.168.86.57'
+
+    def test_forwarded_client_is_rate_limited(self, client):
+        limited = client.get('/api/system/info', headers={'X-Forwarded-For': '100.99.41.23'})
+        assert 'X-RateLimit-Limit' in limited.headers
+        assert 'X-RateLimit-Limit' not in client.get('/api/system/info').headers   # loopback: trusted
+
+
+class TestHsts:
+
+    def test_not_sent_over_plain_http(self, client, monkeypatch):
+        monkeypatch.delenv('HTTPS_ENABLED', raising=False)
+        assert 'Strict-Transport-Security' not in client.get('/api/system/info').headers
+
+    def test_sent_when_https_enabled(self, client, monkeypatch):
+        monkeypatch.setenv('HTTPS_ENABLED', 'true')
+        assert client.get('/api/system/info').headers['Strict-Transport-Security'].startswith('max-age=')

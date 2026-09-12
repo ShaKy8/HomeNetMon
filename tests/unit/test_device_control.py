@@ -4,6 +4,7 @@ from unittest.mock import Mock, patch
 
 import pytest
 
+from core.validators import is_lan_address
 from services.device_control import DeviceControlService
 
 
@@ -13,7 +14,8 @@ def _token(client):
 
 class TestTargetValidation:
 
-    @pytest.mark.parametrize('bad', ['-f', '8.8.8.8', 'evil.example.com/x?a=', '224.0.0.1', '0.0.0.0', '', 'localhost'])
+    @pytest.mark.parametrize('bad', ['-f', '8.8.8.8', 'evil.example.com/x?a=', '224.0.0.1', '0.0.0.0', '', 'localhost',
+                                     '100.99.41.23'])
     def test_non_lan_or_malformed_targets_are_rejected(self, client, bad):
         with patch('api.device_control.device_control_service.traceroute_to_device') as trace:
             r = client.post('/api/device-control/traceroute', json={'ip_address': bad},
@@ -32,6 +34,20 @@ class TestTargetValidation:
         for path in ('/api/device-control/traceroute', '/api/device-control/discover-info', '/api/device-control/port-scan'):
             r = client.post(path, json={'ip_address': '1.1.1.1'}, headers={'X-CSRF-Token': _token(client)})
             assert r.status_code == 400, path
+
+
+class TestLanAddress:
+    """Explicit so the answer does not change with CPython's is_private table (3.12.4 dropped 100.64/10)."""
+
+    @pytest.mark.parametrize('ip', ['100.64.0.1', '100.99.41.23', '100.127.255.254', '8.8.8.8', '224.0.0.1', '0.0.0.0'])
+    def test_tailnet_and_public_addresses_are_not_lan(self, ip):
+        import ipaddress
+        assert not is_lan_address(ipaddress.ip_address(ip))
+
+    @pytest.mark.parametrize('ip', ['192.168.1.9', '10.0.0.5', '172.16.0.1', '169.254.1.1', 'fd7a:115c:a1e0::1'])
+    def test_private_and_link_local_addresses_are_lan(self, ip):
+        import ipaddress
+        assert is_lan_address(ipaddress.ip_address(ip))
 
 
 class TestWakeOnLan:

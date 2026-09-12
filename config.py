@@ -83,6 +83,12 @@ class Config:
     # the default is derived from the primary LAN IP because HOST=0.0.0.0 or
     # 127.0.0.1 is useless in a link opened on a phone.
     BASE_URL = (os.environ.get('BASE_URL') or '').rstrip('/')
+    # Extra hostnames the Socket.IO origin check accepts (a reverse proxy with its own
+    # name). Private IPs, *.local, 100.64.0.0/10 and this node's Tailscale MagicDNS name
+    # are accepted without listing them. Comma-separated, case-insensitive.
+    ALLOWED_ORIGIN_HOSTS = tuple(
+        h.strip().lower() for h in os.environ.get('ALLOWED_ORIGIN_HOSTS', '').split(',') if h.strip()
+    )
     # Disable debug in production environment
     DEBUG = ENV != 'production' and os.environ.get('DEBUG', 'False').lower() == 'true'
 

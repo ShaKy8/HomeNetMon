@@ -4,6 +4,7 @@ from datetime import datetime
 from flask import Blueprint, jsonify, request
 
 from api.rate_limited_endpoints import create_endpoint_limiter
+from core.validators import is_lan_address
 from models import Device
 from services.device_control import device_control_service
 
@@ -35,7 +36,7 @@ def _resolve_target(data):
         ip = ipaddress.ip_address(str(ip_address).strip())
     except ValueError:
         return None, (jsonify({'error': 'Invalid IP address'}), 400)
-    if not (ip.is_private or ip.is_link_local) or ip.is_multicast or ip.is_unspecified:
+    if not is_lan_address(ip):
         return None, (jsonify({'error': 'Only LAN (private) addresses can be targeted'}), 400)
     return str(ip), None
 

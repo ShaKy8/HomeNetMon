@@ -116,8 +116,12 @@ class SecurityMiddleware:
     def _after_request(self, response):
         """Add security headers to response."""
         if self.config['enable_security_headers']:
-            # HSTS (HTTP Strict Transport Security)
-            response.headers['Strict-Transport-Security'] = f"max-age={self.config['strict_transport_security_max_age']}; includeSubDomains"
+            # HSTS only when the deployment really serves HTTPS: browsers ignore the header
+            # over plain HTTP anyway, and behind a TLS proxy (tailscale serve, Caddy) a
+            # spurious includeSubDomains pin would break later plain-HTTP access to the
+            # same name on another port.
+            if self._https_enabled():
+                response.headers['Strict-Transport-Security'] = f"max-age={self.config['strict_transport_security_max_age']}; includeSubDomains"
 
             # X-Content-Type-Options
             response.headers['X-Content-Type-Options'] = 'nosniff'
@@ -140,17 +144,20 @@ class SecurityMiddleware:
             # Generate CSRF token for GET requests
             if self.config['enable_csrf'] and request.method == 'GET':
                 csrf_token = self._generate_csrf_token()
-                # Use environment variable to determine HTTPS mode, default to False for development
-                https_enabled = os.environ.get('HTTPS_ENABLED', 'false').lower() in ('true', '1', 'yes')
                 response.set_cookie(
                     'csrf_token',
                     csrf_token,
-                    secure=https_enabled,
+                    secure=self._https_enabled(),
                     httponly=True,
                     samesite='Strict'
                 )
 
         return response
+
+    @staticmethod
+    def _https_enabled() -> bool:
+        """HTTPS_ENABLED from the process environment, read per request (tests patch it)."""
+        return os.environ.get('HTTPS_ENABLED', 'false').lower() in ('true', '1', 'yes')
 
     def _is_safe_content_type(self, content_type: str) -> bool:
         """Check if content type is safe."""

@@ -9,7 +9,6 @@ import os
 import logging
 from flask import Flask, request, jsonify, g
 from flask_limiter import Limiter
-from flask_limiter.util import get_remote_address
 from functools import wraps
 from typing import Optional, Dict, List
 from datetime import datetime, timedelta
@@ -22,6 +21,26 @@ except ImportError:
 import json
 
 logger = logging.getLogger(__name__)
+
+_LOOPBACK = ('127.0.0.1', '::1')
+
+
+def client_address() -> str:
+    """Address the limiter keys on.
+
+    Behind a reverse proxy running on this host (tailscale serve, Caddy, nginx) every
+    request arrives from loopback, which is a trusted address -- so the first
+    X-Forwarded-For hop is used *only* when remote_addr is loopback. A LAN client
+    sending the header gains nothing: its own remote_addr is what gets limited.
+    """
+    addr = request.remote_addr or '127.0.0.1'
+    if addr in _LOOPBACK:
+        forwarded = request.headers.get('X-Forwarded-For', '')
+        first = forwarded.split(',')[0].strip() if forwarded else ''
+        if first:
+            return first
+    return addr
+
 
 class RateLimiterService:
     """
@@ -71,7 +90,7 @@ class RateLimiterService:
         self.limiter.request_filter(
             lambda: request.endpoint == 'static'
             or request.path.startswith(('/static/', '/socket.io/'))
-            or get_remote_address() in self.trusted_ips
+            or client_address() in self.trusted_ips
         )
         # Note: Specific endpoint limits will be applied via decorators on route functions
 
@@ -156,7 +175,7 @@ class RateLimiterService:
         API keys, user IDs, etc. for authenticated endpoints.
         """
         # Trusted addresses never reach the limiter (see request_filter in __init__).
-        return get_remote_address()
+        return client_address()
 
     def _rate_limit_handler(self, view_func):
         """Handler called when rate limit is exceeded."""
