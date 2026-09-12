@@ -1,24 +1,4 @@
-# HomeNetMon API Reference
 
-Generated from the live route map (the same source as `/api/docs` and `/api/openapi.json`); every route
-listed here has a caller in the web UI, a script or the health check. Regenerate after changing routes:
-
-```bash
-DATABASE_URL=sqlite:///:memory: venv/bin/python scripts/generate_api_reference.py > docs/API_REFERENCE.md
-```
-
-## Conventions
-
-- **No authentication.** HomeNetMon is for a trusted LAN; keep it off the internet.
-- **CSRF.** Every POST/PUT/PATCH/DELETE must carry `X-CSRF-Token` from `GET /api/csrf-token`
-  (the browser helper `static/js/csrf-handler.js` does this automatically).
-- **Envelopes are not uniform.** Older routes return `{"success": true, ...}`; newer ones return the
-  `core/error_handler.py` shape. Errors are always JSON with an `error` key. Normalise at the call site.
-- **Timestamps** are UTC ISO-8601 with a `Z` suffix.
-- **Rate limits** per route: `relaxed` 120/min, `moderate` 60/min, `strict` 10/min, `bulk` 2/min,
-  `critical` 1 per 5 minutes. Localhost and `RATE_LIMIT_TRUSTED_IPS` are exempt.
-- **Counts** (`total_devices`, `monitored_devices`, `devices_up`, `devices_down`, `active_alerts`) share
-  one definition, `services/device_counts.py`, everywhere they appear.
 
 ## Devices and device control
 
@@ -126,47 +106,4 @@ DATABASE_URL=sqlite:///:memory: venv/bin/python scripts/generate_api_reference.p
 | `GET` | `/api/csrf-token` | API endpoint to get a fresh CSRF token |
 | `GET` | `/api/system/health` | Liveness check including background-thread heartbeat status. |
 | `GET` | `/api/system/info` | Get comprehensive system information including version, app details, and system stats Rate limit tier: relaxed. |
-
-## Parameters worth knowing
-
-### `GET /api/monitoring/alerts`
-
-`severity` (csv of critical, high, warning, medium, low, info), `status` (active default, unacknowledged,
-acknowledged, resolved, all), `hours` (168 default, `0` = all time), `device_id`, `alert_type`,
-`alert_type_prefix`, `q` (substring over message, device name, IP), `sort` (created_at or
-priority_score), `page`, `per_page` (50, max 200). Returns `alerts`, `pagination`, `facets`
-(`status` and `severity` counts) and the normalised `filters`. `POST /alerts/acknowledge-all` accepts the
-same keys in its JSON body.
-
-### `GET /api/monitoring/data`
-
-`device_id`, `hours` (24, max 168), `page`, `per_page` or `limit` (max 2000).
-
-### `GET /api/analytics/network-health-score` and `/device-insights`
-
-`hours` or `days` (max 90 days).
-
-### `GET /api/monitoring/wan`
-
-`hours` (24, max 720): current gateway / internet state, availability, average RTT, downsampled timeline.
-
-### `GET /api/performance/device/{device_id}`
-
-`hours` (24, max 2160): the collector's latest scores plus availability and p50 / p95 / max response time
-from raw ping samples. `/timeline` adds `granularity=hour|day`.
-
-### `POST /api/devices`
-
-`ip_address` (required), `mac_address`, `custom_name`, `device_type` (auto-detected when omitted),
-`device_group`, `room_location`, `tags` (list or csv), `notes`, `is_monitored`. Hostname and vendor are
-filled in automatically when possible.
-
-### `POST /api/devices/reclassify`
-
-Body `{"all": true}` re-runs classification for every auto-classified device; the default only touches
-devices still typed `unknown`. Types set by hand are never changed.
-
-### `PUT /api/config/<key>` and `PUT /api/config/network` / `/alerts`
-
-All three go through the configuration service: values are validated, a `configuration_history` row is
-written (`GET /api/config-management/history`, `POST /rollback`) and the running services reload.
+| `GET` | `/api/system/tailscale` | This host's Tailscale node and peers, for the About page (read-only). |

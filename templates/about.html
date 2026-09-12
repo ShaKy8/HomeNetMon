@@ -248,6 +248,24 @@
     </div>
 </div>
 
+<!-- Remote access over Tailscale (read-only snapshot of `tailscale status`; services/tailscale.py) -->
+<div class="modern-card mb-4">
+    <div class="card-header">
+        <h3><i class="bi bi-shield-lock"></i> Remote Access (Tailscale)</h3>
+    </div>
+    <div class="card-body">
+        <p class="mb-2" id="tailscale-summary">Loading...</p>
+        <div class="table-responsive">
+            <table class="table table-sm mb-0" id="tailscale-peers-table" hidden>
+                <thead>
+                    <tr><th>Peer</th><th>OS</th><th>Tailnet address</th><th>Status</th><th>Path</th></tr>
+                </thead>
+                <tbody id="tailscale-peers"></tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <!-- Application Info Section -->
 <div class="modern-card mb-4">
     <div class="card-header">
@@ -382,7 +400,57 @@
 document.addEventListener('DOMContentLoaded', function() {
     loadSystemInfo();
     loadThreadHealth();
+    loadTailscale();
 });
+
+function loadTailscale() {
+    const summary = document.getElementById('tailscale-summary');
+    const table = document.getElementById('tailscale-peers-table');
+    const body = document.getElementById('tailscale-peers');
+    fetch('/api/system/tailscale')
+        .then(response => response.json())
+        .then(data => {
+            // Every string here comes from the tailnet, not this app: textContent only.
+            if (!data.installed) {
+                summary.textContent = 'Tailscale is not installed on this host.';
+                return;
+            }
+            if (!data.running) {
+                summary.textContent = `Tailscale is installed but not running (${data.backend_state || data.error || 'unknown state'}).`;
+                summary.className = 'mb-2 text-warning';
+                return;
+            }
+            const self = data.self || {};
+            summary.textContent = '';
+            summary.append(`This host is ${self.dns_name || self.hostname || 'unknown'} (${(self.ips || []).join(', ')}). `);
+            if (self.url) {
+                const link = document.createElement('a');
+                link.href = self.url;
+                link.textContent = self.url;
+                summary.append('From any device on the tailnet open ');
+                summary.append(link);
+                summary.append('. ');
+            }
+            summary.append(`${data.online_peers} of ${data.total_peers} peers online.`);
+            body.innerHTML = '';
+            (data.peers || []).forEach(p => {
+                const status = p.online ? 'online'
+                    : (p.last_seen ? `last seen ${new Date(p.last_seen).toLocaleString()}` : 'offline');
+                const path = !p.online ? '' : (p.relay === 'direct' ? 'direct' : (p.relay ? `relay ${p.relay}` : ''));
+                const cells = [p.hostname || p.dns_name || '?', p.os || '', (p.ips || [])[0] || '', status, path];
+                const tr = document.createElement('tr');
+                cells.forEach((value, i) => {
+                    const td = document.createElement('td');
+                    td.textContent = value;
+                    if (i === 3) td.className = p.online ? 'text-success' : 'text-muted';
+                    tr.appendChild(td);
+                });
+                body.appendChild(tr);
+            });
+            table.hidden = !(data.peers && data.peers.length);
+        })
+        .catch(() => { summary.textContent = 'Tailscale status unavailable'; });
+}
 
 function loadThreadHealth() {
     fetch('/api/system/health')

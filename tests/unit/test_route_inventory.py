@@ -73,6 +73,7 @@ ALLOWED = {
     '/api/security/summary',
     '/api/system/health',
     '/api/system/info',
+    '/api/system/tailscale',
 }
 
 

@@ -30,6 +30,20 @@ def get_system_info_endpoint():
         }), 500
 
 
+@system_bp.route('/tailscale', methods=['GET'])
+@create_endpoint_limiter('relaxed')
+def tailscale_status():
+    """This host's Tailscale node and peers, for the About page (read-only).
+
+    Reads `tailscale status --json` (cached 30 s). `installed` false when the CLI is
+    missing, `running` false when the daemon is stopped; otherwise `self` (hostname,
+    MagicDNS name, addresses, the dashboard URL over the tailnet) and `peers`
+    (online, last seen, direct or relayed). HomeNetMon does not monitor the tailnet.
+    """
+    from services import tailscale
+    return jsonify({'success': True, **tailscale.summary()})
+
+
 @system_bp.route('/health', methods=['GET'])
 @create_endpoint_limiter('relaxed')
 def health_check():
