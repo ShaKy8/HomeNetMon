@@ -55,10 +55,9 @@ jobs:
       - name: Ruff lint
         run: ruff check .
 
-      # Known-vulnerability scan of pinned runtime deps. Advisory-only until the
-      # dependency cleanup lands; then flip continue-on-error off.
+      # Known-vulnerability scan of pinned runtime deps. A finding fails the build
+      # (clean as of 2026-09-11); bump the pinned package in requirements.txt to fix.
       - name: pip-audit
-        continue-on-error: true
         run: pip-audit -r requirements.txt
 
       # Unit + integration suites are the gate. tests/conftest.py:STALE_TEST_SKIPS holds
