@@ -32,12 +32,13 @@ HOSTNAME_RULES = (
     ('printer', r'(^|[^a-z0-9])(printer|print|laserjet|deskjet|officejet|envy\d*|pixma|imageclass|brother|epson|canon|xerox|lexmark|kyocera|npi[0-9a-f]{6})([^a-z0-9]|$)'),
     ('router', r'(^|[^a-z0-9])(router|gateway|gw|modem|access-?point|ap\d+|ubiquiti|unifi|udm|usw|tl-sg\w*|tl-wr\w*|netgear|linksys|nest-?wifi|google-?wifi|orbi\w*|eero\w*|mikrotik|switch)([^a-z0-9]|$)'),
     ('storage', r'(^|[^a-z0-9])(nas|synology|diskstation|qnap|drobo|freenas|truenas|unraid)([^a-z0-9]|$)'),
+    ('smart_home', r'(^|[^a-z0-9])(ratgdo\w*|myq\w*|liftmaster\w*|chamberlain\w*)([^a-z0-9]|$)'),
     ('iot', r'(^|[^a-z0-9])(esp|esp32|esp8266|espressif|esp-[0-9a-f]+|arduino|raspberry\w*|rpi\w*|tasmota|wled|shelly\w*)([^a-z0-9]|$)'),
     ('gaming', r'(^|[^a-z0-9])(xbox\w*|playstation|ps[45]|nintendo\w*|steam-?deck)([^a-z0-9]|$)'),
     ('media', r'(^|[^a-z0-9])(tv|roku\w*|fire-?tv|firestick|shield|chromecast\w*|apple-?tv|smart-?tv|bravia|samsung-?tv|lg-?tv|sonos-?(beam|arc|playbar))([^a-z0-9]|$)'),
     ('apple', r'(^|[^a-z0-9])(macbook\w*|imac\w*|mac-?mini|mac-?pro|mac-?studio|mac|mbp|mba|iphone\w*|ipad\w*|homepod\w*|apple-?watch|watch)([^a-z0-9]|$)'),
     ('phone', r'(^|[^a-z0-9])(android\w*|phone|pixel\w*|oneplus\w*|galaxy\w*|redmi\w*|moto\w*)([^a-z0-9]|$)'),
-    ('smart_home', r'(^|[^a-z0-9])(nest\w*|thermostat|smart\w*|hub|sensor|plug|bulb|light\w*|alexa|echo\w*|google-?home|google-?nest|sonos\w*|speaker|litter-?robot|fridge|dishwasher|washer|dryer|hvac|irrigation|sprinkler|orbit\w*|hue\w*|wemo\w*|kasa\w*|tplink\w*|tuya\w*|lifx\w*|ecobee\w*|myq\w*|roomba\w*|irobot\w*)([^a-z0-9]|$)'),
+    ('smart_home', r'(^|[^a-z0-9])(nest\w*|thermostat|smart\w*|hub|sensor|plug|bulb|light\w*|alexa|echo\w*|google-?home|google-?nest|sonos\w*|speaker|litter-?robot|fridge|dishwasher|washer|dryer|hvac|irrigation|sprinkler|orbit\w*|hue\w*|wemo\w*|kasa\w*|tplink\w*|tuya\w*|lifx\w*|ecobee\w*|roomba\w*|irobot\w*)([^a-z0-9]|$)'),
     ('computer', r'(^|[^a-z0-9])(pc|laptop|desktop|workstation|server|nuc\w*|geekom\w*|dell\w*|lenovo\w*|thinkpad\w*|surface\w*|[a-z0-9]*linux[a-z0-9]*|ubuntu\w*|debian\w*|fedora\w*|win\d+|windows\w*|-?pc\d*)([^a-z0-9]|$)'),
 )
 
@@ -52,7 +53,7 @@ VENDOR_RULES = (
     ('media', ('roku', 'nvidia', 'altobeam', 'vizio', 'tcl', 'hisense')),
     ('phone', ('samsung', 'motorola', 'huawei', 'oneplus', 'xiaomi', 'oppo')),
     ('iot', ('texasins', 'espressif', 'nordic', 'silicon lab', 'raspberr', 'tuya', 'shenzhen')),
-    ('smart_home', ('sonos', 'nestlabs', 'google', 'amazon', 'philips', 'signify', 'wemo', 'belkin', 'orbit', 'lginnote', 'ecobee', 'irobot', 'lutron')),
+    ('smart_home', ('sonos', 'nestlabs', 'google', 'amazon', 'philips', 'signify', 'wemo', 'belkin', 'orbit', 'lginnote', 'ecobee', 'irobot', 'lutron', 'chamberlain', 'liftmaster')),
     ('computer', ('dell', 'lenovo', 'microsof', 'intel', 'pegatron', 'asustek', 'micro-star', 'gigabyte', 'asrock', 'framework', 'realteku', 'realtek')),
 )
 

@@ -340,6 +340,10 @@
             <i class="bi bi-bell"></i>
             Alerts
         </a>
+        <a href="#garage" class="settings-nav-item" data-section="garage">
+            <i class="bi bi-house-door"></i>
+            Garage door
+        </a>
         <a href="#system" class="settings-nav-item" data-section="system">
             <i class="bi bi-gear"></i>
             System
@@ -579,6 +583,76 @@
             </div>
         </div>
 
+        <!-- Garage door: services/garage_monitor.py, GET/PUT /api/config/garage -->
+        <div class="settings-section" id="garage">
+            <h2 class="section-title">Garage Door</h2>
+            <p class="text-muted">
+                Controls a <a href="https://paulwieland.github.io/ratgdo/" target="_blank" rel="noopener">ratgdo</a> board
+                (ESPHome firmware) wired to a Chamberlain / LiftMaster opener. myQ has no local API, so the board is what
+                gives HomeNetMon the door, light and remote lock without the cloud. The myQ app keeps working alongside it.
+                Setup steps are in <code>docs/GARAGE_DOOR.md</code>.
+            </p>
+
+            <div class="form-check form-switch mb-3">
+                <input class="form-check-input" type="checkbox" id="garage-enabled">
+                <label class="form-check-label" for="garage-enabled">Enable the garage door integration</label>
+            </div>
+
+            <h3 class="h6 text-uppercase text-muted mt-4">Board</h3>
+            <div class="row g-3">
+                <div class="col-md-6">
+                    <label for="garage-host" class="form-label">ratgdo address</label>
+                    <div class="input-group">
+                        <input type="text" class="form-control" id="garage-host" placeholder="192.168.86.x or ratgdov25i-xxxxxx.local" autocomplete="off">
+                        <button type="button" class="btn btn-outline-secondary" id="garage-discover-btn" onclick="discoverGarage()">
+                            <i class="bi bi-search"></i> Find ratgdo
+                        </button>
+                    </div>
+                    <div class="form-text">The board must join the <strong>main</strong> Wi-Fi (give it a DHCP reservation). "Find ratgdo" probes devices a network scan has already seen.</div>
+                </div>
+                <div class="col-md-3">
+                    <label for="garage-username" class="form-label">Username <span class="text-muted">(optional)</span></label>
+                    <input type="text" class="form-control" id="garage-username" autocomplete="off">
+                </div>
+                <div class="col-md-3">
+                    <label for="garage-password" class="form-label">Password <span class="text-muted">(optional)</span></label>
+                    <input type="password" class="form-control" id="garage-password" autocomplete="new-password" placeholder="none">
+                </div>
+            </div>
+            <div id="garage-discover-results" class="mt-2"></div>
+            <div class="form-text">Only needed when the board's YAML sets <code>web_server: auth:</code>. Stored in plain text in the configuration table, like the ntfy topic.</div>
+
+            <h3 class="h6 text-uppercase text-muted mt-4">Alerts</h3>
+            <div class="row g-3">
+                <div class="col-md-3">
+                    <label for="garage-left-open" class="form-label">Left open after (minutes)</label>
+                    <input type="number" class="form-control" id="garage-left-open" min="1" max="1440">
+                </div>
+                <div class="col-md-3">
+                    <label for="garage-quiet-start" class="form-label">Quiet hours from</label>
+                    <input type="time" class="form-control" id="garage-quiet-start">
+                </div>
+                <div class="col-md-3">
+                    <label for="garage-quiet-end" class="form-label">Quiet hours until</label>
+                    <input type="time" class="form-control" id="garage-quiet-end">
+                </div>
+                <div class="col-md-3">
+                    <label for="garage-poll-interval" class="form-label">Poll every (seconds)</label>
+                    <input type="number" class="form-control" id="garage-poll-interval" min="15" max="600" step="5">
+                </div>
+            </div>
+            <div class="form-text">An opening during quiet hours raises an informational alert (this server's local time; leave both blank to disable). Obstruction and controller-offline alerts are always on. Alerts follow your notification channels above.</div>
+
+            <div class="d-flex justify-content-end gap-2 mt-4">
+                <button type="button" class="btn-modern" onclick="testGarage()">
+                    <i class="bi bi-plug"></i> Test connection
+                </button>
+                <button type="button" class="btn-modern btn-primary" onclick="saveGarageSettings()">
+                    <i class="bi bi-save"></i> Save garage settings
+                </button>
+            </div>
+        </div>
+
         <div class="settings-section" id="system">
             <h2 class="section-title">System Information</h2>
 
@@ -735,6 +809,111 @@ async function loadCurrentSettings() {
         setValue('discord-webhook-url', a.discord_webhook_url);
     } catch (error) {
         showError(`Could not load alert settings: ${error.message}`);
+    }
+    await loadGarageSettings();
+}
+
+// Garage door (ratgdo) -> GET/PUT /api/config/garage, POST /api/garage/test, GET /api/garage/discover
+async function loadGarageSettings() {
+    try {
+        const g = await apiRequest('/api/config/garage');
+        setChecked('garage-enabled', g.enabled);
+        setValue('garage-host', g.host);
+        setValue('garage-username', g.username);
+        const pw = val('garage-password');
+        if (pw) { pw.value = ''; pw.placeholder = g.password_set ? '(unchanged)' : 'none'; }
+        setValue('garage-left-open', g.left_open_minutes);
+        setValue('garage-quiet-start', g.quiet_hours_start);
+        setValue('garage-quiet-end', g.quiet_hours_end);
+        setValue('garage-poll-interval', g.poll_interval);
+    } catch (error) {
+        showError(`Could not load garage settings: ${error.message}`);
+    }
+}
+
+function garageForm() {
+    return {
+        enabled: val('garage-enabled').checked,
+        host: val('garage-host').value.trim(),
+        username: val('garage-username').value.trim(),
+        left_open_minutes: parseInt(val('garage-left-open').value, 10),
+        quiet_hours_start: val('garage-quiet-start').value.trim(),
+        quiet_hours_end: val('garage-quiet-end').value.trim(),
+        poll_interval: parseInt(val('garage-poll-interval').value, 10)
+    };
+}
+
+async function saveGarageSettings() {
+    const body = garageForm();
+    const password = val('garage-password').value;
+    if (password) body.password = password;
+    if (body.enabled && !body.host) {
+        showError('Enter the ratgdo address before enabling the integration');
+        return;
+    }
+    try {
+        const result = await apiRequest('/api/config/garage', { method: 'PUT', body });
+        showSuccess(result.message || 'Garage settings saved');
+        await loadGarageSettings();
+    } catch (error) {
+        showError(`Garage settings not saved: ${error.message}`);
+    }
+}
+
+async function testGarage() {
+    const host = val('garage-host').value.trim();
+    if (!host) { showError('Enter the ratgdo address first'); return; }
+    try {
+        const r = await apiRequest('/api/garage/test', { method: 'POST', body: {
+            host, username: val('garage-username').value.trim(), password: val('garage-password').value
+        }});
+        const extra = [r.firmware ? `firmware ${r.firmware}` : null, r.openings != null ? `${r.openings} openings so far` : null]
+            .filter(Boolean).join(', ');
+        showSuccess(`ratgdo at ${r.host} answered: door ${r.door}${extra ? ' (' + extra + ')' : ''}`);
+    } catch (error) {
+        showError(`No ratgdo answered: ${error.message}`);
+    }
+}
+
+async function discoverGarage() {
+    const btn = val('garage-discover-btn');
+    const box = val('garage-discover-results');
+    btn.disabled = true;
+    box.textContent = 'Probing devices the scanner already knows...';
+    try {
+        const r = await apiRequest('/api/garage/discover');
+        box.textContent = '';
+        const found = r.candidates || [];
+        if (!found.length) {
+            box.textContent = 'Nothing that looks like a ratgdo among the known devices. Once the board has joined the main Wi-Fi, run a network scan and try again, or type its address above.';
+            return;
+        }
+        const list = document.createElement('ul');
+        list.className = 'list-unstyled mb-0';
+        // Names and addresses come from the LAN: textContent only.
+        found.forEach(c => {
+            const li = document.createElement('li');
+            li.className = 'd-flex align-items-center gap-2 py-1';
+            const icon = document.createElement('i');
+            icon.className = c.confirmed ? 'bi bi-check-circle-fill text-success' : 'bi bi-question-circle text-muted';
+            const text = document.createElement('span');
+            const label = c.confirmed ? `Found ratgdo at ${c.ip}` : `Possible ESPHome device at ${c.ip}`;
+            const bits = [c.name && c.name !== c.ip ? c.name : null, c.confirmed && c.door ? `door ${c.door}` : null].filter(Boolean);
+            text.textContent = bits.length ? `${label} (${bits.join(', ')})` : label;
+            const use = document.createElement('button');
+            use.type = 'button';
+            use.className = 'btn btn-sm btn-outline-primary';
+            use.textContent = 'Use';
+            use.addEventListener('click', () => { setValue('garage-host', c.ip); showSuccess(`Address set to ${c.ip}. Test the connection, then save.`); });
+            li.append(icon, text, use);
+            list.appendChild(li);
+        });
+        box.appendChild(list);
+    } catch (error) {
+        box.textContent = '';
+        showError(`Discovery failed: ${error.message}`);
+    } finally {
+        btn.disabled = false;
     }
 }
 

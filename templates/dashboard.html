@@ -40,6 +40,18 @@
     letter-spacing: 0.5px;
 }
 
+.hero-stat-value small { font-size: 1rem; font-weight: 400; opacity: 0.8; margin-left: 0.25rem; }
+.hero-stat-link {
+    white-space: nowrap;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: background 0.2s ease;
+}
+.hero-stat-link:hover, .hero-stat-link:focus-visible {
+    background: rgba(255, 255, 255, 0.06);
+    outline: none;
+}
+
 /* Control Bar */
 .control-bar {
     display: flex;
@@ -477,6 +489,13 @@
             </div>
             <div class="hero-stat-label">Internet</div>
         </div>
+        <div class="hero-stat hero-stat-link" id="hero-garage-tile" style="display: none" role="link" tabindex="0"
+             title="Garage door (ratgdo). Open the Smart Home page">
+            <div class="hero-stat-value" id="hero-garage">
+                <span class="status-dot status-unknown"></span>--
+            </div>
+            <div class="hero-stat-label">Garage</div>
+        </div>
         <div class="hero-stat">
             <div class="hero-stat-value" id="hero-network-status">
                 <span class="status-dot status-up"></span>Healthy
@@ -777,5 +796,6 @@
     </div>
 </div>
 
+<script src="{{ url_for('static', filename='js/device-cards.js') }}?v={{ app_version }}"></script>
 <script src="{{ url_for('static', filename='js/dashboard-page.js') }}?v={{ app_version }}"></script>
 {% endblock %}

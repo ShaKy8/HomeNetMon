@@ -21,6 +21,9 @@ from monitoring.device_classifier import classify, is_locally_administered
     ('galaxy-s23', 'phone'),
     ('synology-ds920', 'storage'),
     ('nest-thermostat', 'smart_home'),
+    ('ratgdov25i-3f2a1c.lan', 'smart_home'),
+    ('ratgdo32-a1b2c3', 'smart_home'),
+    ('myq-hub', 'smart_home'),
     ('monitoring-host', 'unknown'),     # 'ring' inside 'monitoring' must not match
     ('apple-pie', 'unknown'),           # 'ap' inside 'apple' must not match router
     ('', 'unknown'),
@@ -32,6 +35,7 @@ def test_hostname_rules(hostname, expected):
 @pytest.mark.parametrize('vendor,expected', [
     ('TexasIns', 'iot'), ('AltoBeam', 'media'), ('WyzeLabs', 'camera'), ('Sonos', 'smart_home'),
     ('Apple', 'apple'), ('Pegatron', 'computer'), ('Google', 'smart_home'), ('OrbitIrr', 'smart_home'),
+    ('Chamberlain', 'smart_home'), ('LiftMaster', 'smart_home'),
 ])
 def test_vendor_rules(vendor, expected):
     assert classify(vendor=vendor, mac='00:11:22:33:44:55') == expected

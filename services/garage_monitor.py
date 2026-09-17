@@ -47,6 +47,7 @@ DEFAULTS = {
     'garage_offline_after_polls': 3,
 }
 TICK_SECONDS = 30                  # alert-timer / heartbeat cadence
+CONFIG_CACHE_SECONDS = 5           # Configuration reads are cached this long (reload_config() clears it)
 MOVING_POLL_SECONDS = 5            # poll cadence while the door travels and no SSE stream is up
 COMMAND_ATTRIBUTION_SECONDS = 20   # a change this soon after our command is "dashboard"
 SSE_BACKOFF = (2, 4, 8, 16, 32, 60)
@@ -108,6 +109,7 @@ class GarageMonitor:
         self._offline_polls = 0
         self._last_poll = 0.0
         self._last_event: dict | None = None
+        self._config_cache: tuple[dict, float] | None = None
         self.is_running = False
 
     # ---- configuration --------------------------------------------------------
@@ -120,7 +122,16 @@ class GarageMonitor:
         return value
 
     def config(self) -> dict:
-        """Typed, clamped view of the garage_* settings. Needs an app context."""
+        """Typed, clamped view of the garage_* settings (cached a few seconds; a
+        moving door reports its position several times a second). Needs an app context."""
+        cached = self._config_cache
+        if cached is not None and time.monotonic() - cached[1] < CONFIG_CACHE_SECONDS:
+            return dict(cached[0])
+        cfg = self._read_config()
+        self._config_cache = (cfg, time.monotonic())
+        return dict(cfg)
+
+    def _read_config(self) -> dict:
         def as_int(key, lo, hi):
             try:
                 return max(lo, min(hi, int(self.setting(key))))
@@ -140,6 +151,7 @@ class GarageMonitor:
 
     def reload_config(self):
         """Called by the configuration service after any garage_* write: wake the loop now."""
+        self._config_cache = None
         self._wake.set()
 
     # ---- client / stream lifecycle -----------------------------------------------
@@ -297,16 +309,17 @@ class GarageMonitor:
             if not changed:
                 return rows
             s['last_update'] = _iso(now)
-            for row in rows:
-                db.session.add(row)
-            db.session.commit()
             if rows:
+                for row in rows:
+                    db.session.add(row)
+                db.session.commit()
                 self._last_event = rows[-1].to_dict()
-            try:
-                self.check_alerts(notify=notify, now=now)
-            except Exception as e:
-                logger.error(f"garage alerting failed: {e}")
-                db.session.rollback()
+            if rows or any(k in changes for k in ('door', 'obstruction', 'online')):
+                try:
+                    self.check_alerts(notify=notify, now=now)
+                except Exception as e:
+                    logger.error(f"garage alerting failed: {e}")
+                    db.session.rollback()
             self._push()
         return rows
 

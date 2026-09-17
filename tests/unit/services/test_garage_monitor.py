@@ -199,6 +199,7 @@ def test_alerts_are_skipped_when_disabled(app, garage):
         _sync(garage)
         Configuration.set_value('garage_enabled', 'false')
         db.session.commit()
+        garage.reload_config()                      # what the configuration-service callback does
         garage.apply_state({'obstruction': True}, now=T0, notify=False)
         assert Alert.query.count() == 0
 

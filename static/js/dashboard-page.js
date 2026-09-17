@@ -149,6 +149,7 @@ function initializeSocket() {
         status: data.status, gateway: { ip: data.gateway_ip, up: data.gateway_up, rtt_ms: data.gateway_rtt_ms },
         internet: { target: data.target, up: data.internet_up, rtt_ms: data.target_rtt_ms }
     })); });
+    socket.on('garage_status', applyGarage);
     socket.on('device_status_update', handleDeviceStatusUpdate);
     socket.on('monitoring_summary', handleMonitoringSummary);
     socket.on('alert_update', debounce(loadDevices, 1500));
@@ -165,6 +166,12 @@ function handleDeviceStatusUpdate(data) {
 
 // Event Listeners Setup
 function setupEventListeners() {
+    const garageTile = document.getElementById('hero-garage-tile');
+    if (garageTile) {
+        const go = () => { window.location.href = '/smart-home'; };
+        garageTile.addEventListener('click', go);
+        garageTile.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); go(); } });
+    }
     // Search with debounce for performance (300ms delay)
     const debouncedSearch = debounce(function(searchValue) {
         filters.search = searchValue.toLowerCase();
@@ -284,11 +291,6 @@ async function reclassifyDevices() {
     }
 }
 
-function tagChips(device) {
-    const tags = Array.isArray(device.tags) ? device.tags : [];
-    if (!tags.length) return '';
-    return `<div class="device-tags">${tags.map(t => `<span class="badge bg-secondary me-1">${esc(t)}</span>`).join('')}</div>`;
-}
 
 // Load devices from API
 async function loadDevices() {
@@ -315,6 +317,7 @@ async function loadDevices() {
         document.getElementById('loading-devices').classList.add('hidden');
         loadSummary();
         loadWan();
+        loadGarage();
     } catch (error) {
         const loading = document.getElementById('loading-devices');
         loading.textContent = 'Error loading devices: ' + error.message;
@@ -391,6 +394,50 @@ function applyWan(data) {
         const avail = data.availability_pct != null ? `${data.availability_pct}% available over ${data.hours} h` : 'no checks yet';
         tile.title = `Gateway ${esc(gateway.ip || '?')}: ${gateway.up ? 'up' : 'down'}; target ${esc(internet.target || '?')}: ${internet.up ? 'up' : 'down'}. ${avail}.`;
     }
+}
+
+// Garage tile: hidden until the ratgdo integration is enabled in Settings.
+let garageState = null;
+let garageTimer = null;
+
+async function loadGarage() {
+    try {
+        const response = await fetch('/api/garage');
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        applyGarage(await response.json());
+    } catch (error) {
+        console.error('Garage status unavailable:', error);
+    }
+}
+
+function applyGarage(data) {
+    if (!data) return;
+    garageState = data;
+    const tile = document.getElementById('hero-garage-tile');
+    if (!tile) return;
+    if (!data.enabled) {
+        tile.style.display = 'none';
+        if (garageTimer) { clearInterval(garageTimer); garageTimer = null; }
+        return;
+    }
+    tile.style.display = '';
+    renderGarageTile();
+    if (!garageTimer) garageTimer = setInterval(renderGarageTile, 1000);
+}
+
+function renderGarageTile() {
+    const d = garageState;
+    const el = document.getElementById('hero-garage');
+    if (!d || !el) return;
+    const door = d.online === false ? 'offline' : (d.door || 'unknown');
+    const dot = door === 'closed' ? 'status-up'
+        : ['open', 'opening', 'closing', 'stopped'].includes(door) ? 'status-warning' : 'status-unknown';
+    let label = { closed: 'Closed', open: 'Open', opening: 'Opening', closing: 'Closing', stopped: 'Stopped', offline: 'Offline', unknown: '--' }[door] || door;
+    let extra = '';
+    if (door === 'open' && d.open_since) {
+        extra = `<small>${esc(formatDuration((Date.now() - Date.parse(d.open_since)) / 1000))}</small>`;
+    }
+    el.innerHTML = `<span class="status-dot ${dot}"></span>${esc(label)}${extra}`;
 }
 
 function updateStats() {
@@ -495,10 +542,6 @@ function refreshGroupOptions() {
     if (groups.includes(current)) select.value = current; else filters.group = '';
 }
 
-function groupBadge(device) {
-    const bits = [device.device_group, device.room_location].filter(Boolean);
-    return bits.length ? `<span class="badge bg-secondary ms-1" title="Group / room">${esc(bits.join(' · '))}</span>` : '';
-}
 
 // Display devices in grid view
 function displayGridView(devices) {
@@ -506,30 +549,6 @@ function displayGridView(devices) {
     container.innerHTML = devices.map(device => createDeviceCard(device)).join('');
 }
 
-// Create device card HTML
-function createDeviceCard(device) {
-    const statusClass = device.status || 'unknown';
-    const name = device.display_name || device.hostname || 'Unknown Device';
-    const lastSeen = formatLastSeen(device.last_seen);
-    const responseTime = device.latest_response_time
-        ? `${Math.round(device.latest_response_time)}ms`
-        : '--';
-
-    return `
-        <div class="device-card" data-device-id="${device.id}" onclick="openDeviceDetails(${device.id})">
-            <div class="device-name">
-                <span class="status-dot status-${statusClass}"></span>
-                ${esc(name)}${groupBadge(device)}
-            </div>
-            <div class="device-ip">${esc(device.ip_address)}</div>
-            ${tagChips(device)}
-            <div class="device-stats">
-                <span><i class="bi bi-lightning"></i> ${responseTime}</span>
-                <span><i class="bi bi-clock"></i> ${lastSeen}</span>
-            </div>
-        </div>
-    `;
-}
 
 // Display devices in table view
 function displayTableView(devices) {
@@ -571,19 +590,6 @@ function createDeviceRow(device) {
     `;
 }
 
-// Format last seen timestamp
-function formatLastSeen(timestamp) {
-    if (!timestamp) return 'Never';
-    const date = new Date(timestamp);
-    const now = new Date();
-    const diffMs = now - date;
-    const diffMins = Math.floor(diffMs / 60000);
-
-    if (diffMins < 1) return 'Just now';
-    if (diffMins < 60) return `${diffMins}m ago`;
-    if (diffMins < 1440) return `${Math.floor(diffMins / 60)}h ago`;
-    return `${Math.floor(diffMins / 1440)}d ago`;
-}
 
 // View switching functions
 function switchToGridView() {
@@ -881,10 +887,6 @@ async function checkScanStatus() {
     }
 }
 
-// Device actions
-function openDeviceDetails(deviceId) {
-    window.location.href = `/device/${deviceId}`;
-}
 
 async function toggleMonitoring(deviceId, ev) {
     if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();

@@ -228,7 +228,7 @@ class StreamSession:
         class Response:
             status_code = outer.status
 
-            def iter_lines(self, decode_unicode=True):
+            def iter_lines(self, chunk_size=512, decode_unicode=True):
                 yield from outer.lines
 
             def close(self):
@@ -277,3 +277,17 @@ def test_events_raises_on_http_error_and_connection_error():
             raise requests.ConnectionError('gone')
     with pytest.raises(rc.RatgdoError):
         rc.RatgdoClient('192.168.1.50', session=Broken()).events(threading.Event(), lambda d: None)
+
+
+def test_sse_lines_uses_read1_when_available():
+    class Raw:
+        def __init__(self, chunks):
+            self.chunks = list(chunks)
+
+        def read1(self, n):
+            return self.chunks.pop(0) if self.chunks else b''
+
+    class Response:
+        raw = Raw([b'event: state\ndata: {"id":"light-li', b'ght","state":"ON"}\n\n', b'event: ping\r\ndata: \r\n\r\n'])
+    lines = list(rc._sse_lines(Response()))
+    assert lines == ['event: state', 'data: {"id":"light-light","state":"ON"}', '', 'event: ping', 'data: ', '']

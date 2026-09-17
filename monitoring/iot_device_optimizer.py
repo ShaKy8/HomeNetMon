@@ -23,6 +23,7 @@ class IoTDeviceOptimizer:
         'sonos': {'timeout': 2, 'interval': 120, 'retries': 2},  # Sonos speakers
         'chromecast': {'timeout': 2, 'interval': 120, 'retries': 2},  # Chromecasts
         'espressif': {'timeout': 3, 'interval': 180, 'retries': 1},  # ESP32/ESP8266 devices
+        'ratgdo': {'timeout': 3, 'interval': 180, 'retries': 1},  # ratgdo garage-door board (ESPHome)
         'lwip': {'timeout': 3, 'interval': 180, 'retries': 1},  # Lightweight IP devices
         'google-home': {'timeout': 2, 'interval': 120, 'retries': 2},  # Google Home devices
         'google-nest': {'timeout': 2, 'interval': 120, 'retries': 2},  # Google Nest devices

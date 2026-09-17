@@ -515,6 +515,11 @@ def create_app():
     def settings():
         return render_template('settings.html')
 
+    @app.route('/smart-home')
+    def smart_home():
+        """Garage door (ratgdo) control and history plus the smart-home devices."""
+        return render_template('smart_home.html')
+
     @app.route('/alerts')
     def alerts():
         return render_template('alerts.html')

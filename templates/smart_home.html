@@ -1,0 +1,313 @@
+{% extends "base_beautiful.html" %}
+
+{% block title %}Smart Home - HomeNetMon{% endblock %}
+
+{% block extra_css %}
+<style>
+/* Smart Home page: garage door (services/garage_monitor.py via /api/garage) + smart-home devices */
+
+.page-header { margin-bottom: 1.5rem; }
+[hidden] { display: none !important; }      /* the flex/grid rules below must not override the attribute */
+
+/* ---- Garage hero ---- */
+.garage-hero { position: relative; }
+.garage-hero-body {
+    display: flex;
+    gap: 2rem;
+    padding: 1.75rem;
+    align-items: stretch;
+    flex-wrap: wrap;
+}
+.garage-visual {
+    flex: 0 0 280px;
+    max-width: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.garage-visual svg { width: 100%; height: auto; max-width: 320px; }
+.garage-panel { flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 0.75rem; }
+.garage-kicker { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.6; }
+.garage-state { font-size: 2.4rem; font-weight: 300; line-height: 1.1; }
+.garage-open-for { font-size: 1rem; opacity: 0.75; min-height: 1.5rem; font-variant-numeric: tabular-nums; }
+.garage-meta { font-size: 0.85rem; opacity: 0.7; }
+.garage-actions { display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; margin-top: 0.25rem; }
+.garage-toggles { display: flex; gap: 1.5rem; flex-wrap: wrap; }
+.garage-toggle { display: inline-flex; align-items: center; gap: 0.5rem; cursor: pointer; user-select: none; }
+.garage-toggle input { width: 2.4em; height: 1.3em; margin: 0; cursor: pointer; }
+.garage-badges { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.badge-chip {
+    display: inline-flex; align-items: center; gap: 0.35rem;
+    padding: 0.25rem 0.7rem; border-radius: 999px; font-size: 0.8rem;
+    background: rgba(128, 128, 128, 0.15); border: 1px solid rgba(128, 128, 128, 0.25);
+}
+.badge-chip.warn { background: rgba(245, 158, 11, 0.18); border-color: rgba(245, 158, 11, 0.5); color: #b45309; }
+[data-bs-theme="dark"] .badge-chip.warn { color: #fbbf24; }
+.badge-chip.live { background: rgba(34, 197, 94, 0.15); border-color: rgba(34, 197, 94, 0.4); color: #15803d; }
+[data-bs-theme="dark"] .badge-chip.live { color: #4ade80; }
+.badge-chip.info { background: rgba(59, 130, 246, 0.15); border-color: rgba(59, 130, 246, 0.4); color: #1d4ed8; }
+[data-bs-theme="dark"] .badge-chip.info { color: #93c5fd; }
+
+/* Hold-to-confirm button: a ring fills while the pointer is held (--hold 0..1) */
+.hold-btn {
+    --hold: 0;
+    position: relative;
+    display: inline-flex; align-items: center; gap: 0.6rem;
+    padding: 0.9rem 1.6rem 0.9rem 1.2rem;
+    border-radius: 999px; border: 1px solid rgba(59, 130, 246, 0.6);
+    background: linear-gradient(135deg, #2563eb, #3b82f6);
+    color: #fff; font-size: 1rem; font-weight: 500; cursor: pointer;
+    min-height: 52px; touch-action: none; user-select: none; -webkit-user-select: none;
+    transition: transform 0.15s ease, box-shadow 0.15s ease, opacity 0.2s ease;
+    box-shadow: 0 6px 20px rgba(37, 99, 235, 0.35);
+}
+.hold-btn:hover { transform: translateY(-1px); }
+.hold-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+.hold-btn.close-action { background: linear-gradient(135deg, #d97706, #f59e0b); border-color: rgba(245, 158, 11, 0.6); box-shadow: 0 6px 20px rgba(245, 158, 11, 0.3); }
+.hold-btn.holding { transform: scale(0.98); }
+.hold-ring {
+    width: 26px; height: 26px; border-radius: 50%; flex: 0 0 26px;
+    background: conic-gradient(#fff calc(var(--hold) * 360deg), rgba(255, 255, 255, 0.25) 0);
+    -webkit-mask: radial-gradient(circle, transparent 55%, #000 58%);
+    mask: radial-gradient(circle, transparent 55%, #000 58%);
+    transition: none;
+}
+.hold-hint { font-size: 0.75rem; opacity: 0.6; }
+
+/* ---- Garage SVG states ---- */
+.g-ground { fill: rgba(100, 116, 139, 0.25); }
+.g-wall { fill: #e2e8f0; stroke: #94a3b8; stroke-width: 1.5; }
+.g-roof { fill: #64748b; }
+.g-interior { fill: #1e293b; }
+.g-frame { stroke: #475569; stroke-width: 3; fill: none; }
+.g-slat { fill: #f8fafc; stroke: #94a3b8; stroke-width: 1.2; }
+.g-window { fill: rgba(30, 41, 59, 0.5); }
+.g-handle { fill: #64748b; }
+.g-light { fill: #cbd5e1; transition: fill 0.3s ease, filter 0.3s ease; }
+.g-beam { stroke: transparent; stroke-width: 2; stroke-dasharray: 4 4; }
+.g-door { transition: transform 1.2s linear; will-change: transform; }
+.g-car { fill: rgba(148, 163, 184, 0.35); }
+[data-bs-theme="dark"] .g-wall { fill: #334155; stroke: #475569; }
+[data-bs-theme="dark"] .g-roof { fill: #475569; }
+[data-bs-theme="dark"] .g-interior { fill: #0f172a; }
+[data-bs-theme="dark"] .g-slat { fill: #cbd5e1; stroke: #64748b; }
+[data-bs-theme="dark"] .g-frame { stroke: #94a3b8; }
+
+.garage-hero[data-state="open"] .g-frame { stroke: #f59e0b; }
+.garage-hero[data-state="opening"] .g-frame, .garage-hero[data-state="closing"] .g-frame {
+    stroke: #3b82f6; stroke-dasharray: 10 6; animation: garage-march 0.8s linear infinite;
+}
+.garage-hero[data-state="stopped"] .g-frame { stroke: #f59e0b; stroke-dasharray: 4 4; }
+.garage-hero[data-state="offline"] .garage-visual, .garage-hero[data-state="unconfigured"] .garage-visual { opacity: 0.45; filter: grayscale(1); }
+.garage-hero.light-on .g-light { fill: #fde047; filter: drop-shadow(0 0 6px rgba(253, 224, 71, 0.9)); }
+.garage-hero.obstructed .g-beam { stroke: #ef4444; animation: garage-blink 0.6s steps(2) infinite; }
+@keyframes garage-march { to { stroke-dashoffset: -32; } }
+@keyframes garage-blink { 50% { opacity: 0; } }
+.garage-overlay {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 3rem; opacity: 0.7; pointer-events: none;
+}
+.garage-state-open { color: #d97706; }
+[data-bs-theme="dark"] .garage-state-open { color: #fbbf24; }
+.garage-state-moving { color: #2563eb; }
+[data-bs-theme="dark"] .garage-state-moving { color: #60a5fa; }
+.garage-state-closed { color: #15803d; }
+[data-bs-theme="dark"] .garage-state-closed { color: #4ade80; }
+.garage-state-offline { opacity: 0.6; }
+
+.garage-empty {
+    padding: 2rem 1.75rem 2.25rem;
+    display: flex; gap: 1.5rem; align-items: flex-start; flex-wrap: wrap;
+}
+.garage-empty .bi { font-size: 2.5rem; opacity: 0.5; }
+.garage-note { margin: 0 1.75rem 1.5rem; padding: 0.75rem 1rem; border-radius: 12px; font-size: 0.9rem;
+    background: rgba(245, 158, 11, 0.12); border: 1px solid rgba(245, 158, 11, 0.35); }
+
+/* ---- Stat tiles ---- */
+.stat-row {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 1rem; margin-bottom: 2rem;
+}
+.stat-tile {
+    padding: 1.1rem 1.25rem; border-radius: 14px;
+    background: rgba(255, 255, 255, 0.8); border: 1px solid rgba(0, 0, 0, 0.08);
+}
+[data-bs-theme="dark"] .stat-tile { background: rgba(255, 255, 255, 0.03); border-color: rgba(255, 255, 255, 0.1); }
+.stat-value { font-size: 1.9rem; font-weight: 300; line-height: 1.1; font-variant-numeric: tabular-nums; }
+.stat-label { font-size: 0.72rem; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.6; margin-top: 0.25rem; }
+
+/* ---- Activity list ---- */
+.event-list { list-style: none; margin: 0; padding: 0.5rem 0; max-height: 300px; overflow-y: auto; }
+.event-list li { display: flex; gap: 0.75rem; align-items: baseline; padding: 0.45rem 1.5rem; font-size: 0.9rem; }
+.event-list li + li { border-top: 1px solid rgba(128, 128, 128, 0.12); }
+.event-time { flex: 0 0 5.5rem; opacity: 0.6; font-variant-numeric: tabular-nums; font-size: 0.8rem; }
+.event-icon { flex: 0 0 1.25rem; text-align: center; opacity: 0.8; }
+.event-text { flex: 1 1 auto; min-width: 0; }
+.event-source { font-size: 0.7rem; opacity: 0.55; text-transform: uppercase; letter-spacing: 0.4px; }
+.event-empty { padding: 1.5rem; opacity: 0.6; text-align: center; }
+
+/* ---- Device cards (same rules as the dashboard) ---- */
+.devices-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
+.device-card {
+    background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px; padding: 1.25rem; cursor: pointer; transition: all 0.3s ease;
+}
+[data-bs-theme="light"] .device-card, :root:not([data-bs-theme="dark"]) .device-card { background: rgba(0, 0, 0, 0.03); border-color: rgba(0, 0, 0, 0.08); }
+.device-card:hover { transform: translateY(-2px); border-color: rgba(128, 128, 128, 0.4); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.15); }
+.device-name { font-size: 1.1rem; font-weight: 500; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.device-ip { font-size: 0.9rem; opacity: 0.7; font-family: monospace; }
+.device-tags { margin-top: 0.5rem; }
+.device-stats {
+    margin-top: 1rem; padding-top: 1rem; border-top: 1px solid rgba(128, 128, 128, 0.2);
+    display: flex; justify-content: space-between; font-size: 0.85rem; opacity: 0.8;
+}
+
+@media (max-width: 767px) {
+    .garage-hero-body { padding: 1.25rem; gap: 1.25rem; }
+    .garage-visual { flex-basis: 100%; }
+    .garage-state { font-size: 2rem; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .g-door { transition: none; }
+    .garage-hero .g-frame, .garage-hero .g-beam { animation: none !important; }
+}
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1 class="page-title"><i class="bi bi-house-door"></i> Smart Home</h1>
+    <p class="page-subtitle">Your garage door, live, plus the smart-home devices HomeNetMon watches</p>
+</div>
+
+<!-- Garage door: state from GET /api/garage, live via the garage_status socket event -->
+<div class="modern-card garage-hero" id="garage-card" data-state="unknown">
+    <div class="garage-hero-body" id="garage-hero-body">
+        <div class="garage-visual">
+            <svg id="garage-svg" viewBox="0 0 260 220" role="img" aria-labelledby="garage-svg-title">
+                <title id="garage-svg-title">Garage door</title>
+                <defs>
+                    <clipPath id="garage-opening-clip"><rect x="60" y="80" width="140" height="120"/></clipPath>
+                </defs>
+                <rect x="0" y="200" width="260" height="20" class="g-ground"/>
+                <rect x="40" y="70" width="180" height="130" class="g-wall"/>
+                <polygon points="28,72 130,16 232,72" class="g-roof"/>
+                <rect x="60" y="80" width="140" height="120" class="g-interior"/>
+                <path class="g-car" d="M78 196 v-22 l14 -16 h56 l14 16 v22 z"/>
+                <circle class="g-light" id="garage-svg-light" cx="130" cy="92" r="5"/>
+                <g clip-path="url(#garage-opening-clip)">
+                    <g id="garage-door-panel" class="g-door">
+                        <rect x="60" y="80" width="140" height="24" class="g-slat"/>
+                        <rect x="72" y="86" width="22" height="12" rx="2" class="g-window"/>
+                        <rect x="102" y="86" width="22" height="12" rx="2" class="g-window"/>
+                        <rect x="136" y="86" width="22" height="12" rx="2" class="g-window"/>
+                        <rect x="166" y="86" width="22" height="12" rx="2" class="g-window"/>
+                        <rect x="60" y="104" width="140" height="24" class="g-slat"/>
+                        <rect x="60" y="128" width="140" height="24" class="g-slat"/>
+                        <rect x="60" y="152" width="140" height="24" class="g-slat"/>
+                        <rect x="60" y="176" width="140" height="24" class="g-slat"/>
+                        <rect x="122" y="160" width="16" height="4" rx="2" class="g-handle"/>
+                    </g>
+                </g>
+                <rect x="58" y="78" width="144" height="124" rx="2" class="g-frame"/>
+                <line id="garage-svg-beam" x1="60" y1="192" x2="200" y2="192" class="g-beam"/>
+            </svg>
+            <div class="garage-overlay" id="garage-overlay" hidden><i class="bi bi-wifi-off"></i></div>
+        </div>
+        <div class="garage-panel">
+            <div class="garage-kicker">Garage door</div>
+            <div class="garage-state" id="garage-door-state">--</div>
+            <div class="garage-open-for" id="garage-open-for"></div>
+            <div class="garage-actions">
+                <button type="button" class="hold-btn" id="garage-primary-action" disabled aria-label="Hold to open the garage door">
+                    <span class="hold-ring" aria-hidden="true"></span>
+                    <span class="hold-label" id="garage-primary-label"><i class="bi bi-arrow-up-square"></i> Hold to open</span>
+                </button>
+                <button type="button" class="btn-modern" id="garage-stop-action" hidden>
+                    <i class="bi bi-stop-circle"></i> Stop
+                </button>
+                <span class="hold-hint" id="garage-hold-hint">Press and hold to confirm</span>
+            </div>
+            <div class="garage-toggles">
+                <label class="garage-toggle form-check form-switch m-0 p-0">
+                    <input class="form-check-input m-0" type="checkbox" id="garage-light-toggle" disabled>
+                    <span><i class="bi bi-lightbulb"></i> Opener light</span>
+                </label>
+                <label class="garage-toggle form-check form-switch m-0 p-0">
+                    <input class="form-check-input m-0" type="checkbox" id="garage-lock-toggle" disabled>
+                    <span><i class="bi bi-lock"></i> Lock out remotes</span>
+                </label>
+            </div>
+            <div class="garage-badges">
+                <span class="badge-chip warn" id="garage-obstruction" hidden><i class="bi bi-exclamation-triangle"></i> Obstruction</span>
+                <span class="badge-chip info" id="garage-motion" hidden><i class="bi bi-person-walking"></i> Motion</span>
+                <span class="badge-chip" id="garage-live"><i class="bi bi-broadcast"></i> <span id="garage-live-text">Connecting</span></span>
+            </div>
+            <div class="garage-meta" id="garage-last-event"></div>
+            <div class="garage-meta" id="garage-board"></div>
+        </div>
+    </div>
+    <div class="garage-note" id="garage-offline-note" hidden></div>
+    <div class="garage-empty" id="garage-empty" hidden>
+        <i class="bi bi-house-door"></i>
+        <div>
+            <h5 class="mb-1">No garage door configured</h5>
+            <p class="mb-2">HomeNetMon controls the door through a <strong>ratgdo</strong> board wired to your opener (myQ has no local API).
+                Once the board is on the main Wi-Fi, enable it in Settings.</p>
+            <a class="btn-modern btn-primary" href="/settings#garage"><i class="bi bi-gear"></i> Set up in Settings</a>
+        </div>
+    </div>
+</div>
+
+<!-- Headline stats from GET /api/garage/history -->
+<div class="stat-row" id="garage-stats">
+    <div class="stat-tile"><div class="stat-value" id="stat-openings-today">--</div><div class="stat-label">Openings today</div></div>
+    <div class="stat-tile"><div class="stat-value" id="stat-openings-week">--</div><div class="stat-label">Openings this week</div></div>
+    <div class="stat-tile"><div class="stat-value" id="stat-avg-open">--</div><div class="stat-label">Average time open</div></div>
+    <div class="stat-tile"><div class="stat-value" id="stat-longest-today">--</div><div class="stat-label">Longest open today</div></div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="modern-card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-bar-chart"></i> Openings, last 14 days</h5>
+            </div>
+            <div class="card-body">
+                <canvas id="garage-chart" height="230" aria-label="Openings per day" role="img"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="modern-card">
+            <div class="card-header">
+                <h5 class="mb-0"><i class="bi bi-clock-history"></i> Recent activity</h5>
+            </div>
+            <ul class="event-list" id="garage-events"><li class="event-empty">Loading...</li></ul>
+        </div>
+    </div>
+</div>
+
+<!-- Smart-home devices from GET /api/devices, live via device_status_update -->
+<div class="modern-card">
+    <div class="card-header">
+        <h5 class="mb-0">
+            <i class="bi bi-house-heart"></i> Smart home devices
+            <span class="badge bg-secondary ms-2" id="smart-devices-count">0</span>
+        </h5>
+        <div style="font-size: 0.85rem; opacity: 0.7;">smart home, IoT, media and sensors</div>
+    </div>
+    <div class="card-body">
+        <div id="smart-devices-grid" class="devices-grid"></div>
+        <div id="smart-devices-empty" class="event-empty" hidden>
+            No devices are classified as smart home yet. Use <a href="/">Reclassify devices</a> on the dashboard or set a type on a device page.
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="{{ url_for('static', filename='js/device-cards.js') }}?v={{ app_version }}"></script>
+<script src="{{ url_for('static', filename='js/smart-home-page.js') }}?v={{ app_version }}"></script>
+{% endblock %}

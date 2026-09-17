@@ -192,6 +192,33 @@ def apply_entity(state: dict, entity: dict) -> dict:
     return changes
 
 
+def _sse_lines(response):
+    """Yield decoded lines from a streaming response as soon as they arrive.
+
+    ``Response.iter_lines()`` reads 512-byte chunks and blocks until a chunk is
+    full, so a lone 60-byte "door closed" event would sit in the buffer until
+    minutes of keep-alive pings padded it out. urllib3 >= 2 exposes ``read1``,
+    which returns whatever the socket has; older stacks fall back to one byte
+    at a time (the stream is a few hundred bytes per second at most).
+    """
+    raw = getattr(response, 'raw', None)
+    read1 = getattr(raw, 'read1', None)
+    if read1 is None:
+        yield from response.iter_lines(chunk_size=1, decode_unicode=True)
+        return
+    buffer = b''
+    while True:
+        chunk = read1(4096)
+        if not chunk:
+            break
+        buffer += chunk
+        while b'\n' in buffer:
+            line, buffer = buffer.split(b'\n', 1)
+            yield line.rstrip(b'\r').decode('utf-8', 'replace')
+    if buffer:
+        yield buffer.rstrip(b'\r').decode('utf-8', 'replace')
+
+
 def _auth(username: str | None, password: str | None):
     return HTTPBasicAuth(username, password or '') if username else None
 
@@ -326,7 +353,7 @@ class RatgdoClient:
         event_name = ''
         data_lines: list[str] = []
         try:
-            for line in response.iter_lines(decode_unicode=True):
+            for line in _sse_lines(response):
                 if stop.is_set():
                     break
                 if line is None:
@@ -345,7 +372,7 @@ class RatgdoClient:
                     data_lines.append(value)
             if not stop.is_set() and (event_name or data_lines):
                 self._dispatch(event_name, data_lines, on_state, on_ping)
-        except requests.RequestException as e:
+        except (requests.RequestException, OSError) as e:
             raise RatgdoError(f'{self.host}: {e.__class__.__name__} while streaming') from e
         finally:
             response.close()
