@@ -11,7 +11,7 @@ if (!process.env.BASE_URL && !process.env.CI) {
 
 module.exports = defineConfig({
   testDir: './',
-  testMatch: ['TestHomeNetmon.js', 'TestGarage.js'],
+  testMatch: 'TestHomeNetmon.js',
   fullyParallel: false,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,

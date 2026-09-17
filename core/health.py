@@ -36,7 +36,7 @@ EXPECTED_THREADS: dict[str, int] = {
     'PerformanceMonitor': 300,     # collection_interval default
     'ResourceMonitor':    300,     # _monitor_loop wait
     'WanMonitor':         60,      # monitoring/wan_monitor.py check interval (runtime wan_check_interval)
-    'GarageMonitor':      60,      # services/garage_monitor.py ticker (30 s; idles + heartbeats when disabled)
+    'GarageMonitor':      60,      # services/garage_monitor.py ticker (60 s; idles + heartbeats when disabled)
     'SecurityScanner':    300,     # heartbeats per device during a sweep and once a minute while idle
 }
 

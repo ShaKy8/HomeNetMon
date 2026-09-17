@@ -32,7 +32,7 @@ HOSTNAME_RULES = (
     ('printer', r'(^|[^a-z0-9])(printer|print|laserjet|deskjet|officejet|envy\d*|pixma|imageclass|brother|epson|canon|xerox|lexmark|kyocera|npi[0-9a-f]{6})([^a-z0-9]|$)'),
     ('router', r'(^|[^a-z0-9])(router|gateway|gw|modem|access-?point|ap\d+|ubiquiti|unifi|udm|usw|tl-sg\w*|tl-wr\w*|netgear|linksys|nest-?wifi|google-?wifi|orbi\w*|eero\w*|mikrotik|switch)([^a-z0-9]|$)'),
     ('storage', r'(^|[^a-z0-9])(nas|synology|diskstation|qnap|drobo|freenas|truenas|unraid)([^a-z0-9]|$)'),
-    ('smart_home', r'(^|[^a-z0-9])(ratgdo\w*|myq\w*|liftmaster\w*|chamberlain\w*)([^a-z0-9]|$)'),
+    ('smart_home', r'(^|[^a-z0-9])(myq\w*|liftmaster\w*|chamberlain\w*)([^a-z0-9]|$)'),
     ('iot', r'(^|[^a-z0-9])(esp|esp32|esp8266|espressif|esp-[0-9a-f]+|arduino|raspberry\w*|rpi\w*|tasmota|wled|shelly\w*)([^a-z0-9]|$)'),
     ('gaming', r'(^|[^a-z0-9])(xbox\w*|playstation|ps[45]|nintendo\w*|steam-?deck)([^a-z0-9]|$)'),
     ('media', r'(^|[^a-z0-9])(tv|roku\w*|fire-?tv|firestick|shield|chromecast\w*|apple-?tv|smart-?tv|bravia|samsung-?tv|lg-?tv|sonos-?(beam|arc|playbar))([^a-z0-9]|$)'),

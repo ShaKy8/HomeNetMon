@@ -21,8 +21,6 @@ from monitoring.device_classifier import classify, is_locally_administered
     ('galaxy-s23', 'phone'),
     ('synology-ds920', 'storage'),
     ('nest-thermostat', 'smart_home'),
-    ('ratgdov25i-3f2a1c.lan', 'smart_home'),
-    ('ratgdo32-a1b2c3', 'smart_home'),
     ('myq-hub', 'smart_home'),
     ('monitoring-host', 'unknown'),     # 'ring' inside 'monitoring' must not match
     ('apple-pie', 'unknown'),           # 'ap' inside 'apple' must not match router

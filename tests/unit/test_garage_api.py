@@ -1,27 +1,30 @@
-"""/api/garage and /api/config/garage: shapes, error mapping, config round trip, secrets."""
+"""/api/garage and /api/config/garage: shapes, error mapping, Ring sign-in flow, config round trip."""
 
 from unittest.mock import Mock, patch
 
 import pytest
 
-from models import Configuration, ConfigurationHistory, db
-from services.garage_monitor import GarageMonitor, GarageNotConfigured
-from services.ratgdo_client import RatgdoError
+from models import Configuration, ConfigurationHistory
+from services.door_vision import VisionError
+from services.garage_monitor import GarageBusy, GarageMonitor, GarageNotConfigured
+from services.ring_client import RingAuthError, RingError
 
 
 def _headers(client):
     return {'X-CSRF-Token': client.get('/api/csrf-token').get_json()['csrf_token']}
 
 
-# Fake board credentials for the round-trip tests (built, not literal, so secret scanners stay quiet).
-USER = 'board'
+# Fake Ring credentials (built, not literal, so secret scanners stay quiet).
+EMAIL = 'kyle@example.com'
 PW = 'x' * 12
 
 
 @pytest.fixture
-def monitor(app, db_session):
+def monitor(app, db_session, tmp_path):
     original = getattr(app, 'garage_monitor', None)
-    m = GarageMonitor(app)
+    bridge = Mock()
+    bridge.signed_in.return_value = False
+    m = GarageMonitor(app, bridge=bridge, frame_dir=tmp_path / 'frames')
     app.garage_monitor = m
     yield m
     app.garage_monitor = original
@@ -34,7 +37,7 @@ def test_get_garage_reports_unconfigured(client, monitor):
     assert r.status_code == 200
     body = r.get_json()
     assert body['enabled'] is False and body['configured'] is False and body['door'] == 'unknown'
-    assert 'quiet_hours' in body and 'open_for_seconds' in body
+    assert body['ring'] == {'signed_in': False} and body['reading'] is None and 'vision' in body
 
 
 def test_history_clamps_and_has_the_shape(client, monitor):
@@ -50,118 +53,115 @@ def test_503_when_the_monitor_is_missing(client, app, db_session):
     app.garage_monitor = None
     try:
         assert client.get('/api/garage').status_code == 503
-        assert client.post('/api/garage/door', json={'action': 'open'}, headers=_headers(client)).status_code == 503
+        assert client.get('/api/garage/snapshot.jpg').status_code == 503
+        assert client.post('/api/garage/check', json={}, headers=_headers(client)).status_code == 503
     finally:
         app.garage_monitor = original
 
 
-# ---- commands --------------------------------------------------------------------------
+# ---- snapshot --------------------------------------------------------------------------
 
-def test_door_rejects_bad_actions(client, monitor):
-    r = client.post('/api/garage/door', json={'action': 'launch'}, headers=_headers(client))
-    assert r.status_code == 400 and 'open, close, stop, toggle' in r.get_json()['error']
-    r = client.post('/api/garage/light', json={}, headers=_headers(client))
+def test_snapshot_404_until_a_frame_exists_then_no_store(client, monitor, tmp_path):
+    assert client.get('/api/garage/snapshot.jpg').status_code == 404
+    frames = tmp_path / 'frames'
+    frames.mkdir()
+    (frames / 'latest.jpg').write_bytes(b'\xff\xd8latest')
+    (frames / 'event-7.jpg').write_bytes(b'\xff\xd8event')
+    r = client.get('/api/garage/snapshot.jpg')
+    assert r.status_code == 200 and r.mimetype == 'image/jpeg' and r.data == b'\xff\xd8latest'
+    assert r.headers['Cache-Control'] == 'no-store'
+    assert client.get('/api/garage/snapshot.jpg?event=7').data == b'\xff\xd8event'
+    assert client.get('/api/garage/snapshot.jpg?event=8').status_code == 404
+    assert client.get('/api/garage/snapshot.jpg?event=../latest').status_code == 404   # ids only, never a path
+    assert client.get('/api/garage/snapshot.jpg?event=..%2Flatest').status_code == 404
+
+
+# ---- check --------------------------------------------------------------------------------
+
+def test_check_maps_errors(client, monitor):
+    for error, status in ((GarageNotConfigured('off'), 409), (GarageBusy('busy'), 409),
+                          (RingAuthError('token'), 409), (RingError('ring down'), 502), (VisionError('claude down'), 502)):
+        with patch.object(monitor, 'check_once', side_effect=error):
+            r = client.post('/api/garage/check', json={}, headers=_headers(client))
+        assert r.status_code == status, error
+        assert 'error' in r.get_json()
+
+
+def test_check_returns_the_state(client, monitor):
+    with patch.object(monitor, 'check_once', return_value={'door': 'open'}) as check:
+        r = client.post('/api/garage/check', json={}, headers=_headers(client))
+    assert r.status_code == 200 and r.get_json() == {'success': True, 'state': {'door': 'open'}}
+    check.assert_called_once_with(fresh=True)
+
+
+def test_check_requires_csrf(client, monitor):
+    assert client.post('/api/garage/check', json={}).status_code in (400, 403)
+
+
+# ---- Ring sign-in -------------------------------------------------------------------------
+
+def test_login_flow(client, monitor):
+    r = client.post('/api/garage/ring/login', json={'email': EMAIL}, headers=_headers(client))
     assert r.status_code == 400
+    monitor._bridge.login.return_value = {'status': '2fa_required'}
+    r = client.post('/api/garage/ring/login', json={'email': EMAIL, 'password': PW}, headers=_headers(client))
+    assert r.status_code == 200 and r.get_json()['status'] == '2fa_required'
+    monitor._bridge.login.return_value = {'status': 'ok'}
+    r = client.post('/api/garage/ring/login', json={'email': EMAIL, 'password': PW, 'otp': ' 123456 '}, headers=_headers(client))
+    assert r.status_code == 200 and r.get_json()['status'] == 'ok'
+    assert monitor._bridge.login.call_args.args == (EMAIL, PW, '123456')
+    monitor._bridge.login.side_effect = RingAuthError('bad')
+    assert client.post('/api/garage/ring/login', json={'email': EMAIL, 'password': PW}, headers=_headers(client)).status_code == 401
+    monitor._bridge.login.side_effect = RingError('down')
+    assert client.post('/api/garage/ring/login', json={'email': EMAIL, 'password': PW}, headers=_headers(client)).status_code == 502
+    assert client.post('/api/garage/ring/login', json={'email': EMAIL, 'password': PW}).status_code in (400, 403)   # CSRF
 
 
-def test_door_409_when_not_configured(client, monitor):
-    r = client.post('/api/garage/door', json={'action': 'open'}, headers=_headers(client))
-    assert r.status_code == 409
-
-
-def test_door_502_when_the_board_refuses(client, monitor):
-    with patch.object(monitor, 'command', side_effect=RatgdoError('HTTP 500')):
-        r = client.post('/api/garage/door', json={'action': 'close'}, headers=_headers(client))
-    assert r.status_code == 502 and 'did not accept' in r.get_json()['error']
-
-
-def test_commands_dispatch_to_the_monitor(client, monitor):
-    with patch.object(monitor, 'command', return_value={'ok': True}) as command:
-        r = client.post('/api/garage/door', json={'action': 'Open'}, headers=_headers(client))
-        assert r.status_code == 200 and r.get_json()['success'] and r.get_json()['state']['door'] == 'unknown'
-        client.post('/api/garage/light', json={'action': 'on'}, headers=_headers(client))
-        client.post('/api/garage/lock', json={'action': 'unlock'}, headers=_headers(client))
-    assert [c.args for c in command.call_args_list] == [('door', 'open'), ('light', 'on'), ('lock', 'unlock')]
-
-
-def test_commands_require_csrf(client, monitor):
-    assert client.post('/api/garage/door', json={'action': 'open'}).status_code in (400, 403)
-
-
-# ---- discovery + test -----------------------------------------------------------------------
-
-def test_discover_returns_candidates(client, monitor):
-    fake = {'candidates': [{'ip': '192.168.1.50', 'confirmed': True, 'reason': 'hostname', 'door': 'closed'}], 'probed': 1}
-    with patch('services.garage_discovery.discover', return_value=fake) as discover:
-        r = client.get('/api/garage/discover')
-    assert r.status_code == 200 and r.get_json()['candidates'][0]['confirmed'] is True
-    assert discover.call_args.kwargs['current_host'] == ''
-
-
-def test_test_endpoint_validates_probes_and_reports(client, monitor):
-    r = client.post('/api/garage/test', json={'host': '8.8.8.8'}, headers=_headers(client))
-    assert r.status_code == 400 and 'Host rejected' in r.get_json()['error']
-
-    with patch('api.garage.rc.RatgdoClient') as client_cls:
-        client_cls.return_value.host = '192.168.1.50'
-        client_cls.return_value.snapshot.side_effect = RatgdoError('refused')
-        r = client.post('/api/garage/test', json={'host': '192.168.1.50'}, headers=_headers(client))
-        assert r.status_code == 502
-
-        client_cls.return_value.snapshot.side_effect = None
-        client_cls.return_value.snapshot.return_value = {'door': 'closed', 'light': False, 'firmware': '2025.8.1',
-                                                         'openings': 12}
-        r = client.post('/api/garage/test', json={'host': '192.168.1.50', 'username': USER, 'password': PW},
-                        headers=_headers(client))
-        assert r.status_code == 200
-        assert r.get_json() == {'success': True, 'host': '192.168.1.50', 'door': 'closed', 'light': False,
-                                'firmware': '2025.8.1', 'openings': 12}
-        assert client_cls.call_args.args[:3] == ('192.168.1.50', USER, PW)
+def test_logout_and_cameras(client, monitor):
+    r = client.post('/api/garage/ring/logout', json={}, headers=_headers(client))
+    assert r.status_code == 200 and monitor._bridge.logout.called
+    assert client.get('/api/garage/ring/cameras').status_code == 409
+    monitor._bridge.signed_in.return_value = True
+    monitor._bridge.cameras.return_value = [{'id': 42, 'name': 'Garage Cam', 'is_battery': True}]
+    r = client.get('/api/garage/ring/cameras')
+    assert r.status_code == 200 and r.get_json()['cameras'][0]['name'] == 'Garage Cam'
+    monitor._bridge.cameras.side_effect = RingError('down')
+    assert client.get('/api/garage/ring/cameras').status_code == 502
 
 
 # ---- settings ---------------------------------------------------------------------------------
 
 def test_config_round_trip_and_history(client, app, monitor):
-    body = {'enabled': True, 'host': ' 192.168.1.50:8099 ', 'left_open_minutes': 20, 'quiet_hours_start': '23:00',
-            'quiet_hours_end': '', 'poll_interval': 30}
-    body.update(username=USER, password=PW)
+    body = {'enabled': True, 'camera_id': ' 42 ', 'camera_name': 'Garage Cam', 'check_interval': 600, 'motion_checks': False,
+            'vision_model': 'claude-sonnet-5', 'scene_hint': 'white door', 'left_open_minutes': 20,
+            'quiet_hours_start': '23:00', 'quiet_hours_end': '', 'reclassify_minutes': 30}
     r = client.put('/api/config/garage', json=body, headers=_headers(client))
     assert r.status_code == 200, r.get_json()
     assert set(r.get_json()['updated_fields']) == set(body)
     got = client.get('/api/config/garage').get_json()
-    assert got == {'enabled': True, 'host': '192.168.1.50:8099', 'username': USER, 'password_set': True,
-                   'left_open_minutes': 20, 'quiet_hours_start': '23:00', 'quiet_hours_end': '', 'poll_interval': 30}
+    assert got == {'enabled': True, 'camera_id': '42', 'camera_name': 'Garage Cam', 'check_interval': 600, 'motion_checks': False,
+                   'vision_model': 'claude-sonnet-5', 'scene_hint': 'white door', 'left_open_minutes': 20,
+                   'quiet_hours_start': '23:00', 'quiet_hours_end': '', 'reclassify_minutes': 30, 'ring_signed_in': False,
+                   'api_key_set': got['api_key_set'], 'vision_models': ['claude-opus-5', 'claude-sonnet-5', 'claude-haiku-4-5']}
     with app.app_context():
-        assert Configuration.get_value('garage_password') == PW
-        assert ConfigurationHistory.query.filter_by(config_key='garage_host').count() == 1
-        assert monitor.config()['quiet_end'] == ''          # blank means "off", not the default
-
-    # an empty password leaves the stored one alone; clear_password blanks it
-    r = client.put('/api/config/garage', json={'password': ''}, headers=_headers(client))
-    assert r.get_json()['updated_fields'] == []
-    r = client.put('/api/config/garage', json={'clear_password': True}, headers=_headers(client))
-    assert r.get_json()['updated_fields'] == ['password']
-    assert client.get('/api/config/garage').get_json()['password_set'] is False
+        assert Configuration.get_value('garage_camera_id') == '42'
+        assert ConfigurationHistory.query.filter_by(config_key='garage_camera_id').count() == 1
+        assert monitor.config()['quiet_end'] == '' and monitor.config()['vision_model'] == 'claude-sonnet-5'
 
 
 @pytest.mark.parametrize('body', [
-    {'host': '8.8.8.8'},
-    {'host': 'http://ratgdo.local'},
+    {'camera_id': 'abc'},
+    {'vision_model': 'gpt-4'},
+    {'check_interval': 30},
+    {'scene_hint': 'x' * 301},
     {'left_open_minutes': 0},
-    {'left_open_minutes': 'soon'},
     {'quiet_hours_start': '25:00'},
-    {'poll_interval': 5},
+    {'reclassify_minutes': 1},
     {'enabled': 'maybe'},
 ])
 def test_config_rejections(client, monitor, body):
     r = client.put('/api/config/garage', json=body, headers=_headers(client))
     assert r.status_code == 400 and 'error' in r.get_json()
-
-
-def test_password_never_appears_in_the_config_dump(client, app, monitor):
-    client.put('/api/config/garage', json={'password': PW, 'host': '192.168.1.50'}, headers=_headers(client))
-    dump = client.get('/api/config').get_json()['database_config']
-    assert 'garage_host' in dump and 'garage_password' not in dump
 
 
 def test_config_write_wakes_the_monitor(client, app, monitor):
@@ -179,5 +179,5 @@ def test_read_only_routes_are_not_on_heavy_tiers(app):
     tiers = {r.rule: app.view_functions[r.endpoint]._rate_limit_tier for r in app.url_map.iter_rules()
              if r.rule.startswith('/api/garage')}
     assert tiers['/api/garage'] == 'relaxed' and tiers['/api/garage/history'] == 'relaxed'
-    assert tiers['/api/garage/discover'] == 'moderate'
-    assert {tiers[p] for p in ('/api/garage/door', '/api/garage/light', '/api/garage/lock', '/api/garage/test')} == {'strict'}
+    assert tiers['/api/garage/snapshot.jpg'] == 'relaxed' and tiers['/api/garage/ring/cameras'] == 'moderate'
+    assert {tiers[p] for p in ('/api/garage/check', '/api/garage/ring/login', '/api/garage/ring/logout')} == {'strict'}

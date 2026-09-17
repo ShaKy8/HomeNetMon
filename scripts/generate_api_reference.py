@@ -34,7 +34,7 @@ def main():
     titles = {'devices': 'Devices and device control', 'monitoring': 'Monitoring, summary, bandwidth, internet',
               'alerts': 'Alerts, suppression rules, notification log', 'analytics': 'Analytics and per-device performance',
               'security': 'Security scanner', 'config': 'Configuration', 'health': 'System',
-              'garage': 'Garage door (ratgdo)', 'other': 'Other'}
+              'garage': 'Garage door (Ring camera)', 'other': 'Other'}
     out = [head.rstrip('\n'), '']
     for tag in titles:
         if tag not in by_tag:

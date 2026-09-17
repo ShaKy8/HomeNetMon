@@ -209,7 +209,7 @@ def create_app():
     wan_monitor = WanMonitor(app)
     app.wan_monitor = wan_monitor
 
-    # Garage door (ratgdo board); idles until enabled from Settings
+    # Garage door state from the Ring camera; idles until enabled from Settings
     from services.garage_monitor import GarageMonitor
     garage_monitor = GarageMonitor(app)
     app.garage_monitor = garage_monitor
@@ -517,7 +517,7 @@ def create_app():
 
     @app.route('/smart-home')
     def smart_home():
-        """Garage door (ratgdo) control and history plus the smart-home devices."""
+        """Garage door state from the Ring camera, its history, and the smart-home devices."""
         return render_template('smart_home.html')
 
     @app.route('/alerts')

@@ -211,21 +211,22 @@ class TestGarage:
 
     def test_state_and_history_envelopes(self, client, db_session):
         body = client.get('/api/garage').get_json()
-        assert {'enabled', 'configured', 'door', 'light', 'lock', 'quiet_hours', 'last_event'} <= set(body)
+        assert {'enabled', 'configured', 'door', 'camera', 'reading', 'ring', 'snapshot', 'vision', 'quiet_hours', 'last_event'} <= set(body)
         hist = client.get('/api/garage/history?hours=24').get_json()
         assert hist['hours'] == 24 and len(hist['daily']) == 14
+        assert client.get('/api/garage/snapshot.jpg').status_code in (404, 200)
 
-    def test_door_needs_configuration(self, client, db_session):
-        r = client.post('/api/garage/door', json={'action': 'open'}, headers=_hdr(client))
+    def test_check_needs_configuration(self, client, db_session):
+        r = client.post('/api/garage/check', json={}, headers=_hdr(client))
         assert r.status_code == 409 and 'error' in r.get_json()
 
     def test_config_round_trip(self, client, app, db_session):
-        r = client.put('/api/config/garage', json={'enabled': False, 'host': '192.168.1.60', 'left_open_minutes': 30},
+        r = client.put('/api/config/garage', json={'enabled': False, 'camera_id': '123', 'left_open_minutes': 30},
                        headers=_hdr(client))
         assert r.status_code == 200, r.get_json()
         got = client.get('/api/config/garage').get_json()
-        assert got['host'] == '192.168.1.60' and got['left_open_minutes'] == 30 and got['password_set'] is False
-        assert client.put('/api/config/garage', json={'host': '1.1.1.1'}, headers=_hdr(client)).status_code == 400
+        assert got['camera_id'] == '123' and got['left_open_minutes'] == 30 and 'ring_signed_in' in got
+        assert client.put('/api/config/garage', json={'vision_model': 'gpt-4'}, headers=_hdr(client)).status_code == 400
 
 
 class TestCrossCutting:

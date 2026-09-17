@@ -1,63 +1,77 @@
-"""Garage door monitor: keeps HomeNetMon in sync with a ratgdo board.
+"""Garage door monitor: reads the door state from the Ring "Garage Cam".
 
-A ratgdo (ESPHome firmware) wired to the opener replaces the myQ cloud, which
-has no third-party API. This service owns the connection to it:
+There is no door controller: the camera is the sensor. On a schedule (and
+sooner after Ring reports motion) the monitor fetches the camera's latest
+stored frame through ``services.ring_client.RingBridge``, drops frames that
+look identical to the last one (``services.door_vision.frame_changed``) and
+asks Claude vision to read the rest (``door_vision.classify``). A reading that
+is confident enough becomes the door state; every transition is a
+``GarageEvent`` row with the frame that caused it saved next to the database.
 
-* a ticker thread (``GarageMonitor`` in ``core.health.EXPECTED_THREADS``) that
-  re-reads the ``garage_*`` runtime settings, polls the board every
-  ``garage_poll_interval`` seconds (faster while the door moves without a live
-  stream) and evaluates the alert timers every 30 s -- it runs and heartbeats
-  even while the feature is disabled, so the watchdog needs no special case;
-* one helper thread (``GarageEvents``) holding the board's single Server-Sent
-  Events stream so door changes arrive within a second (an ESP8266 serves very
-  few SSE clients, so there is never more than one);
-* ``GarageEvent`` rows for every transition (door / light / lock / obstruction /
-  online), attributed to ``dashboard`` when a HomeNetMon command preceded it;
-* alerts through ``AlertManager.create_alert()`` on the board's ``Device`` row
-  (``garage_left_open``, ``garage_quiet_hours_open``, ``garage_obstruction``,
-  ``garage_offline``), resolved here when the condition clears;
+* ticker thread ``GarageMonitor`` (``core.health.EXPECTED_THREADS``): runs and
+  heartbeats even while the feature is disabled;
+* alerts through ``AlertManager.create_alert()`` on the camera's ``Device``
+  row: ``garage_left_open``, ``garage_quiet_hours_open`` (local clock),
+  ``garage_offline`` when Ring or Claude keep failing; resolved here;
 * ``garage_status`` pushes to the ``updates_monitoring_summary`` room.
 
-Quiet hours use the host's local clock (settings are entered as wall-clock
-times); everything stored is UTC like the rest of the app.
+Battery cameras only take a new picture every few minutes and never while
+recording, so the stored frame is used on the schedule and a fresh one is
+requested only after motion and on "Check now".
 """
 
 from __future__ import annotations
 
 import logging
+import os
+import re
+import shutil
 import threading
 import time
 from datetime import date, datetime, time as dtime, timedelta, timezone
+from pathlib import Path
 
+from config import Config
+from constants import APP_VERSION
 from core.health import record_heartbeat
 from models import Alert, Configuration, Device, GarageEvent, db
-from services import ratgdo_client as rc
+from services import door_vision
+from services.ring_client import RingAuthError, RingBridge, RingError
 
 logger = logging.getLogger(__name__)
 
 DEFAULTS = {
     'garage_enabled': 'false',
-    'garage_host': '',
-    'garage_username': '',
-    'garage_password': '',
+    'garage_camera_id': '',
+    'garage_camera_name': '',
+    'garage_check_interval': 900,
+    'garage_motion_checks': 'true',
+    'garage_vision_model': door_vision.DEFAULT_MODEL,
+    'garage_scene_hint': '',
     'garage_left_open_minutes': 15,
     'garage_quiet_hours_start': '22:00',
     'garage_quiet_hours_end': '06:00',
-    'garage_poll_interval': 60,
-    'garage_offline_after_polls': 3,
+    'garage_reclassify_minutes': 60,
+    'garage_offline_after_failures': 3,
 }
-TICK_SECONDS = 30                  # alert-timer / heartbeat cadence
+TICK_SECONDS = 60                  # heartbeat / motion-poll / alert-timer cadence
 CONFIG_CACHE_SECONDS = 5           # Configuration reads are cached this long (reload_config() clears it)
-MOVING_POLL_SECONDS = 5            # poll cadence while the door travels and no SSE stream is up
-COMMAND_ATTRIBUTION_SECONDS = 20   # a change this soon after our command is "dashboard"
-SSE_BACKOFF = (2, 4, 8, 16, 32, 60)
-TRACKED_KEYS = ('door', 'position', 'light', 'lock', 'obstruction', 'motion', 'motor', 'openings', 'firmware')
-DOOR_OPEN_STATES = ('open', 'opening', 'closing', 'stopped')
+MOTION_CHECK_DELAY = 45            # seconds after a Ring motion event before asking for a frame (recording ends)
+MIN_CONFIDENCE = 0.6               # readings below this keep the previous state
+FRAME_CAP = 100                    # event frames kept on disk
+CAMERA_INFO_SECONDS = 600          # how often battery / Wi-Fi are refreshed from Ring
+TRACKED_KEYS = ('door',)
+DOOR_OPEN_STATES = ('open',)
 ALERT_SUBTYPE = 'garage'
+EVENT_FRAME_RE = re.compile(r'^event-(\d+)\.jpg$')
 
 
 class GarageNotConfigured(Exception):
-    """The integration is disabled or has no reachable host configured."""
+    """The integration is disabled, has no camera, or Ring is not signed in."""
+
+
+class GarageBusy(Exception):
+    """A check is already running."""
 
 
 def _parse_clock(text: str) -> dtime | None:
@@ -93,21 +107,46 @@ def _to_local(value: datetime) -> datetime:
     return value.replace(tzinfo=timezone.utc).astimezone()
 
 
+def _ms_to_iso(ms: int | None) -> str | None:
+    if not ms:
+        return None
+    return datetime.fromtimestamp(ms / 1000, tz=timezone.utc).replace(tzinfo=None).isoformat() + 'Z'
+
+
+def empty_state() -> dict:
+    return {
+        'door': 'unknown', 'online': None, 'last_update': None,
+        'open_since': None, 'door_changed_at': None,
+        'camera': None, 'reading': None,
+        'snapshot': {'taken_at': None, 'classified_at': None, 'changed_score': None, 'has_frame': False},
+    }
+
+
 class GarageMonitor:
-    def __init__(self, app=None):
+    def __init__(self, app=None, bridge: RingBridge | None = None, frame_dir: str | os.PathLike | None = None):
         self.app = app
-        self.state = rc.empty_state()
-        self.state.update(open_since=None, door_changed_at=None, sse_connected=False)
+        self.state = empty_state()
         self._lock = threading.RLock()
+        self._check_lock = threading.Lock()
         self._stop_event = threading.Event()
         self._wake = threading.Event()
-        self._client: rc.RatgdoClient | None = None
-        self._client_key: tuple | None = None
-        self._sse_thread: threading.Thread | None = None
-        self._sse_stop = threading.Event()
-        self._pending_command: tuple[str, float] | None = None
-        self._offline_polls = 0
-        self._last_poll = 0.0
+        self._bridge = bridge
+        self._frame_dir = Path(frame_dir or Config.GARAGE_FRAME_DIR)
+        self._last_frame: bytes | None = None
+        self._last_frame_ms: int | None = None
+        self._last_classified_at = 0.0
+        self._last_check = 0.0
+        self._check_due_at: float | None = None
+        self._check_reason = 'schedule'
+        self._failures = 0
+        self._last_error: str | None = None
+        self._last_motion_id = None
+        self._motion_seen = False
+        self._camera_checked_at = 0.0
+        self._day: date | None = None
+        self._checks_today = 0
+        self._tokens_today = 0
+        self._cost_today = 0.0
         self._last_event: dict | None = None
         self._config_cache: tuple[dict, float] | None = None
         self.is_running = False
@@ -115,15 +154,14 @@ class GarageMonitor:
     # ---- configuration --------------------------------------------------------
     def setting(self, key, default=None):
         """Runtime value, or the default when no row exists. An empty row is a real
-        value here (blank quiet hours or host mean "off"), unlike WanMonitor."""
+        value here (blank quiet hours mean "off"), unlike WanMonitor."""
         value = Configuration.get_value(key)
         if value is None:
             return DEFAULTS.get(key) if default is None else default
         return value
 
     def config(self) -> dict:
-        """Typed, clamped view of the garage_* settings (cached a few seconds; a
-        moving door reports its position several times a second). Needs an app context."""
+        """Typed, clamped view of the garage_* settings (cached a few seconds). Needs an app context."""
         cached = self._config_cache
         if cached is not None and time.monotonic() - cached[1] < CONFIG_CACHE_SECONDS:
             return dict(cached[0])
@@ -137,16 +175,20 @@ class GarageMonitor:
                 return max(lo, min(hi, int(self.setting(key))))
             except (TypeError, ValueError):
                 return int(DEFAULTS[key])
+        model = str(self.setting('garage_vision_model') or '').strip()
         return {
             'enabled': str(self.setting('garage_enabled')).lower() in ('true', '1', 'yes'),
-            'host': str(self.setting('garage_host') or '').strip(),
-            'username': str(self.setting('garage_username') or '').strip(),
-            'password': str(self.setting('garage_password') or ''),
+            'camera_id': str(self.setting('garage_camera_id') or '').strip(),
+            'camera_name': str(self.setting('garage_camera_name') or '').strip()[:100],
+            'check_interval': as_int('garage_check_interval', 120, 86400),
+            'motion_checks': str(self.setting('garage_motion_checks')).lower() in ('true', '1', 'yes'),
+            'vision_model': model if model in door_vision.ALLOWED_MODELS else door_vision.DEFAULT_MODEL,
+            'scene_hint': str(self.setting('garage_scene_hint') or '').strip()[:300],
             'left_open_minutes': as_int('garage_left_open_minutes', 1, 1440),
             'quiet_start': str(self.setting('garage_quiet_hours_start') or '').strip(),
             'quiet_end': str(self.setting('garage_quiet_hours_end') or '').strip(),
-            'poll_interval': as_int('garage_poll_interval', 15, 600),
-            'offline_after': as_int('garage_offline_after_polls', 1, 20),
+            'reclassify_minutes': as_int('garage_reclassify_minutes', 5, 1440),
+            'offline_after': as_int('garage_offline_after_failures', 1, 20),
         }
 
     def reload_config(self):
@@ -154,114 +196,212 @@ class GarageMonitor:
         self._config_cache = None
         self._wake.set()
 
-    # ---- client / stream lifecycle -----------------------------------------------
-    def _ensure_client(self, cfg: dict) -> rc.RatgdoClient | None:
-        key = (cfg['host'], cfg['username'], cfg['password'])
-        if self._client is not None and key == self._client_key:
-            return self._client
-        self._stop_sse()
+    # ---- Ring account -----------------------------------------------------------------
+    def bridge(self) -> RingBridge:
+        if self._bridge is None:
+            self._bridge = RingBridge(Config.RING_TOKEN_FILE, f'HomeNetMon/{APP_VERSION}')
+        self._bridge.start()
+        return self._bridge
+
+    def ring_login(self, email: str, password: str, otp: str | None = None) -> dict:
+        result = self.bridge().login(email, password, otp)
+        if result.get('status') == 'ok':
+            self._failures = 0
+            self.reload_config()
+        return result
+
+    def ring_logout(self) -> None:
+        self.bridge().logout()
+        self._teardown()
+        self.reload_config()
+
+    def ring_cameras(self) -> list[dict]:
+        return self.bridge().cameras()
+
+    def signed_in(self) -> bool:
         try:
-            self._client = rc.RatgdoClient(cfg['host'], cfg['username'] or None, cfg['password'] or None)
-        except ValueError as e:
-            logger.warning(f"garage_host {cfg['host']!r} rejected: {e}")
-            self._client, self._client_key = None, None
-            return None
-        self._client_key = key
-        self._offline_polls = 0
-        self._last_poll = 0.0
-        with self._lock:
-            self.state['board'] = {'host': self._client.host, 'name': None}
-        return self._client
+            return self.bridge().signed_in()
+        except Exception:
+            return False
 
-    def _ensure_sse(self, client: rc.RatgdoClient):
-        if self._sse_thread is not None and self._sse_thread.is_alive():
-            return
-        self._sse_stop = threading.Event()
-        stop = self._sse_stop
-        self._sse_thread = threading.Thread(target=self._run_sse, args=(client, stop), daemon=True, name='GarageEvents')
-        self._sse_thread.start()
+    # ---- the check -----------------------------------------------------------------------
+    def check_once(self, fresh: bool = False, notify: bool = True, now: datetime | None = None) -> dict:
+        """Fetch a frame, read the door, record the result. App context required.
 
-    def _stop_sse(self):
-        self._sse_stop.set()
-        self._sse_thread = None
-        with self._lock:
-            self.state['sse_connected'] = False
-
-    def _teardown(self):
-        """Feature disabled or unconfigured: drop the board and forget its state."""
-        if self._client is None and self.state['door'] == 'unknown':
-            return
-        self._stop_sse()
-        self._client, self._client_key = None, None
-        with self._lock:
-            self.state = rc.empty_state()
-            self.state.update(open_since=None, door_changed_at=None, sse_connected=False)
-        self._offline_polls = 0
-        self._push()
-
-    def _run_sse(self, client: rc.RatgdoClient, stop: threading.Event):
-        attempt = 0
-        while not stop.is_set() and not self._stop_event.is_set():
-            received = []
-
-            def on_state(document, _stop=stop, _received=received):
-                if _stop.is_set():
-                    return
-                _received.append(1)
-                self._on_sse_state(document)
-
-            def on_ping(_stop=stop, _received=received):
-                if _stop.is_set():
-                    return
-                _received.append(1)
-                with self._lock:
-                    self.state['sse_connected'] = True
-
-            try:
-                client.events(stop, on_state, on_ping)
-            except rc.RatgdoError as e:
-                logger.debug(f"garage SSE stream ended: {e}")
-            except Exception as e:                       # never let the helper thread die silently
-                logger.error(f"garage SSE stream failed: {e}")
-            with self._lock:
-                self.state['sse_connected'] = False
-            attempt = 0 if received else attempt + 1
-            stop.wait(SSE_BACKOFF[min(attempt, len(SSE_BACKOFF) - 1)])
-
-    def _on_sse_state(self, document: dict):
-        with self._lock:
-            scratch = {k: self.state.get(k) for k in TRACKED_KEYS}
-        changes = rc.apply_entity(scratch, document)
+        ``fresh`` asks the camera for a new picture (motion / "Check now"); otherwise the
+        camera's stored frame is used. Raises GarageBusy, GarageNotConfigured, RingError,
+        VisionError; failures count towards ``garage_offline``.
+        """
+        if not self._check_lock.acquire(blocking=False):
+            raise GarageBusy('A garage check is already running')
         try:
-            with self.app.app_context():
-                with self._lock:
-                    self.state['sse_connected'] = True
-                    self._offline_polls = 0
-                    if self.state['online'] is not True:
-                        changes['online'] = True
-                if changes:
-                    self.apply_state(changes)
-        except Exception as e:
-            logger.error(f"garage SSE state not applied: {e}")
+            cfg = self.config()
+            if not cfg['enabled'] or not cfg['camera_id']:
+                raise GarageNotConfigured('Garage camera is not enabled or no camera is selected')
+            if not self.signed_in():
+                raise GarageNotConfigured('Not signed in to Ring')
+            self._last_check = time.monotonic()
+            self._check_due_at = None
+            now = now or datetime.utcnow()
             try:
-                with self.app.app_context():
-                    db.session.rollback()
-            except Exception:
+                frame, taken_ms = self._fetch_frame(cfg, fresh)
+                self._refresh_camera_info(cfg)
+                if frame is None:
+                    self._record_success(notify)
+                    self._push()
+                    return self.status()
+                jpeg = door_vision.prepare_frame(frame)
+                changed, score = door_vision.frame_changed(self._last_frame, jpeg)
+                stale = time.monotonic() - self._last_classified_at >= cfg['reclassify_minutes'] * 60
+                with self._lock:
+                    self.state['snapshot'].update(taken_at=_ms_to_iso(taken_ms), changed_score=score, has_frame=True)
+                self._last_frame, self._last_frame_ms = jpeg, taken_ms
+                self._store_frame(jpeg)
+                if changed or stale or self.state['door'] == 'unknown':
+                    reading, usage = door_vision.classify(jpeg, cfg['vision_model'], cfg['scene_hint'],
+                                                          Config.ANTHROPIC_API_KEY or None)
+                    self._count(usage)
+                    self._last_classified_at = time.monotonic()
+                    state = reading.state if reading.door_visible and reading.confidence >= MIN_CONFIDENCE else 'unknown'
+                    with self._lock:
+                        self.state['reading'] = {
+                            'state': reading.state, 'confidence': round(reading.confidence, 2), 'night': reading.night,
+                            'door_visible': reading.door_visible, 'reason': reading.reason, 'model': cfg['vision_model'],
+                        }
+                        self.state['snapshot']['classified_at'] = _iso(now)
+                    if state != 'unknown':
+                        rows = self.apply_state({'door': state}, now=now, notify=notify)
+                        for row in rows:
+                            if row.kind == 'door':
+                                self._link_event_frame(row)
+                self._record_success(notify)
+            except (RingError, door_vision.VisionError) as e:
+                self._record_failure(e, notify)
+                raise
+            self._push()
+            return self.status()
+        finally:
+            self._check_lock.release()
+
+    def _fetch_frame(self, cfg: dict, fresh: bool) -> tuple[bytes | None, int | None]:
+        bridge = self.bridge()
+        camera_id = cfg['camera_id']
+        if fresh:
+            frame, taken_ms = bridge.fresh_snapshot(camera_id)
+            if frame is not None:
+                return frame, taken_ms
+        return bridge.latest_snapshot(camera_id, since_ms=self._last_frame_ms)
+
+    def _refresh_camera_info(self, cfg: dict) -> None:
+        if time.monotonic() - self._camera_checked_at < CAMERA_INFO_SECONDS:
+            return
+        self._camera_checked_at = time.monotonic()
+        try:
+            info = self.bridge().health(cfg['camera_id'])
+        except RingError as e:
+            logger.debug(f"garage camera info unavailable: {e}")
+            return
+        with self._lock:
+            self.state['camera'] = {'id': info.get('id'), 'name': info.get('name') or cfg['camera_name'],
+                                    'model': info.get('model'), 'battery_life': info.get('battery_life'),
+                                    'wifi': info.get('wifi_signal_strength'), 'is_battery': bool(info.get('is_battery'))}
+
+    # ---- frames on disk ----------------------------------------------------------------------
+    def _store_frame(self, jpeg: bytes) -> Path:
+        self._frame_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
+        path = self._frame_dir / 'latest.jpg'
+        tmp = self._frame_dir / 'latest.jpg.tmp'
+        tmp.write_bytes(jpeg)
+        os.replace(tmp, path)
+        return path
+
+    def _link_event_frame(self, row: GarageEvent) -> None:
+        if self._last_frame is None or row.id is None:
+            return
+        name = f'event-{row.id}.jpg'
+        try:
+            (self._frame_dir / name).write_bytes(self._last_frame)
+        except OSError as e:
+            logger.warning(f"garage frame not saved: {e}")
+            return
+        row.detail = name
+        db.session.commit()
+        self._last_event = row.to_dict()
+        self._prune_frames()
+
+    def _prune_frames(self) -> None:
+        try:
+            frames = sorted((p for p in self._frame_dir.glob('event-*.jpg')), key=lambda p: p.stat().st_mtime, reverse=True)
+        except OSError:
+            return
+        for old in frames[FRAME_CAP:]:
+            try:
+                old.unlink()
+            except OSError:
                 pass
 
-    # ---- state machine -----------------------------------------------------------------
-    def record_command(self, action: str):
-        self._pending_command = (action, time.monotonic())
+    def frame_path(self, event_id: int | None = None) -> Path | None:
+        """Path of latest.jpg or of an event frame; None when missing (ids are validated, no path input)."""
+        if event_id is None:
+            path = self._frame_dir / 'latest.jpg'
+        else:
+            try:
+                path = self._frame_dir / f'event-{int(event_id)}.jpg'
+            except (TypeError, ValueError):
+                return None
+        return path if path.is_file() else None
 
-    def _source(self) -> str:
-        pending = self._pending_command
-        if pending and time.monotonic() - pending[1] <= COMMAND_ATTRIBUTION_SECONDS:
-            self._pending_command = None
-            return 'dashboard'
-        return 'external'
+    # ---- bookkeeping -------------------------------------------------------------------------------
+    def _record_failure(self, error: Exception, notify: bool = True) -> None:
+        self._failures += 1
+        self._last_error = str(error)[:200]
+        logger.warning(f"garage check failed ({self._failures}): {error}")
+        if isinstance(error, RingAuthError):
+            return                                   # signed out: the UI says so, no alert
+        if self._failures >= self.config()['offline_after'] and self.state['online'] is not False:
+            self.apply_state({'online': False}, notify=notify)
 
+    def _record_success(self, notify: bool = True) -> None:
+        self._failures = 0
+        self._last_error = None
+        if self.state['online'] is not True:
+            self.apply_state({'online': True}, notify=notify)
+
+    def _count(self, usage: dict) -> None:
+        today = date.today()
+        if self._day != today:
+            self._day, self._checks_today, self._tokens_today, self._cost_today = today, 0, 0, 0.0
+        self._checks_today += 1
+        self._tokens_today += int(usage.get('input_tokens', 0) or 0) + int(usage.get('output_tokens', 0) or 0)
+        self._cost_today = round(self._cost_today + float(usage.get('est_cost_usd', 0) or 0), 6)
+
+    def _poll_motion(self, cfg: dict) -> None:
+        try:
+            events = self.bridge().motion_events(cfg['camera_id'], limit=3)
+        except RingError as e:
+            logger.debug(f"garage motion poll failed: {e}")
+            return
+        latest = events[0]['id'] if events else None
+        if not self._motion_seen:
+            self._motion_seen, self._last_motion_id = True, latest
+            return
+        if latest is not None and latest != self._last_motion_id:
+            self._last_motion_id = latest
+            self._check_due_at = time.monotonic() + MOTION_CHECK_DELAY
+            self._check_reason = 'motion'
+            logger.info("Ring motion at the garage; checking the door shortly")
+
+    def _teardown(self) -> None:
+        with self._lock:
+            self.state = empty_state()
+        self._last_frame, self._last_frame_ms = None, None
+        self._failures, self._last_error = 0, None
+        self._motion_seen, self._last_motion_id = False, None
+        self._push()
+
+    # ---- state machine -----------------------------------------------------------------------------
     def apply_state(self, changes: dict, now: datetime | None = None, notify: bool = True) -> list[GarageEvent]:
-        """Fold ``changes`` into the state, write GarageEvent rows for transitions, alert, push.
+        """Fold ``changes`` (door / online) into the state, write GarageEvent rows for transitions, alert, push.
 
         Must run inside an app context. Initial values (previous value unknown)
         update the state without writing rows -- a restart is not a door event.
@@ -291,21 +431,11 @@ class GarageMonitor:
                     if value == 'closed' and s['open_since'] is not None:
                         duration = round((now - s['open_since']).total_seconds(), 1)
                         s['open_since'] = None
-                    rows.append(GarageEvent(timestamp=now, kind='door', value=value, source=self._source(),
-                                            position=changes.get('position', s.get('position')),
+                    rows.append(GarageEvent(timestamp=now, kind='door', value=value, source='camera',
                                             duration_s=duration, opened=opened))
-                elif key == 'light' and not initial:
-                    rows.append(GarageEvent(timestamp=now, kind='light', value='on' if value else 'off',
-                                            source=self._source()))
-                elif key == 'lock' and not initial:
-                    rows.append(GarageEvent(timestamp=now, kind='lock', value='locked' if value else 'unlocked',
-                                            source=self._source()))
-                elif key == 'obstruction' and not initial:
-                    rows.append(GarageEvent(timestamp=now, kind='obstruction',
-                                            value='detected' if value else 'clear', source='external'))
                 elif key == 'online' and not initial:
                     rows.append(GarageEvent(timestamp=now, kind='online', value='online' if value else 'offline',
-                                            source='external', detail=s['board'].get('host')))
+                                            source='camera', detail=(self._last_error or None) if not value else None))
             if not changed:
                 return rows
             s['last_update'] = _iso(now)
@@ -314,82 +444,24 @@ class GarageMonitor:
                     db.session.add(row)
                 db.session.commit()
                 self._last_event = rows[-1].to_dict()
-            if rows or any(k in changes for k in ('door', 'obstruction', 'online')):
-                try:
-                    self.check_alerts(notify=notify, now=now)
-                except Exception as e:
-                    logger.error(f"garage alerting failed: {e}")
-                    db.session.rollback()
+            try:
+                self.check_alerts(notify=notify, now=now)
+            except Exception as e:
+                logger.error(f"garage alerting failed: {e}")
+                db.session.rollback()
             self._push()
         return rows
 
-    def poll_once(self, notify: bool = True) -> dict:
-        """One REST snapshot of every entity; counts failures towards ``garage_offline``. App context required."""
-        self._last_poll = time.monotonic()
-        client = self._client
-        if client is None:
-            return dict(self.state)
-        try:
-            snapshot = client.snapshot()
-        except rc.RatgdoError as e:
-            self._offline_polls += 1
-            logger.debug(f"garage poll failed ({self._offline_polls}): {e}")
-            if self._offline_polls >= self.config()['offline_after'] and self.state['online'] is not False:
-                self.apply_state({'online': False}, notify=notify)
-            return dict(self.state)
-        self._offline_polls = 0
-        with self._lock:
-            changes = {k: snapshot[k] for k in TRACKED_KEYS if snapshot.get(k) != self.state.get(k)}
-            if self.state['online'] is not True:
-                changes['online'] = True
-        if changes:
-            self.apply_state(changes, notify=notify)
-        return dict(self.state)
-
-    def command(self, kind: str, action: str) -> dict:
-        """Send one command to the board. Raises ValueError (bad action), GarageNotConfigured, RatgdoError."""
-        cfg = self.config()
-        if not cfg['enabled'] or not cfg['host']:
-            raise GarageNotConfigured('Garage door integration is not enabled')
-        client = self._ensure_client(cfg)
-        if client is None:
-            raise GarageNotConfigured(f"garage_host {cfg['host']!r} is not a usable LAN host")
-        if kind == 'door':
-            client.door(action)                                  # validates the action
-        elif kind == 'light':
-            mapping = {'on': 'turn_on', 'off': 'turn_off', 'toggle': 'toggle'}
-            if action not in mapping:
-                raise ValueError('light action must be on, off or toggle')
-            client.light(mapping[action])
-        elif kind == 'lock':
-            client.lock(action)
-        else:
-            raise ValueError('kind must be door, light or lock')
-        self.record_command(action)
-        self._last_poll = 0.0             # the ticker polls promptly for boards without a live stream
-        self._wake.set()
-        return {'ok': True, 'kind': kind, 'action': action}
-
     # ---- alerts ----------------------------------------------------------------------------
     def _device(self) -> Device | None:
-        host = self.state['board'].get('host') or (self._client.host if self._client else None)
-        if not host:
+        cfg = self.config()
+        if not cfg['camera_id']:
             return None
-        try:
-            import ipaddress
-            ipaddress.ip_address(host)
-            is_ip = True
-        except ValueError:
-            is_ip = False
-        if is_ip:
-            device = Device.query.filter_by(ip_address=host).first()
-        else:
-            short = host.split('.')[0]
-            device = Device.query.filter(Device.hostname.ilike(f'{short}%')).first()
+        hostname = f"ring-cam-{cfg['camera_id']}"
+        device = Device.query.filter_by(hostname=hostname).first()
         if device is None:
-            device = Device(ip_address=host if is_ip else None, hostname='ratgdo' if is_ip else host,
-                            custom_name='Garage door (ratgdo)', device_type='smart_home', is_monitored=is_ip,
-                            last_seen=datetime.utcnow())
+            device = Device(hostname=hostname, custom_name=f"{cfg['camera_name'] or 'Garage Cam'} (Ring)",
+                            device_type='camera', is_monitored=False, last_seen=datetime.utcnow())
             db.session.add(device)
             db.session.flush()
         return device
@@ -407,12 +479,12 @@ class GarageMonitor:
             pass
 
     def check_alerts(self, notify: bool = True, now: datetime | None = None, local_now: datetime | None = None):
-        """Create / resolve the four garage alerts from the current state. App context required."""
+        """Create / resolve the garage alerts from the current state. App context required."""
         manager = getattr(self.app, 'alert_manager', None)
         if manager is None:
             return
         cfg = self.config()
-        if not cfg['enabled'] or not cfg['host']:
+        if not cfg['enabled'] or not cfg['camera_id']:
             return
         device = self._device()
         if device is None:
@@ -446,15 +518,11 @@ class GarageMonitor:
         elif s['door'] == 'closed':
             clear('garage_quiet_hours_open')
 
-        if s['obstruction'] is True:
-            raise_once('garage_obstruction', 'warning', 'Garage door obstruction sensor is blocked')
-        elif s['obstruction'] is False:
-            clear('garage_obstruction')
-
         if s['online'] is False:
+            name = (s['camera'] or {}).get('name') or cfg['camera_name'] or 'Garage Cam'
             raise_once('garage_offline', 'warning',
-                       f"Garage controller (ratgdo) at {s['board'].get('host')} has not answered "
-                       f"{self._offline_polls} polls in a row")
+                       f"Garage camera {name} unavailable: {self._failures} consecutive Ring / vision failures "
+                       f"({self._last_error or 'unknown error'})")
         elif s['online'] is True:
             clear('garage_offline')
 
@@ -464,6 +532,7 @@ class GarageMonitor:
         cfg = self.config()
         with self._lock:
             s = dict(self.state)
+            snapshot = dict(s['snapshot'])
         now = datetime.utcnow()
         door_open = s['door'] in DOOR_OPEN_STATES
         open_for = round((now - s['open_since']).total_seconds()) if door_open and s['open_since'] else None
@@ -471,27 +540,46 @@ class GarageMonitor:
             latest = GarageEvent.query.order_by(GarageEvent.timestamp.desc(), GarageEvent.id.desc()).first()
             if latest is not None:
                 self._last_event = latest.to_dict()
-        configured = cfg['enabled'] and bool(cfg['host']) and self._client is not None
+        signed_in = self.signed_in()
+        configured = bool(cfg['enabled'] and cfg['camera_id'] and signed_in)
         quiet_active = in_quiet_hours(datetime.now().time(), cfg['quiet_start'], cfg['quiet_end'])
+        if snapshot.get('taken_at'):
+            try:
+                taken = datetime.fromisoformat(snapshot['taken_at'].rstrip('Z'))
+                snapshot['age_seconds'] = max(0, round((now - taken).total_seconds()))
+            except ValueError:
+                snapshot['age_seconds'] = None
+        else:
+            snapshot['age_seconds'] = None
+        next_check = None
+        if configured:
+            due = self._check_due_at if self._check_due_at is not None else self._last_check + cfg['check_interval']
+            next_check = _iso(now + timedelta(seconds=max(0, due - time.monotonic())))
+        if self._day != date.today():
+            checks, tokens, cost = 0, 0, 0.0
+        else:
+            checks, tokens, cost = self._checks_today, self._tokens_today, self._cost_today
+        camera = s['camera'] or ({'id': cfg['camera_id'], 'name': cfg['camera_name'] or None, 'model': None,
+                                  'battery_life': None, 'wifi': None, 'is_battery': None} if cfg['camera_id'] else None)
         return {
             'enabled': cfg['enabled'],
             'configured': configured,
-            'host': cfg['host'] or None,
-            'board': {'host': s['board'].get('host'), 'name': s['board'].get('name'), 'firmware': s['firmware']},
-            'online': s['online'],
-            'sse_connected': bool(s['sse_connected']),
-            'consecutive_failures': self._offline_polls,
-            'door': s['door'], 'position': s['position'],
-            'light': s['light'], 'lock': s['lock'],
-            'obstruction': s['obstruction'], 'motion': s['motion'], 'motor': s['motor'],
-            'openings': s['openings'],
+            'door': s['door'], 'online': s['online'],
+            'consecutive_failures': self._failures, 'last_error': self._last_error,
             'open_since': _iso(s['open_since']) if door_open else None,
             'open_for_seconds': open_for,
             'last_update': s['last_update'],
             'last_event': self._last_event,
             'left_open_minutes': cfg['left_open_minutes'],
             'quiet_hours': {'start': cfg['quiet_start'] or None, 'end': cfg['quiet_end'] or None, 'active': quiet_active},
-            'poll_interval': cfg['poll_interval'],
+            'check_interval': cfg['check_interval'], 'motion_checks': cfg['motion_checks'],
+            'next_check_at': next_check,
+            'camera': camera,
+            'ring': {'signed_in': signed_in},
+            'snapshot': snapshot,
+            'reading': s['reading'],
+            'vision': {'model': cfg['vision_model'], 'checks_today': checks, 'tokens_today': tokens,
+                       'est_cost_today_usd': round(cost, 4), 'api_key_set': bool(Config.ANTHROPIC_API_KEY)},
         }
 
     def history(self, hours: int = 336) -> dict:
@@ -559,7 +647,7 @@ class GarageMonitor:
     def start_monitoring(self):
         self.is_running = True
         self._stop_event.clear()
-        logger.info("Starting garage door monitor")
+        logger.info("Starting garage camera monitor")
         while not self._stop_event.is_set():
             record_heartbeat('GarageMonitor')
             wait = TICK_SECONDS
@@ -575,31 +663,32 @@ class GarageMonitor:
                     pass
             self._wake.wait(wait)
             self._wake.clear()
-        self._stop_sse()
+        if self._bridge is not None:
+            self._bridge.stop()
         self.is_running = False
 
     def _tick(self) -> float:
         """One ticker iteration inside an app context; returns how long to wait."""
         cfg = self.config()
-        if not cfg['enabled'] or not cfg['host']:
-            self._teardown()
+        if not cfg['enabled'] or not cfg['camera_id']:
+            if self.state['door'] != 'unknown' or self.state['online'] is not None or self._last_frame is not None:
+                self._teardown()
             return TICK_SECONDS
-        client = self._ensure_client(cfg)
-        if client is None:
+        if not self.signed_in():
             return TICK_SECONDS
-        self._ensure_sse(client)
-        with self._lock:
-            streaming = self.state['sse_connected']
-            moving = self.state['door'] in ('opening', 'closing')
-        interval = cfg['poll_interval'] if streaming else min(cfg['poll_interval'], TICK_SECONDS)
-        if moving and not streaming:
-            interval = MOVING_POLL_SECONDS
-        if time.monotonic() - self._last_poll >= interval:
-            self.poll_once()
+        if cfg['motion_checks']:
+            self._poll_motion(cfg)
+        due = self._check_due_at if self._check_due_at is not None else self._last_check + cfg['check_interval']
+        if time.monotonic() >= due:
+            reason, self._check_reason = self._check_reason, 'schedule'
+            try:
+                self.check_once(fresh=(reason == 'motion'))
+            except (GarageBusy, GarageNotConfigured, RingError, door_vision.VisionError) as e:
+                logger.debug(f"garage check skipped: {e}")
+            due = self._check_due_at if self._check_due_at is not None else self._last_check + cfg['check_interval']
         self.check_alerts()
-        return MOVING_POLL_SECONDS if (moving and not streaming) else TICK_SECONDS
+        return max(5.0, min(float(TICK_SECONDS), due - time.monotonic()))
 
     def stop(self):
         self._stop_event.set()
-        self._sse_stop.set()
         self._wake.set()

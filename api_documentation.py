@@ -82,7 +82,7 @@ def generate_openapi_spec(app=None):
             {"name": "config", "description": "Runtime configuration and its history"},
             {"name": "security", "description": "Port scans and security alerts"},
             {"name": "health", "description": "System information and thread health"},
-            {"name": "garage", "description": "Garage door control through a ratgdo board"},
+            {"name": "garage", "description": "Garage door state from a Ring camera, read by Claude vision"},
         ],
         "paths": paths,
     }

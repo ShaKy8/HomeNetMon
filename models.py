@@ -684,8 +684,7 @@ class Alert(db.Model):
         'performance': 'Performance degraded',
         'garage_left_open': 'Garage door left open',
         'garage_quiet_hours_open': 'Garage door open during quiet hours',
-        'garage_obstruction': 'Garage door obstruction',
-        'garage_offline': 'Garage controller offline',
+        'garage_offline': 'Garage camera unavailable',
     }
     PERFORMANCE_TITLES = {
         'performance_critical': 'Performance critical',
@@ -1308,13 +1307,13 @@ class WanCheck(db.Model):
 
 
 class GarageEvent(db.Model):
-    """One garage-door transition seen by services/garage_monitor.py (ratgdo board).
+    """One garage-door transition read from the Ring camera by services/garage_monitor.py.
 
-    ``kind`` is what changed (door | light | lock | obstruction | online) and
-    ``value`` its new value (closed/open/opening/closing/stopped, on/off,
-    locked/unlocked, true/false). ``opened`` marks the transition that left
-    ``closed`` -- the one counted as an "opening" -- and ``duration_s`` on a
-    ``closed`` event is how long the door had been open.
+    ``kind`` is what changed (door | online) and ``value`` its new value
+    (open/closed, online/offline); ``source`` is ``camera``. ``opened`` marks the
+    transition that left ``closed`` -- the one counted as an "opening" -- and
+    ``duration_s`` on a ``closed`` event is how long the door had been open.
+    ``detail`` names the saved frame (``event-<id>.jpg``) for door events.
     """
     __tablename__ = 'garage_events'
 
@@ -1420,11 +1419,14 @@ def seed_default_configuration():
         ('wan_check_interval', str(Config.WAN_CHECK_INTERVAL), 'Seconds between internet / gateway checks'),
         ('wan_down_after_checks', '3', 'Consecutive failed checks before an internet-down alert'),
         ('alert_webhook_enabled', 'false', 'Enable webhook alerts'),
-        ('garage_enabled', 'false', 'Garage door (ratgdo) integration on/off'),
+        ('garage_enabled', 'false', 'Garage door state from the Ring camera on/off'),
         ('garage_left_open_minutes', '15', 'Minutes the garage door may stay open before an alert'),
         ('garage_quiet_hours_start', '22:00', 'Garage quiet hours start (local time, blank disables)'),
         ('garage_quiet_hours_end', '06:00', 'Garage quiet hours end (local time)'),
-        ('garage_poll_interval', '60', 'Seconds between garage door state polls'),
+        ('garage_check_interval', '900', 'Seconds between garage camera checks'),
+        ('garage_motion_checks', 'true', 'Check the garage sooner after Ring reports motion'),
+        ('garage_vision_model', 'claude-opus-5', 'Claude model that reads the garage snapshot'),
+        ('garage_reclassify_minutes', '60', 'Re-read an unchanged frame after this many minutes'),
     ]
 
     seed_logger = logging.getLogger(__name__)

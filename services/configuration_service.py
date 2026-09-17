@@ -152,17 +152,33 @@ class ConfigurationService:
                 validator=self._validate_boolean,
                 error_message="garage_enabled must be true or false"
             ),
-            'garage_host': ConfigValidationRule(
-                validator=self._validate_garage_host,
-                error_message="Garage host must be the ratgdo's LAN IP or hostname (optionally :port), or empty"
+            'garage_camera_id': ConfigValidationRule(
+                validator=lambda v: re.fullmatch(r'\d{0,12}', str(v or '').strip()) is not None,
+                error_message="Garage camera id must be a Ring device id (digits) or empty"
             ),
-            'garage_username': ConfigValidationRule(
-                validator=lambda v: len(str(v or '')) <= 64,
-                error_message="Garage username must be 64 characters or fewer"
+            'garage_camera_name': ConfigValidationRule(
+                validator=lambda v: len(str(v or '')) <= 100,
+                error_message="Garage camera name must be 100 characters or fewer"
             ),
-            'garage_password': ConfigValidationRule(
-                validator=lambda v: len(str(v or '')) <= 128,
-                error_message="Garage password must be 128 characters or fewer"
+            'garage_check_interval': ConfigValidationRule(
+                validator=lambda v: self._validate_integer_range(v, 120, 86400),
+                error_message="Garage check interval must be between 120 and 86400 seconds"
+            ),
+            'garage_motion_checks': ConfigValidationRule(
+                validator=self._validate_boolean,
+                error_message="garage_motion_checks must be true or false"
+            ),
+            'garage_vision_model': ConfigValidationRule(
+                validator=self._validate_vision_model,
+                error_message="Garage vision model must be claude-opus-5, claude-sonnet-5 or claude-haiku-4-5"
+            ),
+            'garage_scene_hint': ConfigValidationRule(
+                validator=lambda v: len(str(v or '')) <= 300,
+                error_message="Garage scene notes must be 300 characters or fewer"
+            ),
+            'garage_reclassify_minutes': ConfigValidationRule(
+                validator=lambda v: self._validate_integer_range(v, 5, 1440),
+                error_message="Garage re-read window must be between 5 and 1440 minutes"
             ),
             'garage_left_open_minutes': ConfigValidationRule(
                 validator=lambda v: self._validate_integer_range(v, 1, 1440),
@@ -175,10 +191,6 @@ class ConfigurationService:
             'garage_quiet_hours_end': ConfigValidationRule(
                 validator=self._validate_clock_time,
                 error_message="Garage quiet hours end must be HH:MM (24 h) or empty"
-            ),
-            'garage_poll_interval': ConfigValidationRule(
-                validator=lambda v: self._validate_integer_range(v, 15, 600),
-                error_message="Garage poll interval must be between 15 and 600 seconds"
             ),
             'security_scan_interval_hours': ConfigValidationRule(
                 validator=lambda v: self._validate_integer_range(v, 1, 168),
@@ -659,16 +671,10 @@ class ConfigurationService:
         except Exception:
             return False
 
-    def _validate_garage_host(self, value: str) -> bool:
-        """Empty (not configured) or a LAN host the ratgdo client accepts."""
-        if not str(value or '').strip():
-            return True
-        try:
-            from services.ratgdo_client import parse_host
-            parse_host(str(value))
-            return True
-        except ValueError:
-            return False
+    def _validate_vision_model(self, value: str) -> bool:
+        """One of the Claude models services/door_vision.py accepts."""
+        from services.door_vision import ALLOWED_MODELS
+        return str(value or '').strip() in ALLOWED_MODELS
 
     def _validate_clock_time(self, value: str) -> bool:
         """Empty or HH:MM on a 24-hour clock."""

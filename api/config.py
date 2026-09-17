@@ -28,7 +28,7 @@ def get_configuration():
     """Get all configuration settings"""
     try:
         configs = Configuration.query.all()
-        # Secrets (garage_password and any future *_password key) never leave the server.
+        # Secrets (any *_password key) never leave the server.
         config_dict = {config.key: {
             'value': config.value,
             'description': config.description,
@@ -399,20 +399,31 @@ def update_alert_config():
 @config_bp.route('/garage', methods=['GET'])
 @create_endpoint_limiter('relaxed')
 def get_garage_config():
-    """Garage door (ratgdo) settings for the Settings page. The password is reported as set/unset only."""
+    """Garage camera settings for the Settings page (plus whether Ring is signed in and the Claude key is set)."""
     try:
+        from services.door_vision import ALLOWED_MODELS
+
         def value(key, default=''):
             v = Configuration.get_value(key)
             return default if v is None else v
+
+        monitor = getattr(current_app, 'garage_monitor', None)
+        signed_in = bool(monitor.signed_in()) if monitor is not None else False
         return jsonify({
             'enabled': value('garage_enabled', 'false').lower() == 'true',
-            'host': value('garage_host'),
-            'username': value('garage_username'),
-            'password_set': bool(value('garage_password')),
+            'camera_id': value('garage_camera_id'),
+            'camera_name': value('garage_camera_name'),
+            'check_interval': int(value('garage_check_interval', '900') or 900),
+            'motion_checks': value('garage_motion_checks', 'true').lower() == 'true',
+            'vision_model': value('garage_vision_model', 'claude-opus-5') or 'claude-opus-5',
+            'scene_hint': value('garage_scene_hint'),
             'left_open_minutes': int(value('garage_left_open_minutes', '15') or 15),
             'quiet_hours_start': value('garage_quiet_hours_start', '22:00'),
             'quiet_hours_end': value('garage_quiet_hours_end', '06:00'),
-            'poll_interval': int(value('garage_poll_interval', '60') or 60),
+            'reclassify_minutes': int(value('garage_reclassify_minutes', '60') or 60),
+            'ring_signed_in': signed_in,
+            'api_key_set': bool(Config.ANTHROPIC_API_KEY),
+            'vision_models': list(ALLOWED_MODELS),
         })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
@@ -421,25 +432,28 @@ def get_garage_config():
 @config_bp.route('/garage', methods=['PUT'])
 @create_endpoint_limiter('strict')
 def update_garage_config():
-    """Write garage_* settings through the configuration service (validated, logged, hot-reloaded).
-
-    ``password`` is written only when non-empty; ``clear_password: true`` blanks it.
-    """
+    """Write garage_* settings through the configuration service (validated, logged, hot-reloaded)."""
     try:
         data = request.get_json()
         if not data:
             return jsonify({'error': 'No data provided'}), 400
         updated_fields = []
         plain = {
-            'enabled': ('garage_enabled', 'Garage door (ratgdo) integration on/off', lambda v: str(v).lower()),
-            'host': ('garage_host', 'ratgdo board host or IP (optionally :port)', lambda v: str(v).strip()),
-            'username': ('garage_username', 'ratgdo web server username', lambda v: str(v).strip()),
+            'enabled': ('garage_enabled', 'Garage door state from the Ring camera on/off', lambda v: str(v).lower()),
+            'camera_id': ('garage_camera_id', 'Ring device id of the garage camera', lambda v: str(v).strip()),
+            'camera_name': ('garage_camera_name', 'Name of the garage camera in the Ring app', lambda v: str(v).strip()),
+            'check_interval': ('garage_check_interval', 'Seconds between garage camera checks', lambda v: str(v).strip()),
+            'motion_checks': ('garage_motion_checks', 'Check the garage sooner after Ring reports motion',
+                              lambda v: str(v).lower()),
+            'vision_model': ('garage_vision_model', 'Claude model that reads the garage snapshot', lambda v: str(v).strip()),
+            'scene_hint': ('garage_scene_hint', 'Notes about the scene passed to the vision model', lambda v: str(v).strip()),
             'left_open_minutes': ('garage_left_open_minutes', 'Minutes the garage door may stay open before an alert',
                                   lambda v: str(v).strip()),
             'quiet_hours_start': ('garage_quiet_hours_start', 'Garage quiet hours start (local time, blank disables)',
                                   lambda v: str(v).strip()),
             'quiet_hours_end': ('garage_quiet_hours_end', 'Garage quiet hours end (local time)', lambda v: str(v).strip()),
-            'poll_interval': ('garage_poll_interval', 'Seconds between garage door state polls', lambda v: str(v).strip()),
+            'reclassify_minutes': ('garage_reclassify_minutes', 'Re-read an unchanged frame after this many minutes',
+                                   lambda v: str(v).strip()),
         }
         for field, (key, description, coerce) in plain.items():
             if field in data:
@@ -447,16 +461,6 @@ def update_garage_config():
                 if not ok:
                     return jsonify({'error': msg}), 400
                 updated_fields.append(field)
-        if data.get('clear_password'):
-            ok, msg = _set('garage_password', '', 'ratgdo web server password')
-            if not ok:
-                return jsonify({'error': msg}), 400
-            updated_fields.append('password')
-        elif str(data.get('password') or ''):
-            ok, msg = _set('garage_password', str(data['password']), 'ratgdo web server password')
-            if not ok:
-                return jsonify({'error': msg}), 400
-            updated_fields.append('password')
         return jsonify({
             'message': f'Updated {len(updated_fields)} garage setting(s)',
             'updated_fields': updated_fields,

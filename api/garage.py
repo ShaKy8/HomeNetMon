@@ -1,82 +1,41 @@
-"""Garage door (ratgdo board) API: state, control, history, discovery.
+"""Garage door state read from the Ring camera: status, snapshot, history, Ring sign-in.
 
-Same trust model as the rest of the app: no authentication on the LAN, so a
-POST here is available to any LAN host or Tailscale peer that can reach the
-dashboard. Mitigations are CSRF on every unsafe method, the strict rate-limit
-tier, LAN-only host validation and the hold-to-confirm control in the UI.
+Read-only from the door's point of view (nothing here can move it). Same trust
+model as the rest of the app: no authentication on the LAN, so the latest
+camera frame is visible to anyone who can reach the dashboard, and anyone can
+trigger a check (strict rate-limit tier, CSRF on every POST). The Ring password
+is forwarded to Ring once and never stored; only the OAuth token is kept.
 """
 
 import logging
 
-from flask import Blueprint, current_app, jsonify, request
+from flask import Blueprint, current_app, jsonify, request, send_file
 
 from api.rate_limited_endpoints import create_endpoint_limiter
-from services import ratgdo_client as rc
-from services.garage_monitor import GarageNotConfigured
+from services.door_vision import VisionError
+from services.garage_monitor import GarageBusy, GarageNotConfigured
+from services.ring_client import RingAuthError, RingError
 
 logger = logging.getLogger(__name__)
 garage_bp = Blueprint('garage', __name__)
-
-ACTIONS = {
-    'door': ('open', 'close', 'stop', 'toggle'),
-    'light': ('on', 'off', 'toggle'),
-    'lock': ('lock', 'unlock'),
-}
 
 
 def _monitor():
     return getattr(current_app, 'garage_monitor', None)
 
 
-def _command(kind):
-    monitor = _monitor()
-    if monitor is None:
-        return jsonify({'error': 'Garage monitor not available'}), 503
-    data = request.get_json(silent=True) or {}
-    action = str(data.get('action', '')).strip().lower()
-    if action not in ACTIONS[kind]:
-        return jsonify({'error': f"action must be one of {', '.join(ACTIONS[kind])}"}), 400
-    try:
-        monitor.command(kind, action)
-    except GarageNotConfigured as e:
-        return jsonify({'error': str(e)}), 409
-    except rc.RatgdoError as e:
-        logger.warning(f"garage {kind} {action} failed: {e}")
-        return jsonify({'error': f'The garage controller did not accept the command: {e}'}), 502
-    except ValueError as e:
-        return jsonify({'error': str(e)}), 400
-    return jsonify({'success': True, 'kind': kind, 'action': action, 'state': monitor.status()})
+def _unavailable():
+    return jsonify({'error': 'Garage monitor not available'}), 503
 
 
 @garage_bp.route('', methods=['GET'])
 @create_endpoint_limiter('relaxed')
 def garage_status():
-    """Current door / light / lock / sensor state and integration status (also pushed as garage_status)."""
+    """Door state, the latest reading, camera and vision status (also pushed as garage_status)."""
     monitor = _monitor()
     if monitor is None:
-        return jsonify({'error': 'Garage monitor not available'}), 503
+        return _unavailable()
     return jsonify(monitor.status())
-
-
-@garage_bp.route('/door', methods=['POST'])
-@create_endpoint_limiter('strict')
-def garage_door():
-    """Drive the door: {"action": "open" | "close" | "stop" | "toggle"}."""
-    return _command('door')
-
-
-@garage_bp.route('/light', methods=['POST'])
-@create_endpoint_limiter('strict')
-def garage_light():
-    """Opener light: {"action": "on" | "off" | "toggle"}."""
-    return _command('light')
-
-
-@garage_bp.route('/lock', methods=['POST'])
-@create_endpoint_limiter('strict')
-def garage_lock():
-    """Wireless remotes lock-out: {"action": "lock" | "unlock"}."""
-    return _command('lock')
 
 
 @garage_bp.route('/history', methods=['GET'])
@@ -85,46 +44,97 @@ def garage_history():
     """Door events over ?hours= (default 336 = 14 days), daily buckets and headline stats."""
     monitor = _monitor()
     if monitor is None:
-        return jsonify({'error': 'Garage monitor not available'}), 503
+        return _unavailable()
     hours = request.args.get('hours', default=336, type=int) or 336
     return jsonify(monitor.history(hours))
 
 
-@garage_bp.route('/discover', methods=['GET'])
-@create_endpoint_limiter('moderate')
-def garage_discover():
-    """Probe known LAN devices that look like a ratgdo (hostname, mDNS, Espressif OUI); confirmed ones first."""
-    from services import garage_discovery
+@garage_bp.route('/snapshot.jpg', methods=['GET'])
+@create_endpoint_limiter('relaxed')
+def garage_snapshot():
+    """The latest camera frame, or the frame saved with a door event (?event=<id>). 404 until one exists."""
     monitor = _monitor()
-    current = None
-    if monitor is not None:
-        try:
-            current = monitor.config().get('host')
-        except Exception:
-            current = None
-    return jsonify({'success': True, **garage_discovery.discover(current_host=current)})
+    if monitor is None:
+        return _unavailable()
+    event_id = request.args.get('event', type=int)
+    if 'event' in request.args and event_id is None:
+        return jsonify({'error': 'event must be a numeric event id'}), 404
+    path = monitor.frame_path(event_id)
+    if path is None:
+        return jsonify({'error': 'No snapshot yet'}), 404
+    response = send_file(path, mimetype='image/jpeg', conditional=False, max_age=0)
+    response.headers['Cache-Control'] = 'no-store'
+    return response
 
 
-@garage_bp.route('/test', methods=['POST'])
+@garage_bp.route('/check', methods=['POST'])
 @create_endpoint_limiter('strict')
-def garage_test():
-    """Try a host from the Settings form: {"host", "username", "password"} -> door state and firmware."""
+def garage_check():
+    """Ask the camera for a fresh frame now and read the door from it."""
+    monitor = _monitor()
+    if monitor is None:
+        return _unavailable()
+    try:
+        state = monitor.check_once(fresh=True)
+    except (GarageNotConfigured, GarageBusy) as e:
+        return jsonify({'error': str(e)}), 409
+    except RingAuthError as e:
+        return jsonify({'error': f'Ring sign-in needed: {e}'}), 409
+    except (RingError, VisionError) as e:
+        logger.warning(f"garage check failed: {e}")
+        return jsonify({'error': f'Check failed: {e}'}), 502
+    return jsonify({'success': True, 'state': state})
+
+
+@garage_bp.route('/ring/login', methods=['POST'])
+@create_endpoint_limiter('strict')
+def ring_login():
+    """Sign in to Ring: {email, password[, otp]}. Answers status 'ok' or '2fa_required' (then send the code)."""
+    monitor = _monitor()
+    if monitor is None:
+        return _unavailable()
     data = request.get_json(silent=True) or {}
-    host = str(data.get('host', '')).strip()
+    email = str(data.get('email', '') or '').strip()
+    password = str(data.get('password', '') or '')
+    otp = str(data.get('otp', '') or '').strip() or None
+    if not email or not password:
+        return jsonify({'error': 'Ring email and password are required'}), 400
     try:
-        rc.parse_host(host)
-    except ValueError as e:
-        return jsonify({'error': f'Host rejected: {e}'}), 400
-    username = str(data.get('username', '') or '').strip() or None
-    password = str(data.get('password', '') or '') or None
-    if not password and username:
-        monitor = _monitor()
-        if monitor is not None:
-            password = monitor.config().get('password') or None    # "unchanged" password from the form
+        result = monitor.ring_login(email, password, otp)
+    except RingAuthError as e:
+        return jsonify({'error': str(e)}), 401
+    except RingError as e:
+        return jsonify({'error': str(e)}), 502
+    return jsonify({'success': True, 'status': result.get('status', 'ok')})
+
+
+@garage_bp.route('/ring/logout', methods=['POST'])
+@create_endpoint_limiter('strict')
+def ring_logout():
+    """Forget the Ring token and stop the checks."""
+    monitor = _monitor()
+    if monitor is None:
+        return _unavailable()
     try:
-        client = rc.RatgdoClient(host, username, password, timeout=3.0)
-        state = client.snapshot()
-    except rc.RatgdoError as e:
-        return jsonify({'error': f'No ratgdo answered at {host}: {e}'}), 502
-    return jsonify({'success': True, 'host': client.host, 'door': state['door'], 'light': state['light'],
-                    'firmware': state['firmware'], 'openings': state['openings']})
+        monitor.ring_logout()
+    except RingError as e:
+        return jsonify({'error': str(e)}), 502
+    return jsonify({'success': True, 'status': 'signed_out'})
+
+
+@garage_bp.route('/ring/cameras', methods=['GET'])
+@create_endpoint_limiter('moderate')
+def ring_cameras():
+    """Cameras on the signed-in Ring account, for the Settings picker."""
+    monitor = _monitor()
+    if monitor is None:
+        return _unavailable()
+    if not monitor.signed_in():
+        return jsonify({'error': 'Not signed in to Ring'}), 409
+    try:
+        cameras = monitor.ring_cameras()
+    except RingAuthError as e:
+        return jsonify({'error': str(e)}), 409
+    except RingError as e:
+        return jsonify({'error': str(e)}), 502
+    return jsonify({'success': True, 'cameras': cameras})

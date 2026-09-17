@@ -104,7 +104,7 @@ class TestSmartHomePage:
     def test_navbar_links_to_it_and_alerts_offer_the_types(self, client):
         assert 'href="/smart-home"' in client.get('/').get_data(as_text=True)
         html = client.get('/alerts').get_data(as_text=True)
-        for t in ('garage_left_open', 'garage_quiet_hours_open', 'garage_obstruction', 'garage_offline'):
+        for t in ('garage_left_open', 'garage_quiet_hours_open', 'garage_offline'):
             assert f'<option value="{t}">' in html, t
 
 
