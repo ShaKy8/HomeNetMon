@@ -30,3 +30,8 @@ requests==2.34.2
 
 # Configuration
 python-dotenv==1.2.3
+
+# Garage camera (services/ring_client.py, services/door_vision.py)
+ring-doorbell==0.9.14            # unofficial Ring API (async, aiohttp); pulls websockets + firebase-messaging
+anthropic==1.6.0                 # Claude vision reads the door state from the snapshot (httpx2-based)
+Pillow==12.3.0                   # frame downscale + change-detection gate
