@@ -88,7 +88,7 @@ class TestSmartHomePage:
         for line in html.splitlines():
             if "/static/js/" in line and '<script' in line:
                 assert '?v=' in line, line
-        for needle in ('id="garage-primary-action"', 'id="garage-svg"', 'id="garage-chart"', 'id="smart-devices-grid"',
+        for needle in ('id="garage-snapshot"', 'id="garage-check-now"', 'id="garage-chart"', 'id="smart-devices-grid"',
                        'id="garage-empty"', '/settings#garage'):
             assert needle in html, needle
 
@@ -96,7 +96,8 @@ class TestSmartHomePage:
         js = (ROOT / 'static/js/smart-home-page.js').read_text()
         assert "socket.emit('subscribe_to_updates'" in js and "socket.on('garage_status'" in js
         assert "socket.on('device_status_update'" in js
-        assert "apiRequest('/api/garage'" in js and "'/api/garage/history" in js and "'/api/garage/door'" in js
+        assert "apiRequest('/api/garage'" in js and "'/api/garage/history" in js and "'/api/garage/check'" in js
+        assert '/api/garage/snapshot.jpg' in js and 'bindHold' not in js and '/api/garage/door' not in js
         assert 'createDeviceCard(' in js and 'function createDeviceCard(' not in js
         assert 'function debounce(' not in js and 'csrf_token=' not in js
         assert '${esc(' in js or 'escapeHtml(' in js
@@ -114,7 +115,7 @@ class TestSettingsPage:
         html = client.get('/settings').get_data(as_text=True)
         for url in ("/api/config/network", "/api/config/alerts", "/api/config/restart-system",
                     "/api/config/reset-monitoring-data", "/api/config/test/", "/api/config/garage",
-                    "/api/garage/test", "/api/garage/discover"):
+                    "/api/garage/ring/login", "/api/garage/ring/logout", "/api/garage/ring/cameras"):
             assert url in html, url
         assert "fetch('/api/config', {" not in html          # the old POST to a GET-only route
         assert "/api/system/restart" not in html and "/api/system/clear-data" not in html

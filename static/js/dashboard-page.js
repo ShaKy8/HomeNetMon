@@ -396,7 +396,7 @@ function applyWan(data) {
     }
 }
 
-// Garage tile: hidden until the ratgdo integration is enabled in Settings.
+// Garage tile: hidden until the Ring garage camera is enabled in Settings.
 let garageState = null;
 let garageTimer = null;
 
@@ -431,8 +431,8 @@ function renderGarageTile() {
     if (!d || !el) return;
     const door = d.online === false ? 'offline' : (d.door || 'unknown');
     const dot = door === 'closed' ? 'status-up'
-        : ['open', 'opening', 'closing', 'stopped'].includes(door) ? 'status-warning' : 'status-unknown';
-    let label = { closed: 'Closed', open: 'Open', opening: 'Opening', closing: 'Closing', stopped: 'Stopped', offline: 'Offline', unknown: '--' }[door] || door;
+        : door === 'open' ? 'status-warning' : 'status-unknown';
+    let label = { closed: 'Closed', open: 'Open', offline: 'Offline', unknown: '--' }[door] || door;
     let extra = '';
     if (door === 'open' && d.open_since) {
         extra = `<small>${esc(formatDuration((Date.now() - Date.parse(d.open_since)) / 1000))}</small>`;

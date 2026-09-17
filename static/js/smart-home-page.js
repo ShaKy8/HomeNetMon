@@ -1,25 +1,23 @@
 /* Smart Home page controller.
- *   garage door : GET /api/garage, POST /api/garage/{door,light,lock}, GET /api/garage/history
+ *   garage door : GET /api/garage (state read from the Ring camera), POST /api/garage/check, GET /api/garage/history,
+ *                 GET /api/garage/snapshot.jpg (latest frame; ?event=<id> for a door event's frame)
  *   live updates: Socket.IO room updates_monitoring_summary -> garage_status; updates_device_status -> device_status_update
  *   devices     : GET /api/devices filtered to the smart-home types, rendered with createDeviceCard (device-cards.js)
  * Shared helpers (apiRequest, showSuccess, showError, escapeHtml, debounce) come from ui-feedback.js;
- * csrf-handler.js adds the CSRF header to every POST. Every string from the board or the LAN is escaped.
+ * csrf-handler.js adds the CSRF header to every POST. Every string from the camera, the model or the LAN is escaped.
  */
 (function () {
     'use strict';
 
     const esc = (v) => (window.escapeHtml ? window.escapeHtml(v) : String(v == null ? '' : v));
     const SMART_TYPES = ['smart_home', 'iot', 'media', 'speaker', 'tv', 'thermostat', 'sensor'];
-    const MOVING = ['opening', 'closing'];
-    const OPEN_STATES = ['open', 'opening', 'closing', 'stopped'];
-    const HOLD_MS = 800;
-    const DOOR_TRAVEL = 116;            // SVG units the door panel rises when fully open
+    const OPEN_STATES = ['open'];
 
     let socket = null;
     let garage = null;                  // last /api/garage document
     let chart = null;
     let devices = [];
-    let optimisticUntil = 0;            // ignore stale pushes for a moment after a command
+    let shownSnapshot = null;           // taken_at of the frame currently displayed
     const reloadHistory = debounce(loadHistory, 1200);
 
     const $ = (id) => document.getElementById(id);
@@ -34,97 +32,125 @@
         }
     }
 
-    function effectiveDoor(d) {
-        if (!d.enabled || !d.configured) return 'unconfigured';
+    function effectiveState(d) {
+        if (!d.enabled || !d.camera || !d.camera.id) return 'unconfigured';
+        if (!d.ring || !d.ring.signed_in) return 'signed_out';
         if (d.online === false) return 'offline';
         return d.door || 'unknown';
     }
 
     function applyGarage(data) {
         if (!data) return;
-        if (Date.now() < optimisticUntil && garage && MOVING.includes(garage.door) && data.door === garage.door_before_command) {
-            return;                      // the board has not caught up with our command yet
-        }
         garage = data;
         const card = $('garage-card');
-        const state = effectiveDoor(data);
+        const state = effectiveState(data);
         card.dataset.state = state;
-        card.classList.toggle('light-on', data.light === true);
-        card.classList.toggle('obstructed', data.obstruction === true);
 
-        $('garage-hero-body').hidden = state === 'unconfigured';
-        $('garage-empty').hidden = state !== 'unconfigured';
-        $('garage-overlay').hidden = state !== 'offline';
+        const setup = state === 'unconfigured' || state === 'signed_out';
+        $('garage-hero-body').hidden = setup;
+        $('garage-empty').hidden = !setup;
+        if (setup) {
+            $('garage-empty-title').textContent = state === 'signed_out' ? 'Sign in to Ring to see the garage' : 'No garage camera configured';
+            $('garage-empty-text').textContent = state === 'signed_out'
+                ? 'The garage camera is set up but Ring needs a sign-in (the token expired or was cleared). Sign in again in Settings.'
+                : 'HomeNetMon reads the door state from your Ring garage camera: sign in to Ring in Settings, pick the camera, and Claude reads each new frame.';
+        }
 
         const note = $('garage-offline-note');
         if (state === 'offline') {
-            note.textContent = `The ratgdo at ${data.host || '?'} is not answering (${data.consecutive_failures || 0} failed polls). ` +
-                'Check that the board is powered and on the main Wi-Fi; the door itself still works from remotes and the wall button.';
+            note.textContent = `The garage camera is not answering (${data.consecutive_failures || 0} checks in a row failed` +
+                (data.last_error ? `: ${data.last_error}` : '') + '). The door state shown is the last one read.';
+            note.hidden = false;
+        } else if (data.enabled && data.vision && data.vision.api_key_set === false) {
+            note.textContent = 'ANTHROPIC_API_KEY is not set in .env, so frames are fetched but never read. Add the key and restart the service.';
             note.hidden = false;
         } else {
             note.hidden = true;
         }
 
-        // Door panel position (0 closed .. 1 open); while moving without a position, animate towards the target.
-        let position = typeof data.position === 'number' ? data.position : null;
-        if (position === null) position = state === 'open' ? 1 : state === 'closed' ? 0 : 0.5;
-        if (state === 'opening' && position < 0.99) position = 1;
-        if (state === 'closing' && position > 0.01) position = 0;
-        $('garage-door-panel').style.transform = `translateY(${-(DOOR_TRAVEL * position).toFixed(1)}px)`;
-
         const stateEl = $('garage-door-state');
-        const labels = { closed: 'Closed', open: 'Open', opening: 'Opening', closing: 'Closing', stopped: 'Stopped part way',
-                         offline: 'Controller offline', unknown: 'Unknown', unconfigured: 'Not configured' };
+        const labels = { closed: 'Closed', open: 'Open', unknown: 'Not read yet', offline: 'Camera unavailable' };
         stateEl.textContent = labels[state] || state;
         stateEl.className = 'garage-state ' + (
             state === 'closed' ? 'garage-state-closed' :
-            MOVING.includes(state) ? 'garage-state-moving' :
             OPEN_STATES.includes(state) ? 'garage-state-open' :
             'garage-state-offline');
         tickOpenFor();
 
-        // Primary action: open when closed, close when open/stopped, nothing while moving (Stop shows instead).
-        const primary = $('garage-primary-action');
-        const label = $('garage-primary-label');
-        const stop = $('garage-stop-action');
-        const usable = state !== 'unconfigured' && state !== 'offline' && state !== 'unknown';
-        const moving = MOVING.includes(state);
-        primary.disabled = !usable || moving;
-        stop.hidden = !(usable && moving);
-        $('garage-hold-hint').hidden = !usable || moving;
-        if (state === 'closed' || state === 'unknown' || !usable) {
-            primary.classList.remove('close-action');
-            primary.dataset.action = 'open';
-            label.innerHTML = '<i class="bi bi-arrow-up-square"></i> Hold to open';
-            primary.setAttribute('aria-label', 'Hold to open the garage door');
-        } else if (moving) {
-            primary.dataset.action = '';
-            label.innerHTML = state === 'opening' ? '<i class="bi bi-arrow-up-square"></i> Opening...' : '<i class="bi bi-arrow-down-square"></i> Closing...';
+        const reading = data.reading || null;
+        const confidence = $('garage-confidence');
+        if (reading && reading.state !== 'unknown') {
+            confidence.textContent = `${Math.round((reading.confidence || 0) * 100)}% sure`;
+            confidence.className = 'badge-chip ' + (reading.confidence >= 0.85 ? 'good' : reading.confidence >= 0.6 ? 'info' : 'warn');
+            confidence.hidden = false;
         } else {
-            primary.classList.add('close-action');
-            primary.dataset.action = 'close';
-            label.innerHTML = '<i class="bi bi-arrow-down-square"></i> Hold to close';
-            primary.setAttribute('aria-label', 'Hold to close the garage door');
+            confidence.hidden = true;
         }
+        $('garage-reason').textContent = reading && reading.reason ? reading.reason : '';
+        $('garage-night').hidden = !(reading && reading.night);
 
-        const light = $('garage-light-toggle');
-        const lock = $('garage-lock-toggle');
-        light.disabled = lock.disabled = !usable;
-        light.checked = data.light === true;
-        lock.checked = data.lock === true;
+        refreshSnapshot(data.snapshot || {}, state);
 
-        $('garage-obstruction').hidden = data.obstruction !== true;
-        $('garage-motion').hidden = data.motion !== true;
-        if (state === 'unconfigured') setLive('Not configured', '');
+        const usable = !setup;
+        $('garage-check-now').disabled = !usable;
+        if (setup) setLive('Not configured', '');
         else if (state === 'offline') setLive('Offline', 'warn');
-        else if (data.sse_connected) setLive('Live', 'live');
-        else setLive(`Polling every ${data.poll_interval || 60} s`, '');
+        else setLive(liveText(data), data.snapshot && data.snapshot.has_frame ? 'live' : '');
 
-        $('garage-last-event').textContent = data.last_event ? `Last: ${describeEvent(data.last_event)} at ${fmtTime(data.last_event.timestamp, true)}` : '';
-        const board = data.board || {};
-        const bits = [board.host ? `ratgdo at ${board.host}` : null, board.name, board.firmware ? `firmware ${board.firmware}` : null,
-                      data.openings != null ? `${data.openings} openings in the board's lifetime` : null].filter(Boolean);
-        $('garage-board').textContent = bits.join(' · ');
+        const cam = data.camera || {};
+        const camBits = [cam.name ? `Ring camera ${cam.name}` : null, cam.model,
+                         cam.battery_life != null ? `battery ${cam.battery_life}%` : (cam.is_battery ? 'battery' : null),
+                         cam.wifi != null ? `Wi-Fi ${cam.wifi} dBm` : null].filter(Boolean);
+        $('garage-camera-line').textContent = camBits.join(' · ');
+        const v = data.vision || {};
+        const visionBits = [v.model, `${v.checks_today || 0} reading${v.checks_today === 1 ? '' : 's'} today`,
+                            v.est_cost_today_usd != null ? `~$${Number(v.est_cost_today_usd).toFixed(2)}` : null,
+                            data.check_interval ? `checks every ${Math.round(data.check_interval / 60)} min${data.motion_checks ? ' and after motion' : ''}` : null]
+            .filter(Boolean);
+        $('garage-vision-line').textContent = visionBits.join(' · ');
+        $('garage-last-event').textContent = data.last_event
+            ? `Last: ${describeEvent(data.last_event)} at ${fmtTime(data.last_event.timestamp, true)}` : '';
+    }
+
+    function liveText(d) {
+        const s = d.snapshot || {};
+        const bits = [];
+        if (s.age_seconds != null) bits.push(`frame ${humanAge(s.age_seconds)} old`);
+        if (d.next_check_at) {
+            const secs = Math.max(0, (Date.parse(d.next_check_at) - Date.now()) / 1000);
+            bits.push(secs < 90 ? 'next check in under 2 min' : `next check in ${Math.round(secs / 60)} min`);
+        }
+        return bits.length ? bits.join(' · ') : 'Waiting for the first frame';
+    }
+
+    function humanAge(seconds) {
+        const s = Math.max(0, Math.round(seconds));
+        if (s < 60) return `${s}s`;
+        if (s < 3600) return `${Math.round(s / 60)} min`;
+        return `${(s / 3600).toFixed(1)} h`;
+    }
+
+    function refreshSnapshot(snapshot, state) {
+        const img = $('garage-snapshot');
+        const empty = $('garage-snapshot-empty');
+        const frame = $('garage-frame');
+        if (!snapshot.has_frame) {
+            img.hidden = true;
+            empty.hidden = false;
+            $('garage-snapshot-age').textContent = '';
+            return;
+        }
+        if (snapshot.taken_at !== shownSnapshot) {
+            shownSnapshot = snapshot.taken_at;
+            img.src = '/api/garage/snapshot.jpg?t=' + encodeURIComponent(snapshot.taken_at || Date.now());
+        }
+        img.hidden = false;
+        empty.hidden = true;
+        frame.classList.toggle('stale', snapshot.age_seconds != null && snapshot.age_seconds > 3600);
+        const when = snapshot.taken_at ? `Frame taken ${fmtTime(snapshot.taken_at, true)}` : 'Frame';
+        const age = snapshot.age_seconds != null ? ` (${humanAge(snapshot.age_seconds)} ago)` : '';
+        const read = snapshot.classified_at ? ` · read ${fmtTime(snapshot.classified_at, true)}` : ' · not read yet';
+        $('garage-snapshot-age').textContent = `${when}${age}${state === 'offline' ? '' : read}`;
     }
 
     function setLive(text, kind) {
@@ -145,83 +171,25 @@
             (garage.left_open_minutes && seconds >= garage.left_open_minutes * 60 ? ' · longer than your alert threshold' : '');
     }
 
-    // ------------------------------------------------------------------ commands
-    async function doorAction(action) {
-        if (!action) return;
-        const before = garage ? garage.door : null;
+    // ------------------------------------------------------------------ check now
+    async function checkNow() {
+        const button = $('garage-check-now');
+        const icon = $('garage-check-icon');
+        button.classList.add('checking');
+        icon.classList.add('spin');
         try {
-            const result = await apiRequest('/api/garage/door', { method: 'POST', body: { action } });
-            if (garage && action !== 'stop') {
-                // Optimistic: show the motion right away; the board's own state follows within a second.
-                garage.door_before_command = before;
-                optimisticUntil = Date.now() + 4000;
-                applyGarage(Object.assign({}, result.state || garage, { door: action === 'open' ? 'opening' : 'closing' }));
-            } else if (result.state) {
-                applyGarage(result.state);
-            }
-            showSuccess(action === 'stop' ? 'Stop sent to the opener' : `${action === 'open' ? 'Opening' : 'Closing'} the garage door`);
+            const result = await apiRequest('/api/garage/check', { method: 'POST', body: {} });
+            if (result.state) applyGarage(result.state);
+            const r = result.state && result.state.reading;
+            showSuccess(r && r.state !== 'unknown' ? `Door read as ${r.state} (${Math.round((r.confidence || 0) * 100)}% sure)` : 'Checked; no new frame from the camera yet');
+            reloadHistory();
         } catch (error) {
-            showError(`Garage door ${action} failed: ${error.message}`);
+            showError(`Check failed: ${error.message}`);
             loadGarage();
+        } finally {
+            button.classList.remove('checking');
+            icon.classList.remove('spin');
         }
-    }
-
-    async function lightAction(on) {
-        try {
-            const result = await apiRequest('/api/garage/light', { method: 'POST', body: { action: on ? 'on' : 'off' } });
-            if (result.state) applyGarage(result.state);
-            showSuccess(`Opener light ${on ? 'on' : 'off'}`);
-        } catch (error) {
-            showError(`Light ${on ? 'on' : 'off'} failed: ${error.message}`);
-            $('garage-light-toggle').checked = !on;
-        }
-    }
-
-    async function lockAction(lock) {
-        try {
-            const result = await apiRequest('/api/garage/lock', { method: 'POST', body: { action: lock ? 'lock' : 'unlock' } });
-            if (result.state) applyGarage(result.state);
-            showSuccess(lock ? 'Wireless remotes locked out' : 'Wireless remotes enabled');
-        } catch (error) {
-            showError(`${lock ? 'Lock' : 'Unlock'} failed: ${error.message}`);
-            $('garage-lock-toggle').checked = !lock;
-        }
-    }
-
-    // Press-and-hold confirmation: the ring fills over HOLD_MS; releasing early cancels.
-    function bindHold(button, onConfirm) {
-        let start = null, frame = null, fired = false;
-        const reset = () => {
-            if (frame) cancelAnimationFrame(frame);
-            frame = null; start = null; fired = false;
-            button.style.setProperty('--hold', 0);
-            button.classList.remove('holding');
-        };
-        const step = (now) => {
-            if (start === null) return;
-            const progress = Math.min(1, (now - start) / HOLD_MS);
-            button.style.setProperty('--hold', progress.toFixed(3));
-            if (progress >= 1 && !fired) {
-                fired = true;
-                const action = button.dataset.action;
-                reset();
-                onConfirm(action);
-                return;
-            }
-            frame = requestAnimationFrame(step);
-        };
-        const begin = () => {
-            if (button.disabled || start !== null) return;
-            start = performance.now();
-            button.classList.add('holding');
-            frame = requestAnimationFrame(step);
-        };
-        button.addEventListener('pointerdown', (e) => { if (e.button === 0 || e.pointerType !== 'mouse') { e.preventDefault(); begin(); } });
-        ['pointerup', 'pointerleave', 'pointercancel'].forEach((ev) => button.addEventListener(ev, reset));
-        button.addEventListener('keydown', (e) => { if ((e.key === 'Enter' || e.key === ' ') && !e.repeat) { e.preventDefault(); begin(); } });
-        button.addEventListener('keyup', (e) => { if (e.key === 'Enter' || e.key === ' ') reset(); });
-        button.addEventListener('blur', reset);
-        button.addEventListener('click', (e) => e.preventDefault());
     }
 
     // ------------------------------------------------------------------ history
@@ -299,21 +267,16 @@
         });
     }
 
-    const EVENT_ICONS = { door: 'bi-door-open', light: 'bi-lightbulb', lock: 'bi-lock', obstruction: 'bi-exclamation-triangle', online: 'bi-broadcast' };
+    const EVENT_ICONS = { door: 'bi-door-open', online: 'bi-camera-video' };
 
     function describeEvent(e) {
-        const by = e.source === 'dashboard' ? 'from HomeNetMon' : e.source === 'external' ? 'by remote or wall button' : '';
         if (e.kind === 'door') {
-            const words = { opening: 'Opening', open: 'Opened', closing: 'Closing', closed: 'Closed', stopped: 'Stopped part way', unknown: 'State unknown' };
+            const words = { open: 'Opened', closed: 'Closed', unknown: 'State unknown' };
             let text = words[e.value] || e.value;
             if (e.value === 'closed' && e.duration_s != null) text += ` after ${formatDuration(e.duration_s)} open`;
-            return by && e.value !== 'unknown' ? `${text} ${by}` : text;
+            return e.source === 'camera' && e.value !== 'unknown' ? `${text} (seen by camera)` : text;
         }
-        const fromUs = e.source === 'dashboard' ? ' from HomeNetMon' : '';
-        if (e.kind === 'light') return `Light ${e.value}${fromUs}`;
-        if (e.kind === 'lock') return `Remotes ${e.value}${fromUs}`;
-        if (e.kind === 'obstruction') return e.value === 'detected' ? 'Obstruction detected' : 'Obstruction cleared';
-        if (e.kind === 'online') return e.value === 'online' ? 'Controller back online' : 'Controller went offline';
+        if (e.kind === 'online') return e.value === 'online' ? 'Camera reachable again' : 'Camera unavailable';
         return `${e.kind} ${e.value}`;
     }
 
@@ -323,7 +286,7 @@
         const today = new Date();
         const sameDay = d.toDateString() === today.toDateString();
         const time = d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
-        if (sameDay || !withDate) return sameDay ? time : `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${time}`;
+        if (sameDay || !withDate) return time;
         return `${d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })} ${time}`;
     }
 
@@ -333,12 +296,17 @@
             list.innerHTML = '<li class="event-empty">No door activity recorded yet</li>';
             return;
         }
-        list.innerHTML = events.slice(0, 25).map((e) => `
+        list.innerHTML = events.slice(0, 25).map((e) => {
+            const thumb = e.kind === 'door' && /^event-\d+\.jpg$/.test(e.detail || '') && Number.isInteger(e.id)
+                ? `<span class="event-thumb"><img src="/api/garage/snapshot.jpg?event=${e.id}" alt="" loading="lazy"></span>` : '';
+            return `
             <li>
                 <span class="event-time">${esc(fmtTime(e.timestamp, true))}</span>
                 <span class="event-icon"><i class="bi ${EVENT_ICONS[e.kind] || 'bi-dot'}"></i></span>
                 <span class="event-text">${esc(describeEvent(e))}</span>
-            </li>`).join('');
+                ${thumb}
+            </li>`;
+        }).join('');
     }
 
     // ------------------------------------------------------------------ smart-home devices
@@ -395,10 +363,7 @@
 
     // ------------------------------------------------------------------ init
     document.addEventListener('DOMContentLoaded', function () {
-        bindHold($('garage-primary-action'), doorAction);
-        $('garage-stop-action').addEventListener('click', () => doorAction('stop'));
-        $('garage-light-toggle').addEventListener('change', (e) => lightAction(e.target.checked));
-        $('garage-lock-toggle').addEventListener('change', (e) => lockAction(e.target.checked));
+        $('garage-check-now').addEventListener('click', checkNow);
 
         loadGarage();
         loadHistory();
@@ -406,6 +371,7 @@
         initSocket();
 
         setInterval(tickOpenFor, 1000);
+        setInterval(function () { if (garage) setLive(liveText(garage), garage.snapshot && garage.snapshot.has_frame ? 'live' : ''); }, 30000);
         setInterval(loadGarage, 60000);                 // fallback when the socket is quiet
         setInterval(loadSmartDevices, 120000);
         new MutationObserver(() => { if (lastDaily.length) renderChart(lastDaily); })
