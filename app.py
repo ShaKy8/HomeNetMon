@@ -207,6 +207,11 @@ def create_app():
     wan_monitor = WanMonitor(app)
     app.wan_monitor = wan_monitor
 
+    # Garage door (ratgdo board); idles until enabled from Settings
+    from services.garage_monitor import GarageMonitor
+    garage_monitor = GarageMonitor(app)
+    app.garage_monitor = garage_monitor
+
     # Initialize rule engine service
 
     # Initialize configuration service
@@ -335,6 +340,13 @@ def create_app():
         )
         wan_thread.start()
 
+        garage_thread = threading.Thread(
+            target=garage_monitor.start_monitoring,
+            daemon=True,
+            name='GarageMonitor'
+        )
+        garage_thread.start()
+
         resource_monitor_thread = threading.Thread(
             target=resource_monitor.start_monitoring,
             daemon=True,
@@ -375,6 +387,11 @@ def create_app():
                 if key in ['performance_collection_interval', 'performance_collection_period', 'performance_retention_days']:
                     performance_monitor.reload_config()
             configuration_service.register_service_callback('PerformanceMonitor', performance_config_callback)
+
+            def garage_config_callback(key, old_value, new_value):
+                if key.startswith('garage_'):
+                    garage_monitor.reload_config()
+            configuration_service.register_service_callback('GarageMonitor', garage_config_callback)
 
         # Register callbacks in background
         callback_thread = threading.Thread(target=register_config_callbacks, daemon=True)

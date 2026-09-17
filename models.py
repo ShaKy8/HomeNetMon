@@ -682,6 +682,10 @@ class Alert(db.Model):
         'wan_recovery': 'Internet restored',
         'gateway_down': 'Gateway unreachable',
         'performance': 'Performance degraded',
+        'garage_left_open': 'Garage door left open',
+        'garage_quiet_hours_open': 'Garage door open during quiet hours',
+        'garage_obstruction': 'Garage door obstruction',
+        'garage_offline': 'Garage controller offline',
     }
     PERFORMANCE_TITLES = {
         'performance_critical': 'Performance critical',
@@ -1303,6 +1307,37 @@ class WanCheck(db.Model):
         }
 
 
+class GarageEvent(db.Model):
+    """One garage-door transition seen by services/garage_monitor.py (ratgdo board).
+
+    ``kind`` is what changed (door | light | lock | obstruction | online) and
+    ``value`` its new value (closed/open/opening/closing/stopped, on/off,
+    locked/unlocked, true/false). ``opened`` marks the transition that left
+    ``closed`` -- the one counted as an "opening" -- and ``duration_s`` on a
+    ``closed`` event is how long the door had been open.
+    """
+    __tablename__ = 'garage_events'
+
+    id = db.Column(db.Integer, primary_key=True)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow, nullable=False, index=True)
+    kind = db.Column(db.String(20), nullable=False, index=True)
+    value = db.Column(db.String(20), nullable=False)
+    source = db.Column(db.String(20), default='unknown')      # dashboard | external | unknown
+    position = db.Column(db.Float)
+    duration_s = db.Column(db.Float)
+    opened = db.Column(db.Boolean, default=False, nullable=False)
+    detail = db.Column(db.String(255))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'timestamp': self.timestamp.isoformat() + 'Z',
+            'kind': self.kind, 'value': self.value, 'source': self.source,
+            'position': self.position, 'duration_s': self.duration_s,
+            'opened': bool(self.opened), 'detail': self.detail,
+        }
+
+
 # Retention (deleting old rows from the time-series tables) is handled by
 # services/retention.py on a schedule -- never from insert hooks.
 
@@ -1385,6 +1420,11 @@ def seed_default_configuration():
         ('wan_check_interval', str(Config.WAN_CHECK_INTERVAL), 'Seconds between internet / gateway checks'),
         ('wan_down_after_checks', '3', 'Consecutive failed checks before an internet-down alert'),
         ('alert_webhook_enabled', 'false', 'Enable webhook alerts'),
+        ('garage_enabled', 'false', 'Garage door (ratgdo) integration on/off'),
+        ('garage_left_open_minutes', '15', 'Minutes the garage door may stay open before an alert'),
+        ('garage_quiet_hours_start', '22:00', 'Garage quiet hours start (local time, blank disables)'),
+        ('garage_quiet_hours_end', '06:00', 'Garage quiet hours end (local time)'),
+        ('garage_poll_interval', '60', 'Seconds between garage door state polls'),
     ]
 
     seed_logger = logging.getLogger(__name__)

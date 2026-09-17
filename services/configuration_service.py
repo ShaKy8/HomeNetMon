@@ -148,6 +148,38 @@ class ConfigurationService:
                 validator=lambda v: (not v) or self._validate_ip_list(v),
                 error_message="Gateway override must be an IP address (or empty to auto-detect)"
             ),
+            'garage_enabled': ConfigValidationRule(
+                validator=self._validate_boolean,
+                error_message="garage_enabled must be true or false"
+            ),
+            'garage_host': ConfigValidationRule(
+                validator=self._validate_garage_host,
+                error_message="Garage host must be the ratgdo's LAN IP or hostname (optionally :port), or empty"
+            ),
+            'garage_username': ConfigValidationRule(
+                validator=lambda v: len(str(v or '')) <= 64,
+                error_message="Garage username must be 64 characters or fewer"
+            ),
+            'garage_password': ConfigValidationRule(
+                validator=lambda v: len(str(v or '')) <= 128,
+                error_message="Garage password must be 128 characters or fewer"
+            ),
+            'garage_left_open_minutes': ConfigValidationRule(
+                validator=lambda v: self._validate_integer_range(v, 1, 1440),
+                error_message="Garage left-open threshold must be between 1 and 1440 minutes"
+            ),
+            'garage_quiet_hours_start': ConfigValidationRule(
+                validator=self._validate_clock_time,
+                error_message="Garage quiet hours start must be HH:MM (24 h) or empty"
+            ),
+            'garage_quiet_hours_end': ConfigValidationRule(
+                validator=self._validate_clock_time,
+                error_message="Garage quiet hours end must be HH:MM (24 h) or empty"
+            ),
+            'garage_poll_interval': ConfigValidationRule(
+                validator=lambda v: self._validate_integer_range(v, 15, 600),
+                error_message="Garage poll interval must be between 15 and 600 seconds"
+            ),
             'security_scan_interval_hours': ConfigValidationRule(
                 validator=lambda v: self._validate_integer_range(v, 1, 168),
                 error_message="Security scan interval must be between 1 and 168 hours"
@@ -626,6 +658,22 @@ class ConfigurationService:
             return str(value).lower() in ['true', 'false', '1', '0', 'yes', 'no']
         except Exception:
             return False
+
+    def _validate_garage_host(self, value: str) -> bool:
+        """Empty (not configured) or a LAN host the ratgdo client accepts."""
+        if not str(value or '').strip():
+            return True
+        try:
+            from services.ratgdo_client import parse_host
+            parse_host(str(value))
+            return True
+        except ValueError:
+            return False
+
+    def _validate_clock_time(self, value: str) -> bool:
+        """Empty or HH:MM on a 24-hour clock."""
+        text = str(value or '').strip()
+        return text == '' or re.fullmatch(r'([01]\d|2[0-3]):[0-5]\d', text) is not None
 
 # Global configuration service instance
 configuration_service = ConfigurationService()
