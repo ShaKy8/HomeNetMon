@@ -7,7 +7,7 @@ runtime Configuration row (Settings page) with a .env fallback (config.py).
 
 # Application metadata (keep APP_VERSION equal to version.py, pyproject.toml and package.json)
 APP_NAME = "HomeNetMon"
-APP_VERSION = "2.5.1"
+APP_VERSION = "2.6.0"
 APP_DESCRIPTION = "Home network monitoring dashboard"
 
 import ipaddress

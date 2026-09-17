@@ -107,3 +107,17 @@
 | `GET` | `/api/system/health` | Liveness check including background-thread heartbeat status. |
 | `GET` | `/api/system/info` | Get comprehensive system information including version, app details, and system stats Rate limit tier: relaxed. |
 | `GET` | `/api/system/tailscale` | This host's Tailscale node and peers, for the About page (read-only). |
+
+## Garage door (ratgdo)
+
+| Method | Path | What it does |
+|---|---|---|
+| `GET` | `/api/config/garage` | Garage door (ratgdo) settings for the Settings page. The password is reported as set/unset only. Rate limit tier: relaxed. |
+| `PUT` | `/api/config/garage` | Write garage_* settings through the configuration service (validated, logged, hot-reloaded). ``password`` is written only when non-empty; ``clear_password: true`` blanks it. Rate limit tier: strict. |
+| `GET` | `/api/garage` | Current door / light / lock / sensor state and integration status (also pushed as garage_status). Rate limit tier: relaxed. |
+| `GET` | `/api/garage/discover` | Probe known LAN devices that look like a ratgdo (hostname, mDNS, Espressif OUI); confirmed ones first. Rate limit tier: moderate. |
+| `POST` | `/api/garage/door` | Drive the door: {"action": "open" / "close" / "stop" / "toggle"}. Rate limit tier: strict. |
+| `GET` | `/api/garage/history` | Door events over ?hours= (default 336 = 14 days), daily buckets and headline stats. Rate limit tier: relaxed. |
+| `POST` | `/api/garage/light` | Opener light: {"action": "on" / "off" / "toggle"}. Rate limit tier: strict. |
+| `POST` | `/api/garage/lock` | Wireless remotes lock-out: {"action": "lock" / "unlock"}. Rate limit tier: strict. |
+| `POST` | `/api/garage/test` | Try a host from the Settings form: {"host", "username", "password"} -> door state and firmware. Rate limit tier: strict. |

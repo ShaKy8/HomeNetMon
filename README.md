@@ -40,6 +40,11 @@ A comprehensive, self-hosted network monitoring solution designed for home netwo
 - Device availability status (up/down/warning/unknown) from one shared definition
 - Historical data collection with a single retention policy
 
+### 🏠 **Smart Home**
+- Garage door control for Chamberlain / LiftMaster (myQ) openers through a local ratgdo board: hold-to-confirm open / close, light, remote lock-out, obstruction and motion, live position
+- Door history (openings per day, time open, who opened it) and left-open / quiet-hours / obstruction / offline alerts
+- A Smart Home page grouping the smart-home, IoT and media devices, plus a garage tile on the dashboard (see `docs/GARAGE_DOOR.md`)
+
 ### 🌐 **Web Dashboard**
 - Modern, responsive web interface
 - Real-time status updates via WebSockets
@@ -49,7 +54,7 @@ A comprehensive, self-hosted network monitoring solution designed for home netwo
 - Mobile-friendly design
 
 ### 🔔 **Alerting System**
-- Alert rules for device down / recovery, high latency, new devices, performance, security findings and internet loss
+- Alert rules for device down / recovery, high latency, new devices, performance, security findings, internet loss and the garage door
 - Notification channels: ntfy push, email via SMTP, webhooks, Discord (each with a test button)
 - Alert acknowledgement, resolution, bulk actions, server-side filters and quiet-hours suppression rules
 - Automatic resolution when the condition clears

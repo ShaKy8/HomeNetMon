@@ -2,6 +2,38 @@
 
 All notable changes to HomeNetMon will be documented in this file.
 
+## [2.6.0] - 2026-09-17
+
+Garage door control and a Smart Home page. A myQ (Chamberlain) opener joined the household; myQ has
+no local or third-party API (the cloud API is blocked, `pymyq` archived, `homebridge-myq` retired),
+so the integration targets a ratgdo board running the ESPHome firmware on the main LAN. Everything
+was built and verified against a local simulator; the board plugs in through Settings.
+
+### Added
+- `/smart-home`: an animated door that follows the board's position, hold-to-confirm Open / Close
+  (Stop while moving), opener light and remote lock-out switches, obstruction / motion chips, an
+  "open for" timer, openings per day for 14 days, recent activity with attribution (HomeNetMon vs
+  remote / wall button) and a grid of the smart-home, IoT and media devices. Garage tile on the
+  dashboard hero row (hidden until enabled). "Smart Home" in the navbar.
+- `services/garage_monitor.py` (`GarageMonitor` thread, heartbeats while disabled), the
+  `GarageEvent` table (retained a year), `services/ratgdo_client.py` (REST + Server-Sent Events,
+  both ESPHome entity-id formats) and `services/garage_discovery.py` (finds a board among devices
+  the scanner has seen and confirms it with one probe).
+- Alerts through the usual channels: `garage_left_open`, `garage_quiet_hours_open`,
+  `garage_obstruction`, `garage_offline`; all resolve themselves when the condition clears.
+- `GET /api/garage`, `POST /api/garage/{door,light,lock}`, `GET /api/garage/history`,
+  `GET /api/garage/discover`, `POST /api/garage/test`, `GET/PUT /api/config/garage`; Settings →
+  Garage door (Find ratgdo, Test connection, thresholds, quiet hours).
+- `scripts/dev/ratgdo_sim.py` simulator and `TestGarage.js` (Playwright, gated by `GARAGE_SIM_URL`);
+  `docs/GARAGE_DOOR.md`.
+- `ratgdo*`, `myq*`, `liftmaster*`, `chamberlain*` hostnames and Chamberlain / LiftMaster vendors
+  classify as smart home.
+
+### Changed
+- `GET /api/config` no longer returns keys ending in `_password`.
+- The dashboard's device-card renderer moved to `static/js/device-cards.js`, shared with the Smart
+  Home page.
+
 ## [2.5.1] - 2026-09-11
 
 Remote access over Tailscale. The documented path (open the dashboard through the tailnet) rendered
