@@ -207,6 +207,27 @@ class TestDeviceControl:
         assert r.status_code == 400
 
 
+class TestGarage:
+
+    def test_state_and_history_envelopes(self, client, db_session):
+        body = client.get('/api/garage').get_json()
+        assert {'enabled', 'configured', 'door', 'light', 'lock', 'quiet_hours', 'last_event'} <= set(body)
+        hist = client.get('/api/garage/history?hours=24').get_json()
+        assert hist['hours'] == 24 and len(hist['daily']) == 14
+
+    def test_door_needs_configuration(self, client, db_session):
+        r = client.post('/api/garage/door', json={'action': 'open'}, headers=_hdr(client))
+        assert r.status_code == 409 and 'error' in r.get_json()
+
+    def test_config_round_trip(self, client, app, db_session):
+        r = client.put('/api/config/garage', json={'enabled': False, 'host': '192.168.1.60', 'left_open_minutes': 30},
+                       headers=_hdr(client))
+        assert r.status_code == 200, r.get_json()
+        got = client.get('/api/config/garage').get_json()
+        assert got['host'] == '192.168.1.60' and got['left_open_minutes'] == 30 and got['password_set'] is False
+        assert client.put('/api/config/garage', json={'host': '1.1.1.1'}, headers=_hdr(client)).status_code == 400
+
+
 class TestCrossCutting:
 
     def test_unsafe_methods_require_csrf(self, client, device):

@@ -169,6 +169,7 @@ def create_app():
     from api.config_management import config_management_bp
     from api.system import system_bp
     from api.performance import performance_bp
+    from api.garage import garage_bp
 
     app.register_blueprint(devices_bp, url_prefix='/api/devices')
     app.register_blueprint(monitoring_bp, url_prefix='/api/monitoring')
@@ -180,6 +181,7 @@ def create_app():
     app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
     app.register_blueprint(system_bp, url_prefix='/api/system')
     app.register_blueprint(performance_bp, url_prefix='/api/performance')
+    app.register_blueprint(garage_bp, url_prefix='/api/garage')
 
     # Setup API documentation (Swagger/OpenAPI)
     try:

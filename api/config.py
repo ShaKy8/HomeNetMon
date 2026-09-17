@@ -28,11 +28,12 @@ def get_configuration():
     """Get all configuration settings"""
     try:
         configs = Configuration.query.all()
+        # Secrets (garage_password and any future *_password key) never leave the server.
         config_dict = {config.key: {
             'value': config.value,
             'description': config.description,
             'updated_at': config.updated_at.isoformat()
-        } for config in configs}
+        } for config in configs if not config.key.endswith('_password')}
 
         # Add current runtime configuration values
         runtime_config = {
@@ -391,6 +392,75 @@ def update_alert_config():
             'updated_fields': updated_fields
         })
 
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@config_bp.route('/garage', methods=['GET'])
+@create_endpoint_limiter('relaxed')
+def get_garage_config():
+    """Garage door (ratgdo) settings for the Settings page. The password is reported as set/unset only."""
+    try:
+        def value(key, default=''):
+            v = Configuration.get_value(key)
+            return default if v is None else v
+        return jsonify({
+            'enabled': value('garage_enabled', 'false').lower() == 'true',
+            'host': value('garage_host'),
+            'username': value('garage_username'),
+            'password_set': bool(value('garage_password')),
+            'left_open_minutes': int(value('garage_left_open_minutes', '15') or 15),
+            'quiet_hours_start': value('garage_quiet_hours_start', '22:00'),
+            'quiet_hours_end': value('garage_quiet_hours_end', '06:00'),
+            'poll_interval': int(value('garage_poll_interval', '60') or 60),
+        })
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+@config_bp.route('/garage', methods=['PUT'])
+@create_endpoint_limiter('strict')
+def update_garage_config():
+    """Write garage_* settings through the configuration service (validated, logged, hot-reloaded).
+
+    ``password`` is written only when non-empty; ``clear_password: true`` blanks it.
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({'error': 'No data provided'}), 400
+        updated_fields = []
+        plain = {
+            'enabled': ('garage_enabled', 'Garage door (ratgdo) integration on/off', lambda v: str(v).lower()),
+            'host': ('garage_host', 'ratgdo board host or IP (optionally :port)', lambda v: str(v).strip()),
+            'username': ('garage_username', 'ratgdo web server username', lambda v: str(v).strip()),
+            'left_open_minutes': ('garage_left_open_minutes', 'Minutes the garage door may stay open before an alert',
+                                  lambda v: str(v).strip()),
+            'quiet_hours_start': ('garage_quiet_hours_start', 'Garage quiet hours start (local time, blank disables)',
+                                  lambda v: str(v).strip()),
+            'quiet_hours_end': ('garage_quiet_hours_end', 'Garage quiet hours end (local time)', lambda v: str(v).strip()),
+            'poll_interval': ('garage_poll_interval', 'Seconds between garage door state polls', lambda v: str(v).strip()),
+        }
+        for field, (key, description, coerce) in plain.items():
+            if field in data:
+                ok, msg = _set(key, coerce(data[field]), description)
+                if not ok:
+                    return jsonify({'error': msg}), 400
+                updated_fields.append(field)
+        if data.get('clear_password'):
+            ok, msg = _set('garage_password', '', 'ratgdo web server password')
+            if not ok:
+                return jsonify({'error': msg}), 400
+            updated_fields.append('password')
+        elif str(data.get('password') or ''):
+            ok, msg = _set('garage_password', str(data['password']), 'ratgdo web server password')
+            if not ok:
+                return jsonify({'error': msg}), 400
+            updated_fields.append('password')
+        return jsonify({
+            'message': f'Updated {len(updated_fields)} garage setting(s)',
+            'updated_fields': updated_fields,
+        })
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
