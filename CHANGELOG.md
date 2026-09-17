@@ -2,6 +2,35 @@
 
 All notable changes to HomeNetMon will be documented in this file.
 
+## [2.7.0] - 2026-09-17
+
+The garage door is now *read*, not controlled. The ratgdo board of 2.6.0 was never bought; the
+door state comes from the Ring "Garage Cam" instead: each new snapshot is read by Claude vision.
+Ring has no personal API (its Partner API is for certified publishers), so the app uses the
+unofficial `ring-doorbell` library the way Home Assistant does.
+
+### Added
+- `services/ring_client.py`: `RingBridge` runs the async library on one loop in a daemon thread;
+  sign-in with the 2FA code, token kept in `RING_TOKEN_FILE` (0600), stored and fresh snapshots,
+  motion history. `services/door_vision.py`: Pillow change gate (unchanged frames are never sent)
+  and one structured `anthropic` call returning open / closed / unknown with confidence and reason.
+- Settings > Garage door: Ring sign-in, camera picker, check cadence (15 min default; sooner after
+  Ring motion), Claude model, scene notes, re-read window, left-open minutes, quiet hours.
+- Smart Home page: the latest frame, the reading and its confidence, "open for" timer, Check now,
+  camera battery / Wi-Fi, today's readings and cost; door events keep the frame that caused them.
+- `GET /api/garage/snapshot.jpg`, `POST /api/garage/check`, `POST /api/garage/ring/login|logout`,
+  `GET /api/garage/ring/cameras`; `ANTHROPIC_API_KEY` and `RING_TOKEN_FILE` in `.env`;
+  `docs/GARAGE_CAM.md`; `scripts/db/v270_garage_cleanup.py`.
+
+### Changed
+- `garage_offline` now means "Garage camera unavailable" (three failed checks in a row).
+- Dependencies: `ring-doorbell`, `anthropic`, `Pillow` (pinned, pip-audit clean).
+
+### Removed
+- The ratgdo control path: `services/ratgdo_client.py`, `services/garage_discovery.py`, the
+  simulator, `TestGarage.js`, the door / light / lock / discover / test routes, the board settings
+  and the obstruction alert. `docs/GARAGE_DOOR.md`.
+
 ## [2.6.0] - 2026-09-17
 
 Garage door control and a Smart Home page. A myQ (Chamberlain) opener joined the household; myQ has

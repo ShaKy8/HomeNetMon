@@ -14,10 +14,10 @@ authentication, add network boundaries instead:
   `100.64.0.0/10` addresses, `*.local` names, the host's Tailscale MagicDNS name and
   `ALLOWED_ORIGIN_HOSTS`. A page on any other site cannot open a socket to the dashboard.
 - Keep the host's firewall closed to everything but the LAN.
-- The garage door integration (`docs/GARAGE_DOOR.md`) lets anyone who reaches the dashboard open
-  the door. CSRF, a strict rate limit, private-address-only board hosts and the page's
-  press-and-hold are mitigations, not authentication; front the app with an authenticating
-  proxy or leave the integration disabled if that matters in your household.
+- The garage camera integration (`docs/GARAGE_CAM.md`) is read-only, but anyone who reaches the
+  dashboard can see the latest Ring frame and trigger a check. The Ring sign-in token
+  (`RING_TOKEN_FILE`, mode 0600) and the saved frames live next to the database; the Claude key
+  is in `.env`. Front the app with an authenticating proxy if that matters in your household.
 
 ## What the application does protect
 

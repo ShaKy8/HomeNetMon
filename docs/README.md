@@ -10,7 +10,7 @@ with live updates. There is **no login**: it is meant for a trusted LAN only.
 | [User Guide](USER_GUIDE.md) | Using the dashboard, device pages, alerts, analytics, network map, security page and settings |
 | [Operations Guide](OPERATIONS_GUIDE.md) | Day-to-day checks, logs, backups, the maintenance window, retention |
 | [Troubleshooting Guide](TROUBLESHOOTING_GUIDE.md) | Something is wrong: service, discovery, pings, alerts, database, performance |
-| [Garage Door](GARAGE_DOOR.md) | Controlling a Chamberlain / LiftMaster (myQ) opener through a ratgdo board: hardware, wiring, flashing, Settings, alerts, simulator |
+| [Garage Cam](GARAGE_CAM.md) | Reading the garage door state (open / closed) from a Ring camera with Claude vision: Ring sign-in, cadence, cost, alerts, privacy |
 | [Security Guide](SECURITY_GUIDE.md) | The trust model, what the app does and does not protect, hardening that actually applies |
 | [API Reference](API_REFERENCE.md) | Every route the UI calls, generated from the route map (`/api/docs` is the interactive version) |
 | [Restore](RESTORE.md) | Restoring the SQLite database from a backup |
