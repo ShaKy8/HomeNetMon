@@ -15,7 +15,6 @@ TAG_BY_PREFIX = {
     '/api/monitoring': 'monitoring', '/api/analytics': 'analytics', '/api/performance': 'analytics',
     '/api/config': 'config', '/api/config-management': 'config', '/api/security': 'security',
     '/api/notifications': 'alerts', '/api/system': 'health', '/api/csrf-token': 'health',
-    '/api/garage': 'garage', '/api/config/garage': 'garage',
 }
 
 
@@ -82,7 +81,6 @@ def generate_openapi_spec(app=None):
             {"name": "config", "description": "Runtime configuration and its history"},
             {"name": "security", "description": "Port scans and security alerts"},
             {"name": "health", "description": "System information and thread health"},
-            {"name": "garage", "description": "Garage door state from a Ring camera, read by Claude vision"},
         ],
         "paths": paths,
     }

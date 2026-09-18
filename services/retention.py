@@ -58,7 +58,6 @@ RETENTION_TABLES: tuple[RetentionRule, ...] = (
     RetentionRule('device_ip_history', 'change_detected_at', 'ip_history_retention_days', 365, label='IP history rows'),
     RetentionRule('wan_checks', 'timestamp', 'wan_retention_days', Config.DATA_RETENTION_DAYS,
                   follows_global=True, label='WAN checks'),
-    RetentionRule('garage_events', 'timestamp', 'garage_retention_days', 365, label='garage door events'),
     RetentionRule('alerts', 'resolved_at', 'resolved_alert_retention_days', 30,
                   extra_where='resolved = 1', label='resolved alerts'),
 )

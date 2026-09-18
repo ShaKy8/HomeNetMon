@@ -31,7 +31,7 @@ def device(db_session):
 
 class TestPagesRender:
 
-    @pytest.mark.parametrize('path', ['/', '/settings', '/alerts', '/analytics', '/network-map', '/security', '/smart-home'])
+    @pytest.mark.parametrize('path', ['/', '/settings', '/alerts', '/analytics', '/network-map', '/security'])
     def test_page_renders(self, client, path):
         r = client.get(path)
         assert r.status_code == 200, path
@@ -69,44 +69,6 @@ class TestDashboardJs:
     def test_lan_controlled_strings_are_escaped(self):
         js = (ROOT / 'static/js/dashboard-page.js').read_text()
         assert '${esc(name)}' in js and '${esc(device.ip_address)}' in js
-        cards = (ROOT / 'static/js/device-cards.js').read_text()
-        assert '${esc(name)}' in cards and '${esc(device.ip_address)}' in cards and '${esc(t)}' in cards
-        assert 'function createDeviceCard(' not in js       # one card renderer, shared with /smart-home
-
-    def test_dashboard_has_the_garage_tile(self, client):
-        html = client.get('/').get_data(as_text=True)
-        assert 'id="hero-garage-tile"' in html and 'js/device-cards.js' in html
-        js = (ROOT / 'static/js/dashboard-page.js').read_text()
-        assert "socket.on('garage_status'" in js and "fetch('/api/garage')" in js
-
-
-class TestSmartHomePage:
-
-    def test_loads_shared_scripts_with_cache_buster(self, client):
-        html = client.get('/smart-home').get_data(as_text=True)
-        assert 'js/device-cards.js' in html and 'js/smart-home-page.js' in html
-        for line in html.splitlines():
-            if "/static/js/" in line and '<script' in line:
-                assert '?v=' in line, line
-        for needle in ('id="garage-snapshot"', 'id="garage-check-now"', 'id="garage-chart"', 'id="smart-devices-grid"',
-                       'id="garage-empty"', '/settings#garage'):
-            assert needle in html, needle
-
-    def test_page_script_uses_live_updates_and_shared_helpers(self):
-        js = (ROOT / 'static/js/smart-home-page.js').read_text()
-        assert "socket.emit('subscribe_to_updates'" in js and "socket.on('garage_status'" in js
-        assert "socket.on('device_status_update'" in js
-        assert "apiRequest('/api/garage'" in js and "'/api/garage/history" in js and "'/api/garage/check'" in js
-        assert '/api/garage/snapshot.jpg' in js and 'bindHold' not in js and '/api/garage/door' not in js
-        assert 'createDeviceCard(' in js and 'function createDeviceCard(' not in js
-        assert 'function debounce(' not in js and 'csrf_token=' not in js
-        assert '${esc(' in js or 'escapeHtml(' in js
-
-    def test_navbar_links_to_it_and_alerts_offer_the_types(self, client):
-        assert 'href="/smart-home"' in client.get('/').get_data(as_text=True)
-        html = client.get('/alerts').get_data(as_text=True)
-        for t in ('garage_left_open', 'garage_quiet_hours_open', 'garage_offline'):
-            assert f'<option value="{t}">' in html, t
 
 
 class TestSettingsPage:
@@ -114,8 +76,7 @@ class TestSettingsPage:
     def test_settings_page_targets_real_endpoints(self, client):
         html = client.get('/settings').get_data(as_text=True)
         for url in ("/api/config/network", "/api/config/alerts", "/api/config/restart-system",
-                    "/api/config/reset-monitoring-data", "/api/config/test/", "/api/config/garage",
-                    "/api/garage/ring/login", "/api/garage/ring/logout", "/api/garage/ring/cameras"):
+                    "/api/config/reset-monitoring-data", "/api/config/test/"):
             assert url in html, url
         assert "fetch('/api/config', {" not in html          # the old POST to a GET-only route
         assert "/api/system/restart" not in html and "/api/system/clear-data" not in html

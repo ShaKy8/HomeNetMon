@@ -6,21 +6,6 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
-
-def _data_dir(database_uri: str, base_dir: Path) -> Path:
-    """Directory for runtime files that belong next to the database (Ring token, camera frames).
-
-    'sqlite:////abs/file.db' -> /abs; 'sqlite:///rel/file.db' -> base_dir/rel; anything
-    else (':memory:', PostgreSQL) -> base_dir/production_data.
-    """
-    if database_uri.startswith('sqlite:///') and ':memory:' not in database_uri:
-        path = Path(database_uri[len('sqlite:///'):].split('?', 1)[0])
-        if not path.is_absolute():
-            path = base_dir / path
-        return path.parent
-    return base_dir / 'production_data'
-
-
 class Config:
     BASE_DIR = Path(__file__).parent.absolute()
 
@@ -49,14 +34,6 @@ class Config:
     WAN_CHECK_INTERVAL = int(os.environ.get('WAN_CHECK_INTERVAL', '60'))
     # nmap security scan cadence (only used when SECURITY_SCANNING_ENABLED=true)
     SECURITY_SCAN_INTERVAL = int(os.environ.get('SECURITY_SCAN_INTERVAL', '86400'))
-
-    # Garage camera (services/garage_monitor.py): the Ring OAuth token (written 0600) and the
-    # latest camera frames live next to the database unless RING_TOKEN_FILE points elsewhere.
-    DATA_DIR = _data_dir(SQLALCHEMY_DATABASE_URI, BASE_DIR)
-    RING_TOKEN_FILE = os.environ.get('RING_TOKEN_FILE') or str(DATA_DIR / 'ring_token.json')
-    GARAGE_FRAME_DIR = str(DATA_DIR / 'garage_cam')
-    # Claude API key used to read the garage door state from the Ring snapshot (services/door_vision.py)
-    ANTHROPIC_API_KEY = os.environ.get('ANTHROPIC_API_KEY', '')
 
     # Web Interface - Enhanced secret key validation
     SECRET_KEY = None  # Will be set after class definition

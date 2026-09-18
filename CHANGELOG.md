@@ -2,6 +2,26 @@
 
 All notable changes to HomeNetMon will be documented in this file.
 
+## [2.8.0] - 2026-09-18
+
+The garage door feature is gone. Neither the ratgdo board (2.6.0) nor the Ring camera reading
+(2.7.0) was ever configured; the Ring app on a phone does the job. The code, page, settings,
+table, alerts and dependencies are removed rather than left disabled.
+
+### Removed
+- The Smart Home page (`/smart-home`), the dashboard Garage tile and the navbar entry.
+- `services/garage_monitor.py`, `services/ring_client.py`, `services/door_vision.py`, `api/garage.py`,
+  the `garage_*` settings and Settings section, the `GarageEvent` table and its retention rule, the
+  `garage_left_open` / `garage_quiet_hours_open` / `garage_offline` alerts, the `GarageMonitor` thread,
+  `ANTHROPIC_API_KEY` / `RING_TOKEN_FILE`, `docs/GARAGE_CAM.md`.
+- Dependencies `ring-doorbell`, `anthropic` and the `Pillow` pin.
+- `scripts/db/v280_garage_removal.py` drops `garage_events` and deletes the `garage_*` settings and
+  alerts from an existing database (dry run by default).
+
+### Kept
+- `GET /api/config` still withholds any `*_password` key; `myq*` / `liftmaster*` / `chamberlain*`
+  hostnames and vendors classify as smart home.
+
 ## [2.7.0] - 2026-09-17
 
 The garage door is now *read*, not controlled. The ratgdo board of 2.6.0 was never bought; the

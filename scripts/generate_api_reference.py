@@ -33,8 +33,7 @@ def main():
             by_tag.setdefault(op['tags'][0], []).append((method.upper(), path, op['summary'], op['description']))
     titles = {'devices': 'Devices and device control', 'monitoring': 'Monitoring, summary, bandwidth, internet',
               'alerts': 'Alerts, suppression rules, notification log', 'analytics': 'Analytics and per-device performance',
-              'security': 'Security scanner', 'config': 'Configuration', 'health': 'System',
-              'garage': 'Garage door (Ring camera)', 'other': 'Other'}
+              'security': 'Security scanner', 'config': 'Configuration', 'health': 'System', 'other': 'Other'}
     out = [head.rstrip('\n'), '']
     for tag in titles:
         if tag not in by_tag:

@@ -169,7 +169,6 @@ def create_app():
     from api.config_management import config_management_bp
     from api.system import system_bp
     from api.performance import performance_bp
-    from api.garage import garage_bp
 
     app.register_blueprint(devices_bp, url_prefix='/api/devices')
     app.register_blueprint(monitoring_bp, url_prefix='/api/monitoring')
@@ -181,7 +180,6 @@ def create_app():
     app.register_blueprint(notifications_bp, url_prefix='/api/notifications')
     app.register_blueprint(system_bp, url_prefix='/api/system')
     app.register_blueprint(performance_bp, url_prefix='/api/performance')
-    app.register_blueprint(garage_bp, url_prefix='/api/garage')
 
     # Setup API documentation (Swagger/OpenAPI)
     try:
@@ -208,11 +206,6 @@ def create_app():
     from monitoring.wan_monitor import WanMonitor
     wan_monitor = WanMonitor(app)
     app.wan_monitor = wan_monitor
-
-    # Garage door state from the Ring camera; idles until enabled from Settings
-    from services.garage_monitor import GarageMonitor
-    garage_monitor = GarageMonitor(app)
-    app.garage_monitor = garage_monitor
 
     # Initialize rule engine service
 
@@ -342,13 +335,6 @@ def create_app():
         )
         wan_thread.start()
 
-        garage_thread = threading.Thread(
-            target=garage_monitor.start_monitoring,
-            daemon=True,
-            name='GarageMonitor'
-        )
-        garage_thread.start()
-
         resource_monitor_thread = threading.Thread(
             target=resource_monitor.start_monitoring,
             daemon=True,
@@ -389,11 +375,6 @@ def create_app():
                 if key in ['performance_collection_interval', 'performance_collection_period', 'performance_retention_days']:
                     performance_monitor.reload_config()
             configuration_service.register_service_callback('PerformanceMonitor', performance_config_callback)
-
-            def garage_config_callback(key, old_value, new_value):
-                if key.startswith('garage_'):
-                    garage_monitor.reload_config()
-            configuration_service.register_service_callback('GarageMonitor', garage_config_callback)
 
         # Register callbacks in background
         callback_thread = threading.Thread(target=register_config_callbacks, daemon=True)
@@ -514,11 +495,6 @@ def create_app():
     @app.route('/settings')
     def settings():
         return render_template('settings.html')
-
-    @app.route('/smart-home')
-    def smart_home():
-        """Garage door state from the Ring camera, its history, and the smart-home devices."""
-        return render_template('smart_home.html')
 
     @app.route('/alerts')
     def alerts():

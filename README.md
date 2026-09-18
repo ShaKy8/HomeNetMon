@@ -40,11 +40,6 @@ A comprehensive, self-hosted network monitoring solution designed for home netwo
 - Device availability status (up/down/warning/unknown) from one shared definition
 - Historical data collection with a single retention policy
 
-### 🏠 **Smart Home**
-- Garage door state (open / closed) read from a Ring camera by Claude vision: latest frame, confidence, "open for" timer, Check now
-- Door history (openings per day, time open, the frame behind each change) and left-open / quiet-hours / camera-unavailable alerts
-- A Smart Home page grouping the smart-home, IoT and media devices, plus a garage tile on the dashboard (see `docs/GARAGE_CAM.md`)
-
 ### 🌐 **Web Dashboard**
 - Modern, responsive web interface
 - Real-time status updates via WebSockets
@@ -54,7 +49,7 @@ A comprehensive, self-hosted network monitoring solution designed for home netwo
 - Mobile-friendly design
 
 ### 🔔 **Alerting System**
-- Alert rules for device down / recovery, high latency, new devices, performance, security findings, internet loss and the garage door
+- Alert rules for device down / recovery, high latency, new devices, performance, security findings and internet loss
 - Notification channels: ntfy push, email via SMTP, webhooks, Discord (each with a test button)
 - Alert acknowledgement, resolution, bulk actions, server-side filters and quiet-hours suppression rules
 - Automatic resolution when the condition clears

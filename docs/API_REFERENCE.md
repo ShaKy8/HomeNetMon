@@ -107,17 +107,3 @@
 | `GET` | `/api/system/health` | Liveness check including background-thread heartbeat status. |
 | `GET` | `/api/system/info` | Get comprehensive system information including version, app details, and system stats Rate limit tier: relaxed. |
 | `GET` | `/api/system/tailscale` | This host's Tailscale node and peers, for the About page (read-only). |
-
-## Garage door (Ring camera)
-
-| Method | Path | What it does |
-|---|---|---|
-| `GET` | `/api/config/garage` | Garage camera settings for the Settings page (plus whether Ring is signed in and the Claude key is set). Rate limit tier: relaxed. |
-| `PUT` | `/api/config/garage` | Write garage_* settings through the configuration service (validated, logged, hot-reloaded). Rate limit tier: strict. |
-| `GET` | `/api/garage` | Door state, the latest reading, camera and vision status (also pushed as garage_status). Rate limit tier: relaxed. |
-| `POST` | `/api/garage/check` | Ask the camera for a fresh frame now and read the door from it. Rate limit tier: strict. |
-| `GET` | `/api/garage/history` | Door events over ?hours= (default 336 = 14 days), daily buckets and headline stats. Rate limit tier: relaxed. |
-| `GET` | `/api/garage/ring/cameras` | Cameras on the signed-in Ring account, for the Settings picker. Rate limit tier: moderate. |
-| `POST` | `/api/garage/ring/login` | Sign in to Ring: {email, password[, otp]}. Answers status 'ok' or '2fa_required' (then send the code). Rate limit tier: strict. |
-| `POST` | `/api/garage/ring/logout` | Forget the Ring token and stop the checks. Rate limit tier: strict. |
-| `GET` | `/api/garage/snapshot.jpg` | The latest camera frame, or the frame saved with a door event (?event=<id>). 404 until one exists. Rate limit tier: relaxed. |

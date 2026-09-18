@@ -4,7 +4,7 @@
 // without BASE_URL (or CI), so this cannot target the production instance by accident.
 const { test, expect } = require('@playwright/test');
 
-const PAGES = ['/', '/smart-home', '/alerts', '/analytics', '/network-map', '/security', '/settings', '/about'];
+const PAGES = ['/', '/alerts', '/analytics', '/network-map', '/security', '/settings', '/about'];
 
 async function firstDeviceId(request) {
   const res = await request.get('/api/devices');
