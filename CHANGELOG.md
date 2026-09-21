@@ -2,6 +2,24 @@
 
 All notable changes to HomeNetMon will be documented in this file.
 
+## [2.8.1] - 2026-09-20
+
+Alert noise. Nine days of running produced 232 device-down alerts, 628 recovery alerts and
+78 "device online" pushes, almost all for phones, tablets and laptops that were home the whole time.
+
+### Fixed
+- The scanner took every entry in the kernel's ARP cache as a device seen just now, STALE entries
+  hours old included, so each scan "recovered" every sleeping device and 45 minutes later its
+  failing pings raised a fresh down alert. Only neighbours the kernel has confirmed (REACHABLE)
+  count now (`monitoring/neighbors.py`); `arp -a` remains the fallback where iproute2 is missing.
+- A failed ping is followed by a neighbour-table check: a host that answers ARP within 12 s is
+  present. Phones and tablets ignore ICMP while asleep but still answer ARP, so they stay up and
+  raise no alert; a host whose probes FAIL is down as before. The response-time history still
+  records the missed ping.
+- A device-down alert resolves when the device has been seen since the alert was raised, and
+  exactly one recovery alert (and push) is created at that moment. The separate recovery checker,
+  which fired every cycle the device merely looked recent, is gone.
+
 ## [2.8.0] - 2026-09-18
 
 The garage door feature is gone. Neither the ratgdo board (2.6.0) nor the Ring camera reading
