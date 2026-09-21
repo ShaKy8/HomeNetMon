@@ -73,13 +73,14 @@ class TestDeviceDown:
     def test_one_recovery_alert_per_down_alert(self, app, db_session, manager):
         dev = _device(db_session, '192.168.1.13', last_seen=datetime.utcnow() - timedelta(minutes=1))
         down = _alert(db_session, dev, 'device_down')
-        with patch.object(manager, '_send_device_recovery_push_notification') as push:
+        with patch.object(manager, 'send_alert_notifications') as notify:
             manager.resolve_alerts()
             manager.resolve_alerts()   # a second cycle must not add another
         recoveries = Alert.query.filter_by(device_id=dev.id, alert_type='device_recovery').all()
         assert len(recoveries) == 1 and recoveries[0].resolved is True
         assert recoveries[0].created_at >= down.created_at
-        push.assert_called_once()
+        notify.assert_called_once()           # one notification pass, hence one push
+        assert not hasattr(manager, '_send_device_recovery_push_notification')
 
     def test_dry_run_creates_no_recovery(self, app, db_session, manager):
         dev = _device(db_session, '192.168.1.14', last_seen=datetime.utcnow() - timedelta(minutes=1))

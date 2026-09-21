@@ -2,6 +2,12 @@
 
 All notable changes to HomeNetMon will be documented in this file.
 
+## [2.8.2] - 2026-09-20
+
+### Fixed
+- Every recovery sent two pushes ("✅ Device Online" from the alert notifier and "🟢 Device Online"
+  from a dedicated recovery push). The dedicated push is gone; one recovery, one push.
+
 ## [2.8.1] - 2026-09-20
 
 Alert noise. Nine days of running produced 232 device-down alerts, 628 recovery alerts and

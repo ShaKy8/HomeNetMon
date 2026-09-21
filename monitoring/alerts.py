@@ -247,8 +247,9 @@ class AlertManager:
 
     def _create_recovery_alert(self, down_alert, device):
         """One informational, already-resolved device_recovery alert per device_down alert,
-        created when resolve_alerts() closes the down alert. Notifies like any alert
-        plus the dedicated "device online" push."""
+        created when resolve_alerts() closes the down alert. Notified like any other alert
+        (send_alert_notifications pushes "Device Online" once); there is no second,
+        dedicated push any more."""
         existing = Alert.query.filter(
             Alert.device_id == device.id,
             Alert.alert_type == 'device_recovery',
@@ -271,7 +272,6 @@ class AlertManager:
         db.session.flush()
         self.send_alert_notifications(recovery_alert)
         self._emit_alert_update(recovery_alert, 'created')
-        self._send_device_recovery_push_notification(device)
         logger.info(f"Device recovery alert created for {device.display_name}")
         return recovery_alert
 
@@ -626,32 +626,6 @@ This is an automated message from HomeNetMon.
         except Exception as e:
             logger.error(f"Error sending push notification: {e}")
             return False
-
-    def _send_device_recovery_push_notification(self, device):
-        """Send enhanced push notification for device recovery"""
-        try:
-            dashboard_url = f"{Config.BASE_URL}"
-
-            # Update push service configuration from database
-            push_service.enabled = Configuration.get_value('push_notifications_enabled', 'false').lower() == 'true'
-            push_service.topic = Configuration.get_value('ntfy_topic', '')
-            push_service.server = Configuration.get_value('ntfy_server', 'https://ntfy.sh')
-
-            if push_service.is_configured():
-                success = push_service.send_device_up_alert(
-                    device_name=device.display_name,
-                    ip_address=device.ip_address,
-                    dashboard_url=dashboard_url
-                )
-                if success:
-                    logger.info(f"Sent device recovery push notification for {device.display_name}")
-                else:
-                    logger.warning(f"Failed to send device recovery push notification for {device.display_name}")
-            else:
-                logger.debug("Push notifications not configured, skipping device recovery notification")
-
-        except Exception as e:
-            logger.error(f"Error sending device recovery push notification: {e}")
 
     def _send_high_latency_push_notification(self, device, avg_latency):
         """Send enhanced push notification for high latency"""
