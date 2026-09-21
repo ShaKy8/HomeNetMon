@@ -245,69 +245,35 @@ class AlertManager:
                 logger.error(f"Error checking high latency alerts: {e}")
                 db.session.rollback()
 
-    def check_device_recovery_alerts(self):
-        """Check for devices that have recently come back online"""
-        if not self.app:
-            logger.error("No Flask app context available for device recovery checking")
-            return
-
-        with self.app.app_context():
-            try:
-                # Use the critical device threshold as baseline for recovery detection
-                threshold_minutes = self.alert_thresholds['device_down_minutes_critical']
-                recent_time = datetime.utcnow() - timedelta(minutes=threshold_minutes // 2)
-
-                # Find active device down alerts with eager loading to prevent N+1 queries
-                from sqlalchemy.orm import joinedload
-                active_down_alerts = Alert.query.options(joinedload(Alert.device)).filter(
-                    Alert.alert_type == 'device_down',
-                    Alert.resolved == False
-                ).all()
-
-                for alert in active_down_alerts:
-                    device = alert.device
-                    if device and device.last_seen and device.last_seen >= recent_time:
-                        # Device is back up - create recovery alert
-                        existing_recovery_alert = Alert.query.filter(
-                            Alert.device_id == device.id,
-                            Alert.alert_type == 'device_recovery',
-                            Alert.created_at >= recent_time
-                        ).first()
-
-                        if not existing_recovery_alert:
-                            # Create recovery alert - auto-resolve since it's informational
-                            recovery_alert = Alert(
-                                device_id=device.id,
-                                alert_type='device_recovery',
-                                severity='info',
-                                message=f"Device {device.display_name} ({device.ip_address}) is back online after being down",
-                                resolved=True,  # Auto-resolve recovery alerts since they're informational
-                                resolved_at=datetime.utcnow()
-                            )
-
-                            # Calculate priority score
-                            recovery_alert.calculate_and_update_priority(self.app)
-
-                            db.session.add(recovery_alert)
-                            db.session.commit()
-
-                            # Send notifications
-                            self.send_alert_notifications(recovery_alert)
-
-                            # Emit real-time update
-                            self._emit_alert_update(recovery_alert, 'created')
-
-                            # Send dedicated device recovery push notification
-                            self._send_device_recovery_push_notification(device)
-
-                            logger.info(f"Device recovery alert created for {device.display_name}")
-
-                        # Note: The down alert will be resolved by the resolve_alerts() function
-                        # to avoid duplicate resolution logic and race conditions
-
-            except Exception as e:
-                logger.error(f"Error checking device recovery alerts: {e}")
-                db.session.rollback()
+    def _create_recovery_alert(self, down_alert, device):
+        """One informational, already-resolved device_recovery alert per device_down alert,
+        created when resolve_alerts() closes the down alert. Notifies like any alert
+        plus the dedicated "device online" push."""
+        existing = Alert.query.filter(
+            Alert.device_id == device.id,
+            Alert.alert_type == 'device_recovery',
+            Alert.created_at >= down_alert.created_at,
+        ).first()
+        if existing:
+            return None
+        now = datetime.utcnow()
+        recovery_alert = Alert(
+            device_id=device.id,
+            alert_type='device_recovery',
+            severity='info',
+            message=f"Device {device.display_name} ({device.ip_address}) is back online after being down",
+            resolved=True,  # informational
+            resolved_at=now,
+            created_at=now,
+        )
+        recovery_alert.calculate_and_update_priority(self.app)
+        db.session.add(recovery_alert)
+        db.session.flush()
+        self.send_alert_notifications(recovery_alert)
+        self._emit_alert_update(recovery_alert, 'created')
+        self._send_device_recovery_push_notification(device)
+        logger.info(f"Device recovery alert created for {device.display_name}")
+        return recovery_alert
 
     def resolve_alerts(self, dry_run=False):
         """Resolve open alerts whose condition has cleared.
@@ -318,7 +284,8 @@ class AlertManager:
         without an app context and never completed a cycle.
 
         Rules:
-        - device_down: the device was seen in the last 5 minutes.
+        - device_down: the device has been seen since the alert was raised; the single
+          device_recovery alert (and "device online" push) is created here.
         - high_latency: no sample above the latency threshold in the last 5 minutes.
         - performance: the device is unmonitored or gone, has produced no
           PerformanceMetrics row in 24 h, or its latest scores are back above the
@@ -364,12 +331,14 @@ class AlertManager:
                         Alert.created_at >= stale_cutoff,
                     ).all()
 
-                # device_down: device is answering again
+                # device_down: the device has been seen (ping or ARP) since the alert was raised
                 for alert in _open('device_down'):
                     device = alert.device
-                    if device and device.last_seen and device.last_seen >= recent_time:
+                    if device and device.last_seen and alert.created_at and device.last_seen > alert.created_at:
                         _resolve(alert, 'device_down')
                         logger.info(f"ALERT RESOLVED: Device down alert for {device.display_name}")
+                        if not dry_run:
+                            self._create_recovery_alert(alert, device)
 
                 # high_latency: no recent sample above threshold
                 threshold_ms = self.runtime_int('high_latency_threshold_ms', self.alert_thresholds['high_latency_ms'])
@@ -750,7 +719,6 @@ This is an automated message from HomeNetMon.
                     # Check for new alerts
                     self.check_device_down_alerts()
                     self.check_high_latency_alerts()
-                    self.check_device_recovery_alerts()
 
                 # Always resolve alerts (even when paused)
                 self.resolve_alerts()

@@ -170,45 +170,36 @@ class NetworkScanner:
         self._check_config_changes()
 
     def get_arp_table(self):
-        """Parse ARP table to find active devices"""
+        """Hosts the kernel has confirmed on the link: neighbour entries in REACHABLE
+        state, read from ``ip -4 neigh`` (monitoring/neighbors.py).
+
+        A STALE entry is not evidence of anything -- the cache keeps it for hours after
+        the host left -- and treating it as "seen just now" is what made every scan
+        "recover" sleeping phones and re-alert on them 45 minutes later. Where iproute2
+        is missing, ``arp -a`` is parsed instead; it carries no state, so every entry
+        counts."""
+        from monitoring import neighbors
+        try:
+            return [{'ip': ip, 'mac': mac, 'source': 'arp'} for ip, mac in neighbors.present_hosts().items()]
+        except (OSError, subprocess.TimeoutExpired) as e:
+            logger.debug(f"ip neigh unavailable ({e}); falling back to arp -a")
+        except Exception as e:
+            logger.error(f"Error reading neighbour table: {e}")
+            return []
+
         devices = []
         try:
-            # Try different ARP commands based on OS
-            try:
-                result = subprocess.run(['arp', '-a'], capture_output=True, text=True, timeout=10, shell=False)
-                arp_output = result.stdout
-            except (subprocess.TimeoutExpired, FileNotFoundError):
-                try:
-                    result = subprocess.run(['ip', 'neigh'], capture_output=True, text=True, timeout=10, shell=False)
-                    arp_output = result.stdout
-                except (subprocess.TimeoutExpired, FileNotFoundError):
-                    logger.warning("Could not execute ARP or ip neigh command")
-                    return devices
-
-            # Parse ARP table output
-            lines = arp_output.strip().split('\n')
-            for line in lines:
-                # Match patterns like: 192.168.86.1 at aa:bb:cc:dd:ee:ff on en0
-                # or: 192.168.86.1 dev wlan0 lladdr aa:bb:cc:dd:ee:ff REACHABLE
-                ip_match = re.search(r'(\d+\.\d+\.\d+\.\d+)', line)
-                mac_match = re.search(r'([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}', line)
-
-                if ip_match and mac_match:
-                    ip = ip_match.group(1)
-                    mac = mac_match.group(0).lower()
-
-                    # Normalize MAC address format
-                    mac = mac.replace('-', ':')
-
-                    devices.append({
-                        'ip': ip,
-                        'mac': mac,
-                        'source': 'arp'
-                    })
-
-        except Exception as e:
-            logger.error(f"Error parsing ARP table: {e}")
-
+            result = subprocess.run(['arp', '-a'], capture_output=True, text=True, timeout=10, shell=False)
+        except (subprocess.SubprocessError, OSError) as e:
+            logger.warning(f"Could not execute ip neigh or arp: {e}")
+            return devices
+        for line in result.stdout.strip().split('\n'):
+            # Match patterns like: 192.168.86.1 at aa:bb:cc:dd:ee:ff on en0
+            ip_match = re.search(r'(\d+\.\d+\.\d+\.\d+)', line)
+            mac_match = re.search(r'([0-9a-fA-F]{2}[:-]){5}[0-9a-fA-F]{2}', line)
+            if ip_match and mac_match:
+                devices.append({'ip': ip_match.group(1), 'mac': mac_match.group(0).lower().replace('-', ':'),
+                                'source': 'arp'})
         return devices
 
     @staticmethod

@@ -8,6 +8,7 @@ These tests pin each resolution rule and the dry-run contract.
 """
 
 from datetime import datetime, timedelta
+from unittest.mock import patch
 
 import pytest
 
@@ -62,6 +63,29 @@ class TestDeviceDown:
         counts = manager.resolve_alerts()
         assert counts['device_down'] == 0
         assert db.session.get(Alert, alert.id).resolved is False
+
+    def test_seen_before_the_alert_does_not_count(self, app, db_session, manager):
+        # last_seen 3 min ago, alert raised 1 min ago: recent, but not *since* the alert
+        dev = _device(db_session, '192.168.1.12', last_seen=datetime.utcnow() - timedelta(minutes=3))
+        _alert(db_session, dev, 'device_down', age_hours=1 / 60)
+        assert manager.resolve_alerts()['device_down'] == 0
+
+    def test_one_recovery_alert_per_down_alert(self, app, db_session, manager):
+        dev = _device(db_session, '192.168.1.13', last_seen=datetime.utcnow() - timedelta(minutes=1))
+        down = _alert(db_session, dev, 'device_down')
+        with patch.object(manager, '_send_device_recovery_push_notification') as push:
+            manager.resolve_alerts()
+            manager.resolve_alerts()   # a second cycle must not add another
+        recoveries = Alert.query.filter_by(device_id=dev.id, alert_type='device_recovery').all()
+        assert len(recoveries) == 1 and recoveries[0].resolved is True
+        assert recoveries[0].created_at >= down.created_at
+        push.assert_called_once()
+
+    def test_dry_run_creates_no_recovery(self, app, db_session, manager):
+        dev = _device(db_session, '192.168.1.14', last_seen=datetime.utcnow() - timedelta(minutes=1))
+        _alert(db_session, dev, 'device_down')
+        assert manager.resolve_alerts(dry_run=True)['device_down'] == 1
+        assert Alert.query.filter_by(device_id=dev.id, alert_type='device_recovery').count() == 0
 
 
 class TestHighLatency:

@@ -9,6 +9,7 @@ import json
 from models import db, Device, MonitoringData, Configuration
 from config import Config
 from monitoring.iot_device_optimizer import iot_optimizer
+from monitoring import neighbors
 
 logger = logging.getLogger(__name__)
 
@@ -145,6 +146,7 @@ class DeviceMonitor:
             response_time = self.ping_device(device)
             if response_time is SKIPPED:
                 return None  # deliberately not probed this cycle; record nothing
+            present = response_time is not None or self._confirm_presence(device)
 
             if self.app:
                 with self.app.app_context():
@@ -165,8 +167,8 @@ class DeviceMonitor:
 
                     db.session.add(monitoring_data)
 
-                    # Update device last seen if ping was successful
-                    if response_time is not None:
+                    # Seen: answered the ping, or answered ARP after ignoring it
+                    if present:
                         device_obj.last_seen = datetime.utcnow()
 
                     db.session.commit()
@@ -183,11 +185,7 @@ class DeviceMonitor:
             if self.socketio and self.app:
                 # Calculate status directly from response_time to avoid DB query
                 # This replicates the logic from the Device.status property
-                current_status = 'up'
-                if response_time is None:
-                    current_status = 'down'
-                elif response_time > 1000:  # >1 second
-                    current_status = 'warning'
+                current_status = self._status_for(present, response_time)
 
                 event_data = {
                     'device_id': device_id,
@@ -219,6 +217,25 @@ class DeviceMonitor:
                 with self.app.app_context():
                     db.session.rollback()
             return None
+
+    @staticmethod
+    def _status_for(present, response_time):
+        """Status pushed to the dashboard: mirrors Device.status (last_seen based), so a
+        host that answered ARP but not ICMP is 'up' with no response time."""
+        if not present:
+            return 'down'
+        if response_time is not None and response_time > 1000:  # >1 second
+            return 'warning'
+        return 'up'
+
+    def _confirm_presence(self, device):
+        """After a failed ping: did the host answer ARP? Phones and tablets ignore ICMP
+        while asleep but stay on the network (monitoring/neighbors.py)."""
+        try:
+            return neighbors.confirm_presence(device.ip_address)
+        except Exception as e:
+            logger.debug(f"presence check failed for {device.ip_address}: {e}")
+            return False
 
     def _is_high_priority_device(self, device):
         """Determine if a device is high priority (routers, servers, network infrastructure)"""
@@ -706,6 +723,7 @@ class DeviceMonitor:
                 # to avoid DetachedInstanceError from cross-thread object access
                 'response_time': response_time,
                 'success': response_time is not None,
+                'present': response_time is not None or self._confirm_presence(device),
                 'timestamp': datetime.utcnow()
             }
         except Exception as e:
@@ -761,8 +779,10 @@ class DeviceMonitor:
                         timestamp=timestamp
                     ))
 
-                    # Prepare device update if ping was successful
-                    if response_time is not None:
+                    # Seen: answered the ping or, failing that, ARP (a sleeping phone).
+                    # The MonitoringData row still records the missed ping.
+                    present = response_time is not None or bool(result.get('present'))
+                    if present:
                         device_updates.append({
                             'device_id': device_id,
                             'last_seen': timestamp
@@ -771,11 +791,7 @@ class DeviceMonitor:
                     # Calculate status for change detection and WebSocket events
                     # Device is now properly bound to current session
                     previous_status = device.status
-                    current_status = 'up'
-                    if response_time is None:
-                        current_status = 'down'
-                    elif response_time > 1000:
-                        current_status = 'warning'
+                    current_status = self._status_for(present, response_time)
 
                     # Track status changes for rule engine
                     if previous_status != current_status:

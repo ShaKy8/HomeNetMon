@@ -468,72 +468,53 @@ class TestDeviceIdentification:
 
 
 class TestARPTableParsing:
-    """Test ARP table parsing functionality."""
+    """The ARP source is the kernel neighbour table; only REACHABLE entries are presence."""
+
+    NEIGH = (
+        "192.168.1.1 dev eth0 lladdr 00:11:22:33:44:01 REACHABLE\n"
+        "192.168.1.10 dev eth0 lladdr 00:11:22:33:44:02 STALE\n"          # left hours ago, cache keeps it
+        "192.168.1.20 dev eth0 lladdr 00:11:22:33:44:03 router REACHABLE\n"
+        "192.168.1.30 dev eth0  FAILED\n"
+        "192.168.1.40 dev eth0 INCOMPLETE\n"
+        "192.168.1.50 dev eth0 lladdr 00:11:22:33:44:05 DELAY\n"
+    )
 
     @patch('monitoring.scanner.nmap.PortScanner')
     @patch('monitoring.scanner.manuf.MacParser')
-    @patch('monitoring.scanner.subprocess.run')
-    def test_parse_arp_table(self, mock_subprocess, mock_mac_parser, mock_nmap, app):
-        """Test ARP table parsing."""
-        # Mock ARP table output
-        arp_output = """
-Address                  HWtype  HWaddress           Flags Mask            Iface
-192.168.1.1              ether   00:11:22:33:44:01   C                     eth0
-192.168.1.10             ether   00:11:22:33:44:02   C                     eth0
-192.168.1.20             ether   00:11:22:33:44:03   C                     eth0
-        """
+    @patch('monitoring.neighbors.subprocess.run')
+    def test_only_reachable_neighbours_count(self, mock_run, mock_mac_parser, mock_nmap, app):
+        mock_run.return_value = Mock(stdout=self.NEIGH, returncode=0)
+        arp_devices = NetworkScanner(app=app).get_arp_table()
+        assert sorted(d['ip'] for d in arp_devices) == ['192.168.1.1', '192.168.1.20']
+        router = next(d for d in arp_devices if d['ip'] == '192.168.1.1')
+        assert router['mac'] == '00:11:22:33:44:01' and router['source'] == 'arp'
 
-        mock_result = Mock()
-        mock_result.stdout = arp_output
-        mock_result.returncode = 0
-        mock_subprocess.return_value = mock_result
-
-        scanner = NetworkScanner(app=app)
-
-        arp_devices = scanner.get_arp_table()
-
-        assert len(arp_devices) == 3
-
-        # Check that devices were parsed correctly
-        device_ips = [device['ip'] for device in arp_devices]
-        assert '192.168.1.1' in device_ips
-        assert '192.168.1.10' in device_ips
-        assert '192.168.1.20' in device_ips
-
-        # Check specific device details
-        router_device = next(d for d in arp_devices if d['ip'] == '192.168.1.1')
-        assert router_device['mac'] == '00:11:22:33:44:01'
-        assert router_device['source'] == 'arp'
+    # monitoring.neighbors and monitoring.scanner share the one subprocess module, so a
+    # single patch dispatches on the command being run.
+    @staticmethod
+    def _no_iproute2(arp_result):
+        def run(args, **kwargs):
+            if args[0] == 'ip':
+                raise FileNotFoundError('ip')
+            if isinstance(arp_result, Exception):
+                raise arp_result
+            return arp_result
+        return run
 
     @patch('monitoring.scanner.nmap.PortScanner')
     @patch('monitoring.scanner.manuf.MacParser')
-    @patch('monitoring.scanner.subprocess.run')
-    def test_parse_arp_table_error(self, mock_subprocess, mock_mac_parser, mock_nmap, app):
-        """Test ARP table parsing with command error."""
-        # Mock subprocess error
-        mock_subprocess.side_effect = subprocess.SubprocessError("Command failed")
-
-        scanner = NetworkScanner(app=app)
-
-        # Should handle error gracefully
-        arp_devices = scanner.get_arp_table()
-        assert arp_devices == []
+    def test_falls_back_to_arp_a_without_iproute2(self, mock_mac_parser, mock_nmap, app):
+        arp = Mock(stdout="? (192.168.1.1) at 00:11:22:33:44:01 [ether] on eth0\n"
+                          "? (192.168.1.9) at <incomplete> on eth0\n", returncode=0)
+        with patch('subprocess.run', side_effect=self._no_iproute2(arp)):
+            arp_devices = NetworkScanner(app=app).get_arp_table()
+        assert [d['ip'] for d in arp_devices] == ['192.168.1.1']
 
     @patch('monitoring.scanner.nmap.PortScanner')
     @patch('monitoring.scanner.manuf.MacParser')
-    @patch('monitoring.scanner.subprocess.run')
-    def test_parse_arp_table_empty(self, mock_subprocess, mock_mac_parser, mock_nmap, app):
-        """Test ARP table parsing with empty output."""
-        # Mock empty ARP output
-        mock_result = Mock()
-        mock_result.stdout = "Address                  HWtype  HWaddress           Flags Mask            Iface\n"
-        mock_result.returncode = 0
-        mock_subprocess.return_value = mock_result
-
-        scanner = NetworkScanner(app=app)
-
-        arp_devices = scanner.get_arp_table()
-        assert arp_devices == []
+    def test_no_tool_at_all_is_empty(self, mock_mac_parser, mock_nmap, app):
+        with patch('subprocess.run', side_effect=self._no_iproute2(subprocess.SubprocessError('Command failed'))):
+            assert NetworkScanner(app=app).get_arp_table() == []
 
 
 class TestMACVendorLookup:

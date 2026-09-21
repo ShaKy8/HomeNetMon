@@ -69,6 +69,11 @@ def app():
     # Disable background services for testing
     Config.PING_INTERVAL = 3600  # Very long interval to prevent background activity
     Config.SCAN_INTERVAL = 3600
+    # A failed ping is followed by a neighbour-table poll of up to 12 s (monitoring/neighbors.py);
+    # test addresses are not on any link, so never wait for the kernel here.
+    from monitoring import neighbors
+    original_confirm_wait = neighbors.CONFIRM_WAIT
+    neighbors.CONFIRM_WAIT = 0.0
 
     try:
         app, socketio = create_app()
@@ -88,6 +93,7 @@ def app():
         Config.TESTING = False
         Config.WTF_CSRF_ENABLED = True
         Config.NETWORK_RANGE = original_network_range
+        neighbors.CONFIRM_WAIT = original_confirm_wait
 
         # Clean up temp file
         os.close(db_fd)
