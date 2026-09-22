@@ -992,7 +992,11 @@ def reclassify_devices():
         scanner = getattr(current_app, '_scanner', None)
         if scanner is None:
             return jsonify({'error': 'Scanner not available'}), 503
-        result = scanner.reclassify(include_all=bool(data.get('all')))
+        device_ids = data.get('device_ids')
+        if device_ids is not None:
+            if not isinstance(device_ids, list) or not all(isinstance(i, int) for i in device_ids) or len(device_ids) > 500:
+                return jsonify({'error': 'device_ids must be a list of up to 500 integers'}), 400
+        result = scanner.reclassify(include_all=bool(data.get('all')), device_ids=device_ids)
         try:
             invalidate_device_cache()
         except Exception:

@@ -521,7 +521,8 @@ class DeviceIpHistory(db.Model):
     notes = db.Column(db.String(500))  # Optional notes about the change
 
     # Relationship back to device
-    device = db.relationship('Device', backref='ip_history', lazy=True)
+    # cascade: deleting a device must not leave (or null out) its address history
+    device = db.relationship('Device', backref=db.backref('ip_history', lazy=True, cascade='all, delete-orphan'), lazy=True)
 
     def __repr__(self):
         return f'<DeviceIpHistory {self.device_id}: {self.old_ip_address} -> {self.new_ip_address}>'

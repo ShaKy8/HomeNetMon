@@ -7,7 +7,7 @@ import re
 import logging
 from datetime import datetime, timedelta
 from manuf import manuf
-from models import db, Device, Configuration
+from models import db, Device, DeviceIpHistory, Configuration
 from config import Config
 from services.push_notifications import push_service
 from monitoring.notification_policy import NotificationPolicy
@@ -413,14 +413,83 @@ class NetworkScanner:
             info['services'] = probe.get('services') or []
         return info
 
-    def reclassify(self, include_all=False):
-        """Re-run classification over stored devices (unknown / untyped ones by default).
+    def _adopt_rotated_mac(self, ip, mac, hostname, trusted=False):
+        """Find the existing row that a new MAC belongs to, or None (then it is a new device).
+
+        Candidates share ``identity_key(hostname)``. Rules, each failure meaning "new row":
+        - no hostname: nothing to match on;
+        - two or more candidates already have real MACs: the name is a product name shared
+          by several units (Sonos, Google Home, Espressif) and is never merged on;
+        - a real new MAC may only adopt rows whose MAC is missing or randomized;
+        - a randomized new MAC may adopt such rows, or one real-MAC row that is not
+          currently present (the phone switched from its hardware MAC to a private one);
+        - a name that came only from reverse DNS (trusted=False) must also match the
+          candidate's last IP (or the candidate has none) and the candidate must be absent;
+        - exactly one candidate must remain.
+        The adoption is recorded in device_ip_history (change_source='mac_rotation').
+        """
+        from constants import DEVICE_DOWN_AFTER_SECONDS
+        from monitoring.device_classifier import identity_key, is_locally_administered
+        key = identity_key(hostname)
+        if not key or not mac:
+            return None
+        rows = [d for d in Device.query.filter(Device.hostname.isnot(None)).all()
+                if identity_key(d.hostname) == key and d.mac_address != mac]
+        if not rows:
+            return None
+        real = [d for d in rows if d.mac_address and not is_locally_administered(d.mac_address)]
+        if len(real) >= 2:
+            logger.debug(f"{key}: {len(real)} units share this name; not adopting {mac}")
+            return None
+        present_cutoff = datetime.utcnow() - timedelta(seconds=DEVICE_DOWN_AFTER_SECONDS)
+
+        def absent(d):
+            return d.last_seen is None or d.last_seen < present_cutoff
+
+        new_is_random = is_locally_administered(mac)
+        candidates = []
+        for d in rows:
+            d_random = not d.mac_address or is_locally_administered(d.mac_address)
+            if not d_random and not new_is_random:
+                continue                    # two real MACs: two devices
+            if not d_random and not absent(d):
+                continue                    # real-MAC row is still answering: a different unit
+            if not trusted and (not absent(d) or (d.ip_address and d.ip_address != ip)):
+                continue                    # reverse-DNS names are weak evidence
+            candidates.append(d)
+        if len(candidates) != 1:
+            if candidates:
+                logger.debug(f"{key}: {len(candidates)} possible rows for {mac}; not adopting")
+            return None
+        device = candidates[0]
+        old_mac = device.mac_address
+        conflict = Device.query.filter(Device.ip_address == ip, Device.id != device.id).first()
+        if conflict is not None:
+            logger.info(f"Clearing IP {ip} from device {conflict.id} so {device.display_name} can take it")
+            conflict.ip_address = None
+            conflict.is_monitored = False
+            conflict.updated_at = datetime.utcnow()
+            db.session.flush()
+        db.session.add(DeviceIpHistory(device_id=device.id, old_ip_address=device.ip_address, new_ip_address=ip,
+                                       change_source='mac_rotation', notes=f'MAC {old_mac} -> {mac}'))
+        device.mac_address = mac
+        device.ip_address = ip
+        device.vendor = self.get_mac_vendor(mac)
+        device.updated_at = datetime.utcnow()
+        logger.info(f"Adopted rotated MAC for {device.display_name}: {old_mac} -> {mac} at {ip}")
+        return device
+
+    def reclassify(self, include_all=False, device_ids=None):
+        """Re-run classification over stored devices (unknown / untyped ones by default;
+        ``device_ids`` limits it to those rows whatever their current type).
 
         Returns {'checked', 'changed', 'changes': [(id, old, new)], 'by_type': {...}}.
         Must run inside an app context; commits.
         """
         query = Device.query
-        if not include_all:
+        if device_ids:
+            query = query.filter(Device.id.in_(list(device_ids)))
+        elif not include_all:
             query = query.filter((Device.device_type == None) | (Device.device_type == 'unknown'))
         candidates = query.all()
         changes = []
@@ -624,6 +693,19 @@ class NetworkScanner:
                             except Exception as ip_error:
                                 logger.error(f"Failed to update IP for device {device.id}: {ip_error}")
 
+            # Randomized (locally administered) MACs rotate: the same phone or laptop comes
+            # back as an unknown MAC. Before treating it as new, resolve its name once and
+            # look for the row it used to be. The resolved values feed the create branch
+            # below so the per-scan probe budget is unchanged.
+            resolved = None
+            if not device and mac:
+                hostname = device_info.get('hostname') or self.resolve_hostname(ip)
+                extra = self.enrich_identity(ip, mac)
+                resolved = {'hostname': hostname or extra['hostname'], 'services': extra['services'],
+                            'trusted': bool(device_info.get('hostname') or extra['hostname'])}
+                if mac:
+                    device = self._adopt_rotated_mac(ip, mac, resolved['hostname'], trusted=resolved['trusted'])
+
             # Fallback: IP-based lookup for devices without MAC
             if not device:
                 device = Device.query.filter_by(ip_address=ip).first()
@@ -652,6 +734,13 @@ class NetworkScanner:
                 if device_info.get('hostname') and device.hostname != device_info['hostname']:
                     device.hostname = device_info['hostname']
                     updated = True
+                if resolved:
+                    if resolved['hostname'] and not device.hostname:
+                        device.hostname = resolved['hostname']
+                        updated = True
+                    if resolved['services'] and not device.mdns_services:
+                        device.mdns_services = ','.join(resolved['services'])[:500]
+                        updated = True
 
                 # Resolve hostname if we don't have one
                 if not device.hostname:
@@ -706,20 +795,22 @@ class NetworkScanner:
                     device.updated_at = datetime.utcnow()
 
             else:
-                # Create new device
+                # Create new device (identity was resolved above, before the adoption check)
                 is_new_device = True
-                hostname = device_info.get('hostname') or self.resolve_hostname(ip)
+                if resolved is None:
+                    hostname = device_info.get('hostname') or self.resolve_hostname(ip)
+                    extra = self.enrich_identity(ip, mac)
+                    resolved = {'hostname': hostname or extra['hostname'], 'services': extra['services']}
+                hostname = resolved['hostname']
                 vendor = self.get_mac_vendor(mac) if mac else None
-                extra = self.enrich_identity(ip, mac)
-                hostname = hostname or extra['hostname']
-                mdns_services = ','.join(extra['services'])[:500] if extra['services'] else None
+                mdns_services = ','.join(resolved['services'])[:500] if resolved['services'] else None
 
                 device_type = self.classify_device_type({
                     'hostname': hostname,
                     'vendor': vendor,
                     'mac': mac,
                     'ip': ip,
-                    'services': extra['services'],
+                    'services': resolved['services'],
                 })
 
                 # Check if another device already has this IP (collision handling)

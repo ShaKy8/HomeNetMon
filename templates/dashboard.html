@@ -560,6 +560,13 @@
             </div>
         </div>
         <div class="col-md-3">
+            <label class="form-label">Needs attention <span class="badge bg-warning text-dark ms-1" id="needs-attention-count" hidden>0</span></label>
+            <div class="form-check form-switch mt-1">
+                <input class="form-check-input" type="checkbox" id="needs-attention">
+                <label class="form-check-label" for="needs-attention" title="Devices with no name or an unknown type; edit them inline">Only unnamed or untyped devices</label>
+            </div>
+        </div>
+        <div class="col-md-3">
             <label class="form-label">Sort By</label>
             <select class="form-select" id="sort-by">
                 <option value="name">Name</option>
@@ -671,7 +678,7 @@
         <!-- Table View (hidden by default) -->
         <div id="devices-table-view" class="hidden table-responsive">
             <table class="devices-table">
-                <thead>
+                <thead id="devices-table-head">
                     <tr>
                         <th>Status</th>
                         <th>Name</th>
@@ -777,5 +784,6 @@
     </div>
 </div>
 
+<script>window.DEVICE_TYPES = {{ device_types|tojson }};</script>
 <script src="{{ url_for('static', filename='js/dashboard-page.js') }}?v={{ app_version }}"></script>
 {% endblock %}

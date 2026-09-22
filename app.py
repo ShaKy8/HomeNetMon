@@ -359,11 +359,13 @@ def create_app():
     # Template context processor to inject version info and settings
     @app.context_processor
     def inject_version():
-        """Make version information available in all templates"""
+        """Make version information and the device-type vocabulary available in all templates"""
         from version import get_version_string, get_version_info
+        from monitoring.device_classifier import ALL_DEVICE_TYPES, DEVICE_TYPE_LABELS
         return {
             'app_version': get_version_string(),
-            'version_info': get_version_info()
+            'version_info': get_version_info(),
+            'device_types': [(t, DEVICE_TYPE_LABELS.get(t, t.replace('_', ' ').title())) for t in ALL_DEVICE_TYPES],
         }
 
     @app.context_processor

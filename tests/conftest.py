@@ -127,6 +127,7 @@ def db_session(app):
         # Clear all existing data at the start of each test
         # This ensures tests start with a clean database
         db.session.query(NotificationHistory).delete()
+        db.session.query(DeviceIpHistory).delete()
         db.session.query(Alert).delete()
         db.session.query(MonitoringData).delete()
         db.session.query(PerformanceMetrics).delete()
@@ -144,6 +145,7 @@ def db_session(app):
         # Clean up after test - clear all data
         try:
             db.session.query(NotificationHistory).delete()
+            db.session.query(DeviceIpHistory).delete()
             db.session.query(Alert).delete()
             db.session.query(MonitoringData).delete()
             db.session.query(PerformanceMetrics).delete()

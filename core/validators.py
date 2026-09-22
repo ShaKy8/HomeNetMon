@@ -178,13 +178,8 @@ class InputValidator:
 
         device_type = device_type.strip().lower()
 
-        allowed_types = [
-            'router', 'switch', 'computer', 'laptop', 'phone', 'tablet',
-            'printer', 'camera', 'smart_home', 'iot', 'server', 'nas',
-            'media', 'gaming', 'unknown'
-        ]
-
-        if device_type not in allowed_types:
+        from monitoring.device_classifier import ALL_DEVICE_TYPES
+        if device_type not in ALL_DEVICE_TYPES:
             logger.warning(f"Unknown device type: {device_type}, defaulting to 'unknown'")
             return 'unknown'
 

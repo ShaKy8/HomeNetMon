@@ -70,6 +70,20 @@ class TestDashboardJs:
         js = (ROOT / 'static/js/dashboard-page.js').read_text()
         assert '${esc(name)}' in js and '${esc(device.ip_address)}' in js
 
+    def test_triage_view_contract(self, client):
+        html = client.get('/').get_data(as_text=True)
+        assert 'id="needs-attention"' in html and 'id="needs-attention-count"' in html
+        assert 'window.DEVICE_TYPES = [[' in html and '"apple"' in html and '"storage"' in html
+        js = (ROOT / 'static/js/dashboard-page.js').read_text()
+        assert 'function needsAttention(' in js and 'createTriageRow' in js
+        assert "body: { device_ids: [deviceId] }" in js and 'triage-type' in js
+        assert '${esc(device.custom_name' in js and '${esc(identity' in js
+
+    def test_device_page_type_select_uses_the_one_list(self, client, device):
+        html = client.get(f'/device/{device.id}').get_data(as_text=True)
+        for value in ('apple', 'storage', 'switch', 'server', 'unknown'):
+            assert f'<option value="{value}">' in html, value
+
 
 class TestSettingsPage:
 

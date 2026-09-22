@@ -14,7 +14,8 @@ let filters = {
     type: '',
     sortBy: 'name',
     group: '',
-    showArchived: false   // devices unmonitored for staleness are hidden by default
+    showArchived: false,  // devices unmonitored for staleness are hidden by default
+    needsAttention: false // triage: unnamed or untyped devices, rendered with inline editors
 };
 const esc = (v) => (window.escapeHtml ? window.escapeHtml(v) : String(v == null ? '' : v));
 
@@ -213,6 +214,13 @@ function setupEventListeners() {
             filterAndDisplayDevices();
         });
     }
+    const attentionToggle = document.getElementById('needs-attention');
+    if (attentionToggle) {
+        attentionToggle.addEventListener('change', function(e) {
+            filters.needsAttention = e.target.checked;
+            if (filters.needsAttention && currentView !== 'table') switchToTableView(); else filterAndDisplayDevices();
+        });
+    }
     // The navbar search navigates here with ?search=<term>
     const initialSearch = new URLSearchParams(window.location.search).get('search');
     if (initialSearch) {
@@ -310,6 +318,7 @@ async function loadDevices() {
 
         devicesData = data.devices || [];
         refreshGroupOptions();
+        updateTriageCount();
         updateStats();
         filterAndDisplayDevices();
         document.getElementById('loading-devices').classList.add('hidden');
@@ -437,6 +446,11 @@ function filterAndDisplayDevices() {
         filtered = filtered.filter(device => device.status === filters.status);
     }
 
+    // Triage: only devices that still need a name or a type
+    if (filters.needsAttention) {
+        filtered = filtered.filter(needsAttention);
+    }
+
     // Apply type filter on the classified device_type (the API also has /api/devices/types)
     if (filters.type) {
         const groups = {
@@ -481,6 +495,86 @@ function filterAndDisplayDevices() {
         noDevicesElement.classList.remove('hidden');
     } else {
         noDevicesElement.classList.add('hidden');
+    }
+}
+
+// A device needs attention when nobody (person or resolver) has named it, or its type is unknown
+function needsAttention(device) {
+    const unnamed = !device.custom_name && !device.hostname;
+    const untyped = !device.device_type || device.device_type === 'unknown';
+    return unnamed || untyped;
+}
+
+function updateTriageCount() {
+    const badge = document.getElementById('needs-attention-count');
+    if (!badge) return;
+    const count = devicesData.filter(d => d.is_monitored && needsAttention(d)).length;
+    badge.textContent = count;
+    badge.hidden = count === 0;
+}
+
+// Inline editors for the triage view: name, type, group, Save, Reclassify
+function createTriageRow(device) {
+    const statusClass = device.status || 'unknown';
+    const types = Array.isArray(window.DEVICE_TYPES) ? window.DEVICE_TYPES : [['unknown', 'Unknown']];
+    const current = device.device_type || 'unknown';
+    const options = types.map(([value, label]) =>
+        `<option value="${esc(value)}"${value === current ? ' selected' : ''}>${esc(label)}</option>`).join('');
+    const identity = [device.vendor, device.mac_address].filter(Boolean).join(' · ');
+    return `
+        <tr data-device-id="${device.id}" class="triage-row">
+            <td><span class="status-dot status-${statusClass}"></span></td>
+            <td>
+                <input type="text" class="form-control form-control-sm triage-name" maxlength="255"
+                       value="${esc(device.custom_name || '')}" placeholder="${esc(device.hostname || device.ip_address || 'name')}">
+                <div class="small text-muted mt-1">${esc(identity || 'no vendor / MAC')}</div>
+            </td>
+            <td style="font-family: monospace;">${esc(device.ip_address)}</td>
+            <td><select class="form-select form-select-sm triage-type">${options}</select></td>
+            <td><input type="text" class="form-control form-control-sm triage-group" maxlength="100"
+                       value="${esc(device.device_group || '')}" placeholder="group"></td>
+            <td>${formatLastSeen(device.last_seen)}</td>
+            <td>
+                <button class="btn btn-sm btn-success" onclick="saveTriage(${device.id}, event)" title="Save name, type and group">
+                    <i class="bi bi-check-lg"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-light" onclick="reclassifyOne(${device.id}, event)" title="Re-run type detection for this device">
+                    <i class="bi bi-tags"></i>
+                </button>
+                <button class="btn btn-sm btn-outline-light" onclick="openDeviceDetails(${device.id})" title="Open device page">
+                    <i class="bi bi-eye"></i>
+                </button>
+            </td>
+        </tr>
+    `;
+}
+
+async function saveTriage(deviceId, ev) {
+    if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();
+    const row = document.querySelector(`tr.triage-row[data-device-id="${deviceId}"]`);
+    if (!row) return;
+    const body = {
+        custom_name: row.querySelector('.triage-name').value.trim(),
+        device_type: row.querySelector('.triage-type').value,
+        device_group: row.querySelector('.triage-group').value.trim()
+    };
+    try {
+        await apiRequest(`/api/devices/${deviceId}`, { method: 'PUT', body });
+        showSuccess('Device updated');
+        await loadDevices();
+    } catch (error) {
+        showError(`Could not save: ${error.message}`);
+    }
+}
+
+async function reclassifyOne(deviceId, ev) {
+    if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();
+    try {
+        const result = await apiRequest('/api/devices/reclassify', { method: 'POST', body: { device_ids: [deviceId] } });
+        if (result.changed) showSuccess(`Now typed ${result.changes[0].new}`); else showToast('No better guess for this device', 'info');
+        await loadDevices();
+    } catch (error) {
+        showError(`Reclassify failed: ${error.message}`);
     }
 }
 
@@ -534,7 +628,13 @@ function createDeviceCard(device) {
 // Display devices in table view
 function displayTableView(devices) {
     const tbody = document.getElementById('devices-table-body');
-    tbody.innerHTML = devices.map(device => createDeviceRow(device)).join('');
+    const head = document.getElementById('devices-table-head');
+    if (head) {
+        head.innerHTML = filters.needsAttention
+            ? '<tr><th>Status</th><th>Name</th><th>IP Address</th><th>Type</th><th>Group</th><th>Last Seen</th><th>Actions</th></tr>'
+            : '<tr><th>Status</th><th>Name</th><th>IP Address</th><th>Response Time</th><th>Last Seen</th><th>Monitoring</th><th>Actions</th></tr>';
+    }
+    tbody.innerHTML = devices.map(device => filters.needsAttention ? createTriageRow(device) : createDeviceRow(device)).join('');
 }
 
 // Create device table row HTML

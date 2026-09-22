@@ -343,22 +343,8 @@
                         <div class="col-md-6">
                             <label for="edit-device-type" class="form-label">Device type</label>
                             <select class="form-select" id="edit-device-type">
-                            <option value="router">Router</option>
-                            <option value="switch">Switch</option>
-                            <option value="computer">Computer</option>
-                            <option value="laptop">Laptop</option>
-                            <option value="phone">Phone</option>
-                            <option value="tablet">Tablet</option>
-                            <option value="printer">Printer</option>
-                            <option value="camera">Camera</option>
-                            <option value="smart_home">Smart Home</option>
-                            <option value="iot">Iot</option>
-                            <option value="server">Server</option>
-                            <option value="nas">Nas</option>
-                            <option value="media">Media</option>
-                            <option value="gaming">Gaming</option>
-                            <option value="unknown">Unknown</option>
-                            </select>
+                            {% for value, label in device_types %}<option value="{{ value }}">{{ label }}</option>
+                            {% endfor %}</select>
                         </div>
                         <div class="col-md-6">
                             <label for="edit-device-priority" class="form-label">Priority</label>
@@ -815,7 +801,13 @@ async function tracerouteDevice() {
 function openEditModal() {
     if (!currentDevice) return;
     document.getElementById('edit-device-name').value = currentDevice.custom_name || '';
-    document.getElementById('edit-device-type').value = currentDevice.device_type || 'unknown';
+    const typeSelect = document.getElementById('edit-device-type');
+    const currentType = currentDevice.device_type || 'unknown';
+    if (![...typeSelect.options].some(o => o.value === currentType)) {
+        // a value set by an older version: keep it selectable until the user changes it
+        typeSelect.add(new Option(`${currentType} (legacy)`, currentType));
+    }
+    typeSelect.value = currentType;
     document.getElementById('edit-device-priority').value = currentDevice.device_priority || 'normal';
     document.getElementById('edit-device-group').value = currentDevice.device_group || '';
     document.getElementById('edit-device-room').value = currentDevice.room_location || '';

@@ -13,6 +13,29 @@ import re
 
 DEVICE_TYPES = ('camera', 'router', 'printer', 'storage', 'iot', 'gaming', 'media',
                 'apple', 'phone', 'smart_home', 'computer', 'unknown')
+# Types the device page may set by hand that the classifier never emits (kept for
+# existing rows and for people who like the finer words).
+LEGACY_MANUAL_TYPES = ('switch', 'laptop', 'tablet', 'server', 'nas')
+# One list for every <select> and validator: classifier types first, manual ones after.
+ALL_DEVICE_TYPES = DEVICE_TYPES + LEGACY_MANUAL_TYPES
+DEVICE_TYPE_LABELS = {
+    'camera': 'Camera', 'router': 'Router', 'printer': 'Printer', 'storage': 'Storage / NAS', 'iot': 'IoT',
+    'gaming': 'Gaming', 'media': 'Media / TV', 'apple': 'Apple', 'phone': 'Phone', 'smart_home': 'Smart home',
+    'computer': 'Computer', 'unknown': 'Unknown', 'switch': 'Switch', 'laptop': 'Laptop', 'tablet': 'Tablet',
+    'server': 'Server', 'nas': 'NAS',
+}
+_NAME_SUFFIXES = ('.local', '.lan', '.home', '.localdomain', '.home.arpa')
+
+
+def identity_key(hostname: str | None) -> str | None:
+    """The part of a hostname that identifies the device: lower-case, domain suffix
+    stripped. 'KSP-Mac.local' and 'ksp-mac.lan' are the same key. None when empty."""
+    host = (hostname or '').lower().strip().rstrip('.')
+    for suffix in _NAME_SUFFIXES:
+        if host.endswith(suffix):
+            host = host[:-len(suffix)]
+            break
+    return host or None
 
 # (type, regex) evaluated in order against the lowercase mDNS service list
 MDNS_SERVICE_RULES = (
@@ -79,10 +102,7 @@ def classify(hostname: str | None = None, vendor: str | None = None, mac: str | 
     for device_type, rx in _MDNS:
         if service_text and rx.search(service_text):
             return device_type
-    host = (hostname or '').lower().strip()
-    for suffix in ('.local', '.lan', '.home', '.localdomain', '.home.arpa'):
-        if host.endswith(suffix):
-            host = host[:-len(suffix)]
+    host = identity_key(hostname) or ''
     for device_type, rx in _HOST:
         if host and rx.search(host):
             return device_type

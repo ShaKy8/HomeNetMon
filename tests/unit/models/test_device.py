@@ -559,3 +559,36 @@ class TestDeviceBusinessLogic:
         assert device_dict['status'] == device.status
         assert 'created_at' in device_dict
         assert 'updated_at' in device_dict
+
+
+class TestDisplayNameWithoutAddress:
+    """A device whose IP was cleared (DHCP reuse) still gets a readable name."""
+
+    def test_vendor_and_mac_tail(self, db_session):
+        device = Device(mac_address='6c:6e:07:11:e4:3a', vendor='Apple')
+        db_session.add(device)
+        db_session.commit()
+        assert device.display_name == 'Apple e4:3a'
+
+    def test_mac_tail_only_then_id(self, db_session):
+        device = Device(mac_address='6c:6e:07:11:e4:3a')
+        db_session.add(device)
+        db_session.commit()
+        assert device.display_name == 'device e4:3a'
+        bare = Device()
+        db_session.add(bare)
+        db_session.commit()
+        assert bare.display_name == f'device #{bare.id}'
+
+
+def test_deleting_a_device_removes_its_ip_history(db_session):
+    from models import DeviceIpHistory
+    device = Device(ip_address='192.168.1.140', mac_address='00:ab:00:00:01:40')
+    db_session.add(device)
+    db_session.commit()
+    db_session.add(DeviceIpHistory(device_id=device.id, old_ip_address=None, new_ip_address='192.168.1.140',
+                                   change_source='mac_rotation'))
+    db_session.commit()
+    db_session.delete(device)
+    db_session.commit()          # used to fail: NOT NULL constraint on device_ip_history.device_id
+    assert DeviceIpHistory.query.count() == 0
