@@ -421,7 +421,7 @@
                                     <button type="button" class="btn btn-sm" onclick="setPingInterval(1800)">30m</button>
                                 </div>
                             </div>
-                            <div class="form-text">How often to ping all monitored devices (5-900 seconds)</div>
+                            <div class="form-text">How often to ping all monitored devices (30-3600 seconds)</div>
                         </div>
                     </div>
 
@@ -438,15 +438,22 @@
                                     <button type="button" class="btn btn-sm" onclick="setScanInterval(86400)">24h</button>
                                 </div>
                             </div>
-                            <div class="form-text">How often to scan for new devices (60-3600 seconds)</div>
+                            <div class="form-text">How often to scan for new devices (300 seconds to 7 days)</div>
                         </div>
                     </div>
                 </div>
 
-                <div class="form-group">
-                    <button type="submit" class="btn btn-primary">
-                        <i class="bi bi-check-circle me-2"></i>Save Network Settings
-                    </button>
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <label for="data-retention-days" class="form-label"><i class="bi bi-clock-history me-2"></i>Keep monitoring history (days)</label>
+                        <input type="number" class="form-control" id="data-retention-days" min="1" max="365">
+                        <div class="form-text">Ping results older than this are deleted hourly (1-365).</div>
+                    </div>
+                    <div class="col-md-6">
+                        <label for="stale-device-days" class="form-label"><i class="bi bi-archive me-2"></i>Archive devices unseen for (days)</label>
+                        <input type="number" class="form-control" id="stale-device-days" min="1" max="3650">
+                        <div class="form-text">Archived devices stop being pinged and reappear when seen again.</div>
+                    </div>
                 </div>
             </form>
 
@@ -470,26 +477,6 @@
                 </label>
                 <input type="text" class="form-control" id="dashboard-title" placeholder="Home Network Monitor">
                 <div class="form-text">Custom title for your dashboard</div>
-            </div>
-
-            <div class="form-group">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="auto-refresh">
-                    <label class="form-check-label" for="auto-refresh">
-                        Auto-refresh dashboard data
-                    </label>
-                </div>
-                <div class="form-text">Automatically update device status every 30 seconds</div>
-            </div>
-
-            <div class="form-group">
-                <div class="form-check">
-                    <input class="form-check-input" type="checkbox" id="show-offline">
-                    <label class="form-check-label" for="show-offline">
-                        Show offline devices
-                    </label>
-                </div>
-                <div class="form-text">Display devices that are currently offline</div>
             </div>
 
             <div class="settings-actions">
@@ -730,6 +717,10 @@
 //   interface -> PUT /api/config/<key>
 //   alerts    -> PUT /api/config/alerts
 //   system    -> POST /api/config/restart-system, POST /api/config/reset-monitoring-data
+document.addEventListener('DOMContentLoaded', () => {
+    const form = document.getElementById('network-settings-form');
+    if (form) form.addEventListener('submit', (e) => { e.preventDefault(); saveNetworkSettings(); });
+});
 document.addEventListener('DOMContentLoaded', function() {
     loadCurrentSettings();
     setupSettingsNavigation();
@@ -771,9 +762,9 @@ async function loadCurrentSettings() {
         setValue('wan-down-after', get('wan_down_after_checks', '3'));
         setValue('wan-gateway-ip', get('wan_gateway_ip', ''));
         setValue('scan-interval', get('scan_interval', rt.scan_interval));
+        setValue('data-retention-days', get('data_retention_days', rt.data_retention_days));
+        setValue('stale-device-days', get('stale_device_days', rt.stale_device_days));
         setValue('dashboard-title', get('dashboard_title', 'Home Network Monitor'));
-        setChecked('auto-refresh', String(get('auto_refresh', 'true')) === 'true');
-        setChecked('show-offline', String(get('show_offline', 'true')) === 'true');
     } catch (error) {
         showError(`Could not load settings: ${error.message}`);
     }
@@ -832,7 +823,9 @@ async function saveNetworkSettings() {
             wan_check_target: val('wan-check-target').value.trim() || '1.1.1.1',
             wan_check_interval: parseInt(val('wan-check-interval').value, 10) || 60,
             wan_down_after_checks: parseInt(val('wan-down-after').value, 10) || 3,
-            wan_gateway_ip: val('wan-gateway-ip').value.trim()
+            wan_gateway_ip: val('wan-gateway-ip').value.trim(),
+            data_retention_days: parseInt(val('data-retention-days').value, 10) || undefined,
+            stale_device_days: parseInt(val('stale-device-days').value, 10) || undefined
         }});
         showSuccess(result.message || 'Network settings saved');
     } catch (error) {
@@ -840,17 +833,14 @@ async function saveNetworkSettings() {
     }
 }
 function resetNetworkSettings() {
-    setValue('network-range', document.body.dataset.defaultNetworkRange || '192.168.1.0/24');
-    setValue('ping-interval', '600');
-    setValue('scan-interval', '86400');
+    // "Reset" discards unsaved edits: reload what is saved
+    loadCurrentSettings();
 }
 
 // Interface
 async function saveInterfaceSettings() {
     const updates = {
-        dashboard_title: val('dashboard-title').value.trim() || 'Home Network Monitor',
-        auto_refresh: val('auto-refresh').checked ? 'true' : 'false',
-        show_offline: val('show-offline').checked ? 'true' : 'false'
+        dashboard_title: val('dashboard-title').value.trim() || 'Home Network Monitor'
     };
     try {
         for (const [key, value] of Object.entries(updates)) {
@@ -863,8 +853,6 @@ async function saveInterfaceSettings() {
 }
 function resetInterfaceSettings() {
     setValue('dashboard-title', 'Home Network Monitor');
-    setChecked('auto-refresh', true);
-    setChecked('show-offline', true);
 }
 
 // Alerts & notifications

@@ -65,7 +65,7 @@ class NetworkSecurityScanner:
         self.app = app
         self.running = False
         self._stop_event = threading.Event()
-        self.scan_interval = Config.SECURITY_SCAN_INTERVAL  # daily by default; nmap sweeps can unsettle IoT devices
+        self.scan_interval = Config.SECURITY_SCAN_INTERVAL  # seconds between sweeps; daily by default, nmap sweeps can unsettle IoT devices
         self.nm = nmap.PortScanner()
 
         # Scan progress tracking
@@ -144,11 +144,23 @@ class NetworkSecurityScanner:
             6310,   # HP JetDirect
         }
 
-        # Problematic devices that cause hangs or excessive delays
-        # These devices have been observed to cause nmap scans to hang for hours
-        self.problematic_devices_blacklist = {
-            '192.168.192.5',  # Heavily filtered device, causes infinite hangs
-        }
+        # Never scan the host HomeNetMon runs on: nmap against its own addresses hangs
+        # for hours and produced the "list indices" error every sweep.
+        self._own_addresses = self._host_addresses()
+
+    @staticmethod
+    def _host_addresses():
+        """IPv4 addresses of this host's interfaces (plus loopback)."""
+        addresses = {'127.0.0.1'}
+        try:
+            import psutil
+            for entries in psutil.net_if_addrs().values():
+                for entry in entries:
+                    if entry.family == socket.AF_INET and entry.address:
+                        addresses.add(entry.address)
+        except Exception as e:
+            logger.debug(f"Could not list host addresses: {e}")
+        return addresses
 
     def start_monitoring(self):
         """Start the security scanner monitoring loop"""
@@ -439,7 +451,7 @@ class NetworkSecurityScanner:
             return results
 
         # Skip problematic devices that cause hangs
-        if device.ip_address in self.problematic_devices_blacklist:
+        if device.ip_address in self._own_addresses:
             logger.warning(f"Skipping security scan for problematic device: {device.display_name} ({device.ip_address}) - known to cause hangs")
             return results
 
@@ -488,9 +500,7 @@ class NetworkSecurityScanner:
             except Exception as e:
                 scan_duration = time.time() - scan_start_time
                 logger.error(f"Security scan failed for {device.display_name} after {scan_duration:.1f}s: {e}")
-                # Return empty results to continue with other devices
-                results['scan_duration'] = scan_duration
-                results['error'] = str(e)
+                # results is the (empty) port list: continue with the other devices
                 return results
 
             # Parse results

@@ -601,6 +601,21 @@ class NetworkTopologyEngine:
             'layout_hints': {}
         }
 
+        # Status vocabulary = Device.status (up / warning / down / unknown) computed in one batch
+        from constants import DEVICE_DOWN_AFTER_SECONDS
+        batch = Device.batch_get_device_data([d.id for d in devices])
+        down_before = datetime.utcnow() - timedelta(seconds=DEVICE_DOWN_AFTER_SECONDS)
+
+        def status_of(device):
+            if not device.last_seen:
+                return 'unknown'
+            if device.last_seen < down_before:
+                return 'down'
+            latest = batch['monitoring_data'].get(device.id)
+            if latest is not None and latest.response_time is not None and latest.response_time > 1000:
+                return 'warning'
+            return 'up'
+
         # Generate nodes
         for device in devices:
             # Determine node properties
@@ -623,8 +638,9 @@ class NetworkTopologyEngine:
                 'vendor': device.vendor,
                 'node_type': node_type,
                 'size': node_size,
-                'status': 'online' if device.last_seen and
-                         (datetime.utcnow() - device.last_seen).total_seconds() < 3600 else 'offline',
+                'status': status_of(device),
+                'active_alerts': batch['alert_counts'].get(device.id, 0),
+                'last_seen': device.last_seen.isoformat() if device.last_seen else None,
                 'subnet': '.'.join(device.ip_address.split('.')[:3]) + '.0/24' if device.ip_address else None
             })
 

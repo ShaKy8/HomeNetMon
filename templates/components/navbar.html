@@ -244,12 +244,28 @@ document.addEventListener('DOMContentLoaded', function() {
         modal.show();
     });
 
-    // Load alerts count for badge
+    // Alerts badge: load once, then follow the alerts room instead of polling
     loadActiveAlertsCount();
-
-    // Update alerts count every 30 seconds
-    setInterval(loadActiveAlertsCount, 30000);
+    if (typeof window.liveSocket === 'function') {
+        try {
+            const socket = window.liveSocket();
+            const subscribe = () => socket.emit('subscribe_to_updates', { types: ['alerts'] });
+            socket.on('connect', subscribe);
+            if (socket.connected) subscribe();
+            socket.on('alert_update', () => loadActiveAlertsCount());
+        } catch (error) {
+            console.warn('Live alert badge unavailable:', error);
+        }
+    }
 });
+
+// One Socket.IO connection per page, shared by the navbar badge, the dashboard, the alerts
+// page and the device page (each subscribes to the rooms it needs).
+window.liveSocket = function() {
+    if (typeof io === 'undefined') return null;
+    if (!window.__liveSocket) window.__liveSocket = io();
+    return window.__liveSocket;
+};
 
 // Load active alerts count for navbar badge
 async function loadActiveAlertsCount() {

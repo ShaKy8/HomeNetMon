@@ -903,14 +903,14 @@ body::before {
                         <span class="filter-inline-label">Status:</span>
                         <div class="d-flex gap-2">
                             <div class="form-check form-check-inline mb-0">
-                                <input class="form-check-input" type="checkbox" id="status-online" checked>
-                                <label class="form-check-label compact" for="status-online">
+                                <input class="form-check-input" type="checkbox" id="status-up" checked>
+                                <label class="form-check-label compact" for="status-up">
                                     <i class="bi bi-check-circle-fill text-success"></i>
                                 </label>
                             </div>
                             <div class="form-check form-check-inline mb-0">
-                                <input class="form-check-input" type="checkbox" id="status-offline" checked>
-                                <label class="form-check-label compact" for="status-offline">
+                                <input class="form-check-input" type="checkbox" id="status-down" checked>
+                                <label class="form-check-label compact" for="status-down">
                                     <i class="bi bi-x-circle-fill text-danger"></i>
                                 </label>
                             </div>
@@ -935,59 +935,20 @@ body::before {
                             🔽 Types
                         </button>
                         <div class="dropdown-menu p-3 device-type-dropdown">
+                            {% set type_icons = {'router': '🛜', 'switch': '🔀', 'computer': '💻', 'laptop': '💻', 'server': '🖥️', 'nas': '💾',
+                         'storage': '💾', 'printer': '🖨️', 'camera': '📹', 'phone': '📱', 'tablet': '📱', 'apple': '🍎',
+                         'smart_home': '🏡', 'iot': '🏠', 'media': '📺', 'gaming': '🎮', 'unknown': '❓'} %}
                             <div class="row g-2">
+                                {% for value, label in device_types %}
                                 <div class="col-6">
                                     <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="type-router" checked>
-                                        <label class="form-check-label small" for="type-router">
-                                            🛜 Router
-                                        </label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="type-switch" checked>
-                                        <label class="form-check-label small" for="type-switch">
-                                            🔀 Switch
-                                        </label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="type-computer" checked>
-                                        <label class="form-check-label small" for="type-computer">
-                                            💻 Computer
-                                        </label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="type-laptop" checked>
-                                        <label class="form-check-label small" for="type-laptop">
-                                            📱 Mobile
+                                        <input class="form-check-input" type="checkbox" id="type-{{ value }}" checked>
+                                        <label class="form-check-label small" for="type-{{ value }}">
+                                            {{ type_icons.get(value, '❓') }} {{ label }}
                                         </label>
                                     </div>
                                 </div>
-                                <div class="col-6">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="type-server" checked>
-                                        <label class="form-check-label small" for="type-server">
-                                            🖥️ Server
-                                        </label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="type-printer" checked>
-                                        <label class="form-check-label small" for="type-printer">
-                                            🖨️ Printer
-                                        </label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="type-camera" checked>
-                                        <label class="form-check-label small" for="type-camera">
-                                            📹 Camera
-                                        </label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="type-unknown" checked>
-                                        <label class="form-check-label small" for="type-unknown">
-                                            ❓ Other
-                                        </label>
-                                    </div>
-                                </div>
+                                {% endfor %}
                             </div>
                         </div>
                     </div>
@@ -1186,7 +1147,7 @@ body::before {
                         </div>
                         <div class="flex-grow-1">
                             <h6 class="mb-1 text-white" id="tooltip-name">Device Name</h6>
-                            <small class="text-muted d-block" id="tooltip-ip">192.168.1.1</small>
+                            <small class="text-muted d-block" id="tooltip-ip"></small>
                         </div>
                         <div class="ms-2">
                             <span class="badge rounded-pill" id="tooltip-status">Unknown</span>
@@ -1631,7 +1592,7 @@ class NetworkTopology {
         d3.select('#retry-load').on('click', () => this.loadData());
 
         // Filter checkboxes
-        d3.selectAll('#status-online, #status-offline, #status-warning, #status-unknown').on('change', () => {
+        d3.selectAll('#status-up, #status-down, #status-warning, #status-unknown').on('change', () => {
             this.applyFilters();
         });
 
@@ -1651,14 +1612,15 @@ class NetworkTopology {
         });
     }
 
-    async loadData() {
+    async loadData(force = false) {
         this.showLoading(true);
         this.hideError();
 
         try {
             console.log("Loading topology data...");
 
-            const response = await fetch('/api/analytics/topology/visualization');
+            // force=1 makes the engine rediscover instead of serving its one-hour cache
+            const response = await fetch(`/api/analytics/topology/visualization${force ? '?force_refresh=1' : ''}`);
 
             if (!response.ok) {
                 throw new Error(`HTTP ${response.status}: ${response.statusText}`);
@@ -1765,9 +1727,11 @@ class NetworkTopology {
         const sizeMap = { xlarge: 30, large: 22, medium: 14, small: 10 };
         const strengthMap = { strong: 3, medium: 2, weak: 1 };
         const iconMap = { router: '🌐', switch: '🔀', computer: '💻', laptop: '💻', phone: '📱', tablet: '📱', camera: '📷',
-                          iot: '🏠', smart_home: '🏡', printer: '🖨️', nas: '💾', server: '🖥️', gaming: '🎮', media: '📺', unknown: '❓' };
+                          iot: '🏠', smart_home: '🏡', printer: '🖨️', nas: '💾', storage: '💾', server: '🖥️', gaming: '🎮',
+                          media: '📺', apple: '🍎', unknown: '❓' };
         const colorFor = (status) => ({ online: '#28a745', up: '#28a745', offline: '#dc3545', down: '#dc3545', warning: '#ffc107' }[status] || '#6c757d');
-        this.nodes = this.allNodesData.map(node => ({
+        // Keep the mapped nodes/links: applyFilters() subsets them without re-deriving fields
+        this.mappedNodes = this.allNodesData.map(node => ({
             id: String(node.id),
             name: node.label || node.ip_address || node.ip || `Device ${node.id}`,
             ip: node.ip_address || node.ip,
@@ -1785,8 +1749,9 @@ class NetworkTopology {
             x: Math.random() * this.width,
             y: Math.random() * this.height
         }));
+        this.nodes = this.mappedNodes;
         const known = new Set(this.nodes.map(n => n.id));
-        this.links = this.allLinksData
+        this.mappedLinks = this.allLinksData
             .filter(edge => known.has(String(edge.source)) && known.has(String(edge.target)))
             .map(edge => ({
                 source: String(edge.source),
@@ -1796,14 +1761,15 @@ class NetworkTopology {
                 strength: typeof edge.strength === 'number' ? edge.strength : (strengthMap[edge.strength] || 1),
                 color: edge.color || (edge.type === 'parent_child' ? '#8ab4f8' : '#999')
             }));
+        this.links = this.mappedLinks.map(l => ({ ...l }));
 
         console.log(`Processed ${this.nodes.length} nodes and ${this.links.length} links`);
     }
 
     updateStats(data) {
         const total = this.nodes.length;
-        const online = this.nodes.filter(n => n.status === 'online').length;
-        const offline = this.nodes.filter(n => n.status === 'offline').length;
+        const online = this.nodes.filter(n => n.status === 'up' || n.status === 'warning').length;
+        const offline = this.nodes.filter(n => n.status === 'down').length;
         const alerts = this.nodes.reduce((sum, n) => sum + (n.alerts_count || 0), 0);
 
         d3.select('#overview-total').text(total);
@@ -2296,10 +2262,10 @@ class NetworkTopology {
     }
 
     applyFilters() {
-        // Get filter states
+        // Status vocabulary is Device.status: up / warning / down / unknown
         const statusFilters = {
-            online: d3.select('#status-online').property('checked'),
-            offline: d3.select('#status-offline').property('checked'),
+            up: d3.select('#status-up').property('checked'),
+            down: d3.select('#status-down').property('checked'),
             warning: d3.select('#status-warning').property('checked'),
             unknown: d3.select('#status-unknown').property('checked')
         };
@@ -2310,30 +2276,15 @@ class NetworkTopology {
             typeFilters[type] = this.checked;
         });
 
-        // Filter nodes
-        this.nodes = this.allNodesData.filter(device => {
-            const statusMatch = statusFilters[device.status];
-            const typeMatch = typeFilters[device.device_type] !== false;
-            return statusMatch && typeMatch;
-        }).map(device => ({
-            id: device.id,
-            name: device.name || device.ip,
-            ip: device.ip,
-            mac: device.mac_address,
-            type: device.device_type || 'unknown',
-            status: device.status || 'unknown',
-            vendor: device.vendor,
-            response_time: device.avg_response_time,
-            last_seen: device.last_seen,
-            uptime: device.uptime_percentage,
-            alerts_count: device.alerts_count || 0
-        }));
+        // Subset the nodes processData() built (same fields, colours, sizes and positions)
+        const mapped = this.mappedNodes || [];
+        this.nodes = mapped.filter(node => statusFilters[node.status] !== false && typeFilters[node.type] !== false);
 
-        // Filter links to only include nodes that are visible
+        // Links between visible nodes; the force layout replaces ids with node objects, so copy from the originals
         const visibleNodeIds = new Set(this.nodes.map(n => n.id));
-        this.links = this.allLinksData.filter(link =>
-            visibleNodeIds.has(link.source) && visibleNodeIds.has(link.target)
-        );
+        this.links = (this.mappedLinks || [])
+            .filter(link => visibleNodeIds.has(String(link.source)) && visibleNodeIds.has(String(link.target)))
+            .map(l => ({ ...l }));
 
         console.log(`Filtered to ${this.nodes.length} nodes and ${this.links.length} links`);
 
@@ -2344,7 +2295,7 @@ class NetworkTopology {
     refreshData() {
         console.log("Refreshing topology data...");
         this.retryCount = 0;
-        this.loadData();
+        this.loadData(true);
     }
 
     toggleFullscreen() {

@@ -646,11 +646,14 @@ class AlertsManager {
     initializeSocketIO() {
         if (typeof io === 'undefined') return;
         try {
-            this.socket = io({ timeout: 10000, reconnection: true, reconnectionDelay: 1000, reconnectionAttempts: 5 });
+            this.socket = (typeof window.liveSocket === 'function' && window.liveSocket()) ||
+                io({ timeout: 10000, reconnection: true, reconnectionDelay: 1000, reconnectionAttempts: 5 });
+            const subscribe = () => this.socket.emit('subscribe_to_updates', { types: ['alerts'] });
             this.socket.on('connect', () => {
                 if (typeof updateConnectionStatus === 'function') updateConnectionStatus(true);
-                this.socket.emit('subscribe_to_updates', { types: ['alerts'] });
+                subscribe();
             });
+            if (this.socket.connected) subscribe();
             this.socket.on('disconnect', () => { if (typeof updateConnectionStatus === 'function') updateConnectionStatus(false); });
             this.socket.on('alert_update', (payload) => {
                 const alert = payload && payload.alert;
@@ -868,7 +871,7 @@ async function bulkDelete(body, description) {
         showError(`Bulk delete failed: ${error.message}`);
     }
 }
-function bulkDeleteByType(alertType) { return bulkDelete({ alert_type: alertType }, `${alertType.replace('_', ' ')} alerts`); }
+function bulkDeleteByType(alertType) { return bulkDelete({ alert_type: alertType }, `${alertType.replace(/_/g, ' ')} alerts`); }
 function bulkDeleteByStatus(resolved) { return bulkDelete({ resolved }, `${resolved ? 'resolved' : 'unresolved'} alerts`); }
 function bulkDeleteBySeverity(severity) { return bulkDelete({ severity }, `${severity} alerts`); }
 

@@ -81,13 +81,15 @@ function setupPageVisibilityHandling() {
 
 // Socket.IO initialization
 function initializeSocket() {
-    socket = io();
+    socket = (typeof window.liveSocket === 'function' && window.liveSocket()) || io();
 
+    // Server pushes go to rooms; nothing arrives until the page joins them.
+    const subscribe = () => socket.emit('subscribe_to_updates', { types: ['device_status', 'monitoring_summary', 'alerts'] });
     socket.on('connect', function() {
         updateNetworkStatus(true);
-        // Server pushes go to rooms; nothing arrives until the page joins them.
-        socket.emit('subscribe_to_updates', { types: ['device_status', 'monitoring_summary', 'alerts'] });
+        subscribe();
     });
+    if (socket.connected) { updateNetworkStatus(true); subscribe(); }
 
     socket.on('disconnect', function() {
         updateNetworkStatus(false);
@@ -352,6 +354,9 @@ function applySummary(summary) {
     set('hero-devices-online', summary.devices_up);
     set('hero-total-devices', summary.monitored_devices);
     set('hero-alerts', summary.active_alerts);
+    if (summary.avg_response_time !== undefined) {
+        set('hero-response-time', summary.avg_response_time ? `${Math.round(summary.avg_response_time)} ms` : '-- ms');
+    }
     const totalEl = document.getElementById('hero-total-devices');
     if (totalEl && summary.total_devices !== undefined) {
         totalEl.title = `${summary.total_devices} in inventory (incl. archived / out of range)`;
@@ -404,13 +409,13 @@ function applyWan(data) {
 
 function updateStats() {
     const visible = filters.showArchived ? devicesData : devicesData.filter(d => d.is_monitored);
-    const avgResponse = visible
-        .filter(d => d.latest_response_time > 0)
-        .reduce((acc, d, _, arr) => acc + d.latest_response_time / arr.length, 0);
-    document.getElementById('hero-response-time').textContent =
-        avgResponse ? Math.round(avgResponse) + ' ms' : '-- ms';
     if (!latestSummary) {
-        // Until the summary arrives, show what the grid knows
+        // Until the summary arrives, show what the grid knows (the summary's average is the shared definition)
+        const avgResponse = visible
+            .filter(d => d.latest_response_time > 0)
+            .reduce((acc, d, _, arr) => acc + d.latest_response_time / arr.length, 0);
+        document.getElementById('hero-response-time').textContent =
+            avgResponse ? Math.round(avgResponse) + ' ms' : '-- ms';
         document.getElementById('hero-devices-online').textContent = visible.filter(d => d.status === 'up').length;
         document.getElementById('hero-total-devices').textContent = visible.length;
     }
@@ -457,7 +462,10 @@ function filterAndDisplayDevices() {
             network: ['router', 'switch', 'gateway', 'access_point', 'network'],
             cameras: ['camera'],
             smart: ['smart_home', 'iot', 'speaker', 'tv', 'media', 'thermostat', 'sensor'],
-            personal: ['computer', 'laptop', 'phone', 'tablet', 'apple', 'gaming']
+            personal: ['computer', 'laptop', 'phone', 'tablet', 'apple', 'gaming'],
+            printers: ['printer'],
+            storage: ['storage', 'nas', 'server'],
+            unknown: ['unknown', '']
         };
         const wanted = groups[filters.type] || [];
         filtered = filtered.filter(device => wanted.includes((device.device_type || 'unknown').toLowerCase()));

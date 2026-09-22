@@ -430,15 +430,18 @@ class ConfigurationService:
             if key:
                 history = [change for change in history if change.key == key]
 
+            # Same keys as ConfigurationHistory.to_dict() so the Settings > History table renders
             return [
                 {
-                    'key': change.key,
+                    'id': None,
+                    'config_key': change.key,
                     'old_value': change.old_value,
                     'new_value': change.new_value,
-                    'timestamp': change.timestamp.isoformat(),
-                    'user': change.user,
+                    'changed_at': change.timestamp.isoformat(),
+                    'changed_by': change.user,
                     'validated': change.validated,
-                    'applied': change.applied
+                    'applied': change.applied,
+                    'rollback_available': False,
                 }
                 for change in history
             ]

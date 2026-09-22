@@ -346,7 +346,7 @@ network_topology = NetworkTopologyEngine()
 def get_topology_visualization():
     """Get network topology data optimized for visualization"""
     try:
-        force_refresh = request.args.get('force_refresh', default=False, type=bool)
+        force_refresh = str(request.args.get('force_refresh', '')).lower() in ('1', 'true', 'yes')
 
         # Get full topology
         topology = network_topology.discover_network_topology(force_refresh=force_refresh)

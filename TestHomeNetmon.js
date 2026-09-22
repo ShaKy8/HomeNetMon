@@ -108,3 +108,62 @@ test.describe('API smoke', () => {
     expect(headers['content-security-policy']).toBeTruthy();
   });
 });
+
+test.describe('2.9.0 UI fixes', () => {
+  test('device page range buttons change the response chart', async ({ page, request }) => {
+    const id = await firstDeviceId(request);
+    test.skip(id === null, 'no devices in this instance');
+    await page.goto(`/device/${id}`);
+    await expect(page.locator('.time-period-btn.active:not(.perf-range-btn)')).toHaveAttribute('data-period', '24');
+    const seen = [];
+    page.on('request', (req) => { if (req.url().includes('/api/monitoring/data')) seen.push(req.url()); });
+    await page.locator('.time-period-btn[data-period="168"]').click();
+    await page.waitForTimeout(1500);
+    expect(seen.some((u) => /hours=168/.test(u))).toBeTruthy();
+    await expect(page.locator('.time-period-btn.active:not(.perf-range-btn)')).toHaveAttribute('data-period', '168');
+  });
+
+  test('needs-attention switch shows inline editors', async ({ page }) => {
+    await page.goto('/');
+    await page.locator('#toggle-advanced').click();
+    await page.locator('#needs-attention').check();
+    await page.waitForTimeout(1000);
+    await expect(page.locator('#devices-table-view')).toBeVisible();
+    const rows = page.locator('tr.triage-row');
+    const count = await rows.count();
+    const noDevices = await page.locator('#no-devices').isVisible();
+    expect(count > 0 || noDevices).toBeTruthy();
+    if (count > 0) {
+      await expect(rows.first().locator('select.triage-type')).toBeVisible();
+      await expect(rows.first().locator('input.triage-name')).toBeVisible();
+    }
+  });
+
+  test('network map filters keep nodes on screen', async ({ page }) => {
+    await page.goto('/network-map');
+    await page.waitForTimeout(4000);
+    const before = await page.locator('svg .node, svg g.node, svg circle').count();
+    test.skip(before === 0, 'no nodes rendered (empty instance or CDN blocked)');
+    await page.locator('#status-unknown').uncheck();
+    await page.waitForTimeout(1000);
+    await page.locator('#status-unknown').check();
+    await page.waitForTimeout(1000);
+    const after = await page.locator('svg .node, svg g.node, svg circle').count();
+    expect(after).toBe(before);
+  });
+
+  test('failed-delivery badge only shows when the API reports failures', async ({ page, request }) => {
+    const res = await request.get('/api/notifications/history?hours=168&status=failed&per_page=1');
+    expect(res.ok()).toBeTruthy();
+    const total = (await res.json()).pagination.total;
+    await page.goto('/alerts');
+    await page.waitForTimeout(1500);
+    const badge = page.locator('#notification-failures-badge');
+    if (total > 0) {
+      await expect(badge).toBeVisible();
+      await expect(badge).toHaveText(`${total} failed`);
+    } else {
+      await expect(badge).toBeHidden();
+    }
+  });
+});

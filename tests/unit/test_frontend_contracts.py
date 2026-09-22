@@ -387,5 +387,76 @@ class TestAnalyticsScriptDeclarations:
         """Removing the speed-test block took the bandwidthChart declaration with it; the
         Bandwidth tab then threw a ReferenceError on every load."""
         html = client.get('/analytics').get_data(as_text=True)
-        for name in ('bandwidthChart', 'healthChart', 'trendsChart'):
+        for name in ('bandwidthChart', 'trendsChart'):
             assert re.search(rf'\blet [^;]*\b{name}\b', html), name
+
+
+class TestTwoNineUiFixes:
+    """Behaviour pinned by the 2.9.0 UI fixes (C1 of the plan)."""
+
+    def test_device_page_ranges_and_live_updates(self, client, device):
+        html = client.get(f'/device/{device.id}').get_data(as_text=True)
+        assert 'const hours = parseInt(period, 10);' in html
+        assert "'.time-period-btn:not(.perf-range-btn)'" in html
+        assert '<button class="time-period-btn active" data-period="24">' in html
+        assert 'setInterval(loadDeviceData, 30000)' not in html and 'subscribeToLiveUpdates()' in html
+        assert "types: ['device_status', 'alerts']" in html
+
+    def test_navbar_badge_follows_the_alerts_room(self, client):
+        html = client.get('/').get_data(as_text=True)
+        assert 'window.liveSocket = function()' in html
+        assert 'setInterval(loadActiveAlertsCount' not in html
+        assert "socket.on('alert_update', () => loadActiveAlertsCount())" in html
+        js = (ROOT / 'static/js/dashboard-page.js').read_text()
+        assert 'window.liveSocket()' in js and 'if (socket.connected)' in js
+        alerts = (ROOT / 'templates/alerts.html').read_text()
+        assert 'window.liveSocket()' in alerts and "replace(/_/g, ' ')" in alerts
+
+    def test_dashboard_type_filter_and_summary_average(self, client):
+        html = client.get('/').get_data(as_text=True)
+        for value in ('printers', 'storage', 'unknown'):
+            assert f'<option value="{value}">' in html, value
+        js = (ROOT / 'static/js/dashboard-page.js').read_text()
+        assert "summary.avg_response_time" in js
+        assert "printers: ['printer']" in js and "unknown: ['unknown', '']" in js
+
+    def test_analytics_has_one_fun_facts_block_and_the_real_version(self, client):
+        html = client.get('/analytics').get_data(as_text=True)
+        assert html.count('id="network-facts"') == 1 and html.count('<h1') == 1
+        assert 'v1.0.0' not in html and 'Top Bandwidth Consumers' not in html
+        assert 'healthChart' not in html
+
+    def test_topology_uses_the_status_vocabulary_and_type_list(self, client):
+        html = client.get('/network-map').get_data(as_text=True)
+        for el in ('status-up', 'status-down', 'status-warning', 'status-unknown', 'type-apple', 'type-storage', 'type-unknown'):
+            assert f'id="{el}"' in html, el
+        assert 'id="status-online"' not in html and 'id="status-offline"' not in html
+        assert 'this.mappedNodes.filter' in html or 'mapped.filter(node =>' in html
+        assert "force_refresh=1" in html and '>192.168.1.1<' not in html
+
+    def test_topology_api_force_refresh_is_a_string_flag(self):
+        src = (ROOT / 'api/analytics.py').read_text()
+        assert "type=bool" not in src and "in ('1', 'true', 'yes')" in src
+
+    def test_settings_form_is_bound_and_dead_switches_are_gone(self, client):
+        html = client.get('/settings').get_data(as_text=True)
+        assert 'id="auto-refresh"' not in html and 'id="show-offline"' not in html
+        assert 'id="data-retention-days"' in html and 'id="stale-device-days"' in html
+        assert '(30-3600 seconds)' in html and '(300 seconds to 7 days)' in html
+        assert "form.addEventListener('submit'" in html and 'Save Network Settings' not in html
+        assert 'loadCurrentSettings();\n}' in html
+
+    def test_history_fallback_matches_the_table(self):
+        src = (ROOT / 'services/configuration_service.py').read_text()
+        assert "'config_key': change.key" in src and "'changed_at': change.timestamp.isoformat()" in src
+        assert "'rollback_available': False" in src
+
+    def test_security_scanner_skips_its_own_host(self, app):
+        from services import security_scanner as ss
+        ScannerClass = type(ss.security_scanner)
+        scanner = ScannerClass.__new__(ScannerClass)
+        addresses = scanner._host_addresses()
+        assert '127.0.0.1' in addresses
+        assert not hasattr(scanner, 'problematic_devices_blacklist')
+        src = (ROOT / 'services/security_scanner.py').read_text()
+        assert "results['scan_duration']" not in src

@@ -215,9 +215,9 @@
             <div class="chart-header">
                 <h3><i class="bi bi-graph-up"></i> Response Time</h3>
                 <div class="time-period-buttons">
-                    <button class="time-period-btn active" data-period="1">1H</button>
+                    <button class="time-period-btn" data-period="1">1H</button>
                     <button class="time-period-btn" data-period="6">6H</button>
-                    <button class="time-period-btn" data-period="24">24H</button>
+                    <button class="time-period-btn active" data-period="24">24H</button>
                     <button class="time-period-btn" data-period="168">7D</button>
                 </div>
             </div>
@@ -420,10 +420,34 @@ document.addEventListener('DOMContentLoaded', function() {
         loadIpHistory();
         loadPerformance(168);
 
-        // Refresh data every 30 seconds
-        setInterval(loadDeviceData, 30000);
+        // Live updates for this device (device_status / alerts rooms), with a slow fallback poll
+        subscribeToLiveUpdates();
+        setInterval(loadDeviceData, 300000);
     }
 });
+
+let selectedChartHours = 24;
+let liveReloadTimer = null;
+function scheduleLiveReload() {
+    clearTimeout(liveReloadTimer);
+    liveReloadTimer = setTimeout(loadDeviceData, 1500);
+}
+function subscribeToLiveUpdates() {
+    if (typeof window.liveSocket !== 'function') return;
+    try {
+        const socket = window.liveSocket();
+        const subscribe = () => socket.emit('subscribe_to_updates', { types: ['device_status', 'alerts'] });
+        socket.on('connect', subscribe);
+        if (socket.connected) subscribe();
+        socket.on('device_status_update', (data) => { if (data && Number(data.device_id) === deviceId) scheduleLiveReload(); });
+        socket.on('alert_update', (payload) => {
+            const alert = payload && payload.alert;
+            if (!alert || Number(alert.device_id) === deviceId) scheduleLiveReload();
+        });
+    } catch (error) {
+        console.warn('Live updates unavailable:', error);
+    }
+}
 
 function loadDeviceData() {
     apiRequest(`/api/devices/${deviceId}`)
@@ -652,10 +676,13 @@ function updateMonitoringData(device) {
 
 function updateCharts(device) {
     const history = (device.monitoring_history || []).slice().reverse();  // oldest first
-    if (responseTimeChart) {
+    if (responseTimeChart && selectedChartHours === 24) {
+        // the detail payload carries the last 24 h; other ranges come from /api/monitoring/data
         responseTimeChart.data.labels = history.map(r => new Date(r.timestamp).toLocaleTimeString());
         responseTimeChart.data.datasets[0].data = history.map(r => r.response_time);
         responseTimeChart.update();
+    } else if (responseTimeChart) {
+        loadChartData(selectedChartHours);
     }
     if (uptimeChart) {
         const stats = (device.statistics && device.statistics['24h']) || {};
@@ -690,11 +717,12 @@ async function loadOpenPorts() {
 }
 
 function setupEventListeners() {
-    document.querySelectorAll('.time-period-btn').forEach(btn => {
+    document.querySelectorAll('.time-period-btn:not(.perf-range-btn)').forEach(btn => {
         btn.addEventListener('click', function() {
-            document.querySelectorAll('.time-period-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.time-period-btn:not(.perf-range-btn)').forEach(b => b.classList.remove('active'));
             this.classList.add('active');
-            loadChartData(this.dataset.period);
+            selectedChartHours = parseInt(this.dataset.period, 10) || 24;
+            loadChartData(selectedChartHours);
         });
     });
     const on = (id, handler) => { const el = document.getElementById(id); if (el) el.addEventListener('click', (e) => { e.preventDefault(); handler(); }); };
@@ -717,8 +745,8 @@ function setupEventListeners() {
 }
 
 async function loadChartData(period) {
-    // Charts are fed from the detail payload (last 24 h); longer windows use the CSV export.
-    const hours = { '1h': 1, '6h': 6, '24h': 24, '7d': 168 }[period];
+    // data-period is a number of hours (1, 6, 24, 168); /api/monitoring/data caps at 7 days
+    const hours = parseInt(period, 10);
     if (!hours || !currentDevice) return;
     try {
         const data = await apiRequest(`/api/monitoring/data?device_id=${deviceId}&hours=${hours}&limit=500`);
