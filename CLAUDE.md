@@ -21,8 +21,8 @@ The deployment on this machine runs as the **user** unit `~/.config/systemd/user
 
 ### Tests
 ```bash
-pytest tests/unit tests/integration       # what CI requires (~590 pass / ~90 skip); config in pyproject.toml
-pytest tests/unit tests/integration --cov=. --cov-fail-under=47   # coverage floor CI enforces (measured 50% on 2026-09-11)
+pytest tests/unit tests/integration       # what CI requires (~680 pass, 0 skipped); config in pyproject.toml
+pytest tests/unit tests/integration --cov=. --cov-fail-under=47   # coverage floor CI enforces (measured 64% on 2026-09-22)
 pytest tests/unit/test_alerts_api.py      # one file
 pytest tests/unit/test_alerts_api.py::TestListFilters::test_paging   # one test; or -k <substring>
 pytest --no-cov -q                        # quick iteration
@@ -49,6 +49,8 @@ venv/bin/python scripts/backup_database.py            # online, WAL-safe backup 
 venv/bin/python scripts/db/maintenance_window.py      # dry run: duplicate indexes, dead tables, VACUUM plan
 venv/bin/python scripts/db/v250_schema_cleanup.py     # dry run of the 2.5.0 one-shot (drop tables of removed models, add device columns, archive out-of-range devices)
 venv/bin/python scripts/db/v250_schema_cleanup.py --execute   # only with the service stopped; --db <copy> to rehearse
+venv/bin/python scripts/db/v290_cleanup.py            # 2.9.0: alert_on_down column, quiet-hours migration, seeded rules, dead columns
+venv/bin/python scripts/db/v290_merge_duplicates.py   # 2.9.0: fold duplicate device rows from rotated MACs (read every line before --execute)
 ```
 Schema is created by `init_db()`/`create_all()` at startup; there is no migration framework (`scripts/migrations/` holds historical one-shots, not a runner). Adding a column means adding it to `_ensure_columns()` in `models.init_db` (idempotent `ALTER TABLE`) and, for production, to a one-shot under `scripts/db/`. SQLite cannot alter constraints in place — see the `devices` rebuild in `maintenance_window.py` for the pattern.
 
@@ -96,7 +98,7 @@ Pattern for a new background service: singleton with `start_monitoring()`, insta
 Blueprint → `@create_endpoint_limiter(tier)` → validation (`core.validators`; device-control endpoints accept private addresses only) → response. **The response envelope is not uniform**: older endpoints return `{"success": true, ...}`, newer ones the `core.error_handler` shape. Don't migrate one side alone; normalize at the call site. Every route has a caller (`tests/unit/test_route_inventory.py`); `docs/API_REFERENCE.md` is generated from the route map (`scripts/generate_api_reference.py`). `GET /api/monitoring/alerts` is the filtered/paged alert list (`_alert_params` / `_alert_query`), also used by `acknowledge-all`.
 
 ### Frontend (`templates/`, `static/`)
-Server-rendered Jinja + Bootstrap 5 + Chart.js (pinned) + vanilla JS; no build step (templates append `?v={{ app_version }}` to static URLs). `static/js/ui-feedback.js` (loaded by the base template) provides `showToast/showSuccess/showError`, `escapeHtml`, `apiRequest`, `debounce`; `csrf-handler.js` adds the CSRF header to every unsafe fetch — pages must not re-implement any of these (a contract test checks). Escape any string that a LAN device controls (hostnames, service banners) before `innerHTML`. Pages: `/` dashboard, `/device/<id>`, `/alerts`, `/analytics` (tabs), `/network-map`, `/security`, `/settings`, `/about`. Retired pages redirect. `default_network_range` and `app_version` are injected into every template.
+Server-rendered Jinja + Bootstrap 5 + Chart.js (pinned) + vanilla JS; no build step (templates append `?v={{ app_version }}` to static URLs). `static/js/ui-feedback.js` (loaded by the base template) provides `showToast/showSuccess/showError`, `escapeHtml`, `apiRequest`, `debounce`; `csrf-handler.js` adds the CSRF header to every unsafe fetch — pages must not re-implement any of these (a contract test checks). `window.liveSocket()` (navbar) is the one Socket.IO connection per page; a page calls it, emits its own `subscribe_to_updates`, and also subscribes immediately when `socket.connected` is already true. Escape any string that a LAN device controls (hostnames, service banners) before `innerHTML`. Pages: `/` dashboard, `/device/<id>`, `/alerts`, `/analytics` (tabs), `/network-map`, `/security`, `/settings`, `/about`. Retired pages redirect. `default_network_range` and `app_version` are injected into every template.
 
 ## Conventions and gotchas
 
@@ -121,4 +123,4 @@ Read `config.py` and `.env.example`. Most-edited keys: `NETWORK_RANGE`, `PING_IN
 
 - `README.md` — features and install walkthrough
 - `docs/README.md` — index of the deployment, operations, security, troubleshooting, user and API guides
-- `CHANGELOG.md` — 2.5.0 summarises this review; 2.4.0 the previous one
+- `CHANGELOG.md` — 2.9.0 summarises the alert-policy / identity / cleanup review; 2.5.0 the previous big one

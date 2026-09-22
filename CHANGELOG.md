@@ -2,6 +2,79 @@
 
 All notable changes to HomeNetMon will be documented in this file.
 
+## [2.9.0] - 2026-09-22
+
+Alert policy, device identity, UI fixes and dead weight. After 2.8.1 the alerts were still too
+loud (about eleven device-down alerts and up to thirty pushes a day, mostly for phones and laptops
+that sleep, plus a "scan complete" push every two hours), 41 of 100 MAC addresses were randomized
+and had produced 22 duplicate device rows, and a pass over the pages found a dozen dead controls.
+
+### Added
+- **Alert when down** per device (device page → Edit, or the bell button in the dashboard table;
+  `alert_on_down` on `PUT /api/devices/<id>` and bulk-update). Unset means the type default:
+  phones, Apple devices and unidentified hosts are silent, everything else alerts, routers and
+  servers always alert (`constants.ALERT_ON_DOWN_BY_TYPE`, `Device.is_critical`).
+- **What to notify** (Settings → Alerts): device down, device back online, new device, security,
+  scan complete, plus quiet hours (local time, may wrap midnight; critical alerts still notify).
+  Every alert is recorded regardless; the policy only decides what reaches push / email / webhook /
+  Discord (`monitoring/notification_policy.py`). Recovery and scan-complete pushes are **off by
+  default**; the seeded "Quiet Hours - Night Time" rule is migrated into the new settings.
+- SMTP server, port, username, password (write-only) and STARTTLS are editable in Settings; saved
+  values win over `SMTP_*`. Retention and stale-device days are editable on the Network form.
+- Pushes deep-link to the device page, the Security page or the Alerts page; the notification
+  log records the alert id and the real alert type (`device_recovery` replaces `device_up`); the
+  Alerts page shows a red badge with the week's failed deliveries and links each row to its device.
+- `Alert.notification_status` (`sent` / `failed` / `none` / `suppressed`) is written for every alert.
+- **Rotated MAC adoption**: a new randomized MAC with a known hostname takes over the existing row
+  instead of creating another (rules in CLAUDE.md; logged as `mac_rotation` in the address history).
+- **Needs attention** on the dashboard: only unnamed or untyped devices, with inline name / type /
+  group editors, Save and a per-device Reclassify (`POST /api/devices/reclassify` accepts `device_ids`).
+- One device-type list (`monitoring/device_classifier.py::ALL_DEVICE_TYPES`) for the validator, the
+  device page and the network-map filter; `apple` and `storage` are selectable.
+- Devices whose address was cleared display as "Vendor xx:xx" instead of nothing.
+- One-shots: `scripts/db/v290_cleanup.py` (column, quiet-hours migration, seeded rules, dead
+  columns) and `scripts/db/v290_merge_duplicates.py` (folds duplicate rows; keeps apart rows that
+  coexisted or share a product name; `--only` / `--skip` / `--force-pair` / `--delete-orphans`).
+
+### Changed
+- Device-down, high-latency and recovery alerts go through `create_alert()` like every other
+  producer, so dedup, suppression rules and the notification policy apply to all of them; the
+  second high-latency push is gone; recoveries in the first 15 minutes after a restart are
+  recorded but not pushed; the scanner records a `new_device` alert per device and lets the first
+  five notify.
+- The security scanner skips the host's own addresses instead of a hard-coded IP; a failed nmap
+  run now logs the real error instead of "list indices must be integers".
+- Settings thresholds show the engine defaults (45 min / 1500 ms) instead of 3 / 1000.
+- One Socket.IO connection per page (`window.liveSocket()`): the navbar badge follows the alerts
+  room instead of polling every 30 s; the device page reloads on its own device's events instead of
+  every 30 s.
+- Network map: filters keep colours, sizes, positions and links; status vocabulary is
+  up / warning / down / unknown from the shared definition; Refresh really rediscovers.
+- Dashboard type filter gained Printers, Storage & Servers and Unknown; the Avg Response tile reads
+  the shared summary.
+
+### Fixed
+- Device page 1H / 6H / 24H / 7D buttons did nothing (they parsed "1" as a period name) and the
+  generic handler hijacked the Performance card's range buttons.
+- Analytics: duplicate Fun Network Facts block, hard-coded "v1.0.0", two `h1`s.
+- Settings: the network form's submit reloaded the page, two switches were wired to nothing,
+  help texts stated the wrong ranges, the configuration-history fallback used keys the table did
+  not render, saving an SMTP server no longer opens a socket to it.
+- Deleting a device that had address-history rows failed on a NOT NULL constraint.
+- Alerts page suppression form offered a type that does not exist and lacked the WAN types;
+  bulk-delete labels kept underscores.
+
+### Removed
+- Inert services and code: `services/websocket_optimizer.py`, `services/memory_monitor.py`,
+  `services/cdn_manager.py` (and the `/cdn/*` routes), the WebSocket cleanup threads, the unused
+  topology analyses, the six bandwidth columns of `performance_metrics`, `ping3`, four historical
+  migration scripts, `scripts/ops/clear_device_cache.py`.
+- Typed push senders, the security scanner's own push, `run_alert_correlation`,
+  `cleanup_duplicate_alerts`, `setup_default_suppressions` (and the eight rules it seeded), the
+  anomaly / escalation half of the correlation service.
+- `tests/conftest.py::STALE_TEST_SKIPS`: 67 stale tests deleted, 20 revived; 0 skips remain.
+- README screenshots of pages that no longer exist.
+
 ## [2.8.2] - 2026-09-20
 
 ### Fixed

@@ -1,4 +1,24 @@
+# HomeNetMon API Reference
 
+Generated from the live route map (the same source as `/api/docs` and `/api/openapi.json`); every route
+listed here has a caller in the web UI, a script or the health check. Regenerate after changing routes:
+
+```bash
+DATABASE_URL=sqlite:///:memory: venv/bin/python scripts/generate_api_reference.py > docs/API_REFERENCE.md
+```
+
+## Conventions
+
+- **No authentication.** HomeNetMon is for a trusted LAN; keep it off the internet.
+- **CSRF.** Every POST/PUT/PATCH/DELETE must carry `X-CSRF-Token` from `GET /api/csrf-token`
+  (the browser helper `static/js/csrf-handler.js` does this automatically).
+- **Envelopes are not uniform.** Older routes return `{"success": true, ...}`; newer ones return the
+  `core/error_handler.py` shape. Errors are always JSON with an `error` key. Normalise at the call site.
+- **Timestamps** are UTC ISO-8601 with a `Z` suffix.
+- **Rate limits** per route: `relaxed` 120/min, `moderate` 60/min, `strict` 10/min, `bulk` 2/min,
+  `critical` 1 per 5 minutes. Localhost and `RATE_LIMIT_TRUSTED_IPS` are exempt.
+- **Counts** (`total_devices`, `monitored_devices`, `devices_up`, `devices_down`, `active_alerts`) share
+  one definition, `services/device_counts.py`, everywhere they appear.
 
 ## Devices and device control
 

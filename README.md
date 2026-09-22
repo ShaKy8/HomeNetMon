@@ -8,17 +8,9 @@ A comprehensive, self-hosted network monitoring solution designed for home netwo
 ![Main Dashboard](screenshots/01_dashboard.png)
 *Real-time device monitoring with status grid and network overview*
 
-### 📊 Monitored Hosts
-![Monitored Hosts](screenshots/02_monitored_hosts.png)
-*Comprehensive device management with MAC addresses, vendor information, and bulk operations*
-
 ### 📈 Analytics Dashboard  
 ![Analytics Dashboard](screenshots/03_analytics.png)
 *Network performance analytics, health scores, and usage insights*
-
-### 🏥 Health Overview
-![Health Overview](screenshots/04_health_overview.png)
-*Network health monitoring with real-time metrics and performance trends*
 
 ### 🚨 Alert Management
 ![Alert Management](screenshots/05_alerts.png)
@@ -51,6 +43,8 @@ A comprehensive, self-hosted network monitoring solution designed for home netwo
 ### 🔔 **Alerting System**
 - Alert rules for device down / recovery, high latency, new devices, performance, security findings and internet loss
 - Notification channels: ntfy push, email via SMTP, webhooks, Discord (each with a test button)
+- Notification policy: choose which alert types notify, quiet hours, per-device "alert when down"
+  (phones, Apple devices and unidentified hosts are silent by default); every alert is still recorded
 - Alert acknowledgement, resolution, bulk actions, server-side filters and quiet-hours suppression rules
 - Automatic resolution when the condition clears
 
@@ -293,6 +287,8 @@ pkill -f "python app.py"
 | `ALERT_FROM_EMAIL` | From address for alert emails |
 | `ALERT_TO_EMAILS` | Comma-separated recipient addresses |
 
+All of these can also be set under **Settings → Alerts & notifications**; saved values win over the environment.
+
 ### Webhook Configuration
 
 | Variable | Description |
@@ -302,7 +298,7 @@ pkill -f "python app.py"
 
 ### Runtime settings
 
-Network range, intervals, alert thresholds and notification channels can be changed at any time under **Settings** in the dashboard; those values are stored in the database and take precedence over the environment.
+Network range, intervals, retention, alert thresholds, notification channels, the notification policy (what to notify, quiet hours) and SMTP can be changed at any time under **Settings** in the dashboard; those values are stored in the database and take precedence over the environment.
 
 ## Usage Guide
 
@@ -351,9 +347,12 @@ Network range, intervals, alert thresholds and notification channels can be chan
 ### Alert Management
 
 **Alert Types:**
-- **Device Down:** Device doesn't respond to ping
+- **Device Down:** Device doesn't respond to ping (per device "alert when down"; phones, Apple devices and unknown hosts are silent unless switched on)
+- **Device Back Online:** Recovery notice, recorded but not pushed by default
 - **High Latency:** Response time exceeds threshold
-- **Custom:** Additional alerts can be configured
+- **New Device / Security / Internet:** discovery, open-port and internet-check findings
+
+**Notifications:** Settings → Alerts chooses which types reach push / email / webhook / Discord and sets quiet hours; critical alerts always notify.
 
 **Alert Actions:**
 - **Acknowledge:** Mark alert as seen
@@ -421,22 +420,20 @@ POST /api/devices/{id}/ping
 
 **Get Monitoring Timeline**
 ```http
-GET /api/monitoring/timeline?device_id=1&hours=24&interval=hour
+GET /api/monitoring/data?device_id=1&hours=24&limit=500
 ```
+Ping history for a device (response time and packet loss per sample).
 
-**Get Statistics**
 ```http
-GET /api/monitoring/statistics?device_id=1&hours=24
+GET /api/monitoring/summary
 ```
+Device counts, average response time and active alerts (the same definition the dashboard uses).
 
-**Export Data**
 ```http
-GET /api/monitoring/export?device_id=1&hours=168
+GET /api/devices/{id}/history.csv?hours=168
 ```
+Per-device ping history as CSV.
 
-#### Alerts
-
-**Get Alerts**
 ```http
 GET /api/monitoring/alerts?severity=critical&resolved=false
 ```

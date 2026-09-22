@@ -26,6 +26,8 @@ def main():
     doc = Path(__file__).resolve().parents[1] / 'docs' / 'API_REFERENCE.md'
     text = doc.read_text()
     head = text.split('## Devices and device control', 1)[0]
+    if not head.strip().startswith('# HomeNetMon API Reference'):
+        raise SystemExit('docs/API_REFERENCE.md has lost its header; restore it (git show <rev>:docs/API_REFERENCE.md) before regenerating')
     tail = '## Parameters worth knowing' + text.split('## Parameters worth knowing', 1)[1] if '## Parameters worth knowing' in text else ''
     by_tag = {}
     for path, ops in spec['paths'].items():

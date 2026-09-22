@@ -9,8 +9,12 @@ sense; the navbar badge shows the number of active alerts and turns red if the l
   response time, active alerts, internet status (gateway and external target, hover for availability)
   and overall network status. The numbers come from one shared definition, so they match the API and
   the analytics page.
-- **Device grid / table**: search by name, IP, status, tag or note; filter by status, type and group;
-  switch views; sort. Click a card to open the device page; the table view has per-row monitor toggles.
+- **Device grid / table**: search by name, IP, status, tag or note; filter by status, type (network,
+  cameras, smart home, personal, printers, storage & servers, unknown) and group; switch views; sort.
+  Click a card to open the device page; the table view has per-row monitor and alert-when-down (bell)
+  toggles.
+- **Needs attention** (Advanced): only devices with no name or an unknown type, as a table with inline
+  name / type / group editors, **Save** and a per-device **Reclassify**; the badge counts them.
 - **Scan Network** runs discovery now. **Add Device** registers a host discovery cannot see (IP, optional
   MAC, name, type, group, tags, notes). **Advanced** opens bulk enable/disable, presets, CSV export and
   **Reclassify unknown**.
@@ -24,8 +28,10 @@ sense; the navbar badge shows the number of active alerts and turns red if the l
 - **Performance** card: latest health score with grade, availability over the window, median and 95th
   percentile response time, and a health / response-time chart for 24H / 7D / 30D.
 - Actions: Ping now, Wake-on-LAN, Port scan, Discover info, Traceroute, Edit (name, type, priority,
-  group, room, tags, notes, monitoring), Delete, Export CSV. Open ports found by the security scanner
-  are listed below the charts.
+  group, room, tags, notes, monitoring, **Alert when down**: default for the type / always / never),
+  Delete, Export CSV. Open ports found by the security scanner are listed below the charts.
+- The page follows live updates for its device; an **alerts off** badge shows when the device will
+  not raise a down alert.
 
 ## Alerts (`/alerts`)
 
@@ -36,8 +42,10 @@ sense; the navbar badge shows the number of active alerts and turns red if the l
   **Acknowledge**, **Resolve** and **Delete**. Select several for bulk actions, or **Acknowledge all
   (filtered)** for everything matching the current filters. **Bulk delete** removes by type, status or
   severity; **Delete ALL alerts** asks you to type a confirmation.
-- **Quiet hours & rules** suppresses alerts by device, type, severity and daily window.
-- **Notification log** lists every delivery attempt (channel, status, error) for the last 7 days.
+- **Quiet hours & rules** suppresses alerts by device, type, severity and daily window (for
+  exceptions; the global policy lives in Settings).
+- **Notification log** lists every delivery attempt (channel, status, error) for the last 7 days,
+  with a red badge counting failed deliveries and a link to each device.
 
 ## Analytics (`/analytics`)
 
@@ -61,10 +69,13 @@ control the sweep; **Acknowledge all** clears open security alerts.
 ## Settings (`/settings`)
 
 - **Network**: range to monitor, ping and scan intervals, the internet check (target, interval,
-  failure threshold, gateway override). Saving validates, records history and reloads the services.
-- **Interface**: dashboard title, auto-refresh, show offline devices.
-- **Alerts & notifications**: down / latency thresholds; ntfy push, email, webhook and Discord channels,
-  each with a **Send test** button.
+  failure threshold, gateway override), days of history to keep and days before a device is archived.
+  Saving validates, records history and reloads the services; **Reset** reloads the saved values.
+- **Interface**: dashboard title.
+- **Alerts & notifications**: down / latency thresholds; **What to notify** (device down, back online,
+  new device, security, scan complete) and quiet hours (local time, may wrap midnight; critical alerts
+  still notify); ntfy push, email (with SMTP server, port, username, password and STARTTLS), webhook
+  and Discord channels, each with a **Send test** button.
 - **History**: every configuration change with rollback.
 - **System**: restart the service (when allowed), reset monitoring data.
 
@@ -77,8 +88,8 @@ heartbeat.
 
 | Type | Meaning | Resolves when |
 |---|---|---|
-| Device offline | No answer for the configured threshold | The device answers again |
-| Device back online | Recovery notice | Informational |
+| Device offline | No answer for the configured threshold; only for devices whose **Alert when down** is on (phones, Apple devices and unknown hosts are off by default) | The device answers again |
+| Device back online | Recovery notice, one per down alert; recorded but not pushed unless enabled | Informational |
 | High latency | Response time above threshold | Latency normal for 5 minutes |
 | New device discovered | Unknown host joined the network | After 24 hours |
 | Performance … | Health score below threshold | Score recovers, or no data for a day |
