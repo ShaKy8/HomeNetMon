@@ -574,6 +574,10 @@ class PerformanceMonitor:
                 return
 
             with self.app.app_context():
+                if not device.alerts_on_down:
+                    # Health scores come from ICMP only; a phone that ignores pings while asleep
+                    # looks unhealthy. Devices that do not alert when down do not alert on health.
+                    return
                 health_score = performance_record.health_score or 0
                 responsiveness_score = performance_record.responsiveness_score or 0
                 reliability_score = performance_record.reliability_score or 0

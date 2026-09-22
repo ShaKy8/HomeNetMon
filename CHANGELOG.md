@@ -42,6 +42,9 @@ and had produced 22 duplicate device rows, and a pass over the pages found a doz
   second high-latency push is gone; recoveries in the first 15 minutes after a restart are
   recorded but not pushed; the scanner records a `new_device` alert per device and lets the first
   five notify.
+- Performance (health-score) alerts follow the same per-device rule: a device that does not alert
+  when down does not alert on ICMP-derived health either (the seeded rules used to silence every
+  performance alert; without them sleeping phones would have alerted within a minute).
 - The security scanner skips the host's own addresses instead of a hard-coded IP; a failed nmap
   run now logs the real error instead of "list indices must be integers".
 - Settings thresholds show the engine defaults (45 min / 1500 ms) instead of 3 / 1000.

@@ -316,3 +316,27 @@ class TestScanNotifications:
             notify_flags = [c.kwargs['notify'] for c in spy.call_args_list]
             assert notify_flags == [True] * 5 + [False] * 2
             assert Alert.query.filter_by(alert_type='new_device').count() == 7
+
+
+class TestPerformanceAlertsFollowThePolicy:
+
+    def test_silent_device_raises_no_performance_alert(self, app, db_session):
+        from services.performance_monitor import PerformanceMonitor
+        from models import PerformanceMetrics
+        with app.app_context():
+            app.alert_manager = AlertManager(app=app)
+            app.alert_manager.send_alert_notifications = lambda alert: None
+            monitor = PerformanceMonitor(app=app)
+            phone = _device(device_type='phone', last_seen=datetime.utcnow())
+            camera = _device(device_type='camera', ip_address='192.168.1.78', mac_address='00:ab:00:00:00:78',
+                             last_seen=datetime.utcnow())
+            def poor(d, minutes_ago):
+                return PerformanceMetrics(device_id=d.id, timestamp=datetime.utcnow() - timedelta(minutes=minutes_ago),
+                                          health_score=5.0, responsiveness_score=5.0, reliability_score=5.0)
+            # two consecutive poor periods are required before an alert
+            db.session.add_all([poor(phone, 30), poor(phone, 1), poor(camera, 30), poor(camera, 1)])
+            db.session.commit()
+            monitor._check_performance_alerts(phone, poor(phone, 0))
+            assert Alert.query.filter_by(device_id=phone.id, alert_type='performance').count() == 0
+            monitor._check_performance_alerts(camera, poor(camera, 0))
+            assert Alert.query.filter_by(device_id=camera.id, alert_type='performance').count() >= 1
