@@ -1,6 +1,8 @@
 from flask import Blueprint, request, jsonify, current_app
 from models import db, Configuration
 from config import Config
+from constants import DEFAULT_DEVICE_DOWN_MINUTES, DEFAULT_HIGH_LATENCY_MS
+from monitoring.notification_policy import DEFAULTS as NOTIFY_DEFAULTS, TYPE_KEYS as NOTIFY_TYPE_KEYS
 from api.rate_limited_endpoints import create_endpoint_limiter
 from core.error_handler import handle_errors, ResourceNotFoundError, DatabaseError, ValidationError
 
@@ -139,7 +141,9 @@ def get_network_config():
             'scan_interval': int(Configuration.get_value('scan_interval', str(Config.SCAN_INTERVAL))),
             'ping_timeout': float(Configuration.get_value('ping_timeout', str(Config.PING_TIMEOUT))),
             'max_workers': int(Configuration.get_value('max_workers', str(Config.MAX_WORKERS))),
-            'scan_excluded_ips': Configuration.get_value('scan_excluded_ips', '')
+            'scan_excluded_ips': Configuration.get_value('scan_excluded_ips', ''),
+            'data_retention_days': int(Configuration.get_value('data_retention_days', str(Config.DATA_RETENTION_DAYS))),
+            'stale_device_days': int(Configuration.get_value('stale_device_days', str(Config.STALE_DEVICE_DAYS))),
         }
 
         return jsonify(network_config)
@@ -231,6 +235,18 @@ def update_network_config():
                     return jsonify({'error': msg}), 400
                 updated_fields.append(key)
 
+        for key, label in (('data_retention_days', 'Days of monitoring history to keep'),
+                           ('stale_device_days', 'Days unseen before a device is archived')):
+            if key in data:
+                try:
+                    value = int(data[key])
+                except (TypeError, ValueError):
+                    return jsonify({'error': f'{key} must be a number'}), 400
+                ok, msg = _set(key, str(value), label)   # range enforced by the configuration service
+                if not ok:
+                    return jsonify({'error': msg}), 400
+                updated_fields.append(key)
+
         if 'scan_excluded_ips' in data:
             # Basic validation for IP addresses
             excluded_ips = data['scan_excluded_ips'].strip()
@@ -278,11 +294,22 @@ def get_alert_config():
             'webhook_url': Configuration.get_value('alert_webhook_url', ''),
             'ntfy_topic': Configuration.get_value('ntfy_topic', ''),
             'ntfy_server': Configuration.get_value('ntfy_server', 'https://ntfy.sh'),
-            'device_down_threshold': int(Configuration.get_value('device_down_threshold_minutes', '3')),
-            'high_latency_threshold': int(Configuration.get_value('high_latency_threshold_ms', '1000')),
+            'device_down_threshold': int(Configuration.get_value('device_down_threshold_minutes', str(DEFAULT_DEVICE_DOWN_MINUTES))),
+            'high_latency_threshold': int(Configuration.get_value('high_latency_threshold_ms', str(DEFAULT_HIGH_LATENCY_MS))),
             'discord_enabled': Configuration.get_value('alert_discord_enabled', 'false').lower() == 'true',
             'discord_webhook_url': Configuration.get_value('discord_webhook_url', ''),
+            # SMTP: runtime settings win, .env is the fallback; the password is write-only
+            'smtp_server': Configuration.get_value('smtp_server', Config.SMTP_SERVER or ''),
+            'smtp_port': int(Configuration.get_value('smtp_port', str(Config.SMTP_PORT or 587))),
+            'smtp_username': Configuration.get_value('smtp_username', Config.SMTP_USERNAME or ''),
+            'smtp_use_tls': Configuration.get_value('smtp_use_tls', str(bool(Config.SMTP_USE_TLS))).lower() == 'true',
+            'smtp_password_set': bool(Configuration.get_value('smtp_password', Config.SMTP_PASSWORD or '')),
         }
+        # What gets notified (alerts are always recorded); see monitoring/notification_policy.py
+        for key in NOTIFY_TYPE_KEYS:
+            alert_config[key] = Configuration.get_value(key, NOTIFY_DEFAULTS[key]).lower() == 'true'
+        for key in ('notify_quiet_hours_start', 'notify_quiet_hours_end'):
+            alert_config[key] = Configuration.get_value(key, '')
 
         return jsonify(alert_config)
 
@@ -387,6 +414,42 @@ def update_alert_config():
             except ValueError:
                 return jsonify({'error': 'High latency threshold must be a number'}), 400
 
+        for key in NOTIFY_TYPE_KEYS:
+            if key in data:
+                ok, msg = _set(key, str(data[key]).lower(), f'Notification policy: {key}')
+                if not ok:
+                    return jsonify({'error': msg}), 400
+                updated_fields.append(key)
+
+        if 'notify_quiet_hours_start' in data or 'notify_quiet_hours_end' in data:
+            start = str(data.get('notify_quiet_hours_start',
+                                 Configuration.get_value('notify_quiet_hours_start', '')) or '').strip()
+            end = str(data.get('notify_quiet_hours_end',
+                               Configuration.get_value('notify_quiet_hours_end', '')) or '').strip()
+            if (start == '') != (end == ''):
+                return jsonify({'error': 'Quiet hours need both a start and an end hour (or neither)'}), 400
+            for key, value in (('notify_quiet_hours_start', start), ('notify_quiet_hours_end', end)):
+                ok, msg = _set(key, value, 'Quiet hours (local time, 0-23; blank = off)')
+                if not ok:
+                    return jsonify({'error': msg}), 400
+                updated_fields.append(key)
+
+        for key, label in (('smtp_server', 'SMTP server host'), ('smtp_port', 'SMTP port'),
+                           ('smtp_username', 'SMTP username'), ('smtp_password', 'SMTP password')):
+            if key in data:
+                value = str(data[key] if data[key] is not None else '').strip()
+                if key == 'smtp_password' and value == '':
+                    continue        # blank password field = keep the stored one
+                ok, msg = _set(key, value, label)
+                if not ok:
+                    return jsonify({'error': msg}), 400
+                updated_fields.append(key)
+        if 'smtp_use_tls' in data:
+            ok, msg = _set('smtp_use_tls', str(data['smtp_use_tls']).lower(), 'Use STARTTLS for SMTP')
+            if not ok:
+                return jsonify({'error': msg}), 400
+            updated_fields.append('smtp_use_tls')
+
         return jsonify({
             'message': f'Updated {len(updated_fields)} alert configuration field(s)',
             'updated_fields': updated_fields
@@ -404,13 +467,15 @@ def test_email_config():
         from datetime import datetime
         data = request.get_json() or {}
 
-        # Use provided settings or current configuration
-        smtp_server = data.get('smtp_server') or Config.SMTP_SERVER
-        smtp_port = data.get('smtp_port') or Config.SMTP_PORT
-        smtp_username = data.get('smtp_username') or Config.SMTP_USERNAME
-        smtp_password = data.get('smtp_password') or Config.SMTP_PASSWORD
-        from_email = data.get('from_email') or Config.ALERT_FROM_EMAIL
-        to_emails = data.get('to_emails') or Config.ALERT_TO_EMAILS
+        # Use provided settings, else the saved runtime settings, else .env
+        smtp_server = data.get('smtp_server') or Configuration.get_value('smtp_server', Config.SMTP_SERVER)
+        smtp_port = data.get('smtp_port') or Configuration.get_value('smtp_port', Config.SMTP_PORT)
+        smtp_username = data.get('smtp_username') or Configuration.get_value('smtp_username', Config.SMTP_USERNAME)
+        smtp_password = data.get('smtp_password') or Configuration.get_value('smtp_password', Config.SMTP_PASSWORD)
+        from_email = data.get('from_email') or Configuration.get_value('alert_from_email', Config.ALERT_FROM_EMAIL)
+        to_emails = data.get('to_emails') or Configuration.get_value('alert_to_emails', None) or Config.ALERT_TO_EMAILS
+        if isinstance(to_emails, str):
+            to_emails = [e.strip() for e in to_emails.split(',') if e.strip()]
 
         if not all([smtp_server, smtp_username, smtp_password, from_email, to_emails]):
             return jsonify({'error': 'All email configuration fields are required'}), 400

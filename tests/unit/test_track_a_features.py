@@ -47,7 +47,7 @@ class TestNewDeviceAlerts:
         scanner = NetworkScanner(app=app)
         scanner._new_devices_found = [{'ip': '192.168.1.200', 'mac': '00:cd:00:00:00:01', 'hostname': 'newbie', 'device_type': 'phone', 'vendor': None}]
         with app.app_context():
-            scanner._create_new_device_alerts()
+            scanner._notify_scan_results(total_devices=1)
             alerts = Alert.query.filter_by(device_id=d.id, alert_type='new_device').all()
         assert len(alerts) == 1 and alerts[0].severity == 'info' and 'newbie' in alerts[0].message
 

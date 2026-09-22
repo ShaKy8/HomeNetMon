@@ -99,8 +99,8 @@ class ConfigurationService:
 
             # Email Configuration
             'smtp_server': ConfigValidationRule(
-                validator=self._validate_smtp_config,
-                error_message="SMTP server configuration is invalid"
+                validator=self._validate_host_or_ip,   # blank allowed; no connect test at save time
+                error_message="SMTP server must be a hostname or IP address"
             ),
             'smtp_port': ConfigValidationRule(
                 validator=lambda v: self._validate_integer_range(v, 1, 65535),
@@ -209,6 +209,18 @@ class ConfigurationService:
             'smtp_use_tls': ConfigValidationRule(
                 validator=self._validate_boolean,
                 error_message="Must be 'true' or 'false'"
+            ),
+            # Notification policy (monitoring/notification_policy.py)
+            **{key: ConfigValidationRule(validator=self._validate_boolean, error_message="Must be 'true' or 'false'")
+               for key in ('notify_device_down', 'notify_device_recovery', 'notify_new_device',
+                           'notify_security', 'notify_scan_complete')},
+            'notify_quiet_hours_start': ConfigValidationRule(
+                validator=self._validate_hour_or_blank,
+                error_message="Quiet hours start must be an hour 0-23 or blank"
+            ),
+            'notify_quiet_hours_end': ConfigValidationRule(
+                validator=self._validate_hour_or_blank,
+                error_message="Quiet hours end must be an hour 0-23 or blank"
             ),
             'debug': ConfigValidationRule(
                 validator=self._validate_boolean,
@@ -492,30 +504,11 @@ class ConfigurationService:
         except (ValueError, TypeError):
             return False
 
-    def _validate_smtp_config(self, server: str) -> bool:
-        """Validate SMTP server configuration"""
-        if not server:
-            return True  # Empty is valid (disables SMTP)
-
-        try:
-            # Basic format validation
-            if ':' in server:
-                host, port = server.split(':', 1)
-                port = int(port)
-            else:
-                host = server
-                port = 587
-
-            # Basic connectivity test (with timeout)
-            import socket
-            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            sock.settimeout(5)
-            result = sock.connect_ex((host, port))
-            sock.close()
-            return result == 0
-
-        except Exception:
-            return False
+    def _validate_hour_or_blank(self, value) -> bool:
+        text = str(value if value is not None else '').strip()
+        if text == '':
+            return True
+        return text.isdigit() and 0 <= int(text) <= 23
 
     def _validate_host_or_ip(self, value: str) -> bool:
         text = (value or '').strip()

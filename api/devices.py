@@ -429,7 +429,8 @@ def create_device():
         room_location=InputValidator.sanitize_string(data.get('room_location'), max_length=100) if data.get('room_location') else None,
         notes=InputValidator.sanitize_string(data.get('notes'), max_length=2000) if data.get('notes') else None,
         tags=Device.normalize_tags(data.get('tags')),
-        is_monitored=bool(data.get('is_monitored', True))
+        is_monitored=bool(data.get('is_monitored', True)),
+        alert_on_down=None if data.get('alert_on_down') is None else bool(data.get('alert_on_down')),
     )
 
     db.session.add(device)
@@ -448,7 +449,7 @@ def create_device():
 
 @devices_bp.route('/<int:device_id>', methods=['PUT', 'PATCH'])
 @create_endpoint_limiter('strict')
-@validate_request(allowed_fields=['ip_address', 'custom_name', 'device_type', 'device_group', 'room_location', 'device_priority', 'is_monitored', 'hostname', 'notes', 'tags'])
+@validate_request(allowed_fields=['ip_address', 'custom_name', 'device_type', 'device_group', 'room_location', 'device_priority', 'is_monitored', 'alert_on_down', 'hostname', 'notes', 'tags'])
 @handle_errors()
 def update_device(device_id):
     """Update device details with validation"""
@@ -480,7 +481,7 @@ def update_device(device_id):
         device.ip_address = new_ip
 
     # Update and validate allowed fields
-    allowed_fields = ['custom_name', 'device_type', 'device_group', 'room_location', 'device_priority', 'is_monitored', 'hostname', 'notes', 'tags']
+    allowed_fields = ['custom_name', 'device_type', 'device_group', 'room_location', 'device_priority', 'is_monitored', 'alert_on_down', 'hostname', 'notes', 'tags']
 
     for field in allowed_fields:
         if field in data:
@@ -504,6 +505,9 @@ def update_device(device_id):
                 value = data[field]
             elif field == 'is_monitored':
                 value = InputValidator.validate_boolean(data[field])
+            elif field == 'alert_on_down':
+                # null = inherit the type default (constants.ALERT_ON_DOWN_BY_TYPE); critical devices always alert
+                value = None if data[field] in (None, '', 'inherit') else InputValidator.validate_boolean(data[field])
             elif field == 'hostname':
                 value = InputValidator.validate_hostname(data[field]) if data[field] else None
             else:
@@ -789,6 +793,12 @@ def bulk_update_devices():
         if device_group is not None and len(device_group) > 100:
             raise ValidationError('device_group must be less than 100 characters', field='device_group')
         updates['device_group'] = device_group
+
+    if 'alert_on_down' in update_source:
+        alert_on_down = update_source['alert_on_down']
+        if alert_on_down is not None and not isinstance(alert_on_down, bool):
+            raise ValidationError('alert_on_down must be a boolean or null (inherit)', field='alert_on_down')
+        updates['alert_on_down'] = alert_on_down
 
     if 'device_type' in update_source:
         device_type = update_source['device_type']

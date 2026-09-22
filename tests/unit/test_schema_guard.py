@@ -22,4 +22,4 @@ def test_missing_columns_are_added_once(app, db_session):
 def test_devices_table_has_identification_columns(app, db_session):
     with app.app_context():
         cols = {r[1] for r in db.session.execute(text("PRAGMA table_info(devices)")).fetchall()}
-        assert {'notes', 'tags', 'mdns_services'} <= cols
+        assert {'notes', 'tags', 'mdns_services', 'alert_on_down'} <= cols

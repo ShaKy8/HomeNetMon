@@ -26,6 +26,17 @@ CGNAT_NETWORK = ipaddress.ip_network('100.64.0.0/10')
 # use this one value.
 DEVICE_DOWN_AFTER_SECONDS = 900
 
+# Alerting (monitoring/alerts.py; Settings reports the same defaults)
+DEFAULT_DEVICE_DOWN_MINUTES = 45        # regular devices; critical ones alert at 15
+DEFAULT_HIGH_LATENCY_MS = 1500
+# Device.alert_on_down inherits this per device_type when unset (None). Phones, Apple
+# devices and unidentified hosts sleep or rotate addresses; a "down" alert for them is
+# noise, not news. Critical devices (Device.is_critical) always alert.
+ALERT_ON_DOWN_BY_TYPE = {'phone': False, 'apple': False, 'unknown': False}
+# Recoveries created this soon after AlertManager starts are recorded but not pushed:
+# after a restart every device "recovers" in the first ping cycle.
+ALERT_STARTUP_GRACE_SECONDS = 900
+
 # Device status vocabulary (Device.status, dashboard filters, Socket.IO payloads)
 DEVICE_STATUS_UP = "up"
 DEVICE_STATUS_DOWN = "down"

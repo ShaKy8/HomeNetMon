@@ -539,8 +539,9 @@
 
 <div class="modern-card mt-4" id="notification-log-card">
     <div class="card-header d-flex justify-content-between align-items-center">
-        <h3 class="h6 mb-0"><i class="bi bi-send"></i> Notification log (7 days)</h3>
-        <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#notification-log" aria-expanded="false" aria-controls="notification-log" onclick="loadNotificationLog()">Show</button>
+        <h3 class="h6 mb-0"><i class="bi bi-send"></i> Notification log (7 days)
+            <span class="badge bg-danger ms-2" id="notification-failures-badge" hidden title="Failed deliveries in the last 7 days"></span></h3>
+        <button class="btn btn-sm btn-outline-secondary" type="button" id="notification-log-toggle" data-bs-toggle="collapse" data-bs-target="#notification-log" aria-expanded="false" aria-controls="notification-log" onclick="loadNotificationLog()">Show</button>
     </div>
     <div class="collapse" id="notification-log">
         <div class="card-body p-0">
@@ -579,7 +580,8 @@
                         <select class="form-select form-select-sm" id="sup-type"><option value="">Any type</option>
                             <option value="device_down">Device down</option><option value="device_recovery">Device recovery</option><option value="high_latency">High latency</option>
                             <option value="performance">Performance</option><option value="new_device">New device</option><option value="security_new_service">Security: new service</option>
-                            <option value="security_suspicious_port">Security: suspicious port</option><option value="security_vulnerability">Security: vulnerability</option></select></div>
+                            <option value="security_suspicious_port">Security: suspicious port</option><option value="wan_down">Internet down</option>
+                            <option value="gateway_down">Gateway down</option><option value="wan_recovery">Internet restored</option></select></div>
                     <div class="col-md-2"><label class="form-label small" for="sup-severity">Severity</label>
                         <select class="form-select form-select-sm" id="sup-severity"><option value="">Any</option><option value="info">Info</option><option value="warning">Warning</option><option value="critical">Critical</option></select></div>
                     <div class="col-md-3"><label class="form-label small" for="sup-start">Daily from (hour)</label><input type="number" class="form-control form-control-sm" id="sup-start" min="0" max="23" placeholder="all day"></div>
@@ -896,7 +898,7 @@ async function loadNotificationLog() {
         rows.innerHTML = list.map(n => `<tr>
             <td>${escapeHtml(new Date(n.sent_at).toLocaleString())}</td>
             <td>${escapeHtml(n.notification_type || '')}</td>
-            <td>${escapeHtml(n.device_name || '')}</td>
+            <td>${n.device_id ? `<a href="/device/${parseInt(n.device_id, 10)}">${escapeHtml(n.device_name || '')}</a>` : escapeHtml(n.device_name || '')}</td>
             <td>${escapeHtml(n.title || n.message || '')}</td>
             <td><span class="badge ${n.delivery_status === 'sent' || n.delivery_status === 'success' ? 'bg-success' : 'bg-danger'}">${escapeHtml(n.delivery_status || '')}</span></td>
             <td class="small text-muted">${escapeHtml(n.error_message || '')}</td>
@@ -907,10 +909,30 @@ async function loadNotificationLog() {
     }
 }
 
+async function loadNotificationFailures() {
+    const badge = document.getElementById('notification-failures-badge');
+    if (!badge) return;
+    try {
+        const data = await apiRequest('/api/notifications/history?hours=168&status=failed&per_page=1');
+        const failed = (data.pagination && data.pagination.total) || 0;
+        badge.textContent = `${failed} failed`;
+        badge.hidden = failed === 0;
+    } catch (error) {
+        badge.hidden = true;
+    }
+}
+
 let alertsManager = null;
 document.addEventListener('DOMContentLoaded', function() {
     alertsManager = new AlertsManager();
     window.alertsManager = alertsManager;
+    loadNotificationFailures();
+    const log = document.getElementById('notification-log');
+    const toggle = document.getElementById('notification-log-toggle');
+    if (log && toggle) {
+        log.addEventListener('shown.bs.collapse', () => { toggle.textContent = 'Hide'; });
+        log.addEventListener('hidden.bs.collapse', () => { toggle.textContent = 'Show'; });
+    }
 });
 
 // ---- Suppression rules (quiet hours) ----

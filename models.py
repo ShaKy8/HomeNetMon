@@ -46,6 +46,8 @@ class Device(db.Model):
     tags = db.Column(db.String(255))  # comma-separated labels; exposed as a list
     mdns_services = db.Column(db.String(500))  # comma-separated mDNS service types seen (e.g. _googlecast._tcp)
     is_monitored = db.Column(db.Boolean, default=True)
+    # None = inherit (constants.ALERT_ON_DOWN_BY_TYPE, critical devices always on); see alerts_on_down
+    alert_on_down = db.Column(db.Boolean, nullable=True)
     created_at = db.Column(db.DateTime, default=datetime.utcnow)
     updated_at = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     last_seen = db.Column(db.DateTime, index=True)  # Index for status checks and sorting
@@ -59,7 +61,32 @@ class Device(db.Model):
 
     @property
     def display_name(self):
-        return self.custom_name or self.hostname or self.ip_address
+        if self.custom_name or self.hostname or self.ip_address:
+            return self.custom_name or self.hostname or self.ip_address
+        # No address (cleared on DHCP reuse) and no name: say what little is known.
+        tail = self.mac_address[-5:] if self.mac_address else None
+        if tail and self.vendor:
+            return f"{self.vendor} {tail}"
+        return f"device {tail}" if tail else f"device #{self.id}"
+
+    @property
+    def is_critical(self):
+        """Infrastructure the household depends on: alerts sooner, and always alerts."""
+        ip = self.ip_address or ''
+        kind = (self.device_type or '').lower()
+        host = (self.hostname or '').lower()
+        return (ip.endswith(('.1', '.64')) or 'router' in kind or 'server' in kind
+                or 'nuc' in host or 'gateway' in host)
+
+    @property
+    def alerts_on_down(self):
+        """Effective "alert when down": explicit column, else critical, else the type default."""
+        if self.alert_on_down is not None:
+            return bool(self.alert_on_down)
+        if self.is_critical:
+            return True
+        from constants import ALERT_ON_DOWN_BY_TYPE
+        return ALERT_ON_DOWN_BY_TYPE.get((self.device_type or 'unknown').lower(), True)
 
     @property
     def tag_list(self):
@@ -316,6 +343,8 @@ class Device(db.Model):
             'notes': self.notes,
             'mdns_services': self.mdns_service_list,
             'is_monitored': self.is_monitored,
+            'alert_on_down': self.alert_on_down,
+            'alerts_on_down': self.alerts_on_down,
             'status': self.status,
             'active_alerts': self.active_alerts,
             'latest_response_time': latest.response_time if latest else None,
@@ -365,6 +394,8 @@ class Device(db.Model):
             'notes': self.notes,
             'mdns_services': self.mdns_service_list,
             'is_monitored': self.is_monitored,
+            'alert_on_down': self.alert_on_down,
+            'alerts_on_down': self.alerts_on_down,
             'status': status,
             'uptime_percentage': uptime_pct if uptime_pct is not None else 0,
             'active_alerts': alert_count,
@@ -1325,7 +1356,8 @@ def init_db(app):
         # tables, so each is added idempotently here (and by
         # scripts/db/v250_schema_cleanup.py during a maintenance window).
         _ensure_columns('configuration', {'version': 'INTEGER DEFAULT 1'})
-        _ensure_columns('devices', {'notes': 'TEXT', 'tags': 'VARCHAR(255)', 'mdns_services': 'VARCHAR(500)'})
+        _ensure_columns('devices', {'notes': 'TEXT', 'tags': 'VARCHAR(255)', 'mdns_services': 'VARCHAR(500)',
+                                    'alert_on_down': 'BOOLEAN'})
 
         seed_default_configuration()
 

@@ -396,6 +396,15 @@
                             <label class="form-check-label" for="edit-device-monitor">Monitor this device</label>
                         </div>
                     </div>
+                    <div class="mb-3">
+                        <label for="edit-device-alert" class="form-label">Alert when down</label>
+                        <select class="form-select" id="edit-device-alert">
+                            <option value="inherit">Default for this type</option>
+                            <option value="true">Always</option>
+                            <option value="false">Never</option>
+                        </select>
+                        <div class="form-text" id="edit-device-alert-help">Phones, Apple devices and unidentified hosts are silent by default; routers and servers always alert.</div>
+                    </div>
                 </form>
             </div>
             <div class="modal-footer border-secondary">
@@ -503,7 +512,8 @@ function updateDeviceInfo(device) {
     const label = { up: 'Online', warning: 'Online (slow)', down: 'Offline', unknown: 'Unknown' }[status] || status;
     statusElement.className = `status-indicator status-${status}`;
     statusElement.innerHTML = `<span class="status-dot status-${status}"></span><span>${escapeHtml(label)}</span>` +
-        (device.is_monitored ? '' : ' <span class="badge bg-secondary ms-2">not monitored</span>');
+        (device.is_monitored ? '' : ' <span class="badge bg-secondary ms-2">not monitored</span>') +
+        (device.is_monitored && device.alerts_on_down === false ? ' <span class="badge bg-secondary ms-2" title="No down alert for this device (change under Edit)">alerts off</span>' : '');
 }
 
 let ipHistorySummary = 'loading…';
@@ -810,6 +820,8 @@ function openEditModal() {
     document.getElementById('edit-device-group').value = currentDevice.device_group || '';
     document.getElementById('edit-device-room').value = currentDevice.room_location || '';
     document.getElementById('edit-device-monitor').checked = !!currentDevice.is_monitored;
+    document.getElementById('edit-device-alert').value = currentDevice.alert_on_down === null || currentDevice.alert_on_down === undefined
+        ? 'inherit' : String(!!currentDevice.alert_on_down);
     document.getElementById('edit-device-tags').value = (currentDevice.tags || []).join(', ');
     document.getElementById('edit-device-notes').value = currentDevice.notes || '';
 }
@@ -822,6 +834,7 @@ async function saveDeviceChanges() {
         device_group: document.getElementById('edit-device-group').value.trim(),
         room_location: document.getElementById('edit-device-room').value.trim(),
         is_monitored: document.getElementById('edit-device-monitor').checked,
+        alert_on_down: { inherit: null, true: true, false: false }[document.getElementById('edit-device-alert').value],
         tags: document.getElementById('edit-device-tags').value.trim(),
         notes: document.getElementById('edit-device-notes').value.trim()
     };

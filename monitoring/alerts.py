@@ -8,6 +8,8 @@ from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from models import db, Device, Alert, MonitoringData, Configuration, PerformanceMetrics
 from config import Config
+from constants import ALERT_STARTUP_GRACE_SECONDS, DEFAULT_DEVICE_DOWN_MINUTES, DEFAULT_HIGH_LATENCY_MS
+from monitoring.notification_policy import NotificationPolicy
 from services.push_notifications import push_service
 
 logger = logging.getLogger(__name__)
@@ -18,18 +20,14 @@ class AlertManager:
         self.is_running = False
         self._stop_event = threading.Event()
         self.correlation_service = None
-        # Optimized alert thresholds with adaptive logic
+        self._started_at = None
+        # Settings (device_down_threshold_minutes, high_latency_threshold_ms) override the
+        # regular / latency values at runtime; these are the code defaults.
         self.alert_thresholds = {
-            'device_down_minutes_critical': 15,   # Faster alert for critical devices
-            'device_down_minutes_regular': 45,    # Balanced threshold for regular devices
-            'high_latency_ms': 1500,              # More responsive to network issues
-            'packet_loss_threshold': 60,          # Earlier detection of connectivity issues
-            'consecutive_failures_required': 3,   # More responsive while reducing false positives
-            'recovery_validation_count': 2,       # Require 2 successful pings before recovery alert
-            'high_latency_consecutive_required': 3, # Consecutive high latency measurements
-            'anomaly_detection_threshold': 0.8,   # Threshold for statistical anomaly detection
-            'burst_alert_window_minutes': 10,     # Window for burst alert detection
-            'max_alerts_per_burst_window': 2      # Limit alerts per burst window
+            'device_down_minutes_critical': 15,
+            'device_down_minutes_regular': DEFAULT_DEVICE_DOWN_MINUTES,
+            'high_latency_ms': DEFAULT_HIGH_LATENCY_MS,
+            'consecutive_failures_required': 3,
         }
 
     @staticmethod
@@ -45,15 +43,13 @@ class AlertManager:
             return default
 
     def is_critical_device(self, device):
-        """Determine if a device is critical infrastructure (same logic as monitor)"""
-        return (
-            (device.ip_address or '').endswith('.1') or  # Router/Gateway
-            (device.ip_address or '').endswith('.64') or  # Server
-            ('router' in device.device_type.lower() if device.device_type else False) or
-            ('server' in device.device_type.lower() if device.device_type else False) or
-            ('nuc' in (device.hostname or '').lower()) or
-            ('gateway' in (device.hostname or '').lower())
-        )
+        """Critical infrastructure (one definition: Device.is_critical)."""
+        return device.is_critical
+
+    def _in_startup_grace(self):
+        """True for ALERT_STARTUP_GRACE_SECONDS after start_monitoring(): recoveries are recorded, not pushed."""
+        return self._started_at is not None and \
+            (datetime.utcnow() - self._started_at).total_seconds() < ALERT_STARTUP_GRACE_SECONDS
 
     def has_consecutive_failures(self, device, required_failures=3):
         """Check if device has the required number of consecutive monitoring failures"""
@@ -101,6 +97,8 @@ class AlertManager:
                 critical_minutes = min(regular_minutes, self.alert_thresholds['device_down_minutes_critical'])
 
                 for device in all_devices:
+                    if not device.alerts_on_down:
+                        continue        # phones, Apple devices, unknowns: presence is tracked, silence is policy
                     # Determine threshold based on device criticality
                     threshold_minutes = critical_minutes if self.is_critical_device(device) else regular_minutes
 
@@ -127,47 +125,15 @@ class AlertManager:
                                      f"consecutive_failures={consecutive}, uptime={device_uptime}, should_alert={should_alert}")
 
                     if should_alert:
-
-                        # Check if we already have an active alert for this device
-                        existing_alert = Alert.query.filter(
-                            Alert.device_id == device.id,
-                            Alert.alert_type == 'device_down',
-                            Alert.resolved == False
-                        ).first()
-
-                        logger.debug(f"Device {device.display_name}: last_seen={device.last_seen}, cutoff={cutoff_time}, existing_alert={'Yes' if existing_alert else 'No'}")
-
-                        if not existing_alert:
-                            device_type = "critical" if self.is_critical_device(device) else "regular"
-
-                            # Check correlation before creating alert
-                            message = f"{device_type.title()} device {device.display_name} ({device.ip_address}) has been down for over {threshold_minutes} minutes with {consecutive_failures_required}+ consecutive monitoring failures"
-
-                            severity = 'critical' if self.is_critical_device(device) else 'warning'
-                            if self._should_create_alert('device_down', device.id, message, severity):
-                                # Create new alert
-                                alert = Alert(
-                                    device_id=device.id,
-                                    alert_type='device_down',
-                                    severity=severity,
-                                    message=message
-                                )
-
-                                # Calculate priority score
-                                alert.calculate_and_update_priority(self.app)
-
-                                db.session.add(alert)
-                                db.session.commit()
-
-                                # Send notifications
-                                self.send_alert_notifications(alert)
-
-                                # Emit real-time update
-                                self._emit_alert_update(alert, 'created')
-
-                                logger.warning(f"ALERT CREATED: Device down alert for {device.display_name} (threshold: {threshold_minutes}min, type: {device_type}, last_seen: {device.last_seen}, cutoff: {cutoff_time})")
-                            else:
-                                logger.debug(f"ALERT SUPPRESSED: Device down alert for {device.display_name} due to correlation rules")
+                        device_type = "critical" if self.is_critical_device(device) else "regular"
+                        message = (f"{device_type.title()} device {device.display_name} ({device.ip_address}) has been down "
+                                   f"for over {threshold_minutes} minutes with {consecutive_failures_required}+ consecutive "
+                                   f"monitoring failures")
+                        severity = 'critical' if self.is_critical_device(device) else 'warning'
+                        # create_alert() dedups on the open alert and applies suppression rules
+                        alert = self.create_alert(device.id, 'device_down', severity, message)
+                        if alert is not None:
+                            logger.warning(f"ALERT CREATED: Device down alert for {device.display_name} (threshold: {threshold_minutes}min, type: {device_type}, last_seen: {device.last_seen}, cutoff: {cutoff_time})")
 
             except Exception as e:
                 logger.error(f"Error checking device down alerts: {e}")
@@ -200,45 +166,17 @@ class AlertManager:
                 ).all()
 
                 for device in devices:
-                    # Check if we already have an active alert
-                    existing_alert = Alert.query.filter(
-                        Alert.device_id == device.id,
-                        Alert.alert_type == 'high_latency',
-                        Alert.resolved == False
-                    ).first()
-
-                    if not existing_alert:
-                        # Get average latency for alert message
-                        avg_latency = db.session.query(
-                            db.func.avg(MonitoringData.response_time)
-                        ).filter(
-                            MonitoringData.device_id == device.id,
-                            MonitoringData.timestamp >= cutoff_time,
-                            MonitoringData.response_time.isnot(None)
-                        ).scalar()
-
-                        alert = Alert(
-                            device_id=device.id,
-                            alert_type='high_latency',
-                            severity='warning',
-                            message=f"Device {device.display_name} ({device.ip_address}) has high latency: {avg_latency:.0f}ms average"
-                        )
-
-                        # Calculate priority score
-                        alert.calculate_and_update_priority(self.app)
-
-                        db.session.add(alert)
-                        db.session.commit()
-
-                        # Send notifications
-                        self.send_alert_notifications(alert)
-
-                        # Emit real-time update
-                        self._emit_alert_update(alert, 'created')
-
-                        # Send enhanced push notification for high latency
-                        self._send_high_latency_push_notification(device, avg_latency)
-
+                    avg_latency = db.session.query(
+                        db.func.avg(MonitoringData.response_time)
+                    ).filter(
+                        MonitoringData.device_id == device.id,
+                        MonitoringData.timestamp >= cutoff_time,
+                        MonitoringData.response_time.isnot(None)
+                    ).scalar() or 0
+                    message = f"Device {device.display_name} ({device.ip_address}) has high latency: {avg_latency:.0f}ms average"
+                    # create_alert() dedups on the open alert, applies suppression rules and notifies once
+                    alert = self.create_alert(device.id, 'high_latency', 'warning', message)
+                    if alert is not None:
                         logger.warning(f"High latency alert created for {device.display_name}")
 
             except Exception as e:
@@ -257,22 +195,12 @@ class AlertManager:
         ).first()
         if existing:
             return None
-        now = datetime.utcnow()
-        recovery_alert = Alert(
-            device_id=device.id,
-            alert_type='device_recovery',
-            severity='info',
-            message=f"Device {device.display_name} ({device.ip_address}) is back online after being down",
-            resolved=True,  # informational
-            resolved_at=now,
-            created_at=now,
-        )
-        recovery_alert.calculate_and_update_priority(self.app)
-        db.session.add(recovery_alert)
-        db.session.flush()
-        self.send_alert_notifications(recovery_alert)
-        self._emit_alert_update(recovery_alert, 'created')
-        logger.info(f"Device recovery alert created for {device.display_name}")
+        recovery_alert = self.create_alert(
+            device.id, 'device_recovery', 'info',
+            f"Device {device.display_name} ({device.ip_address}) is back online after being down",
+            notify=not self._in_startup_grace(), resolved=True)
+        if recovery_alert is not None:
+            logger.info(f"Device recovery alert created for {device.display_name}")
         return recovery_alert
 
     def resolve_alerts(self, dry_run=False):
@@ -415,7 +343,12 @@ class AlertManager:
             to_setting = self.runtime_setting('alert_to_emails', None)
             to_emails = ([e.strip() for e in to_setting.split(',') if e.strip()]
                          if isinstance(to_setting, str) else (Config.ALERT_TO_EMAILS or []))
-            if not all([Config.SMTP_SERVER, Config.SMTP_USERNAME, Config.SMTP_PASSWORD, from_email, to_emails]):
+            smtp_server = self.runtime_setting('smtp_server', Config.SMTP_SERVER)
+            smtp_port = self.runtime_int('smtp_port', Config.SMTP_PORT or 587)
+            smtp_username = self.runtime_setting('smtp_username', Config.SMTP_USERNAME)
+            smtp_password = self.runtime_setting('smtp_password', Config.SMTP_PASSWORD)
+            smtp_use_tls = str(self.runtime_setting('smtp_use_tls', Config.SMTP_USE_TLS)).lower() == 'true'
+            if not all([smtp_server, smtp_username, smtp_password, from_email, to_emails]):
                 logger.debug("Email configuration incomplete, skipping email alert")
                 return False
 
@@ -445,10 +378,10 @@ This is an automated message from HomeNetMon.
             msg.attach(MIMEText(body, 'plain'))
 
             # Send email
-            server = smtplib.SMTP(Config.SMTP_SERVER, Config.SMTP_PORT, timeout=15)
-            if Config.SMTP_USE_TLS:
+            server = smtplib.SMTP(smtp_server, smtp_port, timeout=15)
+            if smtp_use_tls:
                 server.starttls()
-            server.login(Config.SMTP_USERNAME, Config.SMTP_PASSWORD)
+            server.login(smtp_username, smtp_password)
             text = msg.as_string()
             server.sendmail(from_email, to_emails, text)
             server.quit()
@@ -546,113 +479,108 @@ This is an automated message from HomeNetMon.
             return False
 
     def send_alert_notifications(self, alert):
-        """Send all configured alert notifications"""
+        """Notify every enabled channel about ``alert`` if the notification policy allows it.
+
+        The alert row already exists; this only decides who hears about it. The outcome
+        is written back to the alert (notification_status: sent / failed / none /
+        suppressed) so the Alerts page can show it.
+        """
         try:
-            # Check configuration for enabled notification methods
-            email_enabled = Configuration.get_value('alert_email_enabled', 'false').lower() == 'true'
-            webhook_enabled = Configuration.get_value('alert_webhook_enabled', 'false').lower() == 'true'
-            push_enabled = Configuration.get_value('push_notifications_enabled', 'false').lower() == 'true'
-            discord_enabled = Configuration.get_value('alert_discord_enabled', 'false').lower() == 'true'
+            allowed, reason = NotificationPolicy.load().allows(alert.alert_type, alert.severity)
+            if not allowed:
+                alert.notification_status = 'suppressed'
+                db.session.commit()
+                logger.info(f"Notification for {alert.alert_type} on device {alert.device_id} not sent: {reason}")
+                return False
 
-            if email_enabled:
-                self.send_email_alert(alert)
+            channels = {
+                'email': Configuration.get_value('alert_email_enabled', 'false').lower() == 'true',
+                'webhook': Configuration.get_value('alert_webhook_enabled', 'false').lower() == 'true',
+                'push': Configuration.get_value('push_notifications_enabled', 'false').lower() == 'true',
+                'discord': Configuration.get_value('alert_discord_enabled', 'false').lower() == 'true',
+            }
+            senders = {'email': self.send_email_alert, 'webhook': self.send_webhook_alert,
+                       'push': self.send_push_notification, 'discord': self.send_discord_alert}
+            results = {}
+            for name, enabled in channels.items():
+                if not enabled:
+                    continue
+                try:
+                    results[name] = bool(senders[name](alert))
+                except Exception as e:
+                    logger.error(f"{name} notification failed for alert {alert.id}: {e}")
+                    results[name] = False
 
-            if webhook_enabled:
-                self.send_webhook_alert(alert)
-
-            if push_enabled:
-                self.send_push_notification(alert)
-
-            if discord_enabled:
-                self.send_discord_alert(alert)
+            if not results:
+                alert.notification_status = 'none'
+            elif any(results.values()):
+                alert.notification_status = 'sent'
+                alert.notification_sent = True
+                alert.notification_count = (alert.notification_count or 0) + 1
+                alert.last_notification_at = datetime.utcnow()
+            else:
+                alert.notification_status = 'failed'
+            db.session.commit()
+            return alert.notification_status == 'sent'
 
         except Exception as e:
             logger.error(f"Error sending alert notifications: {e}")
+            return False
+
+    # alert_type -> (title prefix, ntfy priority, tags); severity may raise the priority
+    PUSH_STYLE = {
+        'device_down': ('🔴 Device Offline', 'high', 'warning,red_circle,rotating_light'),
+        'device_recovery': ('✅ Device Online', 'default', 'white_check_mark,green_circle'),
+        'high_latency': ('⚠️ High Latency', 'default', 'warning,yellow_circle,hourglass_not_done'),
+        'new_device': ('🆕 New Device', 'default', 'new,blue_circle,computer'),
+        'security_new_service': ('🔵 New open port', 'default', 'shield,lock'),
+        'security_suspicious_port': ('🟡 Suspicious port', 'high', 'shield,warning,lock'),
+        'wan_down': ('🌐 Internet down', 'urgent', 'rotating_light,globe_with_meridians'),
+        'gateway_down': ('🌐 Gateway unreachable', 'urgent', 'rotating_light,globe_with_meridians'),
+        'wan_recovery': ('🌐 Internet restored', 'default', 'white_check_mark,globe_with_meridians'),
+        'performance': ('📉 Performance degraded', 'default', 'chart_with_downwards_trend'),
+    }
+
+    @staticmethod
+    def _click_url(alert):
+        """Where a tap on the push lands: the device page, or the page that owns the alert type."""
+        base = (Config.BASE_URL or '').rstrip('/')
+        if alert.alert_type.startswith('security_'):
+            return f"{base}/security"
+        if alert.alert_type in ('wan_down', 'wan_recovery', 'gateway_down'):
+            return f"{base}/alerts"
+        return f"{base}/device/{alert.device_id}" if alert.device_id else f"{base}/alerts"
 
     def send_push_notification(self, alert):
-        """Send push notification for alert"""
+        """One ntfy push per alert, styled by type, deep-linked, logged with the alert id."""
         try:
+            push_service.update_config_from_database()     # Settings win over .env
             if not push_service.is_configured():
                 logger.debug("Push notifications not configured")
                 return False
-
             device = alert.device
-            dashboard_url = f"{Config.BASE_URL}"
-
-            if alert.alert_type == 'device_down':
-                success = push_service.send_device_down_alert(
-                    device_name=device.display_name,
-                    ip_address=device.ip_address,
-                    dashboard_url=dashboard_url
-                )
-            elif alert.alert_type == 'device_recovery':
-                # For device recovery, send a positive notification
-                title = f"✅ Device Online: {device.display_name}"
-                success = push_service.send_notification(
-                    title=title,
-                    message=alert.message,
-                    priority="default",
-                    tags="success,green_circle,check",
-                    click_url=dashboard_url
-                )
-            elif alert.alert_type == 'high_latency':
-                # For high latency, send a generic notification
-                title = f"⚠️ High Latency: {device.display_name}"
-                success = push_service.send_notification(
-                    title=title,
-                    message=alert.message,
-                    priority="default",
-                    tags="warning,yellow_circle,slow",
-                    click_url=dashboard_url
-                )
-            else:
-                # Generic alert
-                title = f"🚨 Alert: {device.display_name}"
-                success = push_service.send_notification(
-                    title=title,
-                    message=alert.message,
-                    priority="default",
-                    tags="warning,exclamation",
-                    click_url=dashboard_url
-                )
-
+            name = device.display_name if device else 'network'
+            prefix, priority, tags = self.PUSH_STYLE.get(alert.alert_type, ('🚨 Alert', 'default', 'warning,exclamation'))
+            if alert.severity == 'critical' and priority in ('default', 'low'):
+                priority = 'high'
+            success = push_service.send_notification(
+                title=f"{prefix}: {name}",
+                message=alert.message,
+                priority=priority,
+                tags=tags,
+                click_url=self._click_url(alert),
+                device_id=alert.device_id,
+                alert_id=alert.id,
+                notification_type=alert.alert_type,
+            )
             if success:
                 logger.info(f"Push notification sent for alert: {alert.alert_type}")
             else:
                 logger.error(f"Failed to send push notification for alert: {alert.alert_type}")
-
             return success
-
         except Exception as e:
             logger.error(f"Error sending push notification: {e}")
             return False
-
-    def _send_high_latency_push_notification(self, device, avg_latency):
-        """Send enhanced push notification for high latency"""
-        try:
-            dashboard_url = f"{Config.BASE_URL}"
-
-            # Update push service configuration from database
-            push_service.enabled = Configuration.get_value('push_notifications_enabled', 'false').lower() == 'true'
-            push_service.topic = Configuration.get_value('ntfy_topic', '')
-            push_service.server = Configuration.get_value('ntfy_server', 'https://ntfy.sh')
-
-            if push_service.is_configured():
-                success = push_service.send_high_latency_alert(
-                    device_name=device.display_name,
-                    ip_address=device.ip_address,
-                    avg_latency=avg_latency,
-                    dashboard_url=dashboard_url
-                )
-                if success:
-                    logger.info(f"Sent high latency push notification for {device.display_name}")
-                else:
-                    logger.warning(f"Failed to send high latency push notification for {device.display_name}")
-            else:
-                logger.debug("Push notifications not configured, skipping high latency notification")
-
-        except Exception as e:
-            logger.error(f"Error sending high latency push notification: {e}")
 
     def set_alert_pause(self, minutes):
         """Pause alert generation for specified minutes (called after bulk deletion)"""
@@ -673,10 +601,8 @@ This is an automated message from HomeNetMon.
         """Start the alert monitoring process with intelligent timing"""
         self.is_running = True
         self.alert_pause_until = None
+        self._started_at = datetime.utcnow()
         logger.info("Starting alert monitoring")
-
-        # Setup default suppression rules to reduce alert noise
-        self.setup_default_suppressions()
 
         # Clean up orphaned recovery alerts on startup. (Resolved-alert retention
         # is handled by services/retention.py.)
@@ -697,9 +623,6 @@ This is an automated message from HomeNetMon.
                 # Always resolve alerts (even when paused)
                 self.resolve_alerts()
 
-                # Run alert correlation and escalation
-                self.run_alert_correlation()
-
                 # Wait before next check - run much less frequently to reduce alert noise
                 # Check every 10 minutes instead of every 2 minutes
                 self._stop_event.wait(600)  # 10 minutes between checks
@@ -717,14 +640,15 @@ This is an automated message from HomeNetMon.
         self._stop_event.set()
         self.is_running = False
 
-    def create_alert(self, device_id, alert_type, severity, message, subtype=None, notify=True):
+    def create_alert(self, device_id, alert_type, severity, message, subtype=None, notify=True, resolved=False):
         """Create an alert through the shared pipeline: dedup, suppression rules,
-        correlation, priority, commit, notifications, WebSocket emit, rule engine.
+        correlation, priority, commit, notifications (per NotificationPolicy), WebSocket emit.
 
         Returns the new Alert, or None if an identical unresolved alert exists or a
         rule suppressed it. Must be called inside an app context. Every producer
-        (device down/latency/recovery, performance, security) uses this so
-        suppression windows and dedup apply uniformly.
+        (device down/latency/recovery, new device, performance, security, WAN) uses
+        this so suppression windows, dedup and the notification policy apply uniformly.
+        ``resolved=True`` records an informational, already-closed alert (recoveries).
         """
         existing = Alert.query.filter_by(device_id=device_id, alert_type=alert_type,
                                          alert_subtype=subtype, resolved=False).first()
@@ -737,6 +661,9 @@ This is an automated message from HomeNetMon.
 
         alert = Alert(device_id=device_id, alert_type=alert_type, alert_subtype=subtype,
                       severity=severity, message=message)
+        if resolved:
+            alert.resolved = True
+            alert.resolved_at = datetime.utcnow()
         try:
             alert.calculate_and_update_priority(self.app)
         except Exception as e:
@@ -798,30 +725,6 @@ This is an automated message from HomeNetMon.
             logger.error(f"Error checking alert suppression: {e}")
             return False
 
-    def run_alert_correlation(self):
-        """Run alert correlation and escalation checks"""
-        try:
-            if not self.correlation_service:
-                from services.alert_correlation import AlertCorrelationService
-                self.correlation_service = AlertCorrelationService(self.app)
-
-            self.correlation_service.correlate_and_escalate_alerts()
-
-        except Exception as e:
-            logger.error(f"Error running alert correlation: {e}")
-
-    def cleanup_duplicate_alerts(self):
-        """Clean up duplicate alerts (one-time operation)"""
-        try:
-            if not self.correlation_service:
-                from services.alert_correlation import AlertCorrelationService
-                self.correlation_service = AlertCorrelationService(self.app)
-
-            self.correlation_service.cleanup_duplicate_alerts()
-
-        except Exception as e:
-            logger.error(f"Error cleaning up duplicate alerts: {e}")
-
     def cleanup_orphaned_recovery_alerts(self):
         """Clean up orphaned recovery alerts that should be auto-resolved"""
         try:
@@ -861,116 +764,6 @@ This is an automated message from HomeNetMon.
                 self.app.emit_alert_update(alert, action)
         except Exception as e:
             logger.error(f"Error emitting alert update: {e}")
-
-    def setup_default_suppressions(self):
-        """Setup default alert suppression rules to reduce noise"""
-        try:
-            if not self.app:
-                return
-
-            with self.app.app_context():
-                from models import AlertSuppression
-
-                # Enhanced default suppression rules to dramatically reduce alert noise
-                default_suppressions = [
-                    {
-                        'name': 'Quiet Hours - Night Time',
-                        'description': 'Suppress non-critical alerts during night hours (11PM-7AM)',
-                        'enabled': True,
-                        'alert_type': None,  # All alert types
-                        'severity': 'info',  # Only info level alerts
-                        'daily_start_hour': 23,  # 11 PM
-                        'daily_end_hour': 7,   # 7 AM
-                        'suppression_type': 'silence'
-                    },
-                    {
-                        'name': 'Performance Warning Suppression',
-                        'description': 'Suppress performance warning alerts to reduce noise - only show critical performance issues',
-                        'enabled': True,
-                        'alert_type': 'performance',
-                        'severity': 'warning',
-                        'suppression_type': 'silence'
-                    },
-                    {
-                        'name': 'Performance Reliability Rate Limiting',
-                        'description': 'Limit performance reliability alerts to max 1 per device per hour',
-                        'enabled': True,
-                        'alert_type': 'performance',
-                        'alert_subtype': 'performance_reliability',
-                        'suppression_type': 'rate_limit',
-                        'rate_limit_window_minutes': 60,
-                        'max_alerts_per_window': 1
-                    },
-                    {
-                        'name': 'Performance Responsiveness Rate Limiting',
-                        'description': 'Limit performance responsiveness alerts to max 1 per device per hour',
-                        'enabled': True,
-                        'alert_type': 'performance',
-                        'alert_subtype': 'performance_responsiveness',
-                        'suppression_type': 'rate_limit',
-                        'rate_limit_window_minutes': 60,
-                        'max_alerts_per_window': 1
-                    },
-                    {
-                        'name': 'Recurring Performance Alert Suppression',
-                        'description': 'Suppress recurring performance alerts for same device within 4 hours',
-                        'enabled': True,
-                        'alert_type': 'performance',
-                        'suppression_type': 'duplicate_window',
-                        'duplicate_window_hours': 4
-                    },
-                    {
-                        'name': 'Anomaly Alert Suppression',
-                        'description': 'Suppress noisy anomaly detection alerts',
-                        'enabled': True,
-                        'alert_type': 'anomaly',
-                        'severity': None,  # All severities
-                        'suppression_type': 'silence'
-                    },
-                    {
-                        'name': 'Info Level Recovery Alert Suppression',
-                        'description': 'Suppress info-level recovery alerts during business hours to reduce noise',
-                        'enabled': True,
-                        'alert_type': 'device_recovery',
-                        'severity': 'info',
-                        'daily_start_hour': 8,   # 8 AM
-                        'daily_end_hour': 18,    # 6 PM
-                        'suppression_type': 'silence'
-                    },
-                    {
-                        'name': 'Performance Alert Burst Protection',
-                        'description': 'Prevent performance alert storms - max 3 performance alerts per device per 30 minutes',
-                        'enabled': True,
-                        'alert_type': 'performance',
-                        'suppression_type': 'burst_protection',
-                        'burst_window_minutes': 30,
-                        'max_alerts_per_burst': 3
-                    }
-                ]
-
-                # Filter to columns that actually exist on the model. Some seed
-                # rules above declare fields like `alert_subtype`,
-                # `rate_limit_window_minutes`, `duplicate_window_hours` etc. that
-                # were aspirational suppression features never implemented. Passing
-                # them to the constructor raises TypeError and prevents ANY rule
-                # from being seeded.
-                valid_columns = set(AlertSuppression.__table__.columns.keys())
-
-                for suppression_data in default_suppressions:
-                    existing = AlertSuppression.query.filter_by(name=suppression_data['name']).first()
-                    if not existing:
-                        filtered = {k: v for k, v in suppression_data.items() if k in valid_columns}
-                        suppression = AlertSuppression(**filtered)
-                        db.session.add(suppression)
-                        logger.info(f"Created default suppression rule: {suppression_data['name']}")
-
-                db.session.commit()
-
-        except Exception as e:
-            logger.error(f"Error setting up default suppression rules: {e}")
-            if self.app:
-                with self.app.app_context():
-                    db.session.rollback()
 
     def reload_config(self):
         """Reload configuration for hot-reload support"""

@@ -10,6 +10,7 @@ from manuf import manuf
 from models import db, Device, Configuration
 from config import Config
 from services.push_notifications import push_service
+from monitoring.notification_policy import NotificationPolicy
 
 logger = logging.getLogger(__name__)
 
@@ -526,7 +527,7 @@ class NetworkScanner:
                     self._emit_scan_progress(95, 'Finalizing results...', len(all_devices), len(self._new_devices_found))
 
                     # Send push notifications for scan completion and new devices
-                    self._send_scan_completion_notifications(len(all_devices))
+                    self._notify_scan_results(len(all_devices))
 
                     # Emit final 100% completion
                     self._emit_scan_progress(100, 'Scan completed successfully!', len(all_devices), len(self._new_devices_found))
@@ -779,87 +780,42 @@ class NetworkScanner:
             logger.error(f"Error processing device {device_info.get('ip')} (MAC: {device_info.get('mac')}): {e}")
             db.session.rollback()
 
-    def _create_new_device_alerts(self):
-        """Record an informational alert for each device first seen in this scan.
+    def _notify_scan_results(self, total_devices):
+        """Record a new_device alert per device first seen in this scan, and announce the scan.
 
-        The push notification alone left no trace in the UI; an Alert row shows on
-        /alerts and can be acknowledged. Uses the shared factory (dedup/suppression).
+        Alerts go through AlertManager.create_alert (dedup, suppression, notification
+        policy); the first five new devices may push, the rest are recorded silently.
+        The "scan complete" push is off unless Settings enables notify_scan_complete.
         """
-        manager = getattr(self.app, 'alert_manager', None)
-        if manager is None or not self._new_devices_found:
-            return
-        for info in self._new_devices_found:
-            try:
-                device = None
-                if info.get('mac'):
-                    device = Device.query.filter_by(mac_address=info['mac']).first()
-                if device is None and info.get('ip'):
-                    device = Device.query.filter_by(ip_address=info['ip']).first()
-                if device is None:
-                    continue
-                label = info.get('hostname') or info.get('ip')
-                manager.create_alert(device.id, 'new_device', 'info',
-                                     f"New device joined the network: {label} ({info.get('ip')}, {info.get('device_type') or 'unknown type'})",
-                                     notify=False)  # the push below already covers notification
-            except Exception as e:
-                logger.debug(f"Could not record new-device alert for {info.get('ip')}: {e}")
-
-    def _send_scan_completion_notifications(self, total_devices):
-        """Send push notifications for scan completion and new devices"""
         try:
             with self.app.app_context():
-                # Get dashboard URL
-                dashboard_url = f"{Config.BASE_URL}"
-
-                # Send individual notifications for new devices (limit to 5 to avoid spam)
+                manager = getattr(self.app, 'alert_manager', None)
                 new_device_count = len(self._new_devices_found)
-                devices_to_notify = self._new_devices_found[:5]  # Limit to first 5
+                if manager is not None:
+                    for index, info in enumerate(self._new_devices_found):
+                        try:
+                            device = None
+                            if info.get('mac'):
+                                device = Device.query.filter_by(mac_address=info['mac']).first()
+                            if device is None and info.get('ip'):
+                                device = Device.query.filter_by(ip_address=info['ip']).first()
+                            if device is None:
+                                continue
+                            label = info.get('hostname') or info.get('ip')
+                            manager.create_alert(
+                                device.id, 'new_device', 'info',
+                                f"New device joined the network: {label} ({info.get('ip')}, {info.get('device_type') or 'unknown type'})",
+                                notify=index < 5)
+                        except Exception as e:
+                            logger.debug(f"Could not record new-device alert for {info.get('ip')}: {e}")
 
-                self._create_new_device_alerts()
-                for device_info in devices_to_notify:
-                    device_name = device_info['hostname'] or device_info['ip']
-                    success = push_service.send_new_device_alert(
-                        device_name=device_name,
-                        ip_address=device_info['ip'],
-                        device_type=device_info['device_type'],
-                        dashboard_url=dashboard_url
-                    )
-                    if success:
-                        logger.info(f"Sent new device notification for {device_name}")
-
-                # Send scan completion notification
-                success = push_service.send_network_scan_complete(
-                    new_devices=new_device_count,
-                    total_devices=total_devices,
-                    dashboard_url=dashboard_url
-                )
-                if success:
-                    logger.info(f"Sent scan completion notification: {new_device_count} new, {total_devices} total")
-
-                # If more than 5 new devices, send a summary notification
-                if new_device_count > 5:
-                    summary_title = f"📱 {new_device_count - 5} More New Devices"
-                    summary_message = f"Found {new_device_count - 5} additional new devices. Check the dashboard for full details."
-                    push_service.send_notification(
-                        title=summary_title,
-                        message=summary_message,
-                        priority="low",
-                        tags="information_source,blue_circle",
-                        click_url=dashboard_url
-                    )
-
+                if NotificationPolicy.load().allows_event('scan_complete'):
+                    push_service.update_config_from_database()
+                    if push_service.send_network_scan_complete(new_devices=new_device_count, total_devices=total_devices,
+                                                               dashboard_url=f"{Config.BASE_URL}"):
+                        logger.info(f"Sent scan completion notification: {new_device_count} new, {total_devices} total")
         except Exception as e:
-            logger.error(f"Error sending scan completion notifications: {e}")
-
-    def _get_push_service_config(self):
-        """Update push service configuration from database"""
-        try:
-            with self.app.app_context():
-                push_service.enabled = Configuration.get_value('push_notifications_enabled', 'false').lower() == 'true'
-                push_service.topic = Configuration.get_value('ntfy_topic', '')
-                push_service.server = Configuration.get_value('ntfy_server', 'https://ntfy.sh')
-        except Exception as e:
-            logger.error(f"Error updating push service config: {e}")
+            logger.error(f"Error sending scan notifications: {e}")
 
     def start_continuous_scan(self):
         """Start continuous network scanning"""
@@ -867,9 +823,6 @@ class NetworkScanner:
             self.is_running = True
 
             logger.info("Starting continuous network scanning")
-
-            # Update push service configuration
-            self._get_push_service_config()
 
             # Perform initial scan
             self.scan_network()

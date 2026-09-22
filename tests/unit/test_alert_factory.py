@@ -97,7 +97,7 @@ class TestProducersUseTheFactory:
         with app.app_context():
             assert scanner.create_security_alert(sa) is not None
         args, kwargs = fake_manager.create_alert.call_args
-        assert args[1] == 'security_new_service' and kwargs['subtype'] == 'port_22' and kwargs['notify'] is False
+        assert args[1] == 'security_new_service' and kwargs['subtype'] == 'port_22' and kwargs['notify'] is True
 
 
 class TestSecurityLifecycle:

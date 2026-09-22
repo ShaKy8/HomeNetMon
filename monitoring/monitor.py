@@ -282,16 +282,8 @@ class DeviceMonitor:
         return False
 
     def is_critical_device(self, device):
-        """Determine if a device is critical infrastructure"""
-        # Critical device criteria
-        return (
-            (device.ip_address or '').endswith('.1') or  # Router/Gateway
-            (device.ip_address or '').endswith('.64') or  # Server
-            ('router' in device.device_type.lower() if device.device_type else False) or
-            ('server' in device.device_type.lower() if device.device_type else False) or
-            ('nuc' in (device.hostname or '').lower()) or
-            ('gateway' in (device.hostname or '').lower())
-        )
+        """Critical infrastructure (one definition: Device.is_critical)."""
+        return device.is_critical
 
     def archive_stale_devices(self):
         """Stop pinging devices that have not been seen for `stale_device_days`.

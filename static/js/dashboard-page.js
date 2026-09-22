@@ -563,8 +563,11 @@ function createDeviceRow(device) {
                 <button class="btn btn-sm btn-outline-light" onclick="openDeviceDetails(${device.id})">
                     <i class="bi bi-eye"></i>
                 </button>
-                <button class="btn btn-sm btn-outline-light" onclick="toggleMonitoring(${device.id}, event)">
+                <button class="btn btn-sm btn-outline-light" onclick="toggleMonitoring(${device.id}, event)" title="${device.is_monitored ? 'Stop monitoring' : 'Start monitoring'}">
                     <i class="bi bi-power"></i>
+                </button>
+                <button class="btn btn-sm ${device.alerts_on_down ? 'btn-outline-light' : 'btn-outline-secondary'}" onclick="toggleAlertOnDown(${device.id}, event)" title="${device.alerts_on_down ? 'Alerts when down (click to silence)' : 'No down alert (click to enable)'}">
+                    <i class="bi ${device.alerts_on_down ? 'bi-bell' : 'bi-bell-slash'}"></i>
                 </button>
             </td>
         </tr>
@@ -901,6 +904,19 @@ async function toggleMonitoring(deviceId, ev) {
         await loadDevices();
     } catch (error) {
         showError(`Could not update monitoring: ${error.message}`);
+    }
+}
+
+// Per-device "alert when down": an explicit true/false overrides the type default
+async function toggleAlertOnDown(deviceId, ev) {
+    if (ev && typeof ev.stopPropagation === 'function') ev.stopPropagation();
+    const device = devicesData.find(d => d.id === deviceId);
+    if (!device) return;
+    try {
+        await apiRequest(`/api/devices/${deviceId}`, { method: 'PUT', body: { alert_on_down: !device.alerts_on_down } });
+        await loadDevices();
+    } catch (error) {
+        showError(`Could not update alerting: ${error.message}`);
     }
 }
 

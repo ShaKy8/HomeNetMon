@@ -99,7 +99,10 @@ class PushNotificationService:
         tags: Optional[str] = None,
         click_url: Optional[str] = None,
         icon_url: Optional[str] = None,
-        retry_count: int = 3
+        retry_count: int = 3,
+        device_id: Optional[int] = None,
+        alert_id: Optional[int] = None,
+        notification_type: Optional[str] = None,
     ) -> bool:
         """Send a push notification
 
@@ -160,13 +163,13 @@ class PushNotificationService:
 
                 if response.status_code == 200:
                     logger.info(f"Push notification sent successfully: {title} (attempt {attempt + 1})")
-                    self._log_notification(title, message, priority, tags, 'success')
+                    self._log_notification(title, message, priority, tags, 'success', device_id=device_id, alert_id=alert_id, notification_type=notification_type)
                     return True
                 else:
                     error_msg = f"HTTP {response.status_code}"
                     if attempt == retry_count - 1:  # Last attempt
                         logger.error(f"Failed to send push notification after {retry_count} attempts: {error_msg}")
-                        self._log_notification(title, message, priority, tags, 'failed', error_msg)
+                        self._log_notification(title, message, priority, tags, 'failed', error_msg, device_id=device_id, alert_id=alert_id, notification_type=notification_type)
                         return False
                     else:
                         logger.debug(f"Push notification attempt {attempt + 1} failed: {error_msg}, retrying...")
@@ -177,11 +180,11 @@ class PushNotificationService:
                     # Network connectivity issue - don't spam logs with retries
                     if attempt == 0:  # Only log on first attempt
                         logger.warning(f"Push notification failed due to network connectivity: {error_msg}")
-                    self._log_notification(title, message, priority, tags, 'failed', f"Network unreachable (attempt {attempt + 1})")
+                    self._log_notification(title, message, priority, tags, 'failed', f"Network unreachable (attempt {attempt + 1})", device_id=device_id, alert_id=alert_id, notification_type=notification_type)
                     return False  # Don't retry network connectivity issues
                 elif attempt == retry_count - 1:  # Last attempt
                     logger.error(f"Failed to send push notification after {retry_count} attempts: {error_msg}")
-                    self._log_notification(title, message, priority, tags, 'failed', error_msg)
+                    self._log_notification(title, message, priority, tags, 'failed', error_msg, device_id=device_id, alert_id=alert_id, notification_type=notification_type)
                     return False
                 else:
                     logger.debug(f"Push notification attempt {attempt + 1} failed: {error_msg}, retrying...")
@@ -190,7 +193,7 @@ class PushNotificationService:
                 error_msg = str(e)
                 if attempt == retry_count - 1:  # Last attempt
                     logger.error(f"Unexpected error sending push notification after {retry_count} attempts: {error_msg}")
-                    self._log_notification(title, message, priority, tags, 'failed', error_msg)
+                    self._log_notification(title, message, priority, tags, 'failed', error_msg, device_id=device_id, alert_id=alert_id, notification_type=notification_type)
                     return False
                 else:
                     logger.debug(f"Push notification attempt {attempt + 1} failed: {error_msg}, retrying...")
@@ -201,46 +204,6 @@ class PushNotificationService:
                 time.sleep(0.5 * (2 ** attempt))
 
         return False
-
-    def send_device_down_alert(self, device_name: str, ip_address: str, dashboard_url: str = None) -> bool:
-        """Send notification when a device goes down"""
-        title = f"🔴 Device Offline: {device_name}"
-        message = f"Device {device_name} ({ip_address}) is no longer responding to ping requests."
-
-        return self.send_notification(
-            title=title,
-            message=message,
-            priority="high",
-            tags="warning,red_circle,rotating_light",
-            click_url=dashboard_url
-        )
-
-    def send_device_up_alert(self, device_name: str, ip_address: str, dashboard_url: str = None) -> bool:
-        """Send notification when a device comes back online"""
-        title = f"🟢 Device Online: {device_name}"
-        message = f"Device {device_name} ({ip_address}) is back online and responding."
-
-        return self.send_notification(
-            title=title,
-            message=message,
-            priority="default",
-            tags="white_check_mark,green_circle",
-            click_url=dashboard_url
-        )
-
-    def send_new_device_alert(self, device_name: str, ip_address: str, device_type: str = None, dashboard_url: str = None) -> bool:
-        """Send notification when a new device is discovered"""
-        title = f"🆕 New Device: {device_name}"
-        device_type_text = f" ({device_type})" if device_type else ""
-        message = f"New device discovered: {device_name} ({ip_address}){device_type_text}"
-
-        return self.send_notification(
-            title=title,
-            message=message,
-            priority="default",
-            tags="new,blue_circle,computer",
-            click_url=dashboard_url
-        )
 
     def send_network_scan_complete(self, new_devices: int, total_devices: int, dashboard_url: str = None) -> bool:
         """Send notification when network scan completes"""
@@ -258,38 +221,8 @@ class PushNotificationService:
             message=message,
             priority="low",
             tags=tags,
-            click_url=dashboard_url
-        )
-
-    def send_high_latency_alert(self, device_name: str, ip_address: str, avg_latency: float, dashboard_url: str = None) -> bool:
-        """Send notification for high latency alert"""
-        title = f"⚠️ High Latency: {device_name}"
-        message = f"Device {device_name} ({ip_address}) has high network latency: {avg_latency:.0f}ms average."
-
-        return self.send_notification(
-            title=title,
-            message=message,
-            priority="default",
-            tags="warning,yellow_circle,hourglass_not_done",
-            click_url=dashboard_url
-        )
-
-    def send_security_alert(self, device_name: str, ip_address: str, vulnerability: str, risk_score: float, dashboard_url: str = None) -> bool:
-        """Send notification for security vulnerability"""
-        risk_emoji = "🔴" if risk_score >= 7.0 else "🟡" if risk_score >= 4.0 else "🔵"
-
-        title = f"{risk_emoji} Security Alert: {device_name}"
-        message = f"Security issue detected on {device_name} ({ip_address}): {vulnerability} (Risk: {risk_score:.1f}/10)"
-
-        priority = "high" if risk_score >= 7.0 else "default"
-        tags = "shield,warning,lock"
-
-        return self.send_notification(
-            title=title,
-            message=message,
-            priority=priority,
-            tags=tags,
-            click_url=dashboard_url
+            click_url=dashboard_url,
+            notification_type='scan_complete',
         )
 
     def send_test_notification(self) -> bool:
@@ -301,40 +234,21 @@ class PushNotificationService:
             title=title,
             message=message,
             priority="default",
-            tags="test_tube,white_check_mark"
+            tags="test_tube,white_check_mark",
+            notification_type='test',
         )
 
     def _log_notification(self, title: str, message: str, priority: str, tags: str,
                          delivery_status: str, error_message: str = None,
-                         device_id: int = None, notification_type: str = None):
+                         device_id: int = None, notification_type: str = None, alert_id: int = None):
         """Log notification to history table"""
         try:
             from models import NotificationHistory
 
-            # Extract notification type from title if not provided
-            if not notification_type:
-                if "Device Offline" in title:
-                    notification_type = "device_down"
-                elif "Device Online" in title:
-                    notification_type = "device_up"
-                elif "New Device" in title:
-                    notification_type = "new_device"
-                elif "Network Scan" in title:
-                    notification_type = "scan_complete"
-                elif "High Latency" in title:
-                    notification_type = "high_latency"
-                elif "AI Alert" in title:
-                    notification_type = "anomaly"
-                elif "Security Alert" in title:
-                    notification_type = "security"
-                elif "Test" in title:
-                    notification_type = "test"
-                else:
-                    notification_type = "general"
-
             NotificationHistory.log_notification(
                 device_id=device_id,
-                notification_type=notification_type,
+                alert_id=alert_id,
+                notification_type=notification_type or 'general',
                 title=title,
                 message=message,
                 priority=priority,

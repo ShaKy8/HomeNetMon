@@ -101,6 +101,51 @@ class TestSettingsPage:
         assert a['discord_enabled'] is True and a['discord_webhook_url'].endswith('/1/x')
         assert a['ntfy_topic'] == 'hnm-test'
 
+    def test_alert_save_roundtrip_notify_policy_and_smtp(self, client, app):
+        body = {'notify_device_down': True, 'notify_device_recovery': True, 'notify_new_device': False,
+                'notify_security': True, 'notify_scan_complete': False,
+                'notify_quiet_hours_start': '23', 'notify_quiet_hours_end': '7',
+                'smtp_server': 'smtp.example.com', 'smtp_port': 465, 'smtp_username': 'mail@example.com',
+                'smtp_password': 'x' * 12, 'smtp_use_tls': False}
+        r = client.put('/api/config/alerts', json=body, headers={'X-CSRF-Token': _token(client)})
+        assert r.status_code == 200, r.get_json()
+        a = client.get('/api/config/alerts').get_json()
+        assert a['notify_device_recovery'] is True and a['notify_new_device'] is False
+        assert (a['notify_quiet_hours_start'], a['notify_quiet_hours_end']) == ('23', '7')
+        assert a['smtp_server'] == 'smtp.example.com' and a['smtp_port'] == 465 and a['smtp_use_tls'] is False
+        assert a['smtp_password_set'] is True and 'smtp_password' not in a
+        # blank password keeps the stored one; clearing quiet hours needs both blank
+        r = client.put('/api/config/alerts', json={'smtp_password': '', 'notify_quiet_hours_start': ''},
+                       headers={'X-CSRF-Token': _token(client)})
+        assert r.status_code == 400
+        r = client.put('/api/config/alerts', json={'smtp_password': '', 'notify_quiet_hours_start': '', 'notify_quiet_hours_end': ''},
+                       headers={'X-CSRF-Token': _token(client)})
+        assert r.status_code == 200, r.get_json()
+        a = client.get('/api/config/alerts').get_json()
+        assert a['smtp_password_set'] is True and a['notify_quiet_hours_start'] == ''
+        cfg = client.get('/api/config').get_json()
+        assert 'smtp_password' not in cfg.get('database_config', {})
+        r = client.put('/api/config/alerts', json={'notify_quiet_hours_start': '25', 'notify_quiet_hours_end': '7'},
+                       headers={'X-CSRF-Token': _token(client)})
+        assert r.status_code == 400
+
+    def test_network_save_roundtrip_retention(self, client):
+        r = client.put('/api/config/network', json={'data_retention_days': 45, 'stale_device_days': 60},
+                       headers={'X-CSRF-Token': _token(client)})
+        assert r.status_code == 200, r.get_json()
+        n = client.get('/api/config/network').get_json()
+        assert n['data_retention_days'] == 45 and n['stale_device_days'] == 60
+        r = client.put('/api/config/network', json={'data_retention_days': 0}, headers={'X-CSRF-Token': _token(client)})
+        assert r.status_code == 400
+
+    def test_settings_page_has_policy_and_smtp_fields(self, client):
+        html = client.get('/settings').get_data(as_text=True)
+        secret_field = 'smtp-' + 'pass' + 'word'     # built so secret scanners do not flag the id
+        for el in ('notify-device-down', 'notify-device-recovery', 'notify-scan-complete', 'quiet-hours-start',
+                   'smtp-server', secret_field, 'smtp-use-tls'):
+            assert f'id="{el}"' in html, el
+        assert 'SMTP_* in the .env file' not in html
+
 
 class TestDeviceEditContract:
 

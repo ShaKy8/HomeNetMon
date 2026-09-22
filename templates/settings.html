@@ -519,6 +519,42 @@
                 </div>
             </div>
 
+            <h3 class="h6 text-uppercase text-muted mt-4">What to notify</h3>
+            <div class="form-text mb-2">Every alert is recorded on the Alerts page. These switches decide which ones also reach push, email, webhook and Discord. Per-device "Alert when down" lives on each device page; phones, Apple devices and unidentified hosts are off by default.</div>
+            <div class="row g-2">
+                <div class="col-md-6 form-check form-switch ms-2">
+                    <input class="form-check-input" type="checkbox" id="notify-device-down">
+                    <label class="form-check-label" for="notify-device-down">Device down</label>
+                </div>
+                <div class="col-md-6 form-check form-switch ms-2">
+                    <input class="form-check-input" type="checkbox" id="notify-device-recovery">
+                    <label class="form-check-label" for="notify-device-recovery">Device back online</label>
+                </div>
+                <div class="col-md-6 form-check form-switch ms-2">
+                    <input class="form-check-input" type="checkbox" id="notify-new-device">
+                    <label class="form-check-label" for="notify-new-device">New device joined</label>
+                </div>
+                <div class="col-md-6 form-check form-switch ms-2">
+                    <input class="form-check-input" type="checkbox" id="notify-security">
+                    <label class="form-check-label" for="notify-security">Security (new or suspicious open port)</label>
+                </div>
+                <div class="col-md-6 form-check form-switch ms-2">
+                    <input class="form-check-input" type="checkbox" id="notify-scan-complete">
+                    <label class="form-check-label" for="notify-scan-complete">Scan complete summary</label>
+                </div>
+            </div>
+            <div class="row g-3 mt-1">
+                <div class="col-md-6">
+                    <label for="quiet-hours-start" class="form-label">Quiet hours start</label>
+                    <input type="number" class="form-control" id="quiet-hours-start" min="0" max="23" placeholder="e.g. 23">
+                </div>
+                <div class="col-md-6">
+                    <label for="quiet-hours-end" class="form-label">Quiet hours end</label>
+                    <input type="number" class="form-control" id="quiet-hours-end" min="0" max="23" placeholder="e.g. 7">
+                </div>
+            </div>
+            <div class="form-text">Local server time, hour 0-23; may wrap midnight. Leave both blank to disable. Critical alerts (router, servers, internet down) still notify during quiet hours.</div>
+
             <h3 class="h6 text-uppercase text-muted mt-4">Push (ntfy)</h3>
             <div class="form-check form-switch mb-2">
                 <input class="form-check-input" type="checkbox" id="push-enabled">
@@ -551,7 +587,29 @@
                     <input type="text" class="form-control" id="email-to" placeholder="you@example.com, other@example.com">
                 </div>
             </div>
-            <div class="form-text">SMTP server and credentials come from SMTP_* in the .env file.</div>
+            <div class="row g-3 mt-1">
+                <div class="col-md-4">
+                    <label for="smtp-server" class="form-label">SMTP server</label>
+                    <input type="text" class="form-control" id="smtp-server" placeholder="smtp.gmail.com" autocomplete="off">
+                </div>
+                <div class="col-md-2">
+                    <label for="smtp-port" class="form-label">Port</label>
+                    <input type="number" class="form-control" id="smtp-port" min="1" max="65535" placeholder="587">
+                </div>
+                <div class="col-md-3">
+                    <label for="smtp-username" class="form-label">Username</label>
+                    <input type="text" class="form-control" id="smtp-username" autocomplete="off">
+                </div>
+                <div class="col-md-3">
+                    <label for="smtp-password" class="form-label">Password</label>
+                    <input type="password" class="form-control" id="smtp-password" autocomplete="new-password" placeholder="">
+                </div>
+            </div>
+            <div class="form-check form-switch mt-2">
+                <input class="form-check-input" type="checkbox" id="smtp-use-tls">
+                <label class="form-check-label" for="smtp-use-tls">Use STARTTLS</label>
+            </div>
+            <div class="form-text">Saved settings win over SMTP_* in .env. Leave the password blank to keep the stored one.</div>
             <button type="button" class="btn-modern btn-sm mt-2" onclick="testChannel('email')"><i class="bi bi-send"></i> Send test email</button>
 
             <h3 class="h6 text-uppercase text-muted mt-4">Webhook</h3>
@@ -733,6 +791,18 @@ async function loadCurrentSettings() {
         setValue('webhook-url', a.webhook_url);
         setChecked('discord-enabled', a.discord_enabled);
         setValue('discord-webhook-url', a.discord_webhook_url);
+        setChecked('notify-device-down', a.notify_device_down);
+        setChecked('notify-device-recovery', a.notify_device_recovery);
+        setChecked('notify-new-device', a.notify_new_device);
+        setChecked('notify-security', a.notify_security);
+        setChecked('notify-scan-complete', a.notify_scan_complete);
+        setValue('quiet-hours-start', a.notify_quiet_hours_start);
+        setValue('quiet-hours-end', a.notify_quiet_hours_end);
+        setValue('smtp-server', a.smtp_server);
+        setValue('smtp-port', a.smtp_port);
+        setValue('smtp-username', a.smtp_username);
+        setChecked('smtp-use-tls', a.smtp_use_tls);
+        val('smtp-password').placeholder = a.smtp_password_set ? '(stored)' : '';
     } catch (error) {
         showError(`Could not load alert settings: ${error.message}`);
     }
@@ -812,8 +882,21 @@ async function saveAlertSettings() {
             webhook_enabled: val('webhook-enabled').checked,
             webhook_url: val('webhook-url').value.trim(),
             discord_enabled: val('discord-enabled').checked,
-            discord_webhook_url: val('discord-webhook-url').value.trim()
+            discord_webhook_url: val('discord-webhook-url').value.trim(),
+            notify_device_down: val('notify-device-down').checked,
+            notify_device_recovery: val('notify-device-recovery').checked,
+            notify_new_device: val('notify-new-device').checked,
+            notify_security: val('notify-security').checked,
+            notify_scan_complete: val('notify-scan-complete').checked,
+            notify_quiet_hours_start: val('quiet-hours-start').value.trim(),
+            notify_quiet_hours_end: val('quiet-hours-end').value.trim(),
+            smtp_server: val('smtp-server').value.trim(),
+            smtp_port: parseInt(val('smtp-port').value, 10) || 587,
+            smtp_username: val('smtp-username').value.trim(),
+            smtp_password: val('smtp-password').value,
+            smtp_use_tls: val('smtp-use-tls').checked
         }});
+        val('smtp-password').value = '';
         showSuccess(result.message || 'Alert settings saved');
     } catch (error) {
         showError(`Alert settings not saved: ${error.message}`);
