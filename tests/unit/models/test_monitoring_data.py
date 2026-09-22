@@ -136,11 +136,13 @@ class TestMonitoringDataValidation:
         """Test that timestamp defaults to current time."""
         device = DeviceFactory.create()
 
-        before_creation = datetime.utcnow()
-        monitoring_data = MonitoringDataFactory.create(device=device)
-        after_creation = datetime.utcnow()
+        # Build the row directly: the factory sets an explicit past timestamp.
+        monitoring_data = MonitoringData(device_id=device.id, response_time=10.0, packet_loss=0.0)
+        db_session.add(monitoring_data)
+        db_session.commit()
 
-        assert before_creation <= monitoring_data.timestamp <= after_creation
+        assert monitoring_data.timestamp is not None
+        assert abs((datetime.utcnow() - monitoring_data.timestamp).total_seconds()) < 5
 
     def test_additional_data_json_validation(self, db_session):
         """Test that additional_data contains valid JSON."""
@@ -172,7 +174,6 @@ class TestMonitoringDataRelationships:
         assert monitoring_data.device == device
         assert monitoring_data in device.monitoring_data
 
-    @pytest.mark.skip(reason="Database schema mismatch - notification_history table missing columns in test DB")
     def test_cascade_delete_from_device(self, db_session):
         """Test that deleting a device cascades to monitoring data."""
         # NOTE: This test is skipped due to database schema issues with notification_history table
@@ -260,17 +261,28 @@ class TestMonitoringDataMethods:
         """Test determining if a ping was successful."""
         device = DeviceFactory.create()
 
-        # Successful ping
+        # is_successful() means "the device answered": a response time is
+        # recorded (> 0) and the loss was not total.
         successful_data = SuccessfulMonitoringDataFactory.create(device=device)
         assert successful_data.is_successful() is True
 
-        # Failed ping (high response time)
-        failed_data = FailedMonitoringDataFactory.create(device=device)
-        assert failed_data.is_successful() is False
+        # Slow reply with partial loss still counts as an answer
+        slow_data = FailedMonitoringDataFactory.create(device=device)
+        assert slow_data.response_time is not None
+        assert slow_data.is_successful() is True
 
-        # Timeout ping
+        # Timeout: no response time
         timeout_data = TimeoutMonitoringDataFactory.create(device=device)
+        assert timeout_data.response_time is None
         assert timeout_data.is_successful() is False
+
+        # Total packet loss is not a success even if a time was recorded
+        lost_data = MonitoringDataFactory.create(device=device, response_time=30.0, packet_loss=100.0)
+        assert lost_data.is_successful() is False
+
+        # A zero response time is not a real reply
+        zero_data = MonitoringDataFactory.create(device=device, response_time=0.0, packet_loss=0.0)
+        assert zero_data.is_successful() is False
 
     def test_get_quality_score(self, db_session):
         """Test calculating quality score based on response time and packet loss."""

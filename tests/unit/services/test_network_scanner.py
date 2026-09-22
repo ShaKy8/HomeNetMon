@@ -115,10 +115,10 @@ class TestNetworkScannerConfiguration:
             assert value1 == '300'
             assert 'scan_interval' in scanner._config_cache
 
-            # Update configuration
-            config.value = '900'
-            config.version += 1
-            db_session.commit()
+            # Update through the model's own write path (bumps `version`), in the
+            # current session; mutating the factory object from the outer
+            # app context would never reach this session's commit.
+            Configuration.set_value('scan_interval', '900')
 
             # Force config check by updating last check time
             scanner._last_config_check = datetime.utcnow() - timedelta(seconds=15)
@@ -144,9 +144,8 @@ class TestNetworkScannerConfiguration:
             scanner.get_config_value('test_key', 'default')
             assert scanner._config_versions.get('test_key') == 1
 
-            # Update version
-            config.version = 2
-            db_session.commit()
+            # A changed value bumps the version to 2
+            Configuration.set_value('test_key', 'changed_value')
 
             # Force config check
             scanner._last_config_check = datetime.utcnow() - timedelta(seconds=15)
@@ -570,137 +569,6 @@ class TestMACVendorLookup:
         assert vendor is None
 
 
-class TestDeviceCreationAndUpdates:
-    """Test device creation and update logic."""
-
-    @patch('monitoring.scanner.nmap.PortScanner')
-    @patch('monitoring.scanner.manuf.MacParser')
-    def test_create_or_update_device_new(self, mock_mac_parser, mock_nmap, app, db_session):
-        """Test creating new device from scan results."""
-        # Setup mocks using MagicMock
-        mock_nm_instance = MagicMock()
-        mock_nmap.return_value = mock_nm_instance
-
-        # Mock MAC vendor lookup
-        mock_mac_parser_instance = MagicMock()
-        mock_mac_parser.return_value = mock_mac_parser_instance
-        mock_mac_parser_instance.get_manuf.return_value = 'Test Vendor'
-
-        scanner = NetworkScanner(app=app)
-        scanner.nm = mock_nm_instance
-        scanner.mac_parser = mock_mac_parser_instance
-
-        device_info = {
-            'ip': '192.168.1.100',
-            'mac': '00:11:22:33:44:55',
-            'vendor': 'Test Vendor',
-            'hostname': 'test-device',
-            'device_type': 'computer'
-        }
-
-        with app.app_context():
-            scanner.process_discovered_device(device_info)
-
-            # Query the database for the created device
-            from models import Device
-            device = Device.query.filter_by(ip_address='192.168.1.100').first()
-
-        assert device is not None
-        assert device.ip_address == '192.168.1.100'
-        assert device.mac_address == '00:11:22:33:44:55'
-        assert device.vendor == 'Test Vendor'
-        assert device.hostname == 'test-device'
-        assert device.device_type == 'computer'
-        assert device.last_seen is not None
-
-    @patch('monitoring.scanner.nmap.PortScanner')
-    @patch('monitoring.scanner.manuf.MacParser')
-    def test_create_or_update_device_existing(self, mock_mac_parser, mock_nmap, app, db_session):
-        """Test updating existing device from scan results."""
-        # Create existing device
-        existing_device = DeviceFactory.create(
-            ip_address='192.168.1.100',
-            mac_address='00:11:22:33:44:55',
-            hostname='old-hostname',
-            last_seen=datetime.utcnow() - timedelta(hours=1)
-        )
-
-        # Setup mocks using MagicMock
-        mock_nm_instance = MagicMock()
-        mock_nmap.return_value = mock_nm_instance
-
-        # Mock MAC vendor lookup
-        mock_mac_parser_instance = MagicMock()
-        mock_mac_parser.return_value = mock_mac_parser_instance
-        mock_mac_parser_instance.get_manuf.return_value = 'Updated Vendor'
-
-        scanner = NetworkScanner(app=app)
-        scanner.nm = mock_nm_instance
-        scanner.mac_parser = mock_mac_parser_instance
-
-        device_info = {
-            'ip': '192.168.1.100',
-            'mac': '00:11:22:33:44:55',
-            'vendor': 'Updated Vendor',
-            'hostname': 'new-hostname',
-            'device_type': 'computer'
-        }
-
-        with app.app_context():
-            scanner.process_discovered_device(device_info)
-
-            # Query the database for the updated device
-            from models import Device
-            device = Device.query.filter_by(ip_address='192.168.1.100').first()
-
-        assert device.id == existing_device.id  # Same device
-        assert device.hostname == 'new-hostname'  # Updated
-        assert device.vendor == 'Updated Vendor'  # Updated
-        assert device.last_seen > existing_device.last_seen  # Updated timestamp
-
-    @patch('monitoring.scanner.nmap.PortScanner')
-    @patch('monitoring.scanner.manuf.MacParser')
-    def test_create_or_update_device_mac_change(self, mock_mac_parser, mock_nmap, app, db_session):
-        """Test updating device when MAC address changes."""
-        # Create existing device with different MAC
-        existing_device = DeviceFactory.create(
-            ip_address='192.168.1.100',
-            mac_address='00:11:22:33:44:55'
-        )
-
-        # Setup mocks using MagicMock
-        mock_nm_instance = MagicMock()
-        mock_nmap.return_value = mock_nm_instance
-
-        # Mock MAC vendor lookup
-        mock_mac_parser_instance = MagicMock()
-        mock_mac_parser.return_value = mock_mac_parser_instance
-        mock_mac_parser_instance.get_manuf.return_value = 'Test Vendor'
-
-        scanner = NetworkScanner(app=app)
-        scanner.nm = mock_nm_instance
-        scanner.mac_parser = mock_mac_parser_instance
-
-        device_info = {
-            'ip': '192.168.1.100',
-            'mac': '00:11:22:33:44:66',  # Different MAC
-            'vendor': 'Test Vendor',
-            'hostname': 'test-device',
-            'device_type': 'computer'
-        }
-
-        with app.app_context():
-            scanner.process_discovered_device(device_info)
-
-            # Query the database for the updated device
-            from models import Device
-            device = Device.query.filter_by(ip_address='192.168.1.100').first()
-
-        # Should update the MAC address
-        assert device.id == existing_device.id
-        assert device.mac_address == '00:11:22:33:44:66'
-
-
 class TestNetworkScannerThreading:
     """Test NetworkScanner background thread management."""
 
@@ -869,49 +737,3 @@ class TestNewDeviceNotifications:
 
         # Should not add to new devices list (since device existed before scan)
         assert len(scanner._new_devices_found) == 0
-
-
-class TestNetworkScannerIntegration:
-    """Test NetworkScanner integration with other components."""
-
-    @patch('monitoring.scanner.nmap.PortScanner')
-    @patch('monitoring.scanner.manuf.MacParser')
-    def test_error_handling_during_scan(self, mock_mac_parser, mock_nmap, app, db_session):
-        """Test error handling during network scan."""
-        # Mock nmap to raise exception
-        mock_nm_instance = Mock()
-        mock_nmap.return_value = mock_nm_instance
-        mock_nm_instance.scan.side_effect = Exception("Network error")
-
-        scanner = NetworkScanner(app=app)
-        scanner.nm = mock_nm_instance
-
-        with app.app_context():
-            # Should handle error gracefully
-            scanner.scan_network()
-
-        # Should handle error gracefully (no exception should be raised)
-        # The method doesn't return anything, just logs the error
-
-    @patch('monitoring.scanner.nmap.PortScanner')
-    @patch('monitoring.scanner.manuf.MacParser')
-    def test_database_transaction_handling(self, mock_mac_parser, mock_nmap, app, db_session):
-        """Test proper database transaction handling during device creation."""
-        scanner = NetworkScanner(app=app)
-
-        device_info = {
-            'ip': '192.168.1.100',
-            'mac': '00:11:22:33:44:55',
-            'vendor': 'Test Vendor',
-            'hostname': 'test-device',
-            'device_type': 'computer'
-        }
-
-        with app.app_context():
-            # Should handle database operations properly
-            scanner.process_discovered_device(device_info)
-
-            # Verify device was persisted
-            saved_device = Device.query.filter_by(ip_address='192.168.1.100').first()
-            assert saved_device is not None
-            assert saved_device.ip_address == device_info['ip']

@@ -22,7 +22,7 @@ Python 3.11+, four-space indentation, `snake_case` for modules and functions, `P
 
 ## Testing Guidelines
 
-Add focused unit tests for behaviour changes and extend `tests/integration/test_api_endpoints.py` when a route changes shape. Use the fixtures in `tests/conftest.py` and `tests/fixtures/`; database work in background threads needs an application context, and `create_app()` does not start background threads while `Config.TESTING` is set. Pytest options and markers live in `pyproject.toml` (`--strict-markers`). Skipped legacy tests are listed with reasons in `tests/conftest.py:STALE_TEST_SKIPS`; revive by fixing the test and removing its entry, and do not add skips without a reason. `tests/unit/test_route_inventory.py` pins the API surface: a new route needs a caller and an `ALLOWED` entry.
+Add focused unit tests for behaviour changes and extend `tests/integration/test_api_endpoints.py` when a route changes shape. Use the fixtures in `tests/conftest.py` and `tests/fixtures/`; database work in background threads needs an application context, and `create_app()` does not start background threads while `Config.TESTING` is set. Pytest options and markers live in `pyproject.toml` (`--strict-markers`). There is no skip list: fix or delete a test that no longer matches the code, and do not add skips without a reason. `tests/unit/test_route_inventory.py` pins the API surface: a new route needs a caller and an `ALLOWED` entry.
 
 ## Commit & Pull Request Guidelines
 

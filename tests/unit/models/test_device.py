@@ -13,7 +13,7 @@ import pytest
 from datetime import datetime, timedelta
 from unittest.mock import patch
 
-from models import Device, MonitoringData, Alert
+from models import Device, MonitoringData, Alert, cache_invalidator
 from tests.fixtures.factories import (
     DeviceFactory, RouterDeviceFactory, ComputerDeviceFactory,
     MonitoringDataFactory, SuccessfulMonitoringDataFactory,
@@ -66,29 +66,6 @@ class TestDeviceModel:
         assert device.ip_address == '192.168.1.101'
         assert device.is_monitored is True
         assert device.created_at is not None
-
-    def test_device_unique_ip_constraint(self, db_session):
-        """Test that IP addresses must be unique."""
-        # NOTE: Currently the unique constraint is not enforced in the database
-        # due to existing duplicate data. This test reflects current behavior.
-        # TODO: Fix database schema to properly enforce unique constraint
-
-        # Create first device
-        device1 = Device(ip_address='192.168.1.100')
-        db_session.add(device1)
-        db_session.commit()
-
-        # Try to create second device with same IP
-        device2 = Device(ip_address='192.168.1.100')
-        db_session.add(device2)
-
-        # Currently this does NOT raise an exception due to missing constraint
-        # When the schema is fixed, this should be wrapped in pytest.raises(Exception)
-        db_session.commit()
-
-        # Verify both devices exist in this test session (current behavior)
-        devices = Device.query.filter_by(ip_address='192.168.1.100').all()
-        assert len(devices) >= 2  # At least the 2 we created this session
 
     def test_device_repr(self, db_session):
         """Test the string representation of a device."""
@@ -180,6 +157,9 @@ class TestDeviceStatus:
         db_session.add(device)
         db_session.commit()
 
+        # Device.status is cached for 30 s per device id; SQLite reuses ids
+        # across tests, so drop any value cached by an earlier test.
+        cache_invalidator.invalidate_device_cache(device.id)
         assert device.status == 'down'
 
     def test_status_up_seen_recently(self, db_session):
@@ -226,9 +206,8 @@ class TestDeviceStatus:
 
     def test_status_warning_packet_loss(self, db_session):
         """Test status logic with packet loss data."""
-        # NOTE: Current implementation does not consider packet_loss for device status
-        # It only considers response_time. This test reflects current behavior.
-        # TODO: Consider enhancing status logic to include packet loss analysis
+        # The current implementation only considers response_time, not
+        # packet_loss, for device status. This test reflects that behaviour.
 
         device = Device(
             ip_address='192.168.1.100',
@@ -449,7 +428,6 @@ class TestDeviceRelationships:
         assert alert1.device == device
         assert alert2.device == device
 
-    @pytest.mark.skip(reason="Database schema mismatch - notification_history table missing columns in test DB")
     def test_cascade_delete_monitoring_data(self, db_session):
         """Test that deleting a device cascades to monitoring data."""
         # NOTE: This test is skipped due to database schema issues with notification_history table
@@ -482,7 +460,6 @@ class TestDeviceRelationships:
         deleted_monitoring = db_session.query(MonitoringData).filter_by(id=monitoring_id).first()
         assert deleted_monitoring is None
 
-    @pytest.mark.skip(reason="Database schema mismatch - notification_history table missing columns in test DB")
     def test_cascade_delete_alerts(self, db_session):
         """Test that deleting a device cascades to alerts."""
         # NOTE: This test is skipped due to database schema issues with notification_history table

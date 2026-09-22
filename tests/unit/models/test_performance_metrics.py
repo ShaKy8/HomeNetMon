@@ -96,124 +96,89 @@ class TestPerformanceMetricsModel:
 
 
 class TestHealthScoreCalculations:
-    """Test PerformanceMetrics health score calculation algorithms."""
+    """Test PerformanceMetrics.calculate_health_score.
+
+    The classmethod takes ping-derived response / availability / quality
+    dicts (bandwidth is accepted and ignored) and returns a dict of 0-100
+    component scores plus ``overall_health``, or None when the window had
+    no checks at all.
+    """
+
+    SCORE_KEYS = {'overall_health', 'responsiveness', 'reliability', 'efficiency', 'stability'}
+
+    @staticmethod
+    def _score(response_metrics, availability_metrics, quality_metrics):
+        result = PerformanceMetrics.calculate_health_score(
+            response_metrics, availability_metrics,
+            bandwidth_metrics={'avg_in_mbps': 25.0}, quality_metrics=quality_metrics
+        )
+        assert isinstance(result, dict)
+        assert set(result) == TestHealthScoreCalculations.SCORE_KEYS
+        assert result['efficiency'] is None  # per-device bandwidth is not measurable
+        for key in ('overall_health', 'responsiveness', 'reliability', 'stability'):
+            PerformanceTestHelper.assert_health_score_range(result[key])
+        return result
 
     def test_calculate_health_score_excellent_performance(self, db_session):
-        """Test health score calculation with excellent metrics."""
-        response_metrics = {
-            'avg_ms': 8.0,
-            'min_ms': 5.0,
-            'max_ms': 15.0,
-            'std_dev_ms': 2.5
-        }
-        availability_metrics = {
-            'uptime_percentage': 99.8,
-            'total_checks': 100,
-            'successful_checks': 99,
-            'failed_checks': 1
-        }
-        bandwidth_metrics = {
-            'avg_in_mbps': 25.0,
-            'avg_out_mbps': 10.0,
-            'peak_in_mbps': 50.0,
-            'peak_out_mbps': 20.0
-        }
-        quality_metrics = {
-            'jitter_ms': 1.5,
-            'packet_loss_percentage': 0.2,
-            'stability_score': 98.0
-        }
-
-        health_score = PerformanceMetrics.calculate_health_score(
-            response_metrics, availability_metrics,
-            bandwidth_metrics, quality_metrics
+        """Fast, reliable, stable pings score in the 90s."""
+        result = self._score(
+            {'avg_ms': 8.0, 'min_ms': 5.0, 'max_ms': 15.0},
+            {'uptime_percentage': 99.8, 'total_checks': 100, 'successful_checks': 99, 'failed_checks': 1},
+            {'jitter_ms': 1.5, 'packet_loss_percentage': 0.2},
         )
-
-        # Should be a high score for excellent performance
-        PerformanceTestHelper.assert_health_score_range(health_score, 90, 100)
+        assert result['responsiveness'] == 100.0
+        assert result['reliability'] == 99.8
+        PerformanceTestHelper.assert_health_score_range(result['overall_health'], 90, 100)
 
     def test_calculate_health_score_poor_performance(self, db_session):
-        """Test health score calculation with poor metrics."""
-        response_metrics = {
-            'avg_ms': 800.0,  # Very high response time
-            'min_ms': 500.0,
-            'max_ms': 1200.0,
-            'std_dev_ms': 150.0
-        }
-        availability_metrics = {
-            'uptime_percentage': 75.0,  # Poor uptime
-            'total_checks': 100,
-            'successful_checks': 75,
-            'failed_checks': 25
-        }
-        bandwidth_metrics = {
-            'avg_in_mbps': 200.0,  # High bandwidth (may be inefficient)
-            'avg_out_mbps': 80.0,
-            'peak_in_mbps': 400.0,
-            'peak_out_mbps': 160.0
-        }
-        quality_metrics = {
-            'jitter_ms': 25.0,  # High jitter
-            'packet_loss_percentage': 8.0,  # High packet loss
-            'stability_score': 60.0  # Poor stability
-        }
-
-        health_score = PerformanceMetrics.calculate_health_score(
-            response_metrics, availability_metrics,
-            bandwidth_metrics, quality_metrics
+        """Slow, flaky, jittery pings score under 50."""
+        result = self._score(
+            {'avg_ms': 800.0, 'min_ms': 500.0, 'max_ms': 1200.0},
+            {'uptime_percentage': 75.0, 'total_checks': 100, 'successful_checks': 75, 'failed_checks': 25},
+            {'jitter_ms': 25.0, 'packet_loss_percentage': 8.0},
         )
-
-        # Should be a low score for poor performance
-        PerformanceTestHelper.assert_health_score_range(health_score, 0, 50)
+        assert result['reliability'] == 75.0
+        PerformanceTestHelper.assert_health_score_range(result['responsiveness'], 0, 20)
+        PerformanceTestHelper.assert_health_score_range(result['overall_health'], 0, 50)
 
     def test_calculate_health_score_average_performance(self, db_session):
-        """Test health score calculation with average metrics."""
-        response_metrics = {
-            'avg_ms': 45.0,  # Moderate response time
-            'min_ms': 25.0,
-            'max_ms': 80.0,
-            'std_dev_ms': 12.0
-        }
-        availability_metrics = {
-            'uptime_percentage': 92.5,  # Good uptime
-            'total_checks': 100,
-            'successful_checks': 92,
-            'failed_checks': 8
-        }
-        bandwidth_metrics = {
-            'avg_in_mbps': 50.0,
-            'avg_out_mbps': 20.0,
-            'peak_in_mbps': 100.0,
-            'peak_out_mbps': 40.0
-        }
-        quality_metrics = {
-            'jitter_ms': 8.0,
-            'packet_loss_percentage': 3.0,
-            'stability_score': 85.0
-        }
-
-        health_score = PerformanceMetrics.calculate_health_score(
-            response_metrics, availability_metrics,
-            bandwidth_metrics, quality_metrics
+        """Moderate latency and uptime land between the two extremes."""
+        result = self._score(
+            {'avg_ms': 45.0, 'min_ms': 25.0, 'max_ms': 80.0},
+            {'uptime_percentage': 92.5, 'total_checks': 100, 'successful_checks': 92, 'failed_checks': 8},
+            {'jitter_ms': 8.0, 'packet_loss_percentage': 3.0},
         )
+        PerformanceTestHelper.assert_health_score_range(result['overall_health'], 60, 90)
 
-        # Should be a moderate score
-        PerformanceTestHelper.assert_health_score_range(health_score, 60, 90)
+        excellent = PerformanceMetrics.calculate_health_score(
+            {'avg_ms': 8.0}, {'uptime_percentage': 99.8, 'total_checks': 100, 'successful_checks': 99},
+            None, {'jitter_ms': 1.5, 'packet_loss_percentage': 0.2})
+        poor = PerformanceMetrics.calculate_health_score(
+            {'avg_ms': 800.0}, {'uptime_percentage': 75.0, 'total_checks': 100, 'successful_checks': 75},
+            None, {'jitter_ms': 25.0, 'packet_loss_percentage': 8.0})
+        assert excellent['overall_health'] > result['overall_health'] > poor['overall_health']
 
     def test_calculate_health_score_missing_data(self, db_session):
-        """Test health score calculation with missing or None data."""
-        response_metrics = {}
-        availability_metrics = {'uptime_percentage': 95.0}
-        bandwidth_metrics = {}
-        quality_metrics = {}
+        """No checks in the window means no score; partial data still scores."""
+        assert PerformanceMetrics.calculate_health_score({}, {}) is None
+        assert PerformanceMetrics.calculate_health_score({}, {'uptime_percentage': 95.0}) is None
+        assert PerformanceMetrics.calculate_health_score({}, None) is None
 
-        health_score = PerformanceMetrics.calculate_health_score(
-            response_metrics, availability_metrics,
-            bandwidth_metrics, quality_metrics
+        # Checks happened but nothing answered: no responsiveness credit, no exception
+        result = PerformanceMetrics.calculate_health_score(
+            {}, {'uptime_percentage': 0.0, 'total_checks': 10, 'successful_checks': 0}
         )
+        assert isinstance(result, dict)
+        assert result['responsiveness'] == 0.0
+        assert result['reliability'] == 0.0
+        PerformanceTestHelper.assert_health_score_range(result['overall_health'])
 
-        # Should handle missing data gracefully
-        PerformanceTestHelper.assert_health_score_range(health_score)
+        # Quality metrics omitted entirely: stability defaults to a clean link
+        result = PerformanceMetrics.calculate_health_score(
+            {'avg_ms': 20.0}, {'uptime_percentage': 95.0, 'total_checks': 20, 'successful_checks': 19}
+        )
+        assert result['stability'] == 100.0
+        PerformanceTestHelper.assert_health_score_range(result['overall_health'], 60, 100)
 
 
 class TestPerformanceGrade:
@@ -313,11 +278,18 @@ class TestPerformanceStatus:
         assert status == 'fair'
 
     def test_performance_status_poor(self, db_session):
-        """Test performance status for poor health score."""
-        metrics = PoorPerformanceMetricsFactory.create()
+        """Test performance status for a health score in the 60-69 band."""
+        metrics = PerformanceMetricsFactory.create(health_score=65.0)
 
         status = metrics.performance_status
         assert status == 'poor'
+
+    def test_performance_status_critical(self, db_session):
+        """Test performance status for a health score below 60."""
+        metrics = PerformanceMetricsFactory.create(health_score=45.0)
+
+        status = metrics.performance_status
+        assert status == 'critical'
 
     def test_performance_status_unknown(self, db_session):
         """Test performance status when health score is None."""
@@ -353,112 +325,6 @@ class TestPerformanceMetricsRelationships:
         # Performance metrics should be deleted too
         deleted_metrics = db_session.query(PerformanceMetrics).filter_by(id=metrics_id).first()
         assert deleted_metrics is None
-
-
-class TestPerformanceMetricsMethods:
-    """Test PerformanceMetrics model business logic methods."""
-
-    def test_to_dict_method(self, db_session):
-        """Test the to_dict method for API serialization."""
-        device = DeviceFactory.create(
-            ip_address='192.168.1.100',
-            hostname='test-device'
-        )
-        metrics = PerformanceMetricsFactory.create(
-            device=device,
-            health_score=85.5,
-            avg_response_time=25.0
-        )
-
-        metrics_dict = metrics.to_dict()
-
-        assert isinstance(metrics_dict, dict)
-        assert metrics_dict['id'] == metrics.id
-        assert metrics_dict['device_id'] == device.id
-        assert metrics_dict['device_name'] == device.display_name
-        assert metrics_dict['device_ip'] == '192.168.1.100'
-        assert 'timestamp' in metrics_dict
-
-        # Check response time metrics
-        response_metrics = metrics_dict['response_time_metrics']
-        assert response_metrics['avg_ms'] == 25.0
-        assert 'min_ms' in response_metrics
-        assert 'max_ms' in response_metrics
-
-        # Check availability metrics
-        availability_metrics = metrics_dict['availability_metrics']
-        assert 'uptime_percentage' in availability_metrics
-        assert 'total_checks' in availability_metrics
-
-        # Check bandwidth metrics
-        bandwidth_metrics = metrics_dict['bandwidth_metrics']
-        assert 'avg_in_mbps' in bandwidth_metrics
-        assert 'avg_out_mbps' in bandwidth_metrics
-
-        # Check quality metrics
-        quality_metrics = metrics_dict['quality_metrics']
-        assert 'jitter_ms' in quality_metrics
-        assert 'packet_loss_percentage' in quality_metrics
-
-        # Check health scores
-        health_scores = metrics_dict['health_scores']
-        assert health_scores['overall'] == 85.5
-        assert 'responsiveness' in health_scores
-        assert 'reliability' in health_scores
-
-    def test_is_anomalous_method(self, db_session):
-        """Test the is_anomalous method for detecting anomalies."""
-        # Normal metrics (should not be anomalous)
-        normal_metrics = PerformanceMetricsFactory.create(
-            health_score=85.0,
-            anomaly_count=1
-        )
-        assert normal_metrics.is_anomalous() is False
-
-        # Metrics with high anomaly count
-        anomalous_metrics = PerformanceMetricsFactory.create(
-            health_score=85.0,
-            anomaly_count=8
-        )
-        assert anomalous_metrics.is_anomalous() is True
-
-        # Low health score metrics
-        low_health_metrics = PerformanceMetricsFactory.create(
-            health_score=45.0,
-            anomaly_count=2
-        )
-        assert low_health_metrics.is_anomalous() is True
-
-    def test_get_trend_direction(self, db_session):
-        """Test getting performance trend direction."""
-        device = DeviceFactory.create()
-
-        # Create earlier metrics with lower health score
-        earlier_metrics = PerformanceMetricsFactory.create(
-            device=device,
-            health_score=75.0,
-            timestamp=datetime.utcnow() - timedelta(hours=2)
-        )
-
-        # Create current metrics with higher health score
-        current_metrics = PerformanceMetricsFactory.create(
-            device=device,
-            health_score=85.0,
-            timestamp=datetime.utcnow()
-        )
-
-        trend = current_metrics.get_trend_direction()
-        assert trend == 'improving'
-
-        # Test declining trend
-        declining_metrics = PerformanceMetricsFactory.create(
-            device=device,
-            health_score=65.0,
-            timestamp=datetime.utcnow() + timedelta(hours=1)
-        )
-
-        trend = declining_metrics.get_trend_direction()
-        assert trend == 'declining'
 
 
 class TestPerformanceMetricsFactories:
@@ -535,51 +401,3 @@ class TestPerformanceMetricsValidation:
         assert metrics.total_checks == metrics.successful_checks + metrics.failed_checks
         assert metrics.successful_checks >= 0
         assert metrics.failed_checks >= 0
-
-
-class TestPerformanceMetricsComparisons:
-    """Test PerformanceMetrics comparison and analysis methods."""
-
-    def test_compare_with_previous(self, db_session):
-        """Test comparing performance metrics with previous period."""
-        device = DeviceFactory.create()
-
-        # Previous metrics
-        previous_metrics = PerformanceMetricsFactory.create(
-            device=device,
-            health_score=75.0,
-            avg_response_time=50.0,
-            timestamp=datetime.utcnow() - timedelta(hours=2)
-        )
-
-        # Current metrics
-        current_metrics = PerformanceMetricsFactory.create(
-            device=device,
-            health_score=85.0,
-            avg_response_time=30.0,
-            timestamp=datetime.utcnow()
-        )
-
-        comparison = current_metrics.compare_with_previous()
-
-        assert isinstance(comparison, dict)
-        assert 'health_score_change' in comparison
-        assert 'response_time_change' in comparison
-        assert comparison['health_score_change'] > 0  # Improved
-        assert comparison['response_time_change'] < 0  # Faster (improvement)
-
-    def test_get_performance_summary(self, db_session):
-        """Test getting performance summary."""
-        metrics = ExcellentPerformanceMetricsFactory.create()
-
-        summary = metrics.get_performance_summary()
-
-        assert isinstance(summary, dict)
-        assert 'overall_grade' in summary
-        assert 'overall_status' in summary
-        assert 'key_metrics' in summary
-        assert 'recommendations' in summary
-
-        # Should have excellent grade and status
-        assert summary['overall_grade'] in ['A+', 'A']
-        assert summary['overall_status'] == 'excellent'

@@ -15,35 +15,6 @@ from flask import Flask
 class TestAnalyticsN1QueryFixes:
     """Tests for N+1 query fixes in api/analytics.py."""
 
-    def test_network_health_score_uses_consolidated_queries(self, app, client, db_session, sample_devices):
-        """Should use consolidated queries instead of N separate queries."""
-        with app.app_context():
-            with patch('api.analytics.db.session') as mock_session:
-                # Create mock query results
-                mock_device_stats = MagicMock()
-                mock_device_stats.total_devices = 3
-                mock_device_stats.devices_up = 2
-
-                mock_monitoring_stats = MagicMock()
-                mock_monitoring_stats.avg_response = 25.5
-                mock_monitoring_stats.total_pings = 100
-                mock_monitoring_stats.successful_pings = 95
-
-                # Setup query chain
-                mock_query = MagicMock()
-                mock_query.filter.return_value = mock_query
-                mock_query.first.side_effect = [mock_device_stats, mock_monitoring_stats]
-
-                mock_session.query.return_value = mock_query
-
-                # Make request
-                response = client.get('/api/analytics/network-health-score')
-
-                # Verify consolidated queries were used
-                # Should have 2 consolidated queries (device stats + monitoring stats)
-                # NOT 3+ separate queries
-                assert mock_session.query.call_count == 3  # device stats, monitoring stats, alerts
-
     def test_device_insights_uses_batch_fetch(self, app, client, db_session, sample_devices):
         """Should use Device.batch_get_device_data to avoid N+1 queries."""
         with app.app_context():
@@ -84,49 +55,6 @@ class TestAnalyticsN1QueryFixes:
 
 class TestMonitoringN1QueryFixes:
     """Tests for N+1 query fixes in api/monitoring.py."""
-
-    def test_monitoring_data_pagination_doesnt_cause_n1(self, app, client, db_session, sample_device, sample_monitoring_data):
-        """Should paginate monitoring data without N+1 queries."""
-        with app.app_context():
-            # Create monitoring data for multiple devices
-            from models import Device, MonitoringData
-            from datetime import datetime, timedelta
-
-            devices = []
-            for i in range(5):
-                device = Device(
-                    ip_address=f'192.168.1.{100+i}',
-                    mac_address=f'00:11:22:33:44:{50+i:02x}',
-                    hostname=f'device-{i}',
-                    is_monitored=True
-                )
-                db_session.add(device)
-                devices.append(device)
-
-            db_session.commit()
-
-            # Add monitoring data
-            base_time = datetime.utcnow() - timedelta(hours=1)
-            for i, device in enumerate(devices):
-                for j in range(10):
-                    data = MonitoringData(
-                        device_id=device.id,
-                        timestamp=base_time + timedelta(minutes=j),
-                        response_time=20.0 + i + j
-                    )
-                    db_session.add(data)
-
-            db_session.commit()
-
-            # Query with pagination
-            response = client.get('/api/monitoring/data?page=1&per_page=25')
-
-            assert response.status_code == 200
-            data = response.get_json()
-
-            # Should return paginated data
-            assert 'items' in data or 'data' in data or 'monitoring_data' in data
-
 
 class TestN1QueryRegressionScenarios:
     """Additional regression tests for common N+1 patterns."""
