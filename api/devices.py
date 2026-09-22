@@ -3,7 +3,6 @@ import io
 import logging
 
 import ipaddress
-import ping3
 from flask import Blueprint, current_app, jsonify, request, Response
 from datetime import datetime, timedelta
 
@@ -48,7 +47,7 @@ def get_devices():
         # PERFORMANCE OPTIMIZATION: Use cached device list for massive speed improvement
         try:
             devices_data = get_cached_device_list(current_app.app_context)
-            logger.info(f"=== API get_devices: Retrieved {len(devices_data)} devices from get_cached_device_list ===")
+            logger.debug(f"get_devices: {len(devices_data)} devices from the cache")
         except Exception as e:
             logger.warning(f"Cache failed, falling back to database query: {e}")
             # Fallback to original query if cache fails
@@ -75,7 +74,7 @@ def get_devices():
         if status:
             filtered_devices = [d for d in filtered_devices if d.get('status') == status]
 
-        logger.info(f"=== After filtering: {len(filtered_devices)} devices (network_filter={network_filter}, group={group}, type={device_type}, status={status}, monitored={monitored_only}) ===")
+        logger.debug(f"After filtering: {len(filtered_devices)} devices (network_filter={network_filter}, group={group}, type={device_type}, status={status}, monitored={monitored_only}) ===")
 
         # Sort by IP address (cached data might not be sorted)
         try:
@@ -630,43 +629,6 @@ def get_device_ip_history(device_id):
         'ip_history': history_list,
         'total_changes': len(history_list)
     })
-
-# Removed duplicate ping_device function - using ping_single_device instead
-
-def track_ip_change(device_id, old_ip, new_ip, source='auto_discovery', notes=None):
-    """Utility function to track IP address changes"""
-    try:
-        # DeviceIpHistory already imported at module level
-
-        # Don't create duplicate records for the same change
-        existing = DeviceIpHistory.query.filter_by(
-            device_id=device_id,
-            new_ip_address=new_ip
-        ).order_by(DeviceIpHistory.change_detected_at.desc()).first()
-
-        # If the most recent record already has this IP, don't duplicate
-        if existing and existing.new_ip_address == new_ip:
-            return existing
-
-        # Create new history record
-        history_record = DeviceIpHistory(
-            device_id=device_id,
-            old_ip_address=old_ip,
-            new_ip_address=new_ip,
-            change_source=source,
-            notes=notes
-        )
-
-        db.session.add(history_record)
-        db.session.commit()
-
-        logger.info(f"Tracked IP change for device {device_id}: {old_ip} -> {new_ip} (source: {source})")
-        return history_record
-
-    except Exception as e:
-        logger.error(f"Failed to track IP change: {e}")
-        return None
-
 
 @devices_bp.route('/ping-all', methods=['POST'])
 @create_endpoint_limiter('intensive')

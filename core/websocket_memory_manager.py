@@ -4,8 +4,6 @@ Fixes memory leaks and optimizes WebSocket event handling for production.
 """
 
 import gc
-import weakref
-import threading
 import time
 import logging
 from typing import Dict, Set, Any, Optional, List
@@ -32,16 +30,14 @@ class WebSocketConnectionManager:
         self._event_queues = defaultdict(lambda: deque(maxlen=100))
         self._pending_broadcasts = deque(maxlen=1000)
 
-        # Cleanup and monitoring
-        self._cleanup_thread = None
-        self._cleanup_stop_event = threading.Event()
+        # Housekeeping runs opportunistically from register_connection (no thread)
+        self._last_cleanup = time.time()
         self._memory_stats = {'peak_connections': 0, 'total_events': 0, 'cleanup_runs': 0}
-
-        self._start_cleanup_thread()
 
         logger.info(f"WebSocket Connection Manager initialized with max {max_connections_per_ip} connections per IP")
 
     def register_connection(self, sid: str, client_ip: str, user_agent: str = ""):
+        self._maybe_cleanup()
         """Register a new WebSocket connection."""
 
         # Check connection limits per IP
@@ -134,37 +130,6 @@ class WebSocketConnectionManager:
         logger.debug(f"Connection {sid} unsubscribed from room {room}")
         return True
 
-    def broadcast_to_room(self, room: str, event: str, data: Any, skip_sid: str = None):
-        """Efficiently broadcast event to all connections in a room."""
-
-        if room not in self._room_subscriptions:
-            return 0
-
-        connections = self._room_subscriptions[room].copy()  # Copy to avoid modification during iteration
-        if skip_sid and skip_sid in connections:
-            connections.remove(skip_sid)
-
-        if not connections:
-            return 0
-
-        # Batch emit for efficiency
-        try:
-            self.socketio.emit(event, data, room=room, skip_sid=skip_sid)
-
-            # Update event counters
-            for sid in connections:
-                if sid in self._connection_metadata:
-                    self._connection_metadata[sid]['event_count'] += 1
-                    self._client_last_activity[sid] = time.time()
-
-            self._memory_stats['total_events'] += len(connections)
-
-        except Exception as e:
-            logger.error(f"Error broadcasting to room {room}: {e}")
-            return 0
-
-        return len(connections)
-
     def get_connection_stats(self) -> Dict[str, Any]:
         """Get current connection statistics."""
 
@@ -183,29 +148,15 @@ class WebSocketConnectionManager:
             'active_rooms': list(self._room_subscriptions.keys())
         }
 
-    def _start_cleanup_thread(self):
-        """Start background cleanup thread."""
-
-        if self._cleanup_thread and self._cleanup_thread.is_alive():
+    def _maybe_cleanup(self):
+        """Prune stale connection state at most once a minute, on the caller's thread."""
+        if time.time() - self._last_cleanup < 60:
             return
-
-        self._cleanup_thread = threading.Thread(
-            target=self._cleanup_loop,
-            daemon=True,
-            name='WebSocketCleanup'
-        )
-        self._cleanup_thread.start()
-
-    def _cleanup_loop(self):
-        """Background cleanup loop to prevent memory leaks."""
-
-        logger.info("WebSocket cleanup thread started")
-
-        while not self._cleanup_stop_event.wait(60):  # Run every minute
-            try:
-                self._run_cleanup()
-            except Exception as e:
-                logger.error(f"Error in WebSocket cleanup: {e}")
+        self._last_cleanup = time.time()
+        try:
+            self._run_cleanup()
+        except Exception as e:
+            logger.error(f"Error in WebSocket cleanup: {e}")
 
     def _run_cleanup(self):
         """Run cleanup tasks to prevent memory leaks."""
@@ -256,11 +207,6 @@ class WebSocketConnectionManager:
 
         logger.info("Shutting down WebSocket Connection Manager...")
 
-        # Stop cleanup thread
-        if self._cleanup_thread:
-            self._cleanup_stop_event.set()
-            self._cleanup_thread.join(timeout=5)
-
         # Clear all data structures
         self._connection_metadata.clear()
         self._ip_connections.clear()
@@ -301,31 +247,8 @@ def fix_websocket_memory_leaks(app, socketio):
         logger.info(f"WebSocket client disconnected: {request.sid}")
         connection_manager.unregister_connection(request.sid)
 
-    @socketio.on('join_room')
-    def handle_join_room(data):
-        room = data.get('room')
-        if room:
-            socketio.join_room(room)
-            connection_manager.subscribe_to_room(request.sid, room)
-            logger.debug(f"Client {request.sid} joined room {room}")
-
-    @socketio.on('leave_room')
-    def handle_leave_room(data):
-        room = data.get('room')
-        if room:
-            socketio.leave_room(room)
-            connection_manager.unsubscribe_from_room(request.sid, room)
-            logger.debug(f"Client {request.sid} left room {room}")
-
     # Store connection manager in app for access by other parts
     app.websocket_connection_manager = connection_manager
-
-    # Add cleanup on app teardown
-    @app.teardown_appcontext
-    def cleanup_websocket_resources(error):
-        if hasattr(app, 'websocket_connection_manager'):
-            # Don't shutdown on every request, just clean up if needed
-            pass
 
     logger.info("WebSocket memory leak fixes applied")
     return connection_manager

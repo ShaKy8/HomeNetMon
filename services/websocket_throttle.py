@@ -55,54 +55,26 @@ class WebSocketThrottle:
         # Keep track of recent events for rate limiting
         self._recent_events = {}  # event_type -> list of timestamps
 
-        # Cleanup thread for memory management
-        self._cleanup_thread = None
-        self._cleanup_stop_event = threading.Event()
-        self._start_cleanup_thread()
+        # Old entries are pruned inline (see _prune_if_due); no background thread
+        self._last_prune = time.time()
 
-    def _start_cleanup_thread(self):
-        """Start background thread to cleanup old throttle data"""
-        if self._cleanup_thread and self._cleanup_thread.is_alive():
+    def _prune_if_due(self, current_time: float):
+        """Drop throttle state older than an hour, at most every 5 minutes. Caller holds the lock."""
+        if current_time - self._last_prune < 300:
             return
-
-        self._cleanup_thread = threading.Thread(
-            target=self._cleanup_old_data,
-            daemon=True,
-            name='WebSocketThrottleCleanup'
-        )
-        self._cleanup_thread.start()
-
-    def _cleanup_old_data(self):
-        """Background cleanup of old throttle data to prevent memory leaks"""
-        while not self._cleanup_stop_event.wait(300):  # Run every 5 minutes
-            try:
-                current_time = time.time()
-                cutoff_time = current_time - 3600  # Remove data older than 1 hour
-
-                with self._lock:
-                    # Cleanup device last update times
-                    old_devices = [
-                        device_id for device_id, timestamp in self._device_last_update.items()
-                        if timestamp < cutoff_time
-                    ]
-                    for device_id in old_devices:
-                        del self._device_last_update[device_id]
-
-                    # Cleanup pending updates for old devices
-                    for device_id in old_devices:
-                        self._pending_updates.pop(device_id, None)
-
-                    # Cleanup recent events lists
-                    for event_type, timestamps in self._recent_events.items():
-                        self._recent_events[event_type] = [
-                            ts for ts in timestamps if ts > cutoff_time
-                        ]
-
-                    if old_devices:
-                        logger.debug(f"Cleaned up throttle data for {len(old_devices)} old devices")
-
-            except Exception as e:
-                logger.error(f"Error during WebSocket throttle cleanup: {e}")
+        self._last_prune = current_time
+        try:
+            cutoff_time = current_time - 3600
+            old_devices = [device_id for device_id, ts in self._device_last_update.items() if ts < cutoff_time]
+            for device_id in old_devices:
+                del self._device_last_update[device_id]
+                self._pending_updates.pop(device_id, None)
+            for event_type, timestamps in self._recent_events.items():
+                self._recent_events[event_type] = [ts for ts in timestamps if ts > cutoff_time]
+            if old_devices:
+                logger.debug(f"Pruned throttle data for {len(old_devices)} idle devices")
+        except Exception as e:
+            logger.error(f"Error pruning WebSocket throttle data: {e}")
 
     def _is_significant_change(self, device_id: int, event_data: Dict[str, Any]) -> bool:
         """Check if device data has changed significantly enough to warrant an update"""
@@ -158,6 +130,7 @@ class WebSocketThrottle:
         """
         with self._lock:
             current_time = time.time()
+            self._prune_if_due(current_time)
             event_type = 'device_status_update'
             throttle_period = self.throttle_periods[event_type]
 
@@ -332,10 +305,7 @@ class WebSocketThrottle:
             return stats
 
     def stop(self):
-        """Stop the throttling service and cleanup threads"""
-        self._cleanup_stop_event.set()
-        if self._cleanup_thread and self._cleanup_thread.is_alive():
-            self._cleanup_thread.join(timeout=5)
+        """Nothing to stop: there is no background thread any more."""
 
 
 # Global throttle instance

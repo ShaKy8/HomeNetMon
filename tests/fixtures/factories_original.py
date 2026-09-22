@@ -132,12 +132,6 @@ class PerformanceMetricsFactory(factory.alchemy.SQLAlchemyModelFactory):
     successful_checks = factory.LazyAttribute(lambda obj: int(obj.total_checks * obj.uptime_percentage / 100))
     failed_checks = factory.LazyAttribute(lambda obj: obj.total_checks - obj.successful_checks)
 
-    # Bandwidth metrics (Mbps)
-    avg_bandwidth_in_mbps = factory.fuzzy.FuzzyFloat(1.0, 100.0, precision=3)
-    avg_bandwidth_out_mbps = factory.fuzzy.FuzzyFloat(0.5, 50.0, precision=3)
-    peak_bandwidth_in_mbps = factory.LazyAttribute(lambda obj: obj.avg_bandwidth_in_mbps * 2.0)
-    peak_bandwidth_out_mbps = factory.LazyAttribute(lambda obj: obj.avg_bandwidth_out_mbps * 2.0)
-
     # Quality metrics
     jitter_ms = factory.fuzzy.FuzzyFloat(0.5, 10.0, precision=2)
     packet_loss_percentage = factory.fuzzy.FuzzyFloat(0.0, 2.0, precision=2)

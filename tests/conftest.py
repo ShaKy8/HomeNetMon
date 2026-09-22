@@ -334,8 +334,8 @@ def mock_nmap():
 @pytest.fixture
 def mock_ping():
     """Mock ping functionality."""
-    with patch('ping3.ping') as mock_ping_func:
-        mock_ping_func.return_value = 0.025  # 25ms response time
+    with patch('monitoring.ping.ping_host') as mock_ping_func:
+        mock_ping_func.return_value = 25.0  # ms
         yield mock_ping_func
 
 

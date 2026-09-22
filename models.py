@@ -1093,14 +1093,6 @@ class PerformanceMetrics(db.Model):
     successful_checks = db.Column(db.Integer)  # Successful ping responses
     failed_checks = db.Column(db.Integer)  # Failed ping attempts
 
-    # Bandwidth metrics
-    avg_bandwidth_in_mbps = db.Column(db.Float)  # Average incoming bandwidth
-    avg_bandwidth_out_mbps = db.Column(db.Float)  # Average outgoing bandwidth
-    peak_bandwidth_in_mbps = db.Column(db.Float)  # Peak incoming bandwidth
-    peak_bandwidth_out_mbps = db.Column(db.Float)  # Peak outgoing bandwidth
-    total_bytes_in = db.Column(db.BigInteger)  # Total bytes received
-    total_bytes_out = db.Column(db.BigInteger)  # Total bytes transmitted
-
     # Performance quality metrics
     jitter_ms = db.Column(db.Float)  # Network jitter in milliseconds
     packet_loss_percentage = db.Column(db.Float)  # Packet loss percentage

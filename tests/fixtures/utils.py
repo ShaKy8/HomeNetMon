@@ -144,7 +144,7 @@ class MockHelper:
     def mock_external_services():
         """Context manager that mocks all external services."""
         with patch('nmap.PortScanner') as mock_nmap, \
-             patch('ping3.ping') as mock_ping, \
+             patch('monitoring.ping.ping_host') as mock_ping, \
              patch('smtplib.SMTP') as mock_smtp, \
              patch('requests.post') as mock_requests:
 

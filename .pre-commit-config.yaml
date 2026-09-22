@@ -20,13 +20,12 @@ repos:
       - id: check-merge-conflict
       - id: check-yaml
         args: [--allow-multiple-documents]  # k8s manifests bundle multiple docs via ---
-        exclude: '^helm/'                   # helm chart templates use Go-template syntax, not pure YAML
       - id: check-json
       - id: check-toml
       - id: end-of-file-fixer
-        exclude: '^(static/bundles/|production_data/|logs/|node_modules/)'
+        exclude: '^(production_data/|logs/|node_modules/)'
       - id: trailing-whitespace
-        exclude: '^(static/bundles/|production_data/|logs/|node_modules/|.*\.md$)'
+        exclude: '^(production_data/|logs/|node_modules/|.*\.md$)'
       - id: detect-private-key
       - id: check-added-large-files
         args: [--maxkb=1024]  # block accidental commits of >1 MB files (catches db/log/cache slips)

@@ -46,15 +46,6 @@ def create_app():
     # chain -- overrode X-Frame-Options to SAMEORIGIN and made API GET responses
     # publicly cacheable for 30 s.)
 
-    # Initialize CDN manager for static asset optimization
-    try:
-        from services.cdn_manager import CDNManager, setup_cdn_routes
-        cdn_manager = CDNManager(app)
-        setup_cdn_routes(app)
-        logger.info("CDN manager initialized for static asset optimization")
-    except ImportError:
-        logger.warning("CDN manager not available")
-
     # Validate security configuration
     Config.validate_host_binding()
 
@@ -243,25 +234,10 @@ def create_app():
     app.rate_limiter = rate_limiter
     app.performance_monitor = performance_monitor
 
-    # Initialize WebSocket optimizer for performance
-    from services.websocket_optimizer import init_websocket_optimizer
-    websocket_optimizer = init_websocket_optimizer(db, socketio)
-    app.websocket_optimizer = websocket_optimizer
-
     # Apply WebSocket memory leak fixes
     from core.websocket_memory_manager import fix_websocket_memory_leaks
     websocket_connection_manager = fix_websocket_memory_leaks(app, socketio)
     app.websocket_connection_manager = websocket_connection_manager
-
-    # Initialize query result caching for massive performance improvements
-    from services.query_cache import init_query_cache
-    query_cache = init_query_cache(app)
-    app.query_cache = query_cache
-
-    # Initialize memory monitoring and cleanup
-    from services.memory_monitor import init_memory_monitoring
-    memory_monitor = init_memory_monitoring()
-    app.memory_monitor = memory_monitor
 
     # Initialize resource monitor (scheduled DB retention + system resource cleanup)
     from services.resource_monitor import ResourceMonitor

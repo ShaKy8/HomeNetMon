@@ -214,7 +214,7 @@ def get_cached_device_list(app_context_func) -> List[Dict[str, Any]]:
                 include_uptime=True
             )
 
-            logger.info(f"=== CACHE MISS: Retrieved {len(device_results)} devices with batch data ===")
+            logger.debug(f"Cache miss: retrieved {len(device_results)} devices with batch data ===")
 
             # Convert to serializable format using fast method
             device_list = []
@@ -226,70 +226,16 @@ def get_cached_device_list(app_context_func) -> List[Dict[str, Any]]:
                 )
                 device_list.append(device_data)
 
-            logger.info(f"=== Returning {len(device_list)} devices from cache function ===")
+            logger.debug(f"Returning {len(device_list)} devices from the device cache")
             return device_list
 
     return _get_device_list()
 
-def get_cached_monitoring_summary(app_context_func) -> Dict[str, Any]:
-    """Get cached monitoring summary statistics"""
-
-    @cached_query(ttl=30, key_prefix="monitoring_summary_")
-    def _get_monitoring_summary():
-        from models import Device, Alert
-        from sqlalchemy import func
-
-        with app_context_func():
-            # Get device counts by status
-            total_devices = db.session.query(func.count(Device.id)).scalar()
-            monitored_devices = db.session.query(func.count(Device.id)).filter(
-                Device.is_monitored == True
-            ).scalar()
-
-            # Get alert counts
-            active_alerts = db.session.query(func.count(Alert.id)).filter(
-                Alert.resolved == False
-            ).scalar()
-
-            critical_alerts = db.session.query(func.count(Alert.id)).filter(
-                Alert.resolved == False,
-                Alert.severity == 'critical'
-            ).scalar()
-
-            return {
-                'total_devices': total_devices,
-                'monitored_devices': monitored_devices,
-                'active_alerts': active_alerts,
-                'critical_alerts': critical_alerts,
-                'timestamp': datetime.utcnow().isoformat() + 'Z'
-            }
-
-    return _get_monitoring_summary()
-
 def invalidate_device_cache():
     """Invalidate all device-related cache entries"""
     query_cache.invalidate_pattern("devices_")
-    query_cache.invalidate_pattern("monitoring_summary_")
     logger.debug("Invalidated device cache entries")
 
 def get_cache_stats():
     """Get cache performance statistics"""
     return query_cache.get_stats()
-
-# Initialize cache with app context
-def init_query_cache(app):
-    """Initialize query cache with Flask app context"""
-    global db
-    from models import db as database
-    db = database
-
-    # Create app context function
-    def app_context_func():
-        return app.app_context()
-
-    # Make app context available to cached functions
-    get_cached_device_list.app_context = app_context_func
-    get_cached_monitoring_summary.app_context = app_context_func
-
-    logger.info("Query result caching initialized")
-    return query_cache

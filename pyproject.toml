@@ -14,18 +14,11 @@ extend-exclude = [
     "templates",
     "node_modules",
     "scripts",
-    "security",  # deployment hardening artifacts (shell scripts, .conf files, standalone .py
-                 # files with dashes in their names that aren't importable Python modules)
     "tests/fixtures/factories_original.py",
     "production_data",
     "logs",
     "screenshots",
     "test-results",
-    "playwright-report",
-    "examples",
-    "helm",
-    "k8s",
-    "sdk",
 ]
 
 [tool.ruff.lint]
@@ -117,7 +110,6 @@ omit = [
     "*/instance/*",
     "*/logs/*",
     "*/scripts/*",
-    "*/migrations/*",
     "*/static/*",
     "*/templates/*",
     "*/node_modules/*",
