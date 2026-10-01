@@ -1,0 +1,20 @@
+# Per-user watchdog (no root): checks HomeNetMon once a minute and pushes through ntfy when it is down.
+# It deliberately runs on the SYSTEM python with the standard library only, never the app's venv: it
+# must keep working when the venv is broken (the 2026-09 outage). Install with the timer next to it:
+#   for u in service timer; do sed -e "s#%h/HomeNetMon#$PWD#g" systemd/homenetmon-watchdog.$u > ~/.config/systemd/user/homenetmon-watchdog.$u; done
+#   systemctl --user daemon-reload && systemctl --user enable --now homenetmon-watchdog.timer
+# PORT and DATABASE_URL below must match homenetmon.user.service (a test keeps them equal).
+[Unit]
+Description=HomeNetMon watchdog (tells you when HomeNetMon is down)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/HomeNetMon
+EnvironmentFile=-%h/HomeNetMon/.env
+Environment=PORT=5000
+Environment=DATABASE_URL=sqlite:///%h/HomeNetMon/production_data/homeNetMon.db
+ExecStart=/usr/bin/python3 %h/HomeNetMon/scripts/ops/homenetmon_watchdog.py
+StandardOutput=journal
+StandardError=journal

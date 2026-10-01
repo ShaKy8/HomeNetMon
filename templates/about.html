@@ -244,7 +244,8 @@
     </div>
     <div class="card-body">
         <p class="mb-2" id="thread-health-summary">Loading...</p>
-        <ul class="list-unstyled mb-0" id="thread-health"></ul>
+        <ul class="list-unstyled mb-2" id="thread-health"></ul>
+        <p class="mb-0 small text-muted" id="watchdog-health"></p>
     </div>
 </div>
 
@@ -464,6 +465,12 @@ function loadThreadHealth() {
                 ? `${stale.length} of ${names.length} background threads are stale: ${stale.join(', ')}`
                 : `All ${names.length} background threads are alive.`;
             summary.className = stale.length ? 'mb-2 text-danger' : 'mb-2 text-success';
+            const wd = data.watchdog || {};
+            const wdLine = document.getElementById('watchdog-health');
+            wdLine.textContent = !wd.installed
+                ? 'Outside watchdog: not installed (see the Operations Guide).'
+                : `Outside watchdog: last check ${wd.last_check_age_s} s ago, status ${wd.state}${wd.paused ? ' (paused)' : ''}.`;
+            wdLine.className = 'mb-0 small ' + (wd.installed && wd.last_check_age_s > 900 ? 'text-danger' : 'text-muted');
             const list = document.getElementById('thread-health');
             list.innerHTML = '';
             names.forEach(name => {

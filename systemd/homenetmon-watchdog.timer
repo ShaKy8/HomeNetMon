@@ -1,0 +1,12 @@
+# Runs homenetmon-watchdog.service two minutes after boot and then every minute.
+[Unit]
+Description=Run the HomeNetMon watchdog every minute
+
+[Timer]
+OnBootSec=2min
+OnUnitActiveSec=1min
+AccuracySec=5s
+Unit=homenetmon-watchdog.service
+
+[Install]
+WantedBy=timers.target

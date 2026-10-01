@@ -86,6 +86,7 @@ class ResourceMonitor:
 
         # Self-alert state: don't re-alert about the same stuck thread within an hour.
         last_stuck_alert: dict[str, float] = {}
+        watchdog_alerted = False
 
         while self.is_running and not self._stop_event.is_set():
             record_heartbeat('ResourceMonitor')
@@ -107,6 +108,8 @@ class ResourceMonitor:
                         self._emit_thread_stuck_alert(name, status['threads'][name])
             except Exception as e:
                 logger.debug(f"Watchdog check failed: {e}")
+
+            watchdog_alerted = self._check_outside_watchdog(watchdog_alerted)
 
             try:
                 # Get current resource usage
@@ -130,6 +133,38 @@ class ResourceMonitor:
             except Exception as e:
                 logger.error(f"Error in resource monitoring loop: {e}")
                 self._stop_event.wait(60)  # Wait 1 minute before retrying
+
+    def _check_outside_watchdog(self, already_alerted: bool) -> bool:
+        """Push once when the outside watchdog (scripts/ops/homenetmon_watchdog.py) has stopped checking.
+
+        Without this a dead watchdog is the same silent failure as no watchdog. Only runs once the
+        app has been up for ten minutes: after a reboot the watchdog's own timer starts two minutes
+        after boot and its gap notice already reports the reboot. Returns the new "already alerted"
+        flag so one stale episode produces one push."""
+        try:
+            from core import watchdog_status
+            from core.health import _process_started
+            age = watchdog_status.stale_age()
+            if age is None:
+                return False
+            if already_alerted or time.time() - _process_started < 600:
+                return already_alerted
+            from services.push_notifications import push_service
+            logger.error(f"The outside watchdog has not checked for {age // 60} min")
+            with self.app.app_context():
+                push_service.send_notification(
+                    title="HomeNetMon: watchdog stopped",
+                    message=(f"The outside watchdog has not checked in for {age // 60} minutes, so nothing would "
+                             f"tell you if HomeNetMon went down. Check: systemctl --user status "
+                             f"homenetmon-watchdog.timer"),
+                    priority="high",
+                    tags="warning",
+                    notification_type="watchdog",
+                )
+            return True
+        except Exception as e:
+            logger.debug(f"Outside-watchdog check failed: {e}")
+            return already_alerted
 
     def _emit_thread_stuck_alert(self, thread_name: str, info: dict) -> None:
         """Surface a stuck background thread.

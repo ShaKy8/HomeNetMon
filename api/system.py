@@ -57,6 +57,7 @@ def health_check():
     try:
         from version import get_version_string
         from core.health import check as check_threads
+        from core import watchdog_status
 
         from services import retention
 
@@ -69,6 +70,8 @@ def health_check():
             'stale_threads': thread_status['stale'],
             # Hourly table retention (services/retention.py); last_run None until the first pass.
             'retention': retention.status(),
+            # Informational only (never changes the status code): the outside watchdog's last check.
+            'watchdog': watchdog_status.read(),
         }
         status_code = 200 if thread_status['healthy'] else 503
         return jsonify(body), status_code

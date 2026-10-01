@@ -96,7 +96,8 @@ class TestEnvExample:
         keys = re.findall(r'^#?\s*([A-Z][A-Z0-9_]+)=', _read(ROOT / '.env.example'), re.M)
         code = ''.join(_read(p) for p in [ROOT / 'config.py', ROOT / 'app.py', ROOT / 'api/config.py',
                                             ROOT / 'services/rate_limiter.py', ROOT / 'services/push_notifications.py',
-                                            ROOT / 'core/security_middleware.py'])
+                                            ROOT / 'core/security_middleware.py',
+                                            ROOT / 'scripts/ops/homenetmon_watchdog.py'])
         unread = [k for k in set(keys) if k not in code]
         assert not unread, f'.env.example documents keys nothing reads: {sorted(unread)}'
 

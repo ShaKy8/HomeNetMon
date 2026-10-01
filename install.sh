@@ -65,10 +65,16 @@ if [[ "$MODE" == "--user" ]]; then
     [[ -f "$REPO_DIR/.env" ]] || write_env "$REPO_DIR/.env" "$USER"
     mkdir -p "$REPO_DIR/production_data" "$REPO_DIR/logs" ~/.config/systemd/user
     sed -e "s#%h/HomeNetMon#$REPO_DIR#g" "$REPO_DIR/systemd/homenetmon.user.service" > ~/.config/systemd/user/$UNIT.service
+    # The outside watchdog (system python, standard library only) pushes through ntfy when HomeNetMon is down.
+    for suffix in service timer; do
+        sed -e "s#%h/HomeNetMon#$REPO_DIR#g" "$REPO_DIR/systemd/homenetmon-watchdog.$suffix" > ~/.config/systemd/user/homenetmon-watchdog.$suffix
+    done
     systemctl --user daemon-reload
     systemctl --user enable --now "$UNIT"
+    systemctl --user enable --now homenetmon-watchdog.timer
     loginctl enable-linger "$USER" 2>/dev/null || warn "Could not enable lingering; the service stops when you log out."
     say "Started. Status: systemctl --user status $UNIT   Logs: journalctl --user -u $UNIT -f"
+    say "Watchdog on (checks every minute, pushes via ntfy): systemctl --user list-timers homenetmon-watchdog"
     exit 0
 fi
 
