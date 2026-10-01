@@ -14,7 +14,7 @@ from typing import Dict, Any, Optional, Tuple
 
 # Semantic Versioning for HomeNetMon
 VERSION_MAJOR = 2
-VERSION_MINOR = 9
+VERSION_MINOR = 10
 VERSION_PATCH = 0
 VERSION_BUILD = "stable"
 

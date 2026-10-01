@@ -43,6 +43,7 @@ A comprehensive, self-hosted network monitoring solution designed for home netwo
 ### 🔔 **Alerting System**
 - Alert rules for device down / recovery, high latency, new devices, performance, security findings and internet loss
 - Notification channels: ntfy push, email via SMTP, webhooks, Discord (each with a test button)
+- Outside watchdog: a separate timer pushes through ntfy within minutes when HomeNetMon itself is down or degraded (system Python only, so a broken venv cannot silence it), optional dead-man's-switch heartbeat for a dead machine
 - Notification policy: choose which alert types notify, quiet hours, per-device "alert when down"
   (phones, Apple devices and unidentified hosts are silent by default); every alert is still recorded
 - Alert acknowledgement, resolution, bulk actions, server-side filters and quiet-hours suppression rules
@@ -680,9 +681,10 @@ HomeNetMon/
 ├── api/                   # REST blueprints (devices, monitoring, analytics, config, security, …)
 ├── core/                  # CSRF/security headers, error handler, thread-heartbeat watchdog, validators
 ├── templates/ + static/   # Jinja + Bootstrap 5 + Chart.js + vanilla JS (no build step)
-├── scripts/               # operational one-shots (backup, maintenance window, schema cleanup)
+├── scripts/               # operational one-shots (backup, maintenance window, schema cleanup);
+│                          # scripts/ops/ holds the outside watchdog (stdlib only, runs outside the venv)
 ├── tests/                 # unit + integration (pytest), TestHomeNetmon.js (Playwright)
-├── systemd/, Dockerfile, docker-compose.yml, install.sh
+├── systemd/, Dockerfile, docker-compose.yml, install.sh   # systemd/ includes the watchdog service and timer
 └── docs/                  # deployment, operations, security, troubleshooting, user and API guides
 ```
 

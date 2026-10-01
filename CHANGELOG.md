@@ -2,6 +2,27 @@
 
 All notable changes to HomeNetMon will be documented in this file.
 
+## [2.10.0] - 2026-10-01
+
+HomeNetMon now tells you when it is down. It was down for 44 hours (2026-09-29 to 10-01): an OS upgrade
+removed Python 3.12, the venv stopped importing, systemd restarted the crashing service every ten seconds
+and nothing could say so, because the monitor lives inside the thing that failed.
+
+### Added
+- **Outside watchdog** (`scripts/ops/homenetmon_watchdog.py`, `homenetmon-watchdog.timer`, installed by
+  `install.sh --user`). Once a minute, on the system Python with the standard library only (never the
+  venv), it checks `/api/system/health` on loopback and on the LAN address and pushes through the existing
+  ntfy topic: DOWN after three failed checks with the systemd state and the last error line, DEGRADED
+  naming stale threads, STILL DOWN every six hours, BACK with the outage length, and a notice after the
+  machine was off or frozen. Undeliverable pushes are retried every minute. `--status`, `--test`,
+  `--pause`, `--resume` for operation; `WATCHDOG_FAIL_THRESHOLD`, `WATCHDOG_REMINDER_HOURS` to tune.
+- Optional heartbeat (`WATCHDOG_HEARTBEAT_URL`, healthchecks.io style): the only way to be told in real
+  time that the whole machine is dead, plus an immediate `/fail` ping as a second path when DOWN is confirmed.
+- The app watches the watchdog: `/api/system/health` gains an informational `watchdog` key, the About page
+  shows its last check, and HomeNetMon pushes "watchdog stopped" if it is silent for 15 minutes.
+- Troubleshooting entry and recipe for rebuilding the venv after an OS upgrade (including without
+  `ensurepip` or sudo).
+
 ## [2.9.0] - 2026-09-22
 
 Alert policy, device identity, UI fixes and dead weight. After 2.8.1 the alerts were still too

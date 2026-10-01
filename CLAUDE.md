@@ -59,6 +59,7 @@ Schema is created by `init_db()`/`create_all()` at startup; there is no migratio
 systemctl --user {status,restart} homenetmon
 journalctl --user -u homenetmon -f
 ./health_check.sh                          # exits 0 when /api/system/health reports every thread alive
+systemctl --user list-timers homenetmon-watchdog; /usr/bin/python3 scripts/ops/homenetmon_watchdog.py --status   # the outside watchdog
 ```
 
 ## Architecture
@@ -87,6 +88,9 @@ The security scanner is gated by `SECURITY_SCANNING_ENABLED` and off by default 
 - `services/configuration_service.py` — validation rules, `ConfigurationHistory`, hot-reload callbacks. **Every Settings write goes through `set_configuration()`** (`api/config.py::_set`); never call `Configuration.set_value()` from a route.
 
 Pattern for a new background service: singleton with `start_monitoring()`, instantiate in `create_app()`, attach to `app`, launch via `threading.Thread(daemon=True, name=...)` in `start_monitoring_services()`, heartbeat each loop, add to `EXPECTED_THREADS`, open `with app.app_context():` per iteration (never for the thread's lifetime — it pins a SQLite snapshot and blocks WAL checkpoints), and use a `threading.Event` for the wait so `stop()` is prompt.
+
+### Outside watchdog (`scripts/ops/homenetmon_watchdog.py`, `systemd/homenetmon-watchdog.{service,timer}`)
+Tells the user (ntfy push) when HomeNetMon is down or degraded, because the app cannot report its own death (a 44-hour outage in 2026-09 went unnoticed after an OS upgrade broke the venv). A user timer runs it every minute on **`/usr/bin/python3` with the standard library only, never the venv** (a test enforces both); it only *reads* the app database for the ntfy settings, never restarts anything, and keeps its state in `~/.local/state/homenetmon-watchdog/state.json` (`core/watchdog_status.py` reads it back: the About page line, the informational `watchdog` key of `/api/system/health`, and a `ResourceMonitor` push when the watchdog goes silent for 15 minutes). The unit's `PORT`/`DATABASE_URL` lines must equal `homenetmon.user.service` (a test pins it). Keep it dependency-free: do not import app code or add packages to it. Operations: `docs/OPERATIONS_GUIDE.md`.
 
 ### Core infrastructure (`core/`)
 `security_middleware.py` (stateless HMAC CSRF tokens accepted from the `X-CSRF-Token` header or a form field only — never the cookie; security headers; CSP still needs `'unsafe-inline'` because templates carry inline scripts), `error_handler.py`, `health.py` (thread heartbeats), `validators.py`, `websocket_memory_manager.py`. Caching: `services/query_cache.py` (`invalidate_device_cache()` after device writes). Rate limiting: `api/rate_limited_endpoints.py::create_endpoint_limiter(tier)` tags each view with `_rate_limit_tier`; read-only GETs must not use `critical`/`intensive` (a test enforces it); localhost and `RATE_LIMIT_TRUSTED_IPS` are exempt.

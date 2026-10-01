@@ -29,6 +29,9 @@ journalctl --user -u homenetmon -f
 ./health_check.sh                      # exits 0 when /api/system/health reports every thread alive
 ```
 
+The installer also sets up the **outside watchdog** (`homenetmon-watchdog.timer`), which pushes through ntfy when
+HomeNetMon is down. It runs on the system Python, not the venv; see the Operations Guide.
+
 The database lives at `production_data/homeNetMon.db` (gitignored) and logs at `logs/homenetmon.log`.
 
 ## Option B: system-wide systemd service

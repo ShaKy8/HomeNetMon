@@ -18,6 +18,26 @@ curl -s localhost:5000/api/system/health | python3 -m json.tool
   - **`nmap` missing**: `sudo apt install nmap`.
 - The installed unit can drift from the template after an upgrade; regenerate it (Deployment Guide).
 
+## After an OS upgrade the service restarts every 10 seconds (`ModuleNotFoundError`)
+
+`journalctl --user -u homenetmon -n 20` shows `No module named 'gunicorn'` (or another package) and
+`systemctl --user show homenetmon -p NRestarts` keeps climbing. A distribution upgrade replaced the Python
+the venv was built against (Ubuntu 26.04 ships only 3.14), so `venv/` no longer imports. Rebuild it **at the
+same path** (a venv's scripts hard-code their location, so renaming a new one does not work):
+
+```bash
+mv venv venv.old
+/usr/bin/python3 -m venv venv                        # if this says ensurepip is missing and you have no sudo:
+#   /usr/bin/python3 -m venv --without-pip venv
+#   PYTHONPATH=<a pip-*.whl, e.g. from ~/.cache/virtualenv/wheel/house> venv/bin/python -m pip install --no-index --find-links <that directory> pip
+venv/bin/python -m pip install -r requirements.txt -r requirements-dev.txt
+venv/bin/python -m pytest tests/unit tests/integration -q --no-cov     # confirm before restarting
+venv/bin/python scripts/backup_database.py && systemctl --user restart homenetmon && ./health_check.sh
+```
+
+The outside watchdog (Operations Guide) would have pushed a DOWN message within minutes, with this
+traceback line in it.
+
 ## Health reports a stale thread (503)
 
 - The About page or `/api/system/health` names the thread. Restart the service; if it recurs, look for
