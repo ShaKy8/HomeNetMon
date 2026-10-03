@@ -4,6 +4,7 @@ from config import Config
 from constants import DEFAULT_DEVICE_DOWN_MINUTES, DEFAULT_HIGH_LATENCY_MS
 from monitoring.notification_policy import DEFAULTS as NOTIFY_DEFAULTS, TYPE_KEYS as NOTIFY_TYPE_KEYS
 from api.rate_limited_endpoints import create_endpoint_limiter
+from core.host_policy import outbound_url_problem
 from core.error_handler import handle_errors, ResourceNotFoundError, DatabaseError, ValidationError
 
 config_bp = Blueprint('config', __name__)
@@ -547,6 +548,9 @@ def test_webhook_config():
 
         if not webhook_url:
             return jsonify({'error': 'Webhook URL is required'}), 400
+        problem = outbound_url_problem(webhook_url)
+        if problem:
+            return jsonify({'error': f'Webhook URL rejected: {problem}'}), 400
 
         # Send test webhook
         test_payload = {
@@ -684,6 +688,8 @@ def test_discord_config():
         webhook_url = (data.get('discord_webhook_url') or Configuration.get_value('discord_webhook_url', '') or '').strip()
         if not webhook_url:
             return jsonify({'error': 'No Discord webhook URL provided or saved'}), 400
+        if not current_app.configuration_service._validate_discord_webhook_url(webhook_url):
+            return jsonify({'error': 'Not a Discord webhook URL (https://discord.com/api/webhooks/...)'}), 400
 
         from monitoring.alerts import AlertManager
 

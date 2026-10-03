@@ -550,7 +550,7 @@
                                     <i class="bi bi-exclamation-triangle text-danger me-2 mt-1"></i>
                                     <div>
                                         <div class="fw-medium text-danger">Scan Failed</div>
-                                        <div class="small text-muted">${errorMessage}</div>
+                                        <div class="small text-muted">${escapeHtml(errorMessage)}</div>
                                         <div class="small text-muted mt-1">
                                             Try running the scan again. If the problem persists, check your network connectivity and scanner permissions.
                                         </div>

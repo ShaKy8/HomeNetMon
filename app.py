@@ -82,65 +82,7 @@ def create_app():
     # hostname, a Tailscale address (100.64.0.0/10 or this node's MagicDNS name) or a
     # name listed in ALLOWED_ORIGIN_HOSTS. Public addresses are refused so a page on
     # another site cannot open a socket to the dashboard from a visiting browser.
-    import ipaddress
-    import re
-    from urllib.parse import urlparse
-
-    from constants import CGNAT_NETWORK
-    from services import tailscale
-
-    try:
-        _allowed_network = ipaddress.ip_network(Config.NETWORK_RANGE, strict=False)
-    except ValueError:
-        logger.warning(
-            "Invalid NETWORK_RANGE=%r for CORS check; falling back to all-RFC1918",
-            Config.NETWORK_RANGE,
-        )
-        _allowed_network = None
-
-    _local_hostname_pattern = re.compile(r'^[a-zA-Z0-9\-]+(\.local)?$')
-
-    def cors_allowed_origins_callback(origin):
-        if not origin:
-            return False
-        try:
-            parsed = urlparse(origin)
-        except Exception:
-            return False
-        if parsed.scheme not in ('http', 'https'):
-            return False
-        host = parsed.hostname
-        if not host:
-            return False
-
-        # Localhost / loopback
-        if host in ('localhost', '127.0.0.1', '0.0.0.0', '::1'):
-            return True
-
-        # Local hostnames (foo.local or bare unqualified)
-        if _local_hostname_pattern.match(host) and '.' not in host.replace('.local', ''):
-            return True
-
-        lowered = host.lower()
-        if lowered in Config.ALLOWED_ORIGIN_HOSTS:
-            return True
-
-        # Other hostnames: only this node's own Tailscale MagicDNS name (cached lookup,
-        # one subprocess per 30 s at most). Not *.ts.net wholesale: those names resolve
-        # publicly, so any tailnet could otherwise host a page that reaches this socket.
-        try:
-            ip = ipaddress.ip_address(host)
-        except ValueError:
-            return lowered in tailscale.own_hostnames()
-
-        # IP literal: any private / link-local / loopback / CGNAT address -- that may be
-        # another local subnet (a second interface, a VLAN, a VPN or the tailnet) than
-        # the one being monitored.
-        if ip.is_private or ip.is_loopback or ip.is_link_local or ip in CGNAT_NETWORK:
-            return True
-        if _allowed_network is not None and ip in _allowed_network:
-            return True
-        return False
+    from core.host_policy import origin_allowed as cors_allowed_origins_callback
 
     # async_mode is explicit: every background service is a native thread doing
     # blocking subprocess/SQLite work, so the server must be threading-based too.

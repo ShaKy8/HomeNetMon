@@ -121,7 +121,9 @@ class TestSocketIoOrigins:
         for bad in ('http://8.8.8.8:5000', 'https://evil.example.com', 'ftp://192.168.1.1', ''):
             assert not cb(bad), bad
 
-    def test_tailscale_origins(self, app):
+    def test_tailscale_origins(self, app, monkeypatch):
+        from core import host_policy
+        monkeypatch.setattr(host_policy.Config, 'BASE_URL', 'http://192.168.1.2:5000')   # a developer's .env may name the tailnet host
         cb = app.socketio.server.eio.cors_allowed_origins
         assert cb('http://100.99.81.103:5000')      # CGNAT literal, whatever CPython says about is_private
         assert cb('http://[fd7a:115c:a1e0::d329:5168]:5000')
@@ -134,9 +136,9 @@ class TestSocketIoOrigins:
             assert not cb('http://geekom1.tail52dabf.ts.net:5000')
 
     def test_allowed_origin_hosts_setting(self, app, monkeypatch):
-        import app as app_module   # the Config class the callback reads (test_config_coherence reloads config)
+        from core import host_policy   # patch the Config class the policy reads (test_config_coherence reloads config)
         cb = app.socketio.server.eio.cors_allowed_origins
-        monkeypatch.setattr(app_module.Config, 'ALLOWED_ORIGIN_HOSTS', ('netmon.example.com',))
+        monkeypatch.setattr(host_policy.Config, 'ALLOWED_ORIGIN_HOSTS', ('netmon.example.com',))
         with patch('services.tailscale.own_hostnames', return_value=set()):
             assert cb('https://netmon.example.com')
             assert cb('https://NetMon.example.com')

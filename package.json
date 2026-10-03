@@ -1,6 +1,6 @@
 {
   "name": "homenetmon",
-  "version": "2.10.0",
+  "version": "2.10.1",
   "private": true,
   "description": "Browser (Playwright) tests for HomeNetMon; the application itself is Python (see requirements.txt).",
   "scripts": {

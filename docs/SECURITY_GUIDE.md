@@ -10,9 +10,17 @@ authentication, add network boundaries instead:
 - For remote access use a VPN or an overlay network (WireGuard, Tailscale), or a reverse proxy that
   terminates TLS **and** authenticates (Caddy + basic auth, nginx + auth_request, Authelia). Tailscale
   needs no configuration (see the Deployment Guide); never expose the port with `tailscale funnel`.
-- Live updates (Socket.IO) accept only origins that are this host: private, link-local and
-  `100.64.0.0/10` addresses, `*.local` names, the host's Tailscale MagicDNS name and
-  `ALLOWED_ORIGIN_HOSTS`. A page on any other site cannot open a socket to the dashboard.
+- Every request's `Host` header, and every Socket.IO origin, must be this server: private, link-local and
+  `100.64.0.0/10` addresses, bare names and `*.local` / `*.lan` / `*.home.arpa` names, the host's Tailscale
+  MagicDNS name, the host of `BASE_URL`, and `ALLOWED_ORIGIN_HOSTS` (`core/host_policy.py`). Anything else
+  gets HTTP 400. This stops DNS rebinding, where a hostile web page rebinds its own name to your server's
+  address to become same-origin with the whole unauthenticated API. If you reach the dashboard through a
+  reverse proxy or a custom name and get "Invalid host header", add the name to `ALLOWED_ORIGIN_HOSTS`.
+- The webhook test buttons refuse loopback and link-local targets, so they cannot be used to probe services on
+  this machine.
+- Keep `.env`, `production_data/` and `backups/` owner-only (`chmod 600 .env; chmod 700 production_data backups`);
+  new backups are written 0600.
+- Use a long random ntfy topic: ntfy.sh topics are public to anyone who guesses the name.
 - Keep the host's firewall closed to everything but the LAN.
 
 ## What the application does protect

@@ -2,6 +2,24 @@
 
 All notable changes to HomeNetMon will be documented in this file.
 
+## [2.10.1] - 2026-10-03
+
+Security audit fixes.
+
+### Fixed
+- **DNS rebinding.** The server accepted any `Host` header, so a hostile web page that rebound its own
+  name to this machine's address became same-origin with the unauthenticated API, could fetch a CSRF
+  token and change settings. Requests with a Host that is not this server now get HTTP 400. One policy
+  (`core/host_policy.py`) now serves the Host check and the Socket.IO origin check: private, link-local and
+  Tailscale addresses, bare and `.local` / `.lan` / `.home.arpa` names, this node's MagicDNS name, the host
+  of `BASE_URL` and `ALLOWED_ORIGIN_HOSTS`.
+- The webhook and Discord test buttons posted to any URL from the request body. Loopback, link-local and
+  unspecified targets (this machine's own services, cloud metadata) are refused, as is a saved webhook
+  setting pointing at one; the Discord test accepts Discord URLs only.
+- The security scan's error text was inserted into the page unescaped.
+- ReDoc is loaded with a Subresource Integrity hash.
+- New database backups are written owner-only (0600).
+
 ## [2.10.0] - 2026-10-01
 
 HomeNetMon now tells you when it is down. It was down for 44 hours (2026-09-29 to 10-01): an OS upgrade

@@ -9,6 +9,8 @@ from typing import Set
 from flask import Flask, request, make_response, g, jsonify
 import ipaddress
 
+from core import host_policy
+
 logger = logging.getLogger(__name__)
 
 class SecurityMiddleware:
@@ -40,7 +42,7 @@ class SecurityMiddleware:
             'enable_input_validation': False,
             'enable_rate_limiting': True,
             'max_content_length': 16 * 1024 * 1024,  # 16MB
-            'allowed_hosts': [],  # Empty means all hosts allowed
+            'allowed_hosts': [],  # Empty: core/host_policy.py decides (this server's own names)
             'strict_transport_security_max_age': 31536000,  # 1 year
             # CSP is tuned conservatively for this LAN dashboard:
             # - 'unsafe-inline' kept on script-src because templates still
@@ -93,8 +95,13 @@ class SecurityMiddleware:
         if '/api/devices/scan' in request.path or '/api/monitoring/alerts' in request.path:
             logger.debug(f"Security check: {request.method} {request.path}")
 
-        # Check host header
-        if self.config['allowed_hosts'] and request.host not in self.config['allowed_hosts']:
+        # Host header: refuse names that are not this server (DNS rebinding makes a hostile page
+        # same-origin with the API otherwise). The rules live in core/host_policy.py.
+        if self.config['allowed_hosts']:
+            allowed = request.host in self.config['allowed_hosts']
+        else:
+            allowed = host_policy.host_header_allowed(request.host)
+        if not allowed:
             logger.warning(f"Invalid host header: {request.host}")
             return jsonify({'error': 'Invalid host header'}), 400
 

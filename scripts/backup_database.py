@@ -122,6 +122,7 @@ class BackupManager:
                 src.close()
             if check != 'ok':
                 raise RuntimeError(f"Backup failed integrity check: {check}")
+            backup_path.chmod(0o600)   # a full copy of the database: owner only
 
             backup_info = {
                 'type': 'full',

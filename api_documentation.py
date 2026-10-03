@@ -142,7 +142,8 @@ def setup_swagger_ui(app: Flask):
         </head>
         <body>
             <redoc spec-url='{API_SPEC_URL}'></redoc>
-            <script src="https://cdn.jsdelivr.net/npm/redoc@2.1.5/bundles/redoc.standalone.js"></script>
+            <script src="https://cdn.jsdelivr.net/npm/redoc@2.1.5/bundles/redoc.standalone.js"
+                    integrity="sha384-0GrsyTQc9Oqd8h+b2dbc4XdR2T/DYpy0tLNNstyx+LBMUyiBbcWPbEs9aRmUcaxD" crossorigin="anonymous"></script>
         </body>
         </html>
         '''

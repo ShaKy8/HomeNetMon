@@ -564,6 +564,9 @@ class ConfigurationService:
             parsed = urlparse(url)
             if not parsed.scheme or not parsed.netloc:
                 return False
+            from core.host_policy import outbound_url_problem
+            if outbound_url_problem(url):
+                return False
 
             # Quick connectivity test
             response = requests.head(url, timeout=5)
