@@ -124,6 +124,7 @@ BASE_URL=http://127.0.0.1:5001 npx playwright test     # browser suite against Y
 - Pytest options live in `pyproject.toml` (`--strict-markers`, a 15 s per-test timeout, declared markers). There is no `pytest.ini`.
 - CI (`.github/workflows/ci.yml`) parses every `.py` file, then runs `ruff check .`, `pip-audit -r requirements.txt` and the pytest command with `DATABASE_URL=sqlite:///:memory:`, a `SECRET_KEY` and `NETWORK_RANGE=192.168.1.0/24`. It installs the `nmap` binary because the test fixtures touch the scanner at import.
 - Ruff is deliberately narrow (`E9`, `F`, `B`, `S`, `PIE`, `PLE`, `RUF` with many ignores; `scripts/`, `static/`, `templates/` excluded). A clean run is not a style guarantee. Do not widen the ruleset or run `ruff format` over files in a feature change.
+- The venv must be active before `git commit`: the commit hook finds `pre-commit` only on the PATH, so run `source venv/bin/activate` in the same shell first. If a commit fails with "`pre-commit` not found", activate the venv and retry. Never pass `--no-verify`.
 - The `end-of-file-fixer` hook fixes files and fails the commit: add the fixed files and commit again.
 - Run `pip-audit -r requirements.txt` after any dependency change. If it cannot run on this machine, say so and rely on CI.
 
