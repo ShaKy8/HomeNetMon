@@ -47,6 +47,15 @@ class TestPagesRender:
         assert 'data.device || data' in html                 # envelope is unwrapped
         assert '/history.csv' in html and '/export' not in html.split('history.csv')[1][:400]
 
+    def test_no_page_style_block_is_nested_in_another_style_element(self, client, device):
+        """A <style> opened inside a <style> is CSS text, and the browser drops the rule that follows it.
+        The base template used to render every page's extra_css block inside its own <style>."""
+        for path in ['/', f'/device/{device.id}', '/alerts', '/analytics', '/network-map', '/security', '/settings', '/about']:
+            html = client.get(path).get_data(as_text=True)
+            blocks = re.findall(r'<style[^>]*>(.*?)</style>', html, flags=re.S)
+            assert len(blocks) >= 2, path          # the base theme and the page's own block
+            assert not [b[:80] for b in blocks if '<style' in b], path
+
     def test_nav_has_no_retired_pages(self, client):
         html = client.get('/').get_data(as_text=True)
         assert 'AI Dashboard' not in html and 'Full View' not in html

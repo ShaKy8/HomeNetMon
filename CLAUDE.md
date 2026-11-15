@@ -367,7 +367,7 @@ client.post('/api/devices', json={...}, headers={'X-CSRF-Token': token})
 ### User interface
 
 - Server-rendered Jinja, Bootstrap 5.3.0, vanilla JavaScript. No framework, no bundler, no CSS file, no npm runtime packages. No new CDN hosts or web fonts: the CSP allows only `cdn.jsdelivr.net` and `cdn.socket.io`. CDN URLs carry an exact version, and a test checks it.
-- Every page extends `base_beautiful.html` and fills the blocks `title`, `extra_css`, `content` and `extra_js`.
+- Every page extends `base_beautiful.html` and fills the blocks `title`, `extra_css`, `content` and `extra_js`. The `extra_css` block holds the page's own `<style>` element.
 - The shared theme is the `<style>` block of `base_beautiful.html`. There are no CSS variables; colours are literals. The base has light rules with dark overrides under `[data-bs-theme="dark"]` (the navbar toggle stores the choice in `localStorage`), but most page-level CSS is written for dark only. **Dark is the reference theme**: check your work there, and do not start a light-mode cleanup as a side effect.
 - Palette:
 
@@ -459,7 +459,7 @@ Each of these has happened here or is one step away. The format is: the mistake,
 35. **Opening a second socket, or subscribing only inside the `connect` handler.** The navbar usually connects first, so `connect` has already fired and the page silently gets no updates. Use the pattern in section 7.
 36. **Using `Chart`, `io` or `bootstrap` at script load.** They are deferred and not defined yet. Start from `DOMContentLoaded`.
 37. **Renaming an element id, a function or a pinned line of page script.** `tests/unit/test_frontend_contracts.py` pins literal strings (ids, function names, fragments such as `${esc(name)}`) and `TestHomeNetmon.js` selects by id. Search both files for a name before you change it.
-38. **Putting a rule you need first in a page's `extra_css` block.** That block is rendered inside the base `<style>` element, yet the existing pages open their own `<style>` tag in it, so the browser discards the first rule after the tag. Add rules after the first one. In a new page, write the rules without `<style>` tags. Do not remove the tags from an existing page as a side effect: that revives rules that have been dead and restyles the page.
+38. **Writing a page's CSS in `extra_css` without its own `<style>` element, or moving that block back inside the base `<style>`.** The block is rendered in the `<head>` after the base `<style>` has closed, so bare rules show up as text at the top of the page. Wrap them in `<style>...</style>`, as every existing page does. The block used to sit inside the base `<style>`; a `<style>` tag nested in another is CSS text, and the browser silently dropped the first rule of every page. A test in `tests/unit/test_frontend_contracts.py` checks for nesting.
 39. **Adding a colour, card or button style of your own.** It breaks the look of the page or one of the themes. Use the palette and classes in section 7.
 40. **Regenerating a large block of a template or page script.** The templates run from 500 to 2,500 lines with many inline functions, and a rewrite once deleted unrelated ones. Make targeted edits and re-read the surrounding code.
 

@@ -398,6 +398,14 @@
 }
 
 /* Responsive adjustments */
+/* Below this width the search and the buttons do not fit side by side: stack them. */
+@media (max-width: 1199px) {
+    .controls-section {
+        grid-template-columns: 1fr;
+        gap: 1rem;
+    }
+}
+
 @media (max-width: 768px) {
     .controls-section {
         grid-template-columns: 1fr;
@@ -411,6 +419,11 @@
     .search-filter-section {
         flex-direction: column;
         align-items: stretch;
+    }
+
+    /* Three selects in one row are wider than a phone; unwrapped they stretch the whole toolbar card. */
+    .filter-controls {
+        flex-wrap: wrap;
     }
 
     .action-buttons {
