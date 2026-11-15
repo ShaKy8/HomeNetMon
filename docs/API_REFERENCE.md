@@ -33,7 +33,7 @@ DATABASE_URL=sqlite:///:memory: venv/bin/python scripts/generate_api_reference.p
 | `POST` | `/api/devices/bulk-update` | Bulk update device properties Rate limit tier: bulk. |
 | `POST` | `/api/devices/ping-all` | Ping all monitored devices Rate limit tier: intensive. |
 | `POST` | `/api/devices/reclassify` | Re-run device type classification. Body {"all": true} redoes every auto-classified device; default is only devices still typed 'unknown'. User-set types on the device page are kept because they are never 'unknown'. Rate limit tier: strict. |
-| `POST` | `/api/devices/scan-now` | Trigger a manual network scan with progress updates |
+| `POST` | `/api/devices/scan-now` | Trigger a manual network scan with progress updates Rate limit tier: critical. |
 | `GET` | `/api/devices/scan-status` | Get current scan status Rate limit tier: relaxed. |
 | `GET` | `/api/devices/types` | Get all device types Rate limit tier: relaxed. |
 | `DELETE` | `/api/devices/{device_id}` | Delete a device Rate limit tier: strict. |

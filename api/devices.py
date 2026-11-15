@@ -873,6 +873,7 @@ def ping_single_device(device_id):
 
 
 @devices_bp.route('/scan-now', methods=['POST'])  # Add alternative URL to bypass cache
+@create_endpoint_limiter('critical')
 @handle_errors()
 def scan_network():
     """Trigger a manual network scan with progress updates"""

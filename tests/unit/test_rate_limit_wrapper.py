@@ -83,3 +83,24 @@ def test_untrusted_address_is_limited(client):
     codes = [client.put('/api/config/network', json={}, headers={'X-CSRF-Token': token},
                         environ_base={'REMOTE_ADDR': '10.99.99.99'}).status_code for _ in range(12)]
     assert 429 in codes
+
+
+def test_every_unsafe_api_route_has_a_rate_limit_tier(app):
+    """POST /api/devices/scan-now starts an nmap sweep and had no per-endpoint limit."""
+    missing = []
+    for rule in app.url_map.iter_rules():
+        if not rule.rule.startswith('/api/') or (rule.methods or set()) - {'HEAD', 'OPTIONS'} == {'GET'}:
+            continue
+        if getattr(app.view_functions.get(rule.endpoint), '_rate_limit_tier', None) is None:
+            missing.append(rule.rule)
+    assert missing == []
+
+
+def test_scan_now_is_on_the_critical_tier(app, client, monkeypatch):
+    # "Already scanning" makes the view answer 409 without starting a scan thread.
+    monkeypatch.setattr(app._scanner, 'scan_in_progress', True, raising=False)
+    token = _token(client)
+    codes = [client.post('/api/devices/scan-now', json={}, headers={'X-CSRF-Token': token},
+                         environ_base={'REMOTE_ADDR': '10.88.88.88'}).status_code for _ in range(2)]
+    assert codes == [409, 429]
+    assert getattr(app.view_functions['devices.scan_network'], '_rate_limit_tier', None) == 'critical'
