@@ -506,11 +506,25 @@ def delete_all_alerts():
 def bulk_delete_alerts():
     """Delete alerts by specific criteria (type, status, etc.)"""
     try:
-        data = request.get_json() or {}
+        data = request.get_json(silent=True)
+        if not isinstance(data, dict):
+            data = {}
 
         # Build query based on criteria
         query = Alert.query
         criteria_used = []
+
+        # Filter by id (the alerts page's "Delete selected")
+        if 'alert_ids' in data:
+            alert_ids = data['alert_ids']
+            if not isinstance(alert_ids, list) or not alert_ids:
+                return jsonify({'error': 'alert_ids list is required'}), 400
+            try:
+                alert_ids = [int(x) for x in alert_ids][:1000]
+            except (TypeError, ValueError):
+                return jsonify({'error': 'alert_ids must be integers'}), 400
+            query = query.filter(Alert.id.in_(alert_ids))
+            criteria_used.append(f"ids: {len(alert_ids)} selected")
 
         # Filter by alert type
         if 'alert_type' in data:
@@ -533,6 +547,13 @@ def bulk_delete_alerts():
                 severities = [severities]
             query = query.filter(Alert.severity.in_(severities))
             criteria_used.append(f"severity: {', '.join(severities)}")
+
+        # No recognised criterion would leave the query unfiltered and delete every alert;
+        # that is what /alerts/delete-all (with its confirmation) is for.
+        if not criteria_used:
+            return jsonify({
+                'error': 'At least one of alert_ids, alert_type, resolved or severity is required'
+            }), 400
 
         # Get count and summary before deletion
         alerts_to_delete = query.all()

@@ -104,3 +104,29 @@ class TestBulkActions:
         token = _token(client)
         assert client.post('/api/monitoring/alerts/bulk-acknowledge', json={}, headers={'X-CSRF-Token': token}).status_code == 400
         assert client.post('/api/monitoring/alerts/bulk-resolve', json={'alert_ids': ['x']}, headers={'X-CSRF-Token': token}).status_code == 400
+
+    @pytest.mark.parametrize('kwargs', [
+        {},                                   # no body at all
+        {'json': {}},                         # empty JSON object
+        {'json': {'unknown_key': 1}},         # a body with no criterion the route knows
+        {'json': {'alert_ids': []}},
+        {'json': {'alert_ids': ['x']}},
+        {'json': [1, 2]},                     # not an object
+    ])
+    def test_bulk_delete_without_criteria_is_rejected_and_deletes_nothing(self, client, fleet, kwargs):
+        r = client.delete('/api/monitoring/alerts/bulk-delete', headers={'X-CSRF-Token': _token(client)}, **kwargs)
+        assert r.status_code == 400, r.get_json()
+        assert 'error' in r.get_json()
+        assert Alert.query.count() == 5
+
+    def test_bulk_delete_by_id_deletes_only_the_selected_alerts(self, client, fleet):
+        """The alerts page's "Delete selected" sends alert_ids; the route used to ignore the key and delete everything."""
+        ids = [fleet['alerts'][0].id, fleet['alerts'][2].id]
+        r = client.delete('/api/monitoring/alerts/bulk-delete', json={'alert_ids': ids}, headers={'X-CSRF-Token': _token(client)})
+        assert r.status_code == 200 and r.get_json()['deleted_count'] == 2
+        assert sorted(a.id for a in Alert.query.all()) == sorted(a.id for i, a in enumerate(fleet['alerts']) if i not in (0, 2))
+
+    def test_bulk_delete_by_criteria_still_works(self, client, fleet):
+        r = client.delete('/api/monitoring/alerts/bulk-delete', json={'resolved': True}, headers={'X-CSRF-Token': _token(client)})
+        assert r.status_code == 200 and r.get_json()['deleted_count'] == 1
+        assert Alert.query.count() == 4
