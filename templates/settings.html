@@ -25,6 +25,10 @@
     padding: 1rem;
     backdrop-filter: blur(20px);
 }
+:where([data-bs-theme="light"]) .settings-nav {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
 
 .settings-nav-item {
     display: flex;
@@ -38,17 +42,27 @@
     margin-bottom: 0.25rem;
     font-weight: 500;
 }
+:where([data-bs-theme="light"]) .settings-nav-item {
+    color: rgba(0, 0, 0, 0.8);
+}
 
 .settings-nav-item:hover {
     background: rgba(255, 255, 255, 0.1);
     color: rgba(255, 255, 255, 0.9);
     transform: translateX(4px);
 }
+:where([data-bs-theme="light"]) .settings-nav-item:hover {
+    background-color: rgba(0, 0, 0, 0.08);
+    color: rgba(0, 0, 0, 0.9);
+}
 
 .settings-nav-item.active {
     background: rgba(59, 130, 246, 0.2);
     color: #ffffff;
     border: 1px solid rgba(59, 130, 246, 0.3);
+}
+:where([data-bs-theme="light"]) .settings-nav-item.active {
+    color: #1e293b;
 }
 
 .settings-nav-item i {
@@ -63,6 +77,10 @@
     border-radius: 12px;
     padding: 2rem;
     backdrop-filter: blur(20px);
+}
+:where([data-bs-theme="light"]) .settings-content {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 .settings-section {
@@ -87,6 +105,10 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     padding-bottom: 0.75rem;
 }
+:where([data-bs-theme="light"]) .section-title {
+    color: #1e293b;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
 
 /* Form Groups */
 .form-group {
@@ -102,6 +124,9 @@
     color: rgba(255, 255, 255, 0.6);
     margin-top: 0.5rem;
     line-height: 1.4;
+}
+:where([data-bs-theme="light"]) .form-text {
+    color: rgba(0, 0, 0, 0.7);
 }
 
 /* Input Groups */
@@ -132,14 +157,26 @@
     font-size: 0.8rem;
     transition: all 0.3s ease;
 }
+:where([data-bs-theme="light"]) .input-group .btn-group .btn {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    color: rgba(0, 0, 0, 0.9);
+}
 
 .input-group .btn-group .btn:hover {
     background: rgba(255, 255, 255, 0.2);
     color: #ffffff;
 }
+:where([data-bs-theme="light"]) .input-group .btn-group .btn:hover {
+    background-color: rgba(0, 0, 0, 0.12);
+    color: #1e293b;
+}
 
 .input-group .btn-group .btn:not(:last-child) {
     border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+:where([data-bs-theme="light"]) .input-group .btn-group .btn:not(:last-child) {
+    border-right: 1px solid rgba(0, 0, 0, 0.2);
 }
 
 /* Info Cards */
@@ -156,15 +193,24 @@
     margin-bottom: 0.75rem;
     font-weight: 600;
 }
+:where([data-bs-theme="light"]) .info-card h6 {
+    color: #2563eb;
+}
 
 .info-card p {
     color: rgba(255, 255, 255, 0.8);
     margin-bottom: 0.5rem;
 }
+:where([data-bs-theme="light"]) .info-card p {
+    color: rgba(0, 0, 0, 0.9);
+}
 
 .info-card ul {
     color: rgba(255, 255, 255, 0.7);
     padding-left: 1.25rem;
+}
+:where([data-bs-theme="light"]) .info-card ul {
+    color: rgba(0, 0, 0, 0.8);
 }
 
 .info-card ul li {
@@ -184,6 +230,9 @@
 .alert-warning h6 {
     color: #fcd34d;
 }
+:where([data-bs-theme="light"]) .alert-warning h6 {
+    color: #d97706;
+}
 
 .alert-success {
     background: rgba(34, 197, 94, 0.1);
@@ -192,6 +241,9 @@
 
 .alert-success h6 {
     color: #86efac;
+}
+:where([data-bs-theme="light"]) .alert-success h6 {
+    color: #15803d;
 }
 
 /* Toggle Switches */
@@ -211,6 +263,10 @@
     cursor: pointer;
     transition: all 0.3s ease;
 }
+:where([data-bs-theme="light"]) .form-check-input {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+}
 
 .form-check-input:checked {
     background: rgba(34, 197, 94, 0.3);
@@ -221,6 +277,9 @@
     color: rgba(255, 255, 255, 0.8);
     font-weight: 500;
     cursor: pointer;
+}
+:where([data-bs-theme="light"]) .form-check-label {
+    color: rgba(0, 0, 0, 0.9);
 }
 
 /* Button Groups */
@@ -242,6 +301,9 @@
     padding-top: 1.5rem;
     border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
+:where([data-bs-theme="light"]) .settings-actions {
+    border-top: 1px solid rgba(0, 0, 0, 0.1);
+}
 
 /* Status Indicators */
 .status-indicator {
@@ -259,11 +321,17 @@
     color: #86efac;
     border: 1px solid rgba(34, 197, 94, 0.3);
 }
+:where([data-bs-theme="light"]) .status-connected {
+    color: #15803d;
+}
 
 .status-disconnected {
     background: rgba(239, 68, 68, 0.2);
     color: #fca5a5;
     border: 1px solid rgba(239, 68, 68, 0.3);
+}
+:where([data-bs-theme="light"]) .status-disconnected {
+    color: #dc2626;
 }
 
 /* Responsive Design */
@@ -304,6 +372,9 @@
         border-radius: 12px;
         border: 1px solid rgba(255, 255, 255, 0.1);
     }
+    :where([data-bs-theme="light"]) .input-group .form-control {
+        border: 1px solid rgba(0, 0, 0, 0.2);
+    }
 
     .input-group .btn-group {
         justify-content: center;
@@ -313,6 +384,18 @@
         border-radius: 8px;
         border: 1px solid rgba(255, 255, 255, 0.2);
     }
+    :where([data-bs-theme="light"]) .input-group .btn-group .btn {
+        border: 1px solid rgba(0, 0, 0, 0.2);
+    }
+}
+
+/* The features list on the About tab (was an inline style). */
+.settings-feature-list {
+    color: rgba(255, 255, 255, 0.8);
+    line-height: 1.6;
+}
+:where([data-bs-theme="light"]) .settings-feature-list {
+    color: rgba(0, 0, 0, 0.9);
 }
 </style>
 {% endblock %}
@@ -687,7 +770,7 @@
 
             <div class="form-group">
                 <label class="form-label">Features</label>
-                <ul style="color: rgba(255, 255, 255, 0.8); line-height: 1.6;">
+                <ul class="settings-feature-list">
                     <li>Real-time device monitoring and status tracking</li>
                     <li>Automatic network discovery and scanning</li>
                     <li>Configurable alerts and notifications</li>

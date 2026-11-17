@@ -581,6 +581,54 @@
         color: #ffffff;
     }
 
+    /* Light theme: Bootstrap's always-dark helpers. The pages use them because they were
+       written for the dark theme; on the light theme they take the light surface instead. */
+    [data-bs-theme="light"] .table-dark {
+        --bs-table-color: #1e293b;
+        --bs-table-bg: transparent;
+        --bs-table-border-color: rgba(0, 0, 0, 0.1);
+        --bs-table-striped-color: #1e293b;
+        --bs-table-striped-bg: rgba(0, 0, 0, 0.03);
+        --bs-table-hover-color: #1e293b;
+        --bs-table-hover-bg: rgba(0, 0, 0, 0.05);
+        color: #1e293b;
+        border-color: rgba(0, 0, 0, 0.1);
+    }
+
+    [data-bs-theme="light"] .dropdown-menu-dark {
+        --bs-dropdown-color: #1e293b;
+        --bs-dropdown-bg: #ffffff;
+        --bs-dropdown-border-color: rgba(0, 0, 0, 0.15);
+        --bs-dropdown-link-color: #1e293b;
+        --bs-dropdown-link-hover-color: #1e293b;
+        --bs-dropdown-link-hover-bg: rgba(0, 0, 0, 0.05);
+        --bs-dropdown-divider-bg: rgba(0, 0, 0, 0.1);
+        --bs-dropdown-header-color: #6b7280;
+    }
+
+    [data-bs-theme="light"] .modal-content.bg-dark {
+        background-color: #ffffff !important;
+        color: #1e293b !important;
+    }
+
+    [data-bs-theme="light"] .modal-content.bg-dark .btn-close-white {
+        filter: none;
+    }
+
+    /* Bootstrap's yellow and cyan text is unreadable on a light surface. The navbar keeps them. */
+    [data-bs-theme="light"] main .text-warning {
+        color: #d97706 !important;
+    }
+
+    [data-bs-theme="light"] main .text-info {
+        color: #2563eb !important;
+    }
+
+    [data-bs-theme="light"] .loading-skeleton {
+        background: linear-gradient(90deg, rgba(0, 0, 0, 0.05) 25%, rgba(0, 0, 0, 0.1) 50%, rgba(0, 0, 0, 0.05) 75%);
+        background-size: 200% 100%;
+    }
+
     </style>
 
     {# Outside the <style> above: every page puts its own <style> element in this block. #}

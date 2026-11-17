@@ -112,7 +112,7 @@ PY
 ### Test and lint
 
 ```bash
-pytest tests/unit tests/integration -q                 # the CI suite: 784 passed, 0 skipped, about 25 s (2026-11-15)
+pytest tests/unit tests/integration -q                 # the CI suite: 795 passed, 0 skipped, about 25 s (2026-11-16)
 pytest tests/unit tests/integration --cov=. --cov-fail-under=47   # with the coverage floor CI enforces
 pytest tests/unit/test_alerts_api.py -q                # one file
 pytest tests/unit/test_route_inventory.py::test_api_surface_is_exactly_the_allowlist   # one test; or -k <substring>
@@ -368,7 +368,7 @@ client.post('/api/devices', json={...}, headers={'X-CSRF-Token': token})
 
 - Server-rendered Jinja, Bootstrap 5.3.0, vanilla JavaScript. No framework, no bundler, no CSS file, no npm runtime packages. No new CDN hosts or web fonts: the CSP allows only `cdn.jsdelivr.net` and `cdn.socket.io`. CDN URLs carry an exact version, and a test checks it.
 - Every page extends `base_beautiful.html` and fills the blocks `title`, `extra_css`, `content` and `extra_js`. The `extra_css` block holds the page's own `<style>` element.
-- The shared theme is the `<style>` block of `base_beautiful.html`. There are no CSS variables; colours are literals. The base has light rules with dark overrides under `[data-bs-theme="dark"]` (the navbar toggle stores the choice in `localStorage`), but most page-level CSS is written for dark only. **Dark is the reference theme**: check your work there, and do not start a light-mode cleanup as a side effect.
+- The shared theme is the `<style>` block of `base_beautiful.html`. Colours are literals; only the Network Map page defines CSS variables (`--topology-*`), for itself. There are two themes, and the navbar toggle stores the choice in `localStorage`. The base has light rules with dark overrides under `[data-bs-theme="dark"]`. Page-level CSS is the other way round: each rule is written for dark, and a rule whose colours only work on a dark page is followed directly by its light twin, the same selector behind `:where([data-bs-theme="light"])`, holding only the changed colours. `:where()` adds no specificity, so the twin wins and loses exactly where its dark rule does. Take the light values from the pairs in the base: white text becomes `#1e293b`, a white-alpha fill becomes `rgba(255, 255, 255, 0.8)` on a card or input and a black-alpha tint elsewhere, a white-alpha border becomes black-alpha, a pastel such as `#86efac` becomes its dark shade `#15803d`. **Dark is the reference theme**: design there, then check the light theme as well.
 - Palette:
 
 | Role | Colour |
@@ -385,7 +385,7 @@ client.post('/api/devices', json={...}, headers={'X-CSRF-Token': token})
 - Reuse the existing classes: `.modern-card` with `.card-header` and `.card-body`, `.btn-modern` (plus `.btn-primary`, `.btn-success`, `.btn-warning`, `.btn-danger`), `.badge.bg-*`, `.status-dot` with `.status-up`, `.status-down`, `.status-warning`, `.status-unknown`, `.page-header`, `.page-title`, `.page-subtitle`, `.loading-skeleton`, `.spinning`, `.hidden`. Radii are 16 px for cards, 12 px for buttons and inputs, 8 px for badges.
 - Device status is exactly `up`, `down`, `warning` or `unknown` (`constants.py`), shown with text or an icon as well as colour.
 - Icons are Bootstrap Icons (`<i class="bi bi-...">`) only.
-- Charts use the global `Chart` with `responsive: true, maintainAspectRatio: false` and the palette above (lines at 0.8 opacity, fills at 0.1). No date adapter is loaded, so use category axes with pre-formatted labels, never `type: 'time'`.
+- Charts use the global `Chart` with `responsive: true, maintainAspectRatio: false` and the palette above (lines at 0.8 opacity, fills at 0.1). A canvas cannot be themed from CSS: label, tick and grid colours set by hand must follow the theme and be redrawn when it switches; `chartColors()` and `chartRedraws` in `analytics.html` are the model. No date adapter is loaded, so use category axes with pre-formatted labels, never `type: 'time'`.
 - Layout: the content container is at most 1600 px wide, the base breakpoint is 768 px, and buttons are at least 44 by 44 px. Check new UI at phone width.
 - Wording is short, plain and in sentence case ("Device offline", "New open port"), as in `Alert.ALERT_TITLES`.
 - Feedback: `showSuccess()`, `showError()` or `showToast()` for results; `showGlobalLoading()` / `hideGlobalLoading()` or `.loading-skeleton` while waiting; an explicit empty state (icon plus muted text) instead of a blank area; `confirm()` before a destructive action.
@@ -460,7 +460,7 @@ Each of these has happened here or is one step away. The format is: the mistake,
 36. **Using `Chart`, `io` or `bootstrap` at script load.** They are deferred and not defined yet. Start from `DOMContentLoaded`.
 37. **Renaming an element id, a function or a pinned line of page script.** `tests/unit/test_frontend_contracts.py` pins literal strings (ids, function names, fragments such as `${esc(name)}`) and `TestHomeNetmon.js` selects by id. Search both files for a name before you change it.
 38. **Writing a page's CSS in `extra_css` without its own `<style>` element, or moving that block back inside the base `<style>`.** The block is rendered in the `<head>` after the base `<style>` has closed, so bare rules show up as text at the top of the page. Wrap them in `<style>...</style>`, as every existing page does. The block used to sit inside the base `<style>`; a `<style>` tag nested in another is CSS text, and the browser silently dropped the first rule of every page. A test in `tests/unit/test_frontend_contracts.py` checks for nesting.
-39. **Adding a colour, card or button style of your own.** It breaks the look of the page or one of the themes. Use the palette and classes in section 7.
+39. **Adding a colour, card or button style of your own, or a dark-only page rule without its light twin.** It breaks the look of the page or one of the themes; white text with no twin is invisible on the light page, and a test in `tests/unit/test_frontend_contracts.py` fails. Use the palette and classes in section 7 and write the twin next to the rule.
 40. **Regenerating a large block of a template or page script.** The templates run from 500 to 2,500 lines with many inline functions, and a rewrite once deleted unrelated ones. Make targeted edits and re-read the surrounding code.
 
 ### Documentation and process
@@ -497,7 +497,7 @@ The owner decided these. Do not reopen or rebuild them without being asked.
 - [ ] Setting added: validation rule, `config.py` fallback, `.env.example`, Settings page.
 - [ ] Thread added or changed: heartbeat, `EXPECTED_THREADS`, an app context per iteration.
 - [ ] Alerts or notifications touched: everything goes through `create_alert`; dedup and the notification policy still apply; nothing can push in a loop.
-- [ ] UI touched: page loaded on a dev instance in the dark theme and at phone width, browser console clean, live updates still arrive, device-controlled strings escaped.
+- [ ] UI touched: page loaded on a dev instance in both themes and at phone width, browser console clean, live updates still arrive, device-controlled strings escaped.
 - [ ] Docs: this file, `AGENTS.md`, the README and `docs/` updated when a command or convention changed; a `CHANGELOG.md` entry for a user-visible change.
 - [ ] Dev instances you started are stopped, scratch files are gone, and `git status` shows no database, log or `.env` file.
 - [ ] Production untouched unless asked. If you deployed: backup taken, service restarted, `./health_check.sh` exits 0, the journal is clean.

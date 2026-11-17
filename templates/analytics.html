@@ -16,6 +16,10 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     backdrop-filter: blur(20px);
 }
+:where([data-bs-theme="light"]) .page-header {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
 
 /* Controls Section */
 .controls-section {
@@ -29,14 +33,24 @@
     border-radius: 16px;
     padding: 1.5rem;
 }
+:where([data-bs-theme="light"]) .controls-section {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
 
 .analytics-controls-left h1 {
     color: #e0e0e0;
     margin-bottom: 0.5rem;
 }
+:where([data-bs-theme="light"]) .analytics-controls-left h1 {
+    color: rgba(0, 0, 0, 0.8);
+}
 
 .analytics-controls-left i {
     color: rgba(59, 130, 246, 0.8);
+}
+:where([data-bs-theme="light"]) .analytics-controls-left i {
+    color: #2563eb;
 }
 
 /* Active Filters */
@@ -51,20 +65,32 @@
 #active-filters .text-muted {
     color: rgba(255, 255, 255, 0.6) !important;
 }
+:where([data-bs-theme="light"]) #active-filters .text-muted {
+    color: rgba(0, 0, 0, 0.7) !important;
+}
 
 #filter-badges .badge {
     background: rgba(59, 130, 246, 0.3) !important;
     color: #e0e0e0;
     border: 1px solid rgba(59, 130, 246, 0.4);
 }
+:where([data-bs-theme="light"]) #filter-badges .badge {
+    color: rgba(0, 0, 0, 0.8);
+}
 
 .btn-link {
     color: rgba(255, 255, 255, 0.7);
     text-decoration: none;
 }
+:where([data-bs-theme="light"]) .btn-link {
+    color: rgba(0, 0, 0, 0.8);
+}
 
 .btn-link:hover {
     color: rgba(255, 255, 255, 0.9);
+}
+:where([data-bs-theme="light"]) .btn-link:hover {
+    color: rgba(0, 0, 0, 0.9);
 }
 
 /* Mobile Analytics Overview */
@@ -76,13 +102,23 @@
     padding: 1.5rem;
     margin-bottom: 2rem;
 }
+:where([data-bs-theme="light"]) .mobile-analytics-overview {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
 
 .mobile-analytics-overview .text-center {
     color: #e0e0e0;
 }
+:where([data-bs-theme="light"]) .mobile-analytics-overview .text-center {
+    color: rgba(0, 0, 0, 0.8);
+}
 
 .mobile-analytics-overview .text-muted {
     color: rgba(255, 255, 255, 0.6) !important;
+}
+:where([data-bs-theme="light"]) .mobile-analytics-overview .text-muted {
+    color: rgba(0, 0, 0, 0.7) !important;
 }
 
 /* Navigation Tabs */
@@ -99,17 +135,29 @@
     padding: 0.75rem 1.5rem;
     transition: all 0.3s ease;
 }
+:where([data-bs-theme="light"]) .nav-pills .nav-link {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    color: rgba(0, 0, 0, 0.8);
+}
 
 .nav-pills .nav-link:hover {
     background: rgba(255, 255, 255, 0.1);
     color: rgba(255, 255, 255, 0.9);
     transform: translateY(-2px);
 }
+:where([data-bs-theme="light"]) .nav-pills .nav-link:hover {
+    background-color: rgba(0, 0, 0, 0.08);
+    color: rgba(0, 0, 0, 0.9);
+}
 
 .nav-pills .nav-link.active {
     background: rgba(59, 130, 246, 0.3);
     border-color: rgba(59, 130, 246, 0.5);
     color: #ffffff;
+}
+:where([data-bs-theme="light"]) .nav-pills .nav-link.active {
+    color: #1e293b;
 }
 
 .nav-pills .nav-link i {
@@ -126,11 +174,19 @@
     margin-bottom: 1.5rem;
     transition: all 0.3s ease;
 }
+:where([data-bs-theme="light"]) .modern-analytics-card {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
 
 .modern-analytics-card:hover {
     transform: translateY(-4px);
     box-shadow: 0 15px 35px rgba(0, 0, 0, 0.3);
     border-color: rgba(255, 255, 255, 0.2);
+}
+:where([data-bs-theme="light"]) .modern-analytics-card:hover {
+    box-shadow: 0 15px 35px rgba(0, 0, 0, 0.1);
+    border-color: rgba(0, 0, 0, 0.2);
 }
 
 .modern-analytics-card .card-header {
@@ -139,10 +195,16 @@
     padding: 0 0 1rem 0;
     color: #e0e0e0;
 }
+:where([data-bs-theme="light"]) .modern-analytics-card .card-header {
+    color: rgba(0, 0, 0, 0.8);
+}
 
 .modern-analytics-card .card-body {
     padding: 0;
     color: #b0b0b0;
+}
+:where([data-bs-theme="light"]) .modern-analytics-card .card-body {
+    color: rgba(0, 0, 0, 0.7);
 }
 
 /* Health Score Circle */
@@ -151,10 +213,16 @@
     backdrop-filter: blur(10px);
     transition: all 0.3s ease;
 }
+:where([data-bs-theme="light"]) #health-score-circle {
+    background-color: rgba(255, 255, 255, 0.8);
+}
 
 #health-score-value {
     color: #ffffff;
     font-weight: 300;
+}
+:where([data-bs-theme="light"]) #health-score-value {
+    color: #1e293b;
 }
 
 /* Metrics Grid */
@@ -173,13 +241,23 @@
     border-radius: 12px;
     backdrop-filter: blur(10px);
 }
+:where([data-bs-theme="light"]) .metric-item {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
 
 .metric-item .text-muted {
     color: rgba(255, 255, 255, 0.6) !important;
 }
+:where([data-bs-theme="light"]) .metric-item .text-muted {
+    color: rgba(0, 0, 0, 0.7) !important;
+}
 
 .metric-item .fw-bold {
     color: #e0e0e0;
+}
+:where([data-bs-theme="light"]) .metric-item .fw-bold {
+    color: rgba(0, 0, 0, 0.8);
 }
 
 /* Insights Cards */
@@ -198,11 +276,17 @@
 .insights-card .text-warning {
     color: #fbbf24 !important;
 }
+:where([data-bs-theme="light"]) .insights-card .text-warning {
+    color: #d97706 !important;
+}
 
 /* Progress Bars */
 .progress {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 8px;
+}
+:where([data-bs-theme="light"]) .progress {
+    background-color: rgba(0, 0, 0, 0.08);
 }
 
 .progress-bar {
@@ -226,10 +310,17 @@
     backdrop-filter: blur(10px);
     transition: all 0.3s ease;
 }
+:where([data-bs-theme="light"]) .fun-fact-item {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
 
 .fun-fact-item:hover {
     transform: translateY(-2px);
     background: rgba(255, 255, 255, 0.05);
+}
+:where([data-bs-theme="light"]) .fun-fact-item:hover {
+    background-color: rgba(0, 0, 0, 0.05);
 }
 
 .fun-fact-item .h4 {
@@ -239,9 +330,15 @@
 .fun-fact-item .text-muted {
     color: rgba(255, 255, 255, 0.6) !important;
 }
+:where([data-bs-theme="light"]) .fun-fact-item .text-muted {
+    color: rgba(0, 0, 0, 0.7) !important;
+}
 
 .fun-fact-item .fw-bold {
     color: #e0e0e0;
+}
+:where([data-bs-theme="light"]) .fun-fact-item .fw-bold {
+    color: rgba(0, 0, 0, 0.8);
 }
 
 /* Device Insights */
@@ -259,6 +356,9 @@
     padding: 0.5rem 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
+:where([data-bs-theme="light"]) .device-list-item {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
 
 .device-list-item:last-child {
     border-bottom: none;
@@ -267,11 +367,17 @@
 .device-list-item span {
     color: #b0b0b0;
 }
+:where([data-bs-theme="light"]) .device-list-item span {
+    color: rgba(0, 0, 0, 0.7);
+}
 
 .badge {
     background: rgba(59, 130, 246, 0.3) !important;
     color: #e0e0e0;
     border: 1px solid rgba(59, 130, 246, 0.4);
+}
+:where([data-bs-theme="light"]) .badge {
+    color: rgba(0, 0, 0, 0.8);
 }
 
 .bg-success {
@@ -279,11 +385,17 @@
     border-color: rgba(34, 197, 94, 0.4);
     color: #86efac !important;
 }
+:where([data-bs-theme="light"]) .bg-success {
+    color: #15803d !important;
+}
 
 .bg-info {
     background: rgba(59, 130, 246, 0.3) !important;
     border-color: rgba(59, 130, 246, 0.4);
     color: #93c5fd !important;
+}
+:where([data-bs-theme="light"]) .bg-info {
+    color: #2563eb !important;
 }
 
 /* Chart Containers */
@@ -295,6 +407,9 @@
     border-radius: 12px;
     padding: 1rem;
 }
+:where([data-bs-theme="light"]) .chart-container {
+    background-color: rgba(0, 0, 0, 0.02);
+}
 
 .chart-container canvas {
     filter: brightness(1.1);
@@ -304,6 +419,9 @@
 .placeholder-glow .placeholder {
     background: linear-gradient(90deg, rgba(255, 255, 255, 0.1) 25%, rgba(255, 255, 255, 0.2) 50%, rgba(255, 255, 255, 0.1) 75%);
     animation: placeholder-glow 2s ease-in-out infinite;
+}
+:where([data-bs-theme="light"]) .placeholder-glow .placeholder {
+    background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.08) 25%, rgba(0, 0, 0, 0.12) 50%, rgba(0, 0, 0, 0.08) 75%);
 }
 
 @keyframes placeholder-glow {
@@ -320,6 +438,9 @@
     border-radius: 8px;
     padding: 0.5rem 1rem;
 }
+:where([data-bs-theme="light"]) .status-connected {
+    color: #15803d;
+}
 
 .status-disconnected {
     background: rgba(239, 68, 68, 0.2);
@@ -328,6 +449,9 @@
     border-radius: 8px;
     padding: 0.5rem 1rem;
 }
+:where([data-bs-theme="light"]) .status-disconnected {
+    color: #dc2626;
+}
 
 /* Bandwidth Consumers */
 .bandwidth-consumer-item {
@@ -335,9 +459,15 @@
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.3s ease;
 }
+:where([data-bs-theme="light"]) .bandwidth-consumer-item {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+}
 
 .bandwidth-consumer-item:hover {
     background: rgba(255, 255, 255, 0.02);
+}
+:where([data-bs-theme="light"]) .bandwidth-consumer-item:hover {
+    background-color: rgba(0, 0, 0, 0.02);
 }
 
 .bandwidth-consumer-item:last-child {
@@ -347,9 +477,15 @@
 .bandwidth-consumer-item .fw-bold {
     color: #e0e0e0;
 }
+:where([data-bs-theme="light"]) .bandwidth-consumer-item .fw-bold {
+    color: rgba(0, 0, 0, 0.8);
+}
 
 .bandwidth-consumer-item .text-muted {
     color: rgba(255, 255, 255, 0.6) !important;
+}
+:where([data-bs-theme="light"]) .bandwidth-consumer-item .text-muted {
+    color: rgba(0, 0, 0, 0.7) !important;
 }
 
 /* Responsive Design */
@@ -407,11 +543,19 @@
     border-color: rgba(59, 130, 246, 0.5);
     color: #ffffff;
 }
+:where([data-bs-theme="light"]) .btn-group .btn-check:checked + .btn-outline-primary {
+    color: #1e293b;
+}
 
 .btn-outline-primary {
     color: rgba(255, 255, 255, 0.7);
     border-color: rgba(255, 255, 255, 0.3);
     background: rgba(255, 255, 255, 0.05);
+}
+:where([data-bs-theme="light"]) .btn-outline-primary {
+    color: rgba(0, 0, 0, 0.8);
+    border-color: rgba(0, 0, 0, 0.3);
+    background-color: rgba(0, 0, 0, 0.05);
 }
 
 .btn-outline-primary:hover {
@@ -419,11 +563,17 @@
     background: rgba(59, 130, 246, 0.2);
     border-color: rgba(59, 130, 246, 0.4);
 }
+:where([data-bs-theme="light"]) .btn-outline-primary:hover {
+    color: #1e293b;
+}
 
 /* Spinner */
 .spinner-border {
     border-color: rgba(255, 255, 255, 0.3);
     border-top-color: rgba(59, 130, 246, 0.8);
+}
+:where([data-bs-theme="light"]) .spinner-border {
+    border-color: rgba(0, 0, 0, 0.3);
 }
 
 .loading {
@@ -440,14 +590,25 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     color: white;
 }
+:where([data-bs-theme="light"]) .toast {
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    color: #1e293b;
+}
 
 /* Tooltips */
 .btn[data-bs-toggle="tooltip"] {
     color: rgba(255, 255, 255, 0.6);
 }
+:where([data-bs-theme="light"]) .btn[data-bs-toggle="tooltip"] {
+    color: rgba(0, 0, 0, 0.7);
+}
 
 .btn[data-bs-toggle="tooltip"]:hover {
     color: rgba(255, 255, 255, 0.9);
+}
+:where([data-bs-theme="light"]) .btn[data-bs-toggle="tooltip"]:hover {
+    color: rgba(0, 0, 0, 0.9);
 }
 </style>
 {% endblock %}
@@ -876,6 +1037,21 @@
 <script>
     let deviceTypesChart, hourlyChart, trendsChart;
     let bandwidthChart = null;
+
+    // Chart label, tick and grid colours for the current theme (the navbar switch sets data-bs-theme).
+    function chartColors() {
+        const light = document.documentElement.getAttribute('data-bs-theme') === 'light';
+        return {
+            text: light ? '#1e293b' : '#e0e0e0',
+            ticks: light ? 'rgba(0, 0, 0, 0.7)' : '#b0b0b0',
+            grid: light ? 'rgba(0, 0, 0, 0.1)' : 'rgba(255, 255, 255, 0.1)'
+        };
+    }
+
+    // How to redraw each chart with the data it last showed, so a theme switch recolours it.
+    const chartRedraws = {};
+    new MutationObserver(() => Object.values(chartRedraws).forEach(redraw => redraw()))
+        .observe(document.documentElement, { attributes: true, attributeFilter: ['data-bs-theme'] });
     let currentTimeRange = { hours: 24 };
 
     // Initialize analytics page
@@ -1298,6 +1474,7 @@
     }
 
     function updateDeviceTypesChart(deviceTypes) {
+        chartRedraws.deviceTypes = () => updateDeviceTypesChart(deviceTypes);
         const ctx = document.getElementById('device-types-canvas').getContext('2d');
 
         if (deviceTypesChart) {
@@ -1327,7 +1504,7 @@
                     legend: {
                         position: 'bottom',
                         labels: {
-                            color: '#e0e0e0',
+                            color: chartColors().text,
                             usePointStyle: true
                         }
                     }
@@ -1337,6 +1514,7 @@
     }
 
     function updateHourlyPatternChart(hourlyData) {
+        chartRedraws.hourly = () => updateHourlyPatternChart(hourlyData);
         const ctx = document.getElementById('hourly-pattern-chart').getContext('2d');
 
         if (hourlyChart) {
@@ -1365,19 +1543,19 @@
                         title: {
                             display: true,
                             text: 'Ping Count',
-                            color: '#e0e0e0'
+                            color: chartColors().text
                         },
-                        ticks: { color: '#b0b0b0' },
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        ticks: { color: chartColors().ticks },
+                        grid: { color: chartColors().grid }
                     },
                     x: {
                         title: {
                             display: true,
                             text: 'Hour of Day',
-                            color: '#e0e0e0'
+                            color: chartColors().text
                         },
-                        ticks: { color: '#b0b0b0' },
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        ticks: { color: chartColors().ticks },
+                        grid: { color: chartColors().grid }
                     }
                 },
                 plugins: {
@@ -1390,6 +1568,7 @@
     }
 
     function updateTrendsChart(trendData) {
+        chartRedraws.trends = () => updateTrendsChart(trendData);
         const ctx = document.getElementById('trends-chart').getContext('2d');
 
         if (trendsChart) {
@@ -1432,10 +1611,10 @@
                         title: {
                             display: true,
                             text: 'Date',
-                            color: '#e0e0e0'
+                            color: chartColors().text
                         },
-                        ticks: { color: '#b0b0b0' },
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        ticks: { color: chartColors().ticks },
+                        grid: { color: chartColors().grid }
                     },
                     y: {
                         type: 'linear',
@@ -1444,10 +1623,10 @@
                         title: {
                             display: true,
                             text: 'Response Time (ms)',
-                            color: '#e0e0e0'
+                            color: chartColors().text
                         },
-                        ticks: { color: '#b0b0b0' },
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        ticks: { color: chartColors().ticks },
+                        grid: { color: chartColors().grid }
                     },
                     y1: {
                         type: 'linear',
@@ -1456,9 +1635,9 @@
                         title: {
                             display: true,
                             text: 'Success Rate (%)',
-                            color: '#e0e0e0'
+                            color: chartColors().text
                         },
-                        ticks: { color: '#b0b0b0' },
+                        ticks: { color: chartColors().ticks },
                         grid: {
                             drawOnChartArea: false,
                         },
@@ -1467,7 +1646,7 @@
                 plugins: {
                     legend: {
                         labels: {
-                            color: '#e0e0e0'
+                            color: chartColors().text
                         }
                     }
                 }
@@ -1548,6 +1727,7 @@
     }
 
     function updateBandwidthChart(data) {
+        chartRedraws.bandwidth = () => updateBandwidthChart(data);
         const ctx = document.getElementById('bandwidth-chart').getContext('2d');
 
         if (bandwidthChart) {
@@ -1588,32 +1768,32 @@
                         title: {
                             display: true,
                             text: 'Bandwidth (Mbps)',
-                            color: '#e0e0e0'
+                            color: chartColors().text
                         },
-                        ticks: { color: '#b0b0b0' },
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        ticks: { color: chartColors().ticks },
+                        grid: { color: chartColors().grid }
                     },
                     x: {
                         title: {
                             display: true,
                             text: 'Time',
-                            color: '#e0e0e0'
+                            color: chartColors().text
                         },
-                        ticks: { color: '#b0b0b0' },
-                        grid: { color: 'rgba(255, 255, 255, 0.1)' }
+                        ticks: { color: chartColors().ticks },
+                        grid: { color: chartColors().grid }
                     }
                 },
                 plugins: {
                     legend: {
                         position: 'top',
                         labels: {
-                            color: '#e0e0e0'
+                            color: chartColors().text
                         }
                     },
                     title: {
                         display: true,
                         text: 'Network Bandwidth Usage Over Time',
-                        color: '#e0e0e0'
+                        color: chartColors().text
                     }
                 }
             }

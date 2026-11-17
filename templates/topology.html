@@ -88,6 +88,23 @@
     --transition-base: 0.2s ease;
     --transition-slow: 0.3s ease;
 }
+:root:where([data-bs-theme="light"]) {
+    --topology-bg-primary: #f8fafc;
+    --topology-bg-secondary: #ffffff;
+    --topology-surface: rgba(255, 255, 255, 0.8);
+    --topology-surface-elevated: rgba(255, 255, 255, 0.95);
+    --topology-text-primary: #1e293b;
+    --topology-text-secondary: rgba(0, 0, 0, 0.9);
+    --topology-text-muted: rgba(0, 0, 0, 0.7);
+    --topology-border-light: rgba(0, 0, 0, 0.1);
+    --topology-border-medium: rgba(0, 0, 0, 0.2);
+    --topology-border-strong: rgba(0, 0, 0, 0.3);
+    --topology-shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.1);
+    --topology-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.13);
+    --topology-shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.17);
+    --topology-shadow-xl: 0 20px 40px rgba(0, 0, 0, 0.2);
+    --glass-border: 1px solid rgba(0, 0, 0, 0.1);
+}
 
 /* Override body styles for topology mode */
 body {
@@ -98,6 +115,10 @@ body {
     overflow-x: hidden;
     min-height: 100vh;
     padding-top: 80px;
+}
+:where([data-bs-theme="light"]) body {
+    background: #f8fafc;
+    color: #1e293b;
 }
 
 /* Animated background */
@@ -188,11 +209,17 @@ body::before {
     background-clip: text;
     margin-bottom: 0.5rem;
 }
+:where([data-bs-theme="light"]) .page-title {
+    background-image: linear-gradient(135deg, #1e293b 0%, #3b82f6 100%);
+}
 
 .page-subtitle {
     color: rgba(255, 255, 255, 0.7);
     font-size: 1.1rem;
     font-weight: 300;
+}
+:where([data-bs-theme="light"]) .page-subtitle {
+    color: rgba(0, 0, 0, 0.8);
 }
 
 /* Stats Grid */
@@ -212,11 +239,19 @@ body::before {
     transition: all 0.3s ease;
     backdrop-filter: blur(10px);
 }
+:where([data-bs-theme="light"]) .stat-card {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
 
 .stat-card:hover {
     transform: translateY(-2px);
     border-color: rgba(255, 255, 255, 0.2);
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+:where([data-bs-theme="light"]) .stat-card:hover {
+    border-color: rgba(0, 0, 0, 0.2);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
 }
 
 .stat-icon {
@@ -230,12 +265,18 @@ body::before {
     margin-bottom: 0.5rem;
     color: #ffffff;
 }
+:where([data-bs-theme="light"]) .stat-value {
+    color: #1e293b;
+}
 
 .stat-label {
     color: rgba(255, 255, 255, 0.7);
     font-size: 0.9rem;
     text-transform: uppercase;
     letter-spacing: 0.5px;
+}
+:where([data-bs-theme="light"]) .stat-label {
+    color: rgba(0, 0, 0, 0.8);
 }
 
 /* Cards */
@@ -247,10 +288,19 @@ body::before {
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
     transition: all 0.3s ease;
 }
+:where([data-bs-theme="light"]) .modern-card {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
+}
 
 .modern-card:hover {
     border-color: rgba(255, 255, 255, 0.2);
     box-shadow: 0 12px 48px rgba(0, 0, 0, 0.4);
+}
+:where([data-bs-theme="light"]) .modern-card:hover {
+    border-color: rgba(0, 0, 0, 0.2);
+    box-shadow: 0 12px 48px rgba(0, 0, 0, 0.13);
 }
 
 .card-header {
@@ -260,6 +310,11 @@ body::before {
     border-radius: 16px 16px 0 0 !important;
     color: #ffffff;
     padding: 1.5rem 2rem;
+}
+:where([data-bs-theme="light"]) .card-header {
+    background-color: rgba(255, 255, 255, 0.8) !important;
+    border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+    color: #1e293b;
 }
 
 .card-body {
@@ -280,12 +335,22 @@ body::before {
     align-items: center;
     gap: 0.5rem;
 }
+:where([data-bs-theme="light"]) .btn-modern {
+    background-color: rgba(255, 255, 255, 0.8);
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    color: #1e293b;
+}
 
 .btn-modern:hover {
     background: rgba(255, 255, 255, 0.15);
     border-color: rgba(255, 255, 255, 0.3);
     color: #ffffff;
     transform: translateY(-1px);
+}
+:where([data-bs-theme="light"]) .btn-modern:hover {
+    background-color: rgba(0, 0, 0, 0.1);
+    border-color: rgba(0, 0, 0, 0.3);
+    color: #1e293b;
 }
 
 .btn-primary-modern {
@@ -306,15 +371,26 @@ body::before {
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 12px;
 }
+:where([data-bs-theme="light"]) .dropdown-menu {
+    background-color: rgba(255, 255, 255, 0.95);
+    border: 1px solid rgba(0, 0, 0, 0.1);
+}
 
 .dropdown-item {
     color: rgba(255, 255, 255, 0.8);
     transition: all 0.2s ease;
 }
+:where([data-bs-theme="light"]) .dropdown-item {
+    color: rgba(0, 0, 0, 0.9);
+}
 
 .dropdown-item:hover {
     background: rgba(255, 255, 255, 0.1);
     color: #ffffff;
+}
+:where([data-bs-theme="light"]) .dropdown-item:hover {
+    background-color: rgba(0, 0, 0, 0.08);
+    color: #1e293b;
 }
 
 /* Topology specific styles */
@@ -324,6 +400,10 @@ body::before {
     border-radius: 12px;
     background: rgba(0, 0, 0, 0.2);
     border: 1px solid rgba(255, 255, 255, 0.1);
+}
+:where([data-bs-theme="light"]) #network-graph {
+    background-color: rgba(0, 0, 0, 0.04);
+    border: 1px solid rgba(0, 0, 0, 0.1);
 }
 
 /* Filter styles */
@@ -336,6 +416,9 @@ body::before {
 .filter-inline-label {
     font-size: 0.85rem;
     color: rgba(255, 255, 255, 0.7);
+}
+:where([data-bs-theme="light"]) .filter-inline-label {
+    color: rgba(0, 0, 0, 0.8);
 }
 
 .form-check-input:checked {
@@ -388,6 +471,9 @@ body::before {
     body {
         padding-top: 60px;
     }
+    :where([data-bs-theme="light"]) body {
+        background: #f8fafc;
+    }
 
     .top-nav {
         height: 60px;
@@ -431,6 +517,9 @@ body::before {
     );
     background-size: 200% 100%;
     animation: loading-shimmer 1.5s infinite;
+}
+:where([data-bs-theme="light"]) .loading-skeleton {
+    background-image: linear-gradient(90deg, rgba(0, 0, 0, 0.08) 25%, rgba(0, 0, 0, 0.12) 50%, rgba(0, 0, 0, 0.08) 75% );
 }
 
 @keyframes loading-shimmer {
@@ -607,10 +696,16 @@ body::before {
     padding: var(--space-2);
     transition: all var(--transition-fast);
 }
+:where([data-bs-theme="light"]) .modal .modal-header .btn-close {
+    background-color: rgba(0, 0, 0, 0.12);
+}
 
 .modal .modal-header .btn-close:hover {
     background: rgba(255, 255, 255, 0.3);
     transform: scale(1.1);
+}
+:where([data-bs-theme="light"]) .modal .modal-header .btn-close:hover {
+    background-color: rgba(0, 0, 0, 0.17);
 }
 
 .modal .modal-body {
@@ -841,6 +936,15 @@ body::before {
         --topology-text-secondary: rgba(255, 255, 255, 0.9);
         --topology-text-muted: rgba(255, 255, 255, 0.8);
     }
+    :root:where([data-bs-theme="light"]) {
+        --topology-border-light: rgba(0, 0, 0, 0.3);
+        --topology-border-medium: rgba(0, 0, 0, 0.5);
+        --topology-border-strong: rgba(0, 0, 0, 0.7);
+        --topology-text-secondary: rgba(0, 0, 0, 0.9);
+        --topology-text-muted: rgba(0, 0, 0, 0.9);
+        --topology-bg-primary: #f8fafc;
+        --topology-surface-elevated: rgba(255, 255, 255, 0.95);
+    }
 }
 
 /* Reduced Motion */
@@ -850,6 +954,26 @@ body::before {
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;
     }
+}
+
+/* Light theme: parts of the map that are coloured outside this stylesheet. */
+/* d3 sets the label fill and the alert ring as white SVG attributes. */
+:where([data-bs-theme="light"]) #network-graph .labels text {
+    fill: #1e293b;
+}
+:where([data-bs-theme="light"]) #network-graph circle[stroke="#ffffff"] {
+    stroke: #1e293b;
+}
+/* d3 also gives the drawing area an inline dark wash. */
+:where([data-bs-theme="light"]) #network-graph svg {
+    background: rgba(0, 0, 0, 0.03) !important;
+}
+/* The hover card sets its dark fill inline and uses Bootstrap's .text-white. */
+:where([data-bs-theme="light"]) #device-tooltip .card {
+    background: rgba(255, 255, 255, 0.95) !important;
+}
+:where([data-bs-theme="light"]) #device-tooltip .text-white {
+    color: #1e293b !important;
 }
 </style>
 {% endblock %}

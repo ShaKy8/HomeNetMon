@@ -61,6 +61,57 @@ class TestPagesRender:
         assert 'AI Dashboard' not in html and 'Full View' not in html
 
 
+class TestLightTheme:
+    """The page CSS was written for the dark theme. A rule whose colours only work on a dark page has a
+    light twin directly after it: the same selector behind :where([data-bs-theme="light"])."""
+
+    PAGES = ['dashboard', 'device_detail', 'alerts', 'analytics', 'topology', 'security', 'settings', 'about']
+    GATE = ':where([data-bs-theme="light"])'
+    WHITE_TEXT = re.compile(r'(?<![-\w])color\s*:\s*(?:white|#fff(?:fff)?\b|rgba\(\s*255,\s*255,\s*255)', re.I)
+    # White text that is right in both themes: it sits on a solid fill, or on the navbar.
+    WHITE_ON_A_FILL = {
+        'alerts': {'.btn-danger-bold'},
+        'security': {'.priority-critical', '.priority-high', '.priority-low', '.risk-indicator.risk-critical'},
+        'topology': {'.nav-link', '.nav-link:hover', '.nav-link.active', '.btn-primary-modern'},
+    }
+
+    @classmethod
+    def _rules(cls, page):
+        html = (ROOT / 'templates' / f'{page}.html').read_text()
+        css = re.sub(r'/\*.*?\*/', '', re.search(r'<style>(.*?)</style>', html, flags=re.S).group(1), flags=re.S)
+        css = re.sub(r'@media\s+print[^{]*\{(?:[^{}]*\{[^{}]*\})*[^{}]*\}', '', css)
+        return [(' '.join(sel.split()), body) for sel, body in re.findall(r'([^{}]+)\{([^{}]*)\}', css)]
+
+    @pytest.mark.parametrize('page', PAGES)
+    def test_white_text_has_a_light_twin(self, page):
+        """White text is invisible on the light page. Add the twin, or list the rule above if its
+        text sits on a solid fill."""
+        rules = self._rules(page)
+        twins = {sel.replace(self.GATE + ' ', '').replace(self.GATE, '')
+                 for sel, body in rules if self.GATE in sel and re.search(r'(?<![-\w])color\s*:', body)}
+        missing = [sel for sel, body in rules
+                   if self.GATE not in sel and self.WHITE_TEXT.search(body)
+                   and sel not in twins and sel not in self.WHITE_ON_A_FILL.get(page, set())]
+        assert not missing, f'{page}: white text without a light twin: {missing}'
+
+    def test_light_twins_add_no_specificity(self):
+        """A twin must win or lose exactly where its dark rule does, so the gate goes inside :where()."""
+        for page in self.PAGES:
+            css = re.search(r'<style>(.*?)</style>', (ROOT / 'templates' / f'{page}.html').read_text(), flags=re.S).group(1)
+            assert self.GATE in css, page
+            assert not re.search(r'(?<!:where\()\[data-bs-theme="light"\]', css), page
+
+    def test_analytics_charts_take_their_colours_from_the_theme(self):
+        html = (ROOT / 'templates/analytics.html').read_text()
+        assert 'function chartColors()' in html and 'chartColors().text' in html
+        assert "color: '#e0e0e0'" not in html and "grid: { color: 'rgba(255, 255, 255, 0.1)' }" not in html
+
+    def test_base_restyles_bootstraps_always_dark_helpers_for_light(self):
+        base = (ROOT / 'templates/base_beautiful.html').read_text()
+        for selector in ('.table-dark', '.dropdown-menu-dark', '.modal-content.bg-dark', 'main .text-warning'):
+            assert f'[data-bs-theme="light"] {selector}' in base, selector
+
+
 class TestDashboardJs:
 
     def test_uses_api_field_names(self):

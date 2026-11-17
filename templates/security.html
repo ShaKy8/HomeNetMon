@@ -28,11 +28,19 @@
         flex: 1;
         transition: all 0.3s ease;
     }
+    :where([data-bs-theme="light"]) .mobile-card {
+        background-color: rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(0, 0, 0, 0.2);
+    }
 
     .mobile-card:hover {
         background: rgba(255, 255, 255, 0.15);
         transform: translateY(-5px);
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+    :where([data-bs-theme="light"]) .mobile-card:hover {
+        background-color: rgba(0, 0, 0, 0.1);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     }
 
     .mobile-card-icon {
@@ -50,6 +58,9 @@
         font-size: 0.8rem;
         color: rgba(255, 255, 255, 0.8);
     }
+    :where([data-bs-theme="light"]) .mobile-card-label {
+        color: rgba(0, 0, 0, 0.9);
+    }
 
     .security-cards-desktop .card {
         background: rgba(255, 255, 255, 0.1) !important;
@@ -58,11 +69,19 @@
         border-radius: 15px;
         transition: all 0.3s ease;
     }
+    :where([data-bs-theme="light"]) .security-cards-desktop .card {
+        background-color: rgba(255, 255, 255, 0.8) !important;
+        border: 1px solid rgba(0, 0, 0, 0.2) !important;
+    }
 
     .security-cards-desktop .card:hover {
         background: rgba(255, 255, 255, 0.15) !important;
         transform: translateY(-5px);
         box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    }
+    :where([data-bs-theme="light"]) .security-cards-desktop .card:hover {
+        background-color: rgba(0, 0, 0, 0.1) !important;
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
     }
 
     .card {
@@ -72,6 +91,11 @@
         border-radius: 15px;
         color: #fff;
     }
+    :where([data-bs-theme="light"]) .card {
+        background-color: rgba(255, 255, 255, 0.8) !important;
+        border: 1px solid rgba(0, 0, 0, 0.2) !important;
+        color: #1e293b;
+    }
 
     .card-header {
         background: rgba(255, 255, 255, 0.1) !important;
@@ -79,9 +103,17 @@
         border-radius: 15px 15px 0 0 !important;
         color: #fff;
     }
+    :where([data-bs-theme="light"]) .card-header {
+        background-color: rgba(255, 255, 255, 0.8) !important;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.2) !important;
+        color: #1e293b;
+    }
 
     .card-body {
         color: #fff;
+    }
+    :where([data-bs-theme="light"]) .card-body {
+        color: #1e293b;
     }
 
     .bg-success {
@@ -104,17 +136,30 @@
         background: rgba(255, 255, 255, 0.1) !important;
         color: #fff !important;
     }
+    :where([data-bs-theme="light"]) .bg-light {
+        background-color: rgba(0, 0, 0, 0.08) !important;
+        color: #1e293b !important;
+    }
 
     .text-muted {
         color: rgba(255, 255, 255, 0.7) !important;
+    }
+    :where([data-bs-theme="light"]) .text-muted {
+        color: rgba(0, 0, 0, 0.8) !important;
     }
 
     .border {
         border-color: rgba(255, 255, 255, 0.2) !important;
     }
+    :where([data-bs-theme="light"]) .border {
+        border-color: rgba(0, 0, 0, 0.2) !important;
+    }
 
     .progress {
         background: rgba(255, 255, 255, 0.2);
+    }
+    :where([data-bs-theme="light"]) .progress {
+        background-color: rgba(0, 0, 0, 0.12);
     }
 
     .table {
@@ -123,29 +168,51 @@
         border-radius: 15px;
         color: #fff;
     }
+    :where([data-bs-theme="light"]) .table {
+        background-color: rgba(255, 255, 255, 0.8);
+        color: #1e293b;
+    }
 
     .table th {
         background: rgba(255, 255, 255, 0.1);
         border-color: rgba(255, 255, 255, 0.2);
         color: #fff;
     }
+    :where([data-bs-theme="light"]) .table th {
+        background-color: rgba(0, 0, 0, 0.08);
+        border-color: rgba(0, 0, 0, 0.2);
+        color: #1e293b;
+    }
 
     .table td {
         border-color: rgba(255, 255, 255, 0.1);
         color: #fff;
     }
+    :where([data-bs-theme="light"]) .table td {
+        border-color: rgba(0, 0, 0, 0.1);
+        color: #1e293b;
+    }
 
     .table-striped tbody tr:nth-of-type(odd) {
         background: rgba(255, 255, 255, 0.05);
+    }
+    :where([data-bs-theme="light"]) .table-striped tbody tr:nth-of-type(odd) {
+        background-color: rgba(0, 0, 0, 0.05);
     }
 
     .table-hover tbody tr:hover {
         background: rgba(255, 255, 255, 0.1);
     }
+    :where([data-bs-theme="light"]) .table-hover tbody tr:hover {
+        background-color: rgba(0, 0, 0, 0.08);
+    }
 
     .badge {
         backdrop-filter: blur(5px);
         border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    :where([data-bs-theme="light"]) .badge {
+        border: 1px solid rgba(0, 0, 0, 0.2);
     }
 
     .alert {
@@ -153,6 +220,11 @@
         backdrop-filter: blur(10px);
         border: 1px solid rgba(255, 255, 255, 0.2);
         color: #fff;
+    }
+    :where([data-bs-theme="light"]) .alert {
+        background-color: rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        color: #1e293b;
     }
 
     .alert-info {
@@ -186,17 +258,26 @@
         border-color: #0d6efd;
         color: #fff;
     }
+    :where([data-bs-theme="light"]) .btn-outline-primary:hover {
+        color: #1e293b;
+    }
 
     .btn-outline-warning {
         border-color: rgba(255, 193, 7, 0.8);
         color: #ffc107;
         backdrop-filter: blur(5px);
     }
+    :where([data-bs-theme="light"]) .btn-outline-warning {
+        color: #d97706;
+    }
 
     .btn-outline-warning:hover {
         background: rgba(255, 193, 7, 0.2);
         border-color: #ffc107;
         color: #fff;
+    }
+    :where([data-bs-theme="light"]) .btn-outline-warning:hover {
+        color: #1e293b;
     }
 
     .btn-outline-secondary {
@@ -210,6 +291,9 @@
         border-color: #6c757d;
         color: #fff;
     }
+    :where([data-bs-theme="light"]) .btn-outline-secondary:hover {
+        color: #1e293b;
+    }
 
     .modal-content {
         background: rgba(255, 255, 255, 0.1);
@@ -218,13 +302,24 @@
         border-radius: 15px;
         color: #fff;
     }
+    :where([data-bs-theme="light"]) .modal-content {
+        background: rgba(255, 255, 255, 0.97);
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        color: #1e293b;
+    }
 
     .modal-header {
         border-bottom: 1px solid rgba(255, 255, 255, 0.2);
     }
+    :where([data-bs-theme="light"]) .modal-header {
+        border-bottom: 1px solid rgba(0, 0, 0, 0.2);
+    }
 
     .modal-footer {
         border-top: 1px solid rgba(255, 255, 255, 0.2);
+    }
+    :where([data-bs-theme="light"]) .modal-footer {
+        border-top: 1px solid rgba(0, 0, 0, 0.2);
     }
 
     .spinner-border {
@@ -243,6 +338,9 @@
     .text-info {
         color: #0dcaf0 !important;
     }
+    :where([data-bs-theme="light"]) .text-info {
+        color: #2563eb !important;
+    }
 
     .nav-tabs .nav-link {
         background: rgba(255, 255, 255, 0.1);
@@ -250,11 +348,19 @@
         color: rgba(255, 255, 255, 0.8);
         backdrop-filter: blur(5px);
     }
+    :where([data-bs-theme="light"]) .nav-tabs .nav-link {
+        background-color: rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        color: rgba(0, 0, 0, 0.9);
+    }
 
     .nav-tabs .nav-link.active {
         background: rgba(13, 110, 253, 0.3);
         border-color: rgba(13, 110, 253, 0.5);
         color: #fff;
+    }
+    :where([data-bs-theme="light"]) .nav-tabs .nav-link.active {
+        color: #1e293b;
     }
 
     .tab-content {
@@ -263,15 +369,26 @@
         border-radius: 0 15px 15px 15px;
         padding: 20px;
     }
+    :where([data-bs-theme="light"]) .tab-content {
+        background-color: rgba(255, 255, 255, 0.8);
+    }
 
     .placeholder {
         background: rgba(255, 255, 255, 0.2);
+    }
+    :where([data-bs-theme="light"]) .placeholder {
+        background-color: rgba(0, 0, 0, 0.12);
     }
 
     .form-control {
         background: rgba(255, 255, 255, 0.1);
         border: 1px solid rgba(255, 255, 255, 0.2);
         color: #fff;
+    }
+    :where([data-bs-theme="light"]) .form-control {
+        background-color: rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        color: #1e293b;
     }
 
     .form-control:focus {
@@ -280,11 +397,20 @@
         color: #fff;
         box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
     }
+    :where([data-bs-theme="light"]) .form-control:focus {
+        background-color: rgba(255, 255, 255, 0.95);
+        color: #1e293b;
+    }
 
     .form-select {
         background: rgba(255, 255, 255, 0.1);
         border: 1px solid rgba(255, 255, 255, 0.2);
         color: #fff;
+    }
+    :where([data-bs-theme="light"]) .form-select {
+        background-color: rgba(255, 255, 255, 0.8);
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        color: #1e293b;
     }
 
     .list-group-item {
@@ -292,9 +418,17 @@
         border: 1px solid rgba(255, 255, 255, 0.2);
         color: #fff;
     }
+    :where([data-bs-theme="light"]) .list-group-item {
+        background-color: rgba(0, 0, 0, 0.08);
+        border: 1px solid rgba(0, 0, 0, 0.2);
+        color: #1e293b;
+    }
 
     .list-group-item:hover {
         background: rgba(255, 255, 255, 0.15);
+    }
+    :where([data-bs-theme="light"]) .list-group-item:hover {
+        background-color: rgba(0, 0, 0, 0.1);
     }
 
     /* Priority indicator styles */
@@ -635,6 +769,9 @@
             margin-bottom: 1rem;
             background: white;
         }
+        :where([data-bs-theme="light"]) .mobile-alert-card {
+            border: 1px solid rgba(0, 0, 0, 0.15);
+        }
 
         .mobile-alert-header {
             display: flex;
@@ -643,6 +780,9 @@
             margin-bottom: 0.75rem;
             padding-bottom: 0.5rem;
             border-bottom: 1px solid #e9ecef;
+        }
+        :where([data-bs-theme="light"]) .mobile-alert-header {
+            border-bottom: 1px solid rgba(0, 0, 0, 0.15);
         }
 
         .mobile-alert-body {
@@ -708,6 +848,9 @@
             padding: 1rem;
             margin-bottom: 1rem;
             background: white;
+        }
+        :where([data-bs-theme="light"]) .network-device-card {
+            border: 1px solid rgba(0, 0, 0, 0.15);
         }
 
         .device-header {
@@ -835,6 +978,12 @@
         text-align: left;
         padding: 8px 12px;
     }
+
+/* Light theme: Bootstrap's .text-white on cards whose solid fill this page replaces with a translucent one. */
+:where([data-bs-theme="light"]) .card.text-white,
+:where([data-bs-theme="light"]) .card-header.text-white {
+    color: #1e293b !important;
+}
 </style>
 {% endblock %}
 
