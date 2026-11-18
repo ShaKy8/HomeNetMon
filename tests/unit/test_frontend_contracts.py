@@ -334,6 +334,14 @@ class TestPhase1Fixes:
         assert 'backdrop-filter' in header
         assert re.search(r'position\s*:\s*relative', header) and re.search(r'z-index\s*:\s*[1-9]', header)
 
+    def test_performance_chart_has_a_box_of_its_own(self):
+        """Chart.js sizes a responsive canvas to its parent. While the canvas shared .chart-body with the
+        tiles above it, every resize made it taller by the tiles' height, without end."""
+        html = (ROOT / 'templates/device_detail.html').read_text()
+        assert re.search(r'<div class="chart-canvas-box">\s*<canvas id="performanceChart"[^>]*></canvas>\s*</div>', html)
+        box = next((body for sel, body in TestLightTheme._rules('device_detail') if sel == '.chart-canvas-box'), '')
+        assert re.search(r'position\s*:\s*relative', box) and re.search(r'(?<![-\w])height\s*:\s*\d+px', box)
+
     def test_analytics_page_has_no_toast_stub(self):
         html = (ROOT / 'templates/analytics.html').read_text()
         assert 'Toast (${type})' not in html

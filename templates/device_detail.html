@@ -123,6 +123,12 @@
     padding: 1.5rem;
 }
 
+/* Chart.js sizes a responsive canvas to its parent: a canvas with siblings needs a box of its own, or it grows on every resize */
+.chart-canvas-box {
+    position: relative;
+    height: 220px;
+}
+
 .time-period-buttons {
     display: flex;
     gap: 0.5rem;
@@ -312,7 +318,9 @@
             </div>
             <div class="chart-body">
                 <div class="row text-center mb-3" id="perf-tiles"><div class="col text-muted">Loading…</div></div>
-                <canvas id="performanceChart" height="220" aria-label="Health score and response time over time"></canvas>
+                <div class="chart-canvas-box">
+                    <canvas id="performanceChart" height="220" aria-label="Health score and response time over time"></canvas>
+                </div>
             </div>
         </div>
     </div>
