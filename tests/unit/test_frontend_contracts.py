@@ -367,6 +367,14 @@ class TestPhase1Fixes:
         assert 'monitoring_history' not in body
         assert 'loadChartData(selectedChartHours)' in body
 
+    def test_device_status_update_for_this_device_reloads_the_page(self):
+        """deviceId is text from the URL ("139"); the event carries a number. Number(...) === deviceId was never
+        true, so a status update for the open device never reloaded it."""
+        html = (ROOT / 'templates/device_detail.html').read_text()
+        body = html[html.index('function subscribeToLiveUpdates'):html.index('function loadDeviceData')]
+        assert 'Number(data.device_id) === Number(deviceId)' in body
+        assert 'Number(data.device_id) === deviceId' not in body
+
     def test_analytics_page_has_no_toast_stub(self):
         html = (ROOT / 'templates/analytics.html').read_text()
         assert 'Toast (${type})' not in html

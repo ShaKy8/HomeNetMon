@@ -506,7 +506,8 @@ function subscribeToLiveUpdates() {
         const subscribe = () => socket.emit('subscribe_to_updates', { types: ['device_status', 'alerts'] });
         socket.on('connect', subscribe);
         if (socket.connected) subscribe();
-        socket.on('device_status_update', (data) => { if (data && Number(data.device_id) === deviceId) scheduleLiveReload(); });
+        // deviceId is text from the URL, the event carries a number: compare both as numbers
+        socket.on('device_status_update', (data) => { if (data && Number(data.device_id) === Number(deviceId)) scheduleLiveReload(); });
         socket.on('alert_update', (payload) => {
             const alert = payload && payload.alert;
             if (!alert || Number(alert.device_id) === deviceId) scheduleLiveReload();
