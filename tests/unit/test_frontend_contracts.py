@@ -342,6 +342,14 @@ class TestPhase1Fixes:
         box = next((body for sel, body in TestLightTheme._rules('device_detail') if sel == '.chart-canvas-box'), '')
         assert re.search(r'position\s*:\s*relative', box) and re.search(r'(?<![-\w])height\s*:\s*\d+px', box)
 
+    def test_performance_chart_labels_are_short(self):
+        """A bare toLocaleString() label is 22 characters ("11/17/2026, 7:00:00 PM"). Rotated to fit a phone,
+        those labels took half of the chart's 220 px box."""
+        html = (ROOT / 'templates/device_detail.html').read_text()
+        body = html[html.index('async function loadPerformance'):html.index('function updateDeviceInfoCards')]
+        assert 'toLocaleString()' not in body and 'toLocaleDateString()' not in body
+        assert "{ month: 'short', day: 'numeric', hour: 'numeric' }" in body
+
     def test_analytics_page_has_no_toast_stub(self):
         html = (ROOT / 'templates/analytics.html').read_text()
         assert 'Toast (${type})' not in html

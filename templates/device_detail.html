@@ -636,7 +636,9 @@ async function loadPerformance(hours) {
             perfTile(w.p50_ms != null ? `${w.p50_ms} ms` : '—', 'Median response', w.avg_ms != null ? `avg ${w.avg_ms} ms` : '') +
             perfTile(w.p95_ms != null ? `${w.p95_ms} ms` : '—', '95th percentile', w.max_ms != null ? `worst ${w.max_ms} ms` : '');
         const points = timeline.timeline || [];
-        const labels = points.map(p => granularity === 'day' ? new Date(p.timestamp).toLocaleDateString() : new Date(p.timestamp).toLocaleString());
+        // The buckets are whole hours or days: a year and seconds only made the rotated labels take half the box on a phone
+        const labelFormat = granularity === 'day' ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', hour: 'numeric' };
+        const labels = points.map(p => new Date(p.timestamp).toLocaleString([], labelFormat));
         const canvas = document.getElementById('performanceChart');
         if (typeof Chart === 'undefined' || !canvas) return;
         const data = {
