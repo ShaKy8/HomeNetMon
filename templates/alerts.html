@@ -18,6 +18,9 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 16px;
     padding: 1.5rem;
+    /* backdrop-filter makes each card a stacking context: lift the toolbar so its menu opens over the alert cards */
+    position: relative;
+    z-index: 1;
 }
 :where([data-bs-theme="light"]) .controls-section {
     background-color: rgba(255, 255, 255, 0.8);

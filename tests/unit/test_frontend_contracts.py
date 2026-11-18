@@ -443,6 +443,13 @@ class TestAlertsPage:
         assert 'this.showToast' not in html and 'this.escapeHtml' not in html
         assert 'X-CSRFToken' not in html
 
+    def test_toolbar_stacks_above_the_alert_cards(self):
+        """The toolbar's backdrop-filter makes it a stacking context, so its Bulk delete menu is
+        painted under the alert cards unless the toolbar is positioned and has a z-index."""
+        toolbar = next(body for sel, body in TestLightTheme._rules('alerts') if sel == '.controls-section')
+        assert 'backdrop-filter' in toolbar
+        assert re.search(r'position\s*:\s*relative', toolbar) and re.search(r'z-index\s*:\s*[1-9]', toolbar)
+
     def test_navbar_badge_uses_server_side_status_filter(self, client):
         html = client.get('/').get_data(as_text=True)
         assert '/api/monitoring/alerts?status=active&hours=0&per_page=1' in html
