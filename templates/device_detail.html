@@ -821,7 +821,11 @@ async function loadChartData(period) {
         const data = await apiRequest(`/api/monitoring/data?device_id=${deviceId}&hours=${hours}&limit=500`);
         const rows = (data.data || data.monitoring_data || []).slice().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         if (responseTimeChart && rows.length) {
-            responseTimeChart.data.labels = rows.map(r => new Date(r.timestamp).toLocaleString());
+            // Up to a day the time alone, as updateCharts() labels the page load; 7 days needs the date, kept short
+            const label = hours > 24
+                ? d => d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
+                : d => d.toLocaleTimeString();
+            responseTimeChart.data.labels = rows.map(r => label(new Date(r.timestamp)));
             responseTimeChart.data.datasets[0].data = rows.map(r => r.response_time);
             responseTimeChart.update();
         }

@@ -350,6 +350,14 @@ class TestPhase1Fixes:
         assert 'toLocaleString()' not in body and 'toLocaleDateString()' not in body
         assert "{ month: 'short', day: 'numeric', hour: 'numeric' }" in body
 
+    def test_response_time_chart_keeps_short_labels_after_a_range_click(self):
+        """The page load labels the chart with the time alone. A range button went through loadChartData,
+        which used a bare toLocaleString(): the labels switched to "11/18/2026, 2:28:43 AM"."""
+        html = (ROOT / 'templates/device_detail.html').read_text()
+        body = html[html.index('async function loadChartData'):html.index('async function pingDevice')]
+        assert 'toLocaleString()' not in body and 'toLocaleTimeString()' in body
+        assert "{ month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }" in body
+
     def test_analytics_page_has_no_toast_stub(self):
         html = (ROOT / 'templates/analytics.html').read_text()
         assert 'Toast (${type})' not in html
