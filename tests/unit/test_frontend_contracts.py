@@ -327,6 +327,13 @@ class TestPhase1Fixes:
         assert 'function initializeCharts()' in html
         assert html.index('initializeCharts();') < html.index('loadDeviceData();')
 
+    def test_device_header_stacks_above_the_cards_below_it(self):
+        """The header's backdrop-filter makes it a stacking context, so its Device Control menu is
+        painted under the later cards unless the header is positioned and has a z-index."""
+        header = next(body for sel, body in TestLightTheme._rules('device_detail') if sel == '.device-header')
+        assert 'backdrop-filter' in header
+        assert re.search(r'position\s*:\s*relative', header) and re.search(r'z-index\s*:\s*[1-9]', header)
+
     def test_analytics_page_has_no_toast_stub(self):
         html = (ROOT / 'templates/analytics.html').read_text()
         assert 'Toast (${type})' not in html

@@ -12,6 +12,9 @@
     border-radius: 16px;
     padding: 2rem;
     margin-bottom: 2rem;
+    /* backdrop-filter makes each card a stacking context: lift the header so its menu opens over the cards below */
+    position: relative;
+    z-index: 1;
 }
 :where([data-bs-theme="light"]) .device-header {
     background-color: rgba(255, 255, 255, 0.8);
