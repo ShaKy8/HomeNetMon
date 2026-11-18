@@ -358,6 +358,15 @@ class TestPhase1Fixes:
         assert 'toLocaleString()' not in body and 'toLocaleTimeString()' in body
         assert "{ month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }" in body
 
+    def test_response_time_chart_has_one_data_source(self):
+        """The page load and each reload drew 24H from the detail payload's monitoring_history, which holds at most
+        100 rows (about 17 hours at the 600 s ping interval); a click on 24H drew the whole day from
+        /api/monitoring/data. Every range now comes from loadChartData()."""
+        html = (ROOT / 'templates/device_detail.html').read_text()
+        body = html[html.index('function updateCharts'):html.index('async function loadOpenPorts')]
+        assert 'monitoring_history' not in body
+        assert 'loadChartData(selectedChartHours)' in body
+
     def test_analytics_page_has_no_toast_stub(self):
         html = (ROOT / 'templates/analytics.html').read_text()
         assert 'Toast (${type})' not in html

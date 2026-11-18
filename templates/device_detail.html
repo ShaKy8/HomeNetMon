@@ -744,15 +744,8 @@ function updateMonitoringData(device) {
 }
 
 function updateCharts(device) {
-    const history = (device.monitoring_history || []).slice().reverse();  // oldest first
-    if (responseTimeChart && selectedChartHours === 24) {
-        // the detail payload carries the last 24 h; other ranges come from /api/monitoring/data
-        responseTimeChart.data.labels = history.map(r => new Date(r.timestamp).toLocaleTimeString());
-        responseTimeChart.data.datasets[0].data = history.map(r => r.response_time);
-        responseTimeChart.update();
-    } else if (responseTimeChart) {
-        loadChartData(selectedChartHours);
-    }
+    // One source for every range: the detail payload holds at most 100 rows, about 17 h at the 600 s ping interval, not the 24 h a click on 24H draws
+    if (responseTimeChart) loadChartData(selectedChartHours);
     if (uptimeChart) {
         const stats = (device.statistics && device.statistics['24h']) || {};
         const up = Number(stats.uptime_percentage ?? 0);
@@ -821,7 +814,7 @@ async function loadChartData(period) {
         const data = await apiRequest(`/api/monitoring/data?device_id=${deviceId}&hours=${hours}&limit=500`);
         const rows = (data.data || data.monitoring_data || []).slice().sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
         if (responseTimeChart && rows.length) {
-            // Up to a day the time alone, as updateCharts() labels the page load; 7 days needs the date, kept short
+            // Up to a day the time alone; 7 days needs the date, kept short
             const label = hours > 24
                 ? d => d.toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })
                 : d => d.toLocaleTimeString();
