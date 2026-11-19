@@ -114,6 +114,9 @@
     display: flex;
     justify-content: space-between;
     align-items: center;
+    /* Four 44 px range buttons do not fit beside the title on a phone: they move to a row of their own */
+    flex-wrap: wrap;
+    gap: 0.75rem;
 }
 :where([data-bs-theme="light"]) .chart-header {
     border-bottom: 1px solid rgba(0, 0, 0, 0.1);

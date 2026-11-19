@@ -383,6 +383,13 @@ class TestPhase1Fixes:
         assert 'Number(alert.device_id) === Number(deviceId)' in body
         assert 'Number(alert.device_id) === deviceId' not in body
 
+    def test_chart_header_wraps_its_range_buttons_on_a_phone(self):
+        """Four 44 px range buttons need 239 px; a 390 px screen leaves the header 308 px. Without wrapping, the
+        title shrank to three lines and the 7D button still stuck 11 px out of the Response Time card."""
+        header = next((body for sel, body in TestLightTheme._rules('device_detail') if sel == '.chart-header'), '')
+        assert re.search(r'flex-wrap\s*:\s*wrap', header)
+        assert re.search(r'(?<![-\w])gap\s*:', header)
+
     def test_analytics_page_has_no_toast_stub(self):
         html = (ROOT / 'templates/analytics.html').read_text()
         assert 'Toast (${type})' not in html
