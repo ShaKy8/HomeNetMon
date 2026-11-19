@@ -375,6 +375,14 @@ class TestPhase1Fixes:
         assert 'Number(data.device_id) === Number(deviceId)' in body
         assert 'Number(data.device_id) === deviceId' not in body
 
+    def test_alert_update_for_this_device_reloads_the_page(self):
+        """Same mismatch in the alert handler: Number(alert.device_id) === deviceId compared a number with the text
+        from the URL, so only a bulk change (no alert) reloaded the page."""
+        html = (ROOT / 'templates/device_detail.html').read_text()
+        body = html[html.index('function subscribeToLiveUpdates'):html.index('function loadDeviceData')]
+        assert 'Number(alert.device_id) === Number(deviceId)' in body
+        assert 'Number(alert.device_id) === deviceId' not in body
+
     def test_analytics_page_has_no_toast_stub(self):
         html = (ROOT / 'templates/analytics.html').read_text()
         assert 'Toast (${type})' not in html
