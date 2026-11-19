@@ -11,6 +11,7 @@ HomeNetMon is a Flask, SQLAlchemy and Socket.IO application for monitoring one h
 - `python3 -m venv venv && source venv/bin/activate`: create and activate a local environment (Python 3.11+).
 - `pip install -r requirements.txt -r requirements-dev.txt`: runtime deps plus pytest, ruff and pip-audit.
 - `DATABASE_URL=sqlite:////tmp/hnm-dev/dev.db SECURITY_SCANNING_ENABLED=false LOG_FILE=dev.log HOST=127.0.0.1 PORT=5001 venv/bin/python app.py` (after `mkdir -p /tmp/hnm-dev`): run a development instance. On this machine port 5000 is the deployed service and the existing `.env` points at its database, so never overwrite `.env` and never start the app without an explicit `DATABASE_URL`. On a fresh clone, `cp .env.example .env` first.
+- Only one agent session at a time restarts the deployed service (`systemctl --user restart homenetmon`) or uses port 5001; if another session may be active in this checkout, ask the user which one should. A stop time counts only if the stopped worker had booted well before the SIGTERM (see `CLAUDE.md`, section 1).
 - `pytest tests/unit tests/integration -q`: the CI target; add `--cov=. --cov-fail-under=47` for the coverage floor CI enforces.
 - `BASE_URL=http://127.0.0.1:5001 npx playwright test`: Chromium end-to-end tests against a dev instance; the config refuses to run without `BASE_URL`.
 - `ruff check .` and `pre-commit run --all-files`: lint and repository sanity checks.

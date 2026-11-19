@@ -10,8 +10,12 @@ use --preload (the monitoring threads must start inside the worker).
 """
 
 from app import create_app
+from core.gunicorn_compat import install_closed_socket_guard
 from core.shutdown import close_live_clients_on_sigterm
 
 app, socketio = create_app()
+# gunicorn counted each closed WebSocket off twice (core/gunicorn_compat.py). Before the next line: it finds the
+# worker through gunicorn's own SIGTERM handler, which close_live_clients_on_sigterm replaces.
+install_closed_socket_guard()
 # A stop otherwise waits out --graceful-timeout for open Socket.IO pages and idle connections (core/shutdown.py).
 close_live_clients_on_sigterm(socketio)
