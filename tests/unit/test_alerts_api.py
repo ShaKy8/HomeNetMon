@@ -130,3 +130,19 @@ class TestBulkActions:
         r = client.delete('/api/monitoring/alerts/bulk-delete', json={'resolved': True}, headers={'X-CSRF-Token': _token(client)})
         assert r.status_code == 200 and r.get_json()['deleted_count'] == 1
         assert Alert.query.count() == 4
+
+    def test_delete_one_alert_tells_live_pages_which_device_it_was_on(self, app, client, fleet, monkeypatch):
+        """The device page reloads on an alert_update whose alert.device_id is its own device; the delete event
+        carried no device_id, so deleting an alert left the page showing it."""
+        sent = []
+        monkeypatch.setattr(app.socketio, 'emit', lambda event, data=None, **kw: sent.append((event, data)))
+        monkeypatch.setattr(app.alert_manager, 'alert_pause_until', None, raising=False)
+        alert = fleet['alerts'][0]
+        alert_id, device_id = alert.id, alert.device_id
+        r = client.delete(f'/api/monitoring/alerts/{alert_id}', headers={'X-CSRF-Token': _token(client)})
+        assert r.status_code == 200, r.get_json()
+        assert set(r.get_json()['deleted_alert']) == {'id', 'device_name', 'device_ip', 'alert_type', 'message'}
+        events = [d for e, d in sent if e == 'alert_update']
+        assert len(events) == 1 and events[0]['action'] == 'deleted'
+        assert events[0]['alert']['id'] == alert_id
+        assert events[0]['alert']['device_id'] == device_id

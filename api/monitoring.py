@@ -424,6 +424,8 @@ def delete_alert(alert_id):
             'alert_type': alert.alert_type,
             'message': alert.message
         }
+        # The device page reloads on an alert_update naming its device; read the id while the row still exists
+        device_id = alert.device_id
 
         db.session.delete(alert)
         db.session.commit()
@@ -437,6 +439,7 @@ def delete_alert(alert_id):
                     'type': 'alert_update',
                     'alert': {
                         'id': alert_info['id'],
+                        'device_id': device_id,
                         'device_name': alert_info['device_name'],
                         'device_ip': alert_info['device_ip'],
                         'action': 'deleted'
