@@ -431,13 +431,25 @@
 }
 
 /* Checkbox styling */
-.alert-checkbox {
+/* A 44 px touch target around the 18 px box, in the card's left column, centred on the title's first line
+   (28 px tall below the card's 1.5rem padding) */
+.alert-select {
     position: absolute;
-    /* Centred on the title's first line, which is 28 px tall below the card's 1.5rem padding */
-    top: calc(1.5rem + 5px);
-    left: 1rem;
+    top: 1rem;
+    left: 3px;
+    width: 44px;
+    height: 44px;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+.alert-checkbox {
     width: 18px;
     height: 18px;
+    margin: 0;
     accent-color: rgba(59, 130, 246, 0.8);
 }
 
@@ -850,7 +862,7 @@ class AlertsManager {
         const priority = alert.priority_level ? `<span class="status-badge priority" title="Priority score ${escapeHtml(alert.priority_score ?? '')}">${escapeHtml(alert.priority_level)}</span>` : '';
         return `
             <div class="alert-card ${severity} ${resolved ? 'resolved' : ''} ${acked ? 'acknowledged' : ''}" data-alert-id="${alert.id}">
-                <input type="checkbox" class="alert-checkbox" aria-label="Select alert" onchange="alertsManager.toggleSelect(${alert.id})">
+                <label class="alert-select"><input type="checkbox" class="alert-checkbox" aria-label="Select alert" onchange="alertsManager.toggleSelect(${alert.id})"></label>
                 <div class="alert-header">
                     <div>
                         <div class="alert-title">${escapeHtml(alert.title || alert.alert_type || 'Alert')}</div>

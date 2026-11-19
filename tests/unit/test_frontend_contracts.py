@@ -406,17 +406,34 @@ class TestPhase1Fixes:
             body = next((b for sel, b in rules if sel == selector), '')
             assert re.search(r'flex-wrap\s*:\s*wrap', body), selector
 
+    @staticmethod
+    def _css_px(body, prop):
+        """A length from a rule body in px: 0, Npx or Nrem (16 px)."""
+        m = re.search(rf'(?<![-\w]){prop}\s*:\s*(0|[\d.]+px|[\d.]+rem)\s*;', body)
+        if not m:
+            return None
+        v = m.group(1)
+        return 0.0 if v == '0' else float(v[:-2]) if v.endswith('px') else float(v[:-3]) * 16
+
     def test_alert_checkbox_has_a_column_of_its_own(self):
-        """The checkbox sits absolutely at left 1rem and is 18 px wide; the card's content started at its 1.5rem
-        padding, so the box covered the first letter of every title. The left padding must clear the box."""
+        """The checkbox sat absolutely at left 1rem and was 18 px wide; the card's content started at its 1.5rem
+        padding, so the box covered the first letter of every title. The card's left padding must clear the area
+        that selects the alert."""
         rules = TestLightTheme._rules('alerts')
-        box = next((b for sel, b in rules if sel == '.alert-checkbox'), '')
+        target = next((b for sel, b in rules if sel == '.alert-select'), '')
         card = next((b for sel, b in rules if sel == '.alert-card'), '')
-        left = re.search(r'(?<![-\w])left\s*:\s*([\d.]+)rem', box)
-        width = re.search(r'(?<![-\w])width\s*:\s*(\d+)px', box)
-        pad = re.search(r'padding-left\s*:\s*([\d.]+)rem', card)
-        assert left and width and pad, (box, card)
-        assert float(pad.group(1)) * 16 >= float(left.group(1)) * 16 + int(width.group(1)) + 8
+        left, width = self._css_px(target, 'left'), self._css_px(target, 'width')
+        pad = self._css_px(card, 'padding-left')
+        assert None not in (left, width, pad), (target, card)
+        assert pad >= left + width
+
+    def test_alert_checkbox_has_a_44px_target(self):
+        """The 18 px checkbox was its own hit area, under the 44 px touch target the base theme gives buttons.
+        A 44 px label around it selects the alert from anywhere in that square."""
+        html = (ROOT / 'templates/alerts.html').read_text()
+        assert re.search(r'<label class="alert-select">\s*<input type="checkbox" class="alert-checkbox"', html)
+        target = next((b for sel, b in TestLightTheme._rules('alerts') if sel == '.alert-select'), '')
+        assert (self._css_px(target, 'width') or 0) >= 44 and (self._css_px(target, 'height') or 0) >= 44, target
 
     def test_analytics_page_has_no_toast_stub(self):
         html = (ROOT / 'templates/analytics.html').read_text()
