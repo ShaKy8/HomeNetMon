@@ -446,10 +446,12 @@ class TestPhase1Fixes:
             assert not padded, f'{page}: {padded}'
 
     def test_network_map_has_no_rules_for_its_old_top_bar(self):
-        """The Network Map's own fixed .top-nav bar left the markup long ago; its rules, and the phone block's
-        copy of the light body background, styled nothing."""
+        """The Network Map's own fixed .top-nav bar, with its .nav-brand title and .nav-links row, left the markup
+        long ago; their rules, and the phone block's copy of the light body background, styled nothing. (.nav-link
+        stays: the shared navbar uses it.)"""
         html = (ROOT / 'templates/topology.html').read_text()
-        assert '.top-nav' not in html
+        for gone in ('.top-nav', '.nav-brand', '.nav-links'):
+            assert gone not in html, gone
         assert html.count(':where([data-bs-theme="light"]) body {') == 1
 
     def test_analytics_page_has_no_toast_stub(self):
