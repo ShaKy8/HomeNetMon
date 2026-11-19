@@ -73,7 +73,8 @@ def _nr_conns_records(caplog):
 
 def test_guarded_close_logs_the_workers_nr_conns_at_debug(caplog):
     """gunicorn exposes nr_conns nowhere (gunicornc's stats leave it out): the guard logs it after each close, at
-    DEBUG, so a run with LOG_LEVEL=DEBUG shows whether it drifts below the real connection count."""
+    DEBUG (kept at any LOG_LEVEL, see Config.DEBUG_LOGGERS), so the journal shows whether it drifts below the real
+    connection count."""
     caplog.set_level('DEBUG', logger='core.gunicorn_compat')
     close = compat._guarded(compat._ORIGINAL_CLOSE, types.SimpleNamespace(nr_conns=3))
     close(_closed_conn(), graceful=True)                # the WebSocket case: the socket was already closed

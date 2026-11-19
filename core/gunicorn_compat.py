@@ -26,9 +26,9 @@ except ImportError:                          # gunicorn is a production dependen
 
 def _guarded(original, worker=None):
     """Wrap TConn.close. With the worker, log its nr_conns after each close at DEBUG: gunicorn exposes the count
-    nowhere else (gunicornc's stats leave it out), and LOG_LEVEL=DEBUG shows whether it drifts below the real
-    number of connections. gunicorn counts a connection off before closing it, so the value logged is the count
-    still open."""
+    nowhere else (gunicornc's stats leave it out), and the journal then shows whether it drifts below the real
+    number of connections. This logger is in Config.DEBUG_LOGGERS, so its DEBUG lines are kept at any LOG_LEVEL.
+    gunicorn counts a connection off before closing it, so the value logged is the count still open."""
     def close(self, graceful=False):
         already_closed = False
         if not graceful:

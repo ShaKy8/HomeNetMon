@@ -6,6 +6,21 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+
+class _LevelFilter(logging.Filter):
+    """A handler's threshold, except that the named loggers (and their children) always pass."""
+
+    def __init__(self, threshold, debug_loggers):
+        super().__init__()
+        self.threshold = threshold
+        self.debug_loggers = tuple(debug_loggers)
+
+    def filter(self, record):
+        if any(record.name == n or record.name.startswith(n + '.') for n in self.debug_loggers):
+            return True
+        return record.levelno >= self.threshold
+
+
 class Config:
     BASE_DIR = Path(__file__).parent.absolute()
 
@@ -120,6 +135,9 @@ class Config:
     LOG_FILE = os.environ.get('LOG_FILE', 'homenetmon.log')
     LOG_MAX_SIZE = int(os.environ.get('LOG_MAX_SIZE', '10485760'))  # 10MB
     LOG_BACKUP_COUNT = int(os.environ.get('LOG_BACKUP_COUNT', '5'))
+    # Loggers that log at DEBUG whatever LOG_LEVEL says, to the console (the journal) and the file.
+    # core.gunicorn_compat reports gunicorn's nr_conns there, which gunicorn exposes nowhere else.
+    DEBUG_LOGGERS = ('core.gunicorn_compat',)
 
     # Alert Settings
     SMTP_SERVER = os.environ.get('SMTP_SERVER')
@@ -159,9 +177,10 @@ class Config:
         # Clear existing handlers
         root_logger.handlers.clear()
 
-        # Console handler
+        # Console handler. Handlers pass everything and filter by level themselves, so DEBUG_LOGGERS get through.
         console_handler = logging.StreamHandler()
-        console_handler.setLevel(logging.INFO)
+        console_handler.setLevel(logging.DEBUG)
+        console_handler.addFilter(_LevelFilter(logging.INFO, cls.DEBUG_LOGGERS))
 
         # File handler with rotation
         log_file_path = log_dir / cls.LOG_FILE
@@ -170,7 +189,8 @@ class Config:
             maxBytes=cls.LOG_MAX_SIZE,
             backupCount=cls.LOG_BACKUP_COUNT
         )
-        file_handler.setLevel(getattr(logging, cls.LOG_LEVEL))
+        file_handler.setLevel(logging.DEBUG)
+        file_handler.addFilter(_LevelFilter(getattr(logging, cls.LOG_LEVEL), cls.DEBUG_LOGGERS))
 
         # Formatter
         formatter = logging.Formatter(
@@ -186,6 +206,8 @@ class Config:
         # Set levels for specific loggers to reduce noise
         logging.getLogger('werkzeug').setLevel(logging.WARNING)
         logging.getLogger('urllib3').setLevel(logging.WARNING)
+        for name in cls.DEBUG_LOGGERS:
+            logging.getLogger(name).setLevel(logging.DEBUG)
         if not cls.DEBUG:
             logging.getLogger('socketio').setLevel(logging.WARNING)
             logging.getLogger('engineio').setLevel(logging.WARNING)
