@@ -435,6 +435,16 @@ class TestPhase1Fixes:
         target = next((b for sel, b in TestLightTheme._rules('alerts') if sel == '.alert-select'), '')
         assert (self._css_px(target, 'width') or 0) >= 44 and (self._css_px(target, 'height') or 0) >= 44, target
 
+    def test_nothing_pads_the_page_for_a_fixed_navbar(self):
+        """The navbar sits in the page flow; it was never fixed. body { padding-top: 76px } (80 px on the Network
+        Map, for a fixed .top-nav that is gone) only left an empty band above it on every page."""
+        nav = (ROOT / 'templates/components/navbar.html').read_text()
+        assert 'fixed-top' not in nav and 'sticky-top' not in nav
+        for page in ['base_beautiful', *TestLightTheme.PAGES]:
+            padded = [body for sel, body in TestLightTheme._rules(page)
+                      if sel.split()[-1] == 'body' and re.search(r'padding-top\s*:', body)]
+            assert not padded, f'{page}: {padded}'
+
     def test_analytics_page_has_no_toast_stub(self):
         html = (ROOT / 'templates/analytics.html').read_text()
         assert 'Toast (${type})' not in html
