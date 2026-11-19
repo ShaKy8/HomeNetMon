@@ -123,19 +123,22 @@ class TestLightTheme:
         hi, lo = sorted((lum(a), lum(b)), reverse=True)
         return (hi + 0.05) / (lo + 0.05)
 
-    def test_navbar_danger_badge_is_readable_on_the_navbar(self):
-        """The navbar is solid teal in both themes. The page badge's 20 % red tint turned grey-teal on it, and its
-        red text measured 1.31:1 (light) and 1.95:1 (dark) on the alert count; no text colour reaches 4.5:1 on that
-        tint, so the navbar's badge gets an opaque fill, the same in both themes."""
+    @pytest.mark.parametrize('role', ['danger', 'success'])
+    def test_navbar_badges_are_readable_on_the_navbar(self, role):
+        """The navbar is solid teal in both themes. The page badges' 20 % tints turn grey-teal on it: the alert
+        count's red text measured 1.31:1 (light) and 1.95:1 (dark), the "Connected" badge's green 1.74:1 and
+        2.06:1. On the red tint no text colour reaches 4.5:1, on the green one only dark text unlike the rest of the
+        bar, so the navbar's badges get an opaque fill with white text, the same in both themes."""
         base = (ROOT / 'templates/base_beautiful.html').read_text()
         css = re.sub(r'/\*.*?\*/', '', re.search(r'<style>(.*?)</style>', base, flags=re.S).group(1), flags=re.S)
-        body = next((b for s, b in re.findall(r'([^{}]+)\{([^{}]*)\}', css) if ' '.join(s.split()) == '.navbar .badge.bg-danger'), '')
+        selector = f'.navbar .badge.bg-{role}'
+        body = next((b for s, b in re.findall(r'([^{}]+)\{([^{}]*)\}', css) if ' '.join(s.split()) == selector), '')
         bg = re.search(r'background(?:-color)?\s*:\s*(#[0-9a-fA-F]{6})', body)
         fg = re.search(r'(?<![-\w])color\s*:\s*(#[0-9a-fA-F]{6})', body)
         assert bg and fg, body
         assert self._contrast(bg.group(1), fg.group(1)) >= 4.5
-        # it must come after the dark theme's .badge.bg-danger, which has the same specificity
-        assert css.index('.navbar .badge.bg-danger') > css.index('[data-bs-theme="dark"] .badge.bg-danger')
+        # it must come after the dark theme's page rule, which has the same specificity
+        assert css.index(selector) > css.index(f'[data-bs-theme="dark"] .badge.bg-{role}')
 
 
 class TestDashboardJs:
