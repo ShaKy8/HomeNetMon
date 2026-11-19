@@ -3,7 +3,7 @@
 
 # Web framework
 Flask==3.1.3
-Werkzeug==3.1.8
+Werkzeug==3.1.9
 Flask-SQLAlchemy==3.1.1
 SQLAlchemy==2.0.52
 Flask-SocketIO==5.6.1
@@ -12,7 +12,7 @@ python-engineio==4.14.0
 simple-websocket==1.1.0          # WebSocket transport under async_mode='threading'
 Flask-Limiter==3.12
 Flask-Compress==1.24
-Brotli==1.2.0
+Brotli==1.2.1
 flask-swagger-ui==5.32.14
 gunicorn==26.2.0                 # production WSGI server (wsgi.py); python app.py stays for dev
 # Optional rate-limit backend; falls back to in-memory storage when no server is reachable.
@@ -21,7 +21,7 @@ redis==7.4.0
 # Network operations
 python-nmap==0.7.1               # also needs the `nmap` binary
 manuf==1.1.5                     # MAC vendor lookup
-dnspython==2.7.0                 # unicast mDNS probes (monitoring/mdns.py)
+dnspython==2.9.2                 # unicast mDNS probes (monitoring/mdns.py)
 psutil==5.9.8
 
 # HTTP requests (webhooks, ntfy, device probes)
