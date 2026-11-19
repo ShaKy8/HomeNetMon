@@ -135,22 +135,6 @@ body::before {
 }
 
 /* Navigation */
-.top-nav {
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 70px;
-    background: rgba(15, 15, 35, 0.95);
-    backdrop-filter: blur(20px);
-    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-    z-index: 1000;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    padding: 0 2rem;
-}
-
 .nav-brand h2 {
     font-size: 1.5rem;
     font-weight: 300;
@@ -467,19 +451,6 @@ body::before {
 }
 
 @media (max-width: 576px) {
-    :where([data-bs-theme="light"]) body {
-        background: #f8fafc;
-    }
-
-    .top-nav {
-        height: 60px;
-        padding: 0 1rem;
-        flex-direction: column;
-        gap: 0.5rem;
-        height: auto;
-        padding: 1rem;
-    }
-
     .nav-links {
         gap: 0.5rem;
         flex-wrap: wrap;
@@ -906,7 +877,6 @@ body::before {
 
 /* Print Styles */
 @media print {
-    .top-nav,
     .btn,
     .dropdown {
         display: none !important;

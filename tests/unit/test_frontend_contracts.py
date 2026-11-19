@@ -445,6 +445,13 @@ class TestPhase1Fixes:
                       if sel.split()[-1] == 'body' and re.search(r'padding-top\s*:', body)]
             assert not padded, f'{page}: {padded}'
 
+    def test_network_map_has_no_rules_for_its_old_top_bar(self):
+        """The Network Map's own fixed .top-nav bar left the markup long ago; its rules, and the phone block's
+        copy of the light body background, styled nothing."""
+        html = (ROOT / 'templates/topology.html').read_text()
+        assert '.top-nav' not in html
+        assert html.count(':where([data-bs-theme="light"]) body {') == 1
+
     def test_analytics_page_has_no_toast_stub(self):
         html = (ROOT / 'templates/analytics.html').read_text()
         assert 'Toast (${type})' not in html
