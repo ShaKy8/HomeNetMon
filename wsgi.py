@@ -10,5 +10,8 @@ use --preload (the monitoring threads must start inside the worker).
 """
 
 from app import create_app
+from core.shutdown import close_live_clients_on_sigterm
 
 app, socketio = create_app()
+# A stop otherwise waits out --graceful-timeout for open Socket.IO pages and idle connections (core/shutdown.py).
+close_live_clients_on_sigterm(socketio)
