@@ -1,5 +1,6 @@
-"""Config.setup_logging keeps LOG_LEVEL for the app, but lets core.gunicorn_compat log at DEBUG to both the
-console (the journal under systemd) and the log file: gunicorn exposes nr_conns nowhere else."""
+"""Config.setup_logging keeps LOG_LEVEL for the app. A logger named in Config.DEBUG_LOGGERS (empty by default)
+logs at DEBUG to both the console (the journal under systemd) and the log file; core.gunicorn_compat is the one
+meant for it, since gunicorn exposes nr_conns nowhere else."""
 
 import logging
 
@@ -16,8 +17,10 @@ def fresh_logging(tmp_path, monkeypatch):
     monkeypatch.setattr(Config, 'BASE_DIR', tmp_path)
     monkeypatch.setattr(Config, 'LOG_FILE', 'app.log')
 
-    def setup(level):
+    def setup(level, debug_loggers=None):
         monkeypatch.setattr(Config, 'LOG_LEVEL', level)
+        if debug_loggers is not None:
+            monkeypatch.setattr(Config, 'DEBUG_LOGGERS', debug_loggers)
         Config.setup_logging()
         return tmp_path / 'logs' / 'app.log'
 
@@ -39,8 +42,20 @@ def _emit():
         handler.flush()
 
 
-def test_gunicorn_compat_logs_debug_while_the_app_stays_at_info(fresh_logging, capsys):
+def test_no_logger_is_raised_to_debug_by_default(fresh_logging, capsys):
+    """The nr_conns lines were switched off again after the production check: nothing logs DEBUG at INFO."""
+    assert Config.DEBUG_LOGGERS == ()
     log_file = fresh_logging('INFO')
+    _emit()
+    console = capsys.readouterr().err
+    written = log_file.read_text()
+    for out in (console, written):
+        assert 'debug line' not in out
+        assert 'other info line' in out
+
+
+def test_a_listed_logger_logs_debug_while_the_app_stays_at_info(fresh_logging, capsys):
+    log_file = fresh_logging('INFO', ('core.gunicorn_compat',))
     _emit()
     console = capsys.readouterr().err
     written = log_file.read_text()
@@ -52,7 +67,7 @@ def test_gunicorn_compat_logs_debug_while_the_app_stays_at_info(fresh_logging, c
 
 
 def test_log_level_still_governs_the_rest_of_the_app(fresh_logging, capsys):
-    log_file = fresh_logging('WARNING')
+    log_file = fresh_logging('WARNING', ('core.gunicorn_compat',))
     _emit()
     console = capsys.readouterr().err
     written = log_file.read_text()

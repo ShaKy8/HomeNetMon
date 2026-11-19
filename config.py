@@ -135,9 +135,10 @@ class Config:
     LOG_FILE = os.environ.get('LOG_FILE', 'homenetmon.log')
     LOG_MAX_SIZE = int(os.environ.get('LOG_MAX_SIZE', '10485760'))  # 10MB
     LOG_BACKUP_COUNT = int(os.environ.get('LOG_BACKUP_COUNT', '5'))
-    # Loggers that log at DEBUG whatever LOG_LEVEL says, to the console (the journal) and the file.
-    # core.gunicorn_compat reports gunicorn's nr_conns there, which gunicorn exposes nowhere else.
-    DEBUG_LOGGERS = ('core.gunicorn_compat',)
+    # Loggers that log at DEBUG whatever LOG_LEVEL says, to the console (the journal) and the file. Empty by
+    # default; add 'core.gunicorn_compat' to see gunicorn's nr_conns after each connection close, which gunicorn
+    # exposes nowhere else (checked in production on 2026-11-19, then switched off again).
+    DEBUG_LOGGERS = ()
 
     # Alert Settings
     SMTP_SERVER = os.environ.get('SMTP_SERVER')
