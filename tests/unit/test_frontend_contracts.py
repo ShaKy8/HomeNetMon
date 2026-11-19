@@ -123,12 +123,13 @@ class TestLightTheme:
         hi, lo = sorted((lum(a), lum(b)), reverse=True)
         return (hi + 0.05) / (lo + 0.05)
 
-    @pytest.mark.parametrize('role', ['danger', 'success'])
+    @pytest.mark.parametrize('role', ['danger', 'success', 'warning', 'secondary'])
     def test_navbar_badges_are_readable_on_the_navbar(self, role):
         """The navbar is solid teal in both themes. The page badges' 20 % tints turn grey-teal on it: the alert
         count's red text measured 1.31:1 (light) and 1.95:1 (dark), the "Connected" badge's green 1.74:1 and
         2.06:1. On the red tint no text colour reaches 4.5:1, on the green one only dark text unlike the rest of the
-        bar, so the navbar's badges get an opaque fill with white text, the same in both themes."""
+        bar, so the navbar's badges get an opaque fill, the same in both themes. Warning (1.03:1 and 2.15:1) and
+        secondary (2.23:1 and 2.30:1) would fail the same way, so they are covered before either is used there."""
         base = (ROOT / 'templates/base_beautiful.html').read_text()
         css = re.sub(r'/\*.*?\*/', '', re.search(r'<style>(.*?)</style>', base, flags=re.S).group(1), flags=re.S)
         selector = f'.navbar .badge.bg-{role}'
