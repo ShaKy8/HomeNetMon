@@ -209,6 +209,9 @@
     justify-content: space-between;
     align-items: flex-start;
     margin-bottom: 1rem;
+    /* A long device name beside the badges is wider than a narrow phone: the badges move under it */
+    flex-wrap: wrap;
+    gap: 0.5rem;
 }
 
 .alert-title {
@@ -370,6 +373,8 @@
     display: flex;
     gap: 0.5rem;
     justify-content: flex-end;
+    /* The three buttons need 353 px; in one row they widened the card, the grid and the page on a phone */
+    flex-wrap: wrap;
 }
 
 .alert-actions .btn {

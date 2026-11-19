@@ -112,7 +112,7 @@ PY
 ### Test and lint
 
 ```bash
-pytest tests/unit tests/integration -q                 # the CI suite: 806 passed, 0 skipped, about 25 s (2026-11-19)
+pytest tests/unit tests/integration -q                 # the CI suite: 807 passed, 0 skipped, about 25 s (2026-11-19)
 pytest tests/unit tests/integration --cov=. --cov-fail-under=47   # with the coverage floor CI enforces
 pytest tests/unit/test_alerts_api.py -q                # one file
 pytest tests/unit/test_route_inventory.py::test_api_surface_is_exactly_the_allowlist   # one test; or -k <substring>

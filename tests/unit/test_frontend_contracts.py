@@ -397,6 +397,15 @@ class TestPhase1Fixes:
         assert 'navbar-expand-xl' in html
         assert 'navbar-expand-lg' not in html
 
+    def test_alert_card_rows_wrap_on_a_phone(self):
+        """Acknowledge, Resolve and Delete need 353 px in one row. The single 1fr grid track grew to fit them, so
+        every alert card was 406 px wide in a 358 px grid and the page scrolled sideways at 390 px. Below that, a long
+        device name beside the badges (304 px) did the same."""
+        rules = TestLightTheme._rules('alerts')
+        for selector in ('.alert-actions', '.alert-header'):
+            body = next((b for sel, b in rules if sel == selector), '')
+            assert re.search(r'flex-wrap\s*:\s*wrap', body), selector
+
     def test_analytics_page_has_no_toast_stub(self):
         html = (ROOT / 'templates/analytics.html').read_text()
         assert 'Toast (${type})' not in html
