@@ -95,6 +95,16 @@ DATABASE_URL=sqlite:////tmp/hnm-dev/dev.db SECURITY_SCANNING_ENABLED=false LOG_F
 - The instance starts with an empty database and fills it at the first scan. It is a real monitor: it pings and sweeps the real LAN. Keep it short-lived and stop it by the PID you started.
 - `app.py` runs with `use_reloader=False`: restart it after Python changes.
 
+To test gunicorn behaviour (a stop, the gthread worker, `wsgi.py`), run gunicorn instead of `app.py`, with the same environment and always `--no-control-socket`:
+
+```bash
+DATABASE_URL=sqlite:////tmp/hnm-dev/dev.db SECURITY_SCANNING_ENABLED=false LOG_FILE=dev.log HOST=127.0.0.1 PORT=5001 \
+  venv/bin/gunicorn --workers 1 --worker-class gthread --threads 32 --bind 127.0.0.1:5001 \
+  --timeout 120 --graceful-timeout 30 --no-control-socket wsgi:app
+```
+
+- `--no-control-socket`: gunicorn 26 otherwise opens its control socket at production's path, `/run/user/1000/gunicorn.ctl`, and deletes it when it stops. That happened twice on 2026-11-19. Production keeps serving, but `gunicornc` cannot reach it until its next restart.
+
 For UI work that needs real data, copy the production database first. Use SQLite's backup API, never `cp` (a copy taken without its `-wal` file is stale or reported as malformed):
 
 ```bash
