@@ -161,6 +161,8 @@
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 16px;
     padding: 1.5rem;
+    /* A column for the selection checkbox (1rem + 18 px): the content starts clear of it */
+    padding-left: 3rem;
     transition: all 0.3s ease;
     position: relative;
 }
@@ -431,7 +433,8 @@
 /* Checkbox styling */
 .alert-checkbox {
     position: absolute;
-    top: 1rem;
+    /* Centred on the title's first line, which is 28 px tall below the card's 1.5rem padding */
+    top: calc(1.5rem + 5px);
     left: 1rem;
     width: 18px;
     height: 18px;

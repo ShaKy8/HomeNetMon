@@ -406,6 +406,18 @@ class TestPhase1Fixes:
             body = next((b for sel, b in rules if sel == selector), '')
             assert re.search(r'flex-wrap\s*:\s*wrap', body), selector
 
+    def test_alert_checkbox_has_a_column_of_its_own(self):
+        """The checkbox sits absolutely at left 1rem and is 18 px wide; the card's content started at its 1.5rem
+        padding, so the box covered the first letter of every title. The left padding must clear the box."""
+        rules = TestLightTheme._rules('alerts')
+        box = next((b for sel, b in rules if sel == '.alert-checkbox'), '')
+        card = next((b for sel, b in rules if sel == '.alert-card'), '')
+        left = re.search(r'(?<![-\w])left\s*:\s*([\d.]+)rem', box)
+        width = re.search(r'(?<![-\w])width\s*:\s*(\d+)px', box)
+        pad = re.search(r'padding-left\s*:\s*([\d.]+)rem', card)
+        assert left and width and pad, (box, card)
+        assert float(pad.group(1)) * 16 >= float(left.group(1)) * 16 + int(width.group(1)) + 8
+
     def test_analytics_page_has_no_toast_stub(self):
         html = (ROOT / 'templates/analytics.html').read_text()
         assert 'Toast (${type})' not in html
