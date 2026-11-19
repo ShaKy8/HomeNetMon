@@ -390,6 +390,13 @@ class TestPhase1Fixes:
         assert re.search(r'flex-wrap\s*:\s*wrap', header)
         assert re.search(r'(?<![-\w])gap\s*:', header)
 
+    def test_navbar_collapses_until_its_row_fits(self):
+        """Brand, six links, search and the right-hand group need about 1010 px in one row. navbar-expand-lg laid
+        them out from 992 px, so every page was 1010 px wide and scrolled sideways from 992 to 1010."""
+        html = (ROOT / 'templates/components/navbar.html').read_text()
+        assert 'navbar-expand-xl' in html
+        assert 'navbar-expand-lg' not in html
+
     def test_analytics_page_has_no_toast_stub(self):
         html = (ROOT / 'templates/analytics.html').read_text()
         assert 'Toast (${type})' not in html
