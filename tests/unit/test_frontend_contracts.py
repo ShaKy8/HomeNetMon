@@ -111,6 +111,32 @@ class TestLightTheme:
         for selector in ('.table-dark', '.dropdown-menu-dark', '.modal-content.bg-dark', 'main .text-warning'):
             assert f'[data-bs-theme="light"] {selector}' in base, selector
 
+    @staticmethod
+    def _contrast(a, b):
+        """WCAG 2 contrast ratio of two #rrggbb colours."""
+        def lum(h):
+            def chan(v):
+                v /= 255
+                return v / 12.92 if v <= 0.03928 else ((v + 0.055) / 1.055) ** 2.4
+            r, g, b = (int(h[i:i + 2], 16) for i in (1, 3, 5))
+            return 0.2126 * chan(r) + 0.7152 * chan(g) + 0.0722 * chan(b)
+        hi, lo = sorted((lum(a), lum(b)), reverse=True)
+        return (hi + 0.05) / (lo + 0.05)
+
+    def test_navbar_danger_badge_is_readable_on_the_navbar(self):
+        """The navbar is solid teal in both themes. The page badge's 20 % red tint turned grey-teal on it, and its
+        red text measured 1.31:1 (light) and 1.95:1 (dark) on the alert count; no text colour reaches 4.5:1 on that
+        tint, so the navbar's badge gets an opaque fill, the same in both themes."""
+        base = (ROOT / 'templates/base_beautiful.html').read_text()
+        css = re.sub(r'/\*.*?\*/', '', re.search(r'<style>(.*?)</style>', base, flags=re.S).group(1), flags=re.S)
+        body = next((b for s, b in re.findall(r'([^{}]+)\{([^{}]*)\}', css) if ' '.join(s.split()) == '.navbar .badge.bg-danger'), '')
+        bg = re.search(r'background(?:-color)?\s*:\s*(#[0-9a-fA-F]{6})', body)
+        fg = re.search(r'(?<![-\w])color\s*:\s*(#[0-9a-fA-F]{6})', body)
+        assert bg and fg, body
+        assert self._contrast(bg.group(1), fg.group(1)) >= 4.5
+        # it must come after the dark theme's .badge.bg-danger, which has the same specificity
+        assert css.index('.navbar .badge.bg-danger') > css.index('[data-bs-theme="dark"] .badge.bg-danger')
+
 
 class TestDashboardJs:
 

@@ -470,6 +470,14 @@
         color: #fca5a5;
     }
 
+    /* The navbar is solid teal in both themes: the 20 % tint above turns grey-teal on it and no text colour
+       reaches 4.5:1 there. Its badges (the alert count, "Disconnected") get an opaque fill: 4.83:1 with white. */
+    .navbar .badge.bg-danger {
+        background: #dc2626 !important;
+        color: #ffffff;
+        border-color: #dc2626;
+    }
+
     .badge.bg-warning {
         background: rgba(245, 158, 11, 0.2) !important;
         color: #d97706;
