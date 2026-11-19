@@ -67,6 +67,31 @@ def test_guarded_close_still_closes_an_open_socket():
     assert a.fileno() == -1
 
 
+def _nr_conns_records(caplog):
+    return [r.getMessage() for r in caplog.records if r.name == 'core.gunicorn_compat' and 'nr_conns' in r.getMessage()]
+
+
+def test_guarded_close_logs_the_workers_nr_conns_at_debug(caplog):
+    """gunicorn exposes nr_conns nowhere (gunicornc's stats leave it out): the guard logs it after each close, at
+    DEBUG, so a run with LOG_LEVEL=DEBUG shows whether it drifts below the real connection count."""
+    caplog.set_level('DEBUG', logger='core.gunicorn_compat')
+    close = compat._guarded(compat._ORIGINAL_CLOSE, types.SimpleNamespace(nr_conns=3))
+    close(_closed_conn(), graceful=True)                # the WebSocket case: the socket was already closed
+    a, b = socket.socketpair()
+    b.close()
+    close(gthread.TConn(Config(), a, ('127.0.0.1', 1), ('127.0.0.1', 2)), graceful=True)
+    assert _nr_conns_records(caplog) == ['gunicorn: connection closed (socket already closed), nr_conns=3',
+                                         'gunicorn: connection closed, nr_conns=3']
+
+
+def test_guarded_close_logs_nothing_above_debug_or_without_a_worker(caplog):
+    caplog.set_level('INFO', logger='core.gunicorn_compat')
+    compat._guarded(compat._ORIGINAL_CLOSE, types.SimpleNamespace(nr_conns=3))(_closed_conn(), graceful=True)
+    caplog.set_level('DEBUG', logger='core.gunicorn_compat')
+    compat._guarded(compat._ORIGINAL_CLOSE)(_closed_conn(), graceful=True)
+    assert _nr_conns_records(caplog) == []
+
+
 def _fake_signal(monkeypatch, handler):
     monkeypatch.setattr(compat, 'signal', types.SimpleNamespace(SIGTERM=signal.SIGTERM,
                                                                  getsignal=lambda signum: handler))
@@ -89,6 +114,19 @@ def test_installed_once_in_a_gthread_worker(monkeypatch):
     assert first is not compat._ORIGINAL_CLOSE
     assert compat.install_closed_socket_guard() is True
     assert gthread.TConn.close is first                 # not wrapped twice
+
+
+def test_installed_guard_logs_the_installing_workers_nr_conns(monkeypatch, caplog):
+    monkeypatch.setattr(gthread.TConn, 'close', compat._ORIGINAL_CLOSE)
+    worker = object.__new__(gthread.ThreadWorker)
+    worker.nr_conns = 2
+    _fake_signal(monkeypatch, worker.handle_exit)
+    compat.install_closed_socket_guard()
+    caplog.set_level('DEBUG', logger='core.gunicorn_compat')
+    gthread.TConn.close(_closed_conn(), graceful=True)
+    worker.nr_conns = 1                                   # read at each close, not when the guard was installed
+    gthread.TConn.close(_closed_conn(), graceful=True)
+    assert [m.rsplit('=', 1)[1] for m in _nr_conns_records(caplog)] == ['2', '1']
 
 
 def test_wsgi_installs_it_while_gunicorns_handler_is_still_in_place():
