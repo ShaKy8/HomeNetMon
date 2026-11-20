@@ -8,6 +8,7 @@ This module provides:
 - Common test utilities and helpers
 """
 
+import logging
 import os
 import tempfile
 import pytest
@@ -74,6 +75,11 @@ def app():
     from monitoring import neighbors
     original_confirm_wait = neighbors.CONFIRM_WAIT
     neighbors.CONFIRM_WAIT = 0.0
+    # create_app() adds a file handler for logs/<LOG_FILE>, and .env names production's log (the default
+    # resolves to the same file here). An absolute temporary path keeps the suite's lines out of it.
+    log_fd, log_path = tempfile.mkstemp(suffix='.log')
+    original_log_file = Config.LOG_FILE
+    Config.LOG_FILE = log_path
 
     try:
         app, socketio = create_app()
@@ -94,10 +100,18 @@ def app():
         Config.WTF_CSRF_ENABLED = True
         Config.NETWORK_RANGE = original_network_range
         neighbors.CONFIRM_WAIT = original_confirm_wait
+        Config.LOG_FILE = original_log_file
+        root_logger = logging.getLogger()
+        for handler in list(root_logger.handlers):
+            if getattr(handler, 'baseFilename', None) == log_path:
+                root_logger.removeHandler(handler)
+                handler.close()
 
         # Clean up temp file
         os.close(db_fd)
         os.unlink(db_path)
+        os.close(log_fd)
+        os.unlink(log_path)
 
 
 @pytest.fixture(scope='function')

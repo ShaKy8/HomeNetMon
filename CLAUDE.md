@@ -23,7 +23,7 @@ Treat this checkout as a live system, not a sandbox.
 - The deployed service is the user unit `~/.config/systemd/user/homenetmon.service`. It serves **port 5000** from this directory and keeps its data in `production_data/homeNetMon.db` (gitignored).
 - **`.env` in this checkout sets `DATABASE_URL` to that production database and turns security scanning on.** `config.py` loads `.env` at import. Any app instance or script started here without its own `DATABASE_URL` opens the production database and runs a second set of monitoring threads against it.
 - **Edits to `templates/` and `static/` are live in production the moment you save them** (templates auto-reload, static files are served from disk). Python changes go live at the next restart, including an automatic one after a crash or reboot. Never leave the tree in a broken state.
-- The test suite is safe to run at any time: `tests/conftest.py` points SQLAlchemy at a temporary file before the app is created, and no background thread starts.
+- The test suite is safe to run at any time: `tests/conftest.py` points SQLAlchemy and the log file at temporary files before the app is created, and no background thread starts.
 - **Only one agent session at a time restarts the service or uses port 5001.** Several sessions can be open in this checkout at once, and on 2026-11-19 two of them restarted production within the same second. Before a restart or a dev instance, check `ss -ltn` for port 5001 and `journalctl --user -u homenetmon` for a stop in the last few minutes; if another session may be doing the same, ask the user which one should.
 - **A stop time counts only if the stopped process had been running.** Measure from "Handling signal: term" to "Stopped" for a worker whose "Booting worker" line came well before the SIGTERM. A restart that lands on a process started milliseconds earlier reports a stop of a few hundredths of a second that never ran the app's shutdown (`core/shutdown.py`).
 - `sudo` is not available. The `sqlite3` command-line tool is not installed; use Python's `sqlite3` module.
@@ -124,7 +124,7 @@ PY
 ### Test and lint
 
 ```bash
-pytest tests/unit tests/integration -q                 # the CI suite: 896 passed, 0 skipped, about 25 s (2026-11-20)
+pytest tests/unit tests/integration -q                 # the CI suite: 897 passed, 0 skipped, about 25 s (2026-11-20)
 pytest tests/unit tests/integration --cov=. --cov-fail-under=47   # with the coverage floor CI enforces
 pytest tests/unit/test_alerts_api.py -q                # one file
 pytest tests/unit/test_route_inventory.py::test_api_surface_is_exactly_the_allowlist   # one test; or -k <substring>
