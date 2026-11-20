@@ -60,6 +60,10 @@ class DeviceMonitor:
         ping_timeout = float(optimized.get('timeout', self.get_config_value('ping_timeout', Config.PING_TIMEOUT)))
         max_retries = optimized.get('retries', 1)
 
+        # A stop has begun (request_stop): start no new ping. Python joins this pool at exit.
+        if self._stop_event.is_set():
+            return SKIPPED
+
         # Check if we should skip this device based on interval optimization
         should_skip, remaining = iot_optimizer.should_skip_monitoring(device)
         if should_skip:
@@ -98,11 +102,15 @@ class DeviceMonitor:
                     logger.debug(f"Ping successful for {device.ip_address} on attempt {attempt + 1}: {response_time_ms}ms")
                     iot_optimizer.record_ping_result(device, True, response_time_ms)
                     return response_time_ms
+                elif self._stop_event.is_set():
+                    # systemd's SIGTERM kills every running ping: a failure now says nothing about the device
+                    return SKIPPED
                 else:
                     # Ping failed, try again if we have retries left
                     if attempt < max_retries:
                         logger.debug(f"Ping failed for {device.ip_address} on attempt {attempt + 1}, retrying...")
-                        time.sleep(retry_delay)
+                        if self._stop_event.wait(retry_delay):
+                            return SKIPPED
                         continue
                     else:
                         logger.debug(f"Ping failed for {device.ip_address} after {max_retries + 1} attempts")
@@ -110,9 +118,12 @@ class DeviceMonitor:
                         return None
 
             except subprocess.TimeoutExpired:
+                if self._stop_event.is_set():
+                    return SKIPPED
                 if attempt < max_retries:
                     logger.debug(f"Ping timeout for {device.ip_address} on attempt {attempt + 1}, retrying...")
-                    time.sleep(retry_delay)
+                    if self._stop_event.wait(retry_delay):
+                        return SKIPPED
                     continue
                 else:
                     logger.debug(f"Ping timeout for {device.ip_address} after {max_retries + 1} attempts")
@@ -120,9 +131,12 @@ class DeviceMonitor:
                     iot_optimizer.record_ping_result(device, False, None)
                     return None
             except Exception as e:
+                if self._stop_event.is_set():
+                    return SKIPPED
                 if attempt < max_retries:
                     logger.debug(f"Error pinging {device.ip_address} on attempt {attempt + 1}: {e}, retrying...")
-                    time.sleep(retry_delay)
+                    if self._stop_event.wait(retry_delay):
+                        return SKIPPED
                     continue
                 else:
                     logger.error(f"Error pinging {device.ip_address} after {max_retries + 1} attempts: {e}")
@@ -147,6 +161,8 @@ class DeviceMonitor:
             if response_time is SKIPPED:
                 return None  # deliberately not probed this cycle; record nothing
             present = response_time is not None or self._confirm_presence(device)
+            if self._stop_event.is_set():
+                return None  # the stop cut the probe short; its result says nothing about the device
 
             if self.app:
                 with self.app.app_context():
@@ -230,9 +246,16 @@ class DeviceMonitor:
 
     def _confirm_presence(self, device):
         """After a failed ping: did the host answer ARP? Phones and tablets ignore ICMP
-        while asleep but stay on the network (monitoring/neighbors.py)."""
+        while asleep but stay on the network (monitoring/neighbors.py). The wait (up to
+        12 s) ends as soon as a stop begins: its clock jumps past the deadline and its
+        sleep wakes on the stop event."""
+        stop = self._stop_event
+
+        def clock():
+            return float('inf') if stop.is_set() else time.monotonic()
+
         try:
-            return neighbors.confirm_presence(device.ip_address)
+            return neighbors.confirm_presence(device.ip_address, sleep=stop.wait, clock=clock)
         except Exception as e:
             logger.debug(f"presence check failed for {device.ip_address}: {e}")
             return False
@@ -402,6 +425,12 @@ class DeviceMonitor:
                         results.append(result)
             logger.debug(f"Ping batch of {len(devices_to_monitor)} devices finished in "
                          f"{time.monotonic() - cycle_started:.1f}s with {max_workers} workers")
+
+            # A stop began during the cycle (request_stop): its pings were killed or cut short, so
+            # writing them would record healthy devices as failed probes. Record nothing.
+            if self._stop_event.is_set():
+                logger.info(f"Monitoring cycle interrupted by a stop: {len(results)} result(s) not recorded")
+                return
 
             # PERFORMANCE OPTIMIZATION: Batch process all monitoring results in a single transaction
             if results:
@@ -579,6 +608,14 @@ class DeviceMonitor:
         self._stop_event.set()
         self.is_running = False
 
+    def request_stop(self):
+        """Begin a stop from a SIGTERM handler (core/shutdown.py): only sets the event. No
+        logging and no lock of its own; the event's lock is never held by the main thread,
+        where signal handlers run. Pings not yet started are skipped, retries and presence
+        checks end, and the cycle under way writes nothing, so Python's exit join on the
+        ping pool returns in well under a second."""
+        self._stop_event.set()
+
     def force_monitor_device(self, device_id):
         """Force monitoring of a specific device (for manual triggers)"""
         try:
@@ -708,6 +745,9 @@ class DeviceMonitor:
             response_time = self.ping_device(device)
             if response_time is SKIPPED:
                 return None
+            present = response_time is not None or self._confirm_presence(device)
+            if self._stop_event.is_set():
+                return None  # finished during a stop: the probe may have been killed by it
 
             return {
                 'device_id': device.id,
@@ -715,7 +755,7 @@ class DeviceMonitor:
                 # to avoid DetachedInstanceError from cross-thread object access
                 'response_time': response_time,
                 'success': response_time is not None,
-                'present': response_time is not None or self._confirm_presence(device),
+                'present': present,
                 'timestamp': datetime.utcnow()
             }
         except Exception as e:

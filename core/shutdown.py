@@ -16,8 +16,14 @@ import threading
 logger = logging.getLogger(__name__)
 
 
-def close_live_clients_on_sigterm(socketio):
-    """Chain onto the worker's SIGTERM handler: run it, mark idle connections due, close the Socket.IO clients.
+def close_live_clients_on_sigterm(socketio, stop_now=()):
+    """Chain onto the worker's SIGTERM handler: run it, call each of ``stop_now``, mark idle connections due, close
+    the Socket.IO clients.
+
+    ``stop_now`` takes callables that must run inside the handler itself, on every signal, such as
+    DeviceMonitor.request_stop: systemd's SIGTERM kills the running pings at the same moment, and the monitor has
+    to know it is stopping before those pings come back as failures. They must be safe in a signal handler (no
+    logging, no locks the main thread may hold); one that raises does not stop the others.
 
     gunicorn installs its handlers before it imports the app (wsgi.py), so this runs after them. Under
     `python app.py` or pytest SIGTERM is not a callable handler and nothing is installed. Returns True when the
@@ -27,9 +33,15 @@ def close_live_clients_on_sigterm(socketio):
     if not callable(previous):
         return False
     started = threading.Event()
+    stop_now = tuple(stop_now)
 
     def handler(signum, frame):
         previous(signum, frame)
+        for stop in stop_now:
+            try:
+                stop()
+            except Exception:                # nothing may escape a signal handler, and logging is not safe here
+                pass
         _mark_idle_connections_due(getattr(previous, '__self__', None))
         if started.is_set():                 # systemd and the master both signal the worker
             return

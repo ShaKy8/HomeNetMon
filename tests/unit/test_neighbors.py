@@ -93,7 +93,11 @@ class TestMonitorUsesPresence:
         with patch.object(monitor, 'ping_device', return_value=None), \
              patch('monitoring.monitor.neighbors.confirm_presence', return_value=True) as confirm:
             result = monitor._ping_device_for_batch(dev)
-        confirm.assert_called_once_with('192.168.1.60')
+        confirm.assert_called_once()
+        args, kwargs = confirm.call_args
+        assert args == ('192.168.1.60',)
+        # the wait ends at a stop (tests/unit/test_monitor_stop.py): it sleeps on the monitor's stop event
+        assert kwargs['sleep'] == monitor._stop_event.wait and callable(kwargs['clock'])
         assert result['response_time'] is None and result['success'] is False and result['present'] is True
 
     def test_successful_ping_skips_arp(self, app, db_session):

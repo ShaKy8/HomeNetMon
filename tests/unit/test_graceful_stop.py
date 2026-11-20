@@ -134,9 +134,24 @@ def test_sigterm_still_does_not_interrupt_system_calls(monkeypatch):
     assert installed[('siginterrupt', signal.SIGTERM)] is False
 
 
+def test_stop_now_runs_in_the_handler_after_gunicorns_on_every_signal(monkeypatch):
+    """The monitor's stop flag must be set inside the handler, before the pings systemd just killed come back as
+    failures; one callable that raises must not keep the others from running or break the handler."""
+    calls = []
+    installed = _fake_signal(monkeypatch, lambda signum, frame: calls.append('gunicorn'))
+
+    def broken():
+        raise RuntimeError('boom')
+    shutdown.close_live_clients_on_sigterm(_socketio(FakeEio([])),
+                                          stop_now=[broken, lambda: calls.append('monitor')])
+    installed[signal.SIGTERM](signal.SIGTERM, None)
+    installed[signal.SIGTERM](signal.SIGTERM, None)
+    assert calls == ['gunicorn', 'monitor', 'gunicorn', 'monitor']
+
+
 def test_wsgi_installs_it():
     source = (ROOT / 'wsgi.py').read_text()
-    assert 'close_live_clients_on_sigterm(socketio)' in source
+    assert 'close_live_clients_on_sigterm(socketio, stop_now=[app._monitor.request_stop])' in source
 
 
 # The fix leans on the installed gunicorn and Engine.IO. A version bump that renames these would quietly bring the

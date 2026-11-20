@@ -133,4 +133,4 @@ def test_installed_guard_logs_the_installing_workers_nr_conns(monkeypatch, caplo
 def test_wsgi_installs_it_while_gunicorns_handler_is_still_in_place():
     """core.shutdown replaces the SIGTERM handler; the gate reads gunicorn's, so this must run first."""
     source = (ROOT / 'wsgi.py').read_text()
-    assert source.index('install_closed_socket_guard()') < source.index('close_live_clients_on_sigterm(socketio)')
+    assert source.index('install_closed_socket_guard()') < source.index('close_live_clients_on_sigterm(socketio')

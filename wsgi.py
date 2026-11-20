@@ -17,5 +17,6 @@ app, socketio = create_app()
 # gunicorn counted each closed WebSocket off twice (core/gunicorn_compat.py). Before the next line: it finds the
 # worker through gunicorn's own SIGTERM handler, which close_live_clients_on_sigterm replaces.
 install_closed_socket_guard()
-# A stop otherwise waits out --graceful-timeout for open Socket.IO pages and idle connections (core/shutdown.py).
-close_live_clients_on_sigterm(socketio)
+# A stop otherwise waits out --graceful-timeout for open Socket.IO pages and idle connections (core/shutdown.py),
+# and 5 to 7 s for ping retries and presence checks after SIGTERM kills the running pings (monitoring/monitor.py).
+close_live_clients_on_sigterm(socketio, stop_now=[app._monitor.request_stop])
