@@ -80,14 +80,25 @@ def test_a_port_that_opens_beside_a_renamed_one_still_alerts(scanner, device):
     assert _sweep(scanner, {1443: 'ies-lm', 8080: 'http-proxy'}) == [('new_service', 8080)]
 
 
-def test_a_new_port_without_a_service_name_says_so_plainly(scanner, device):
+def test_a_port_nmap_cannot_name_is_stored_as_unknown(scanner, device):
+    # python-nmap gives "" (or None for a <service> element without a name), never a missing key
     _sweep(scanner, {80: 'http'})
-    scanner.nm.scan.side_effect = lambda ip, arguments: {'scan': {ip: {'tcp': {
-        p: {'state': 'open', 'name': n} for p, n in {80: 'http', 8080: 'http-proxy', 40030: ''}.items()}}}}
+    scanner.nm.scan.side_effect = lambda ip, arguments: {'scan': {ip: {
+        'tcp': {p: {'state': 'open', 'name': n} for p, n in {80: 'http', 8080: 'http-proxy', 40030: '', 40031: None}.items()},
+        'udp': {161: {'state': 'open', 'name': ''}}}}}
     with patch.object(scanner, 'process_security_alerts') as process:
         scanner.run_security_scan()
     messages = sorted(a.message for call in process.call_args_list for a in call.args[0])
-    assert messages == ['New service detected on port 40030', 'New service detected: http-proxy on port 8080']
+    assert messages == ['New service detected: http-proxy on port 8080', 'New service detected: udp/unknown on port 161',
+                        'New service detected: unknown on port 40030', 'New service detected: unknown on port 40031']
+    stored = {(r.port, r.service) for r in SecurityScan.query.filter_by(device_id=device.id)}
+    assert stored == {(80, 'http'), (8080, 'http-proxy'), (40030, 'unknown'), (40031, 'unknown'), (161, 'udp/unknown')}
+
+
+def test_a_new_port_without_a_service_name_says_so_plainly(scanner, device):
+    result = ss.PortScanResult(device_id=device.id, ip_address=IP, port=40030, state='open', service='', version='',
+                               product='', extra_info='', confidence=0, scanned_at=datetime.utcnow())
+    assert [a.message for a in scanner.analyze_security_results(device, [result])] == ['New service detected on port 40030']
 
 
 def test_a_timed_out_scan_records_nothing_so_the_next_completed_one_is_the_baseline(scanner, device):

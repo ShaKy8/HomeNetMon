@@ -584,7 +584,8 @@ class NetworkSecurityScanner:
                             ip_address=device.ip_address,
                             port=port,
                             state=port_info.get('state', 'unknown'),
-                            service=port_info.get('name', 'unknown'),
+                            # python-nmap always sets 'name', to "" when nmap could not name the port
+                            service=port_info.get('name') or 'unknown',
                             version=port_info.get('version', ''),
                             product=port_info.get('product', ''),
                             extra_info=port_info.get('extrainfo', ''),
@@ -603,7 +604,7 @@ class NetworkSecurityScanner:
                             ip_address=device.ip_address,
                             port=port,
                             state=port_info.get('state', 'unknown'),
-                            service=f"udp/{port_info.get('name', 'unknown')}",
+                            service=f"udp/{port_info.get('name') or 'unknown'}",
                             version=port_info.get('version', ''),
                             product=port_info.get('product', ''),
                             extra_info=port_info.get('extrainfo', ''),
