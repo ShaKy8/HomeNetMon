@@ -15,6 +15,9 @@ logging.disable(logging.CRITICAL)
 from config import Config
 
 Config.TESTING = True
+# create_app() adds a file handler for logs/<LOG_FILE>, and .env names production's log. logging.disable above
+# already keeps it empty; this keeps it out of the file even without that line.
+Config.LOG_FILE = os.devnull
 
 from app import create_app
 from api_documentation import generate_openapi_spec
