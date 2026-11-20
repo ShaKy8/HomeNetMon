@@ -167,3 +167,58 @@ def test_scan_device_ports_reports_the_failure_to_its_caller(scanner):
     outcome = {}
     assert scanner.scan_device_ports(device, outcome) == [] and outcome == {}
     assert scanner.scan_device_ports(device) == []          # the manual-scan route passes no outcome
+
+
+def _every_scan_fails(scanner, how):
+    """Both devices' scans end without a port list: nmap raises, or the host hits --host-timeout."""
+    def scan(ip, arguments):
+        if how == 'nmap error':
+            raise nmap.PortScannerError('nmap: Failed to open device eth9')
+        scanner.nm.get_nmap_last_output.return_value = _nmap_xml(ip, timed_out=True)
+        return {'scan': {ip: {'status': {'state': 'up', 'reason': 'user-set'}}}}
+    scanner.nm.scan.side_effect = scan
+
+
+@pytest.mark.parametrize('how', ['nmap error', 'host timeout'])
+@pytest.mark.parametrize('nas2_alerts', ['none', 'a resolved port alert', 'an open alert not keyed by port',
+                                         'only the other device has one'])
+def test_the_kept_line_names_only_a_device_with_open_port_alerts(scanner, two_devices_with_port_22_open, db_session,
+                                                                 caplog, how, nas2_alerts):
+    """Every timed-out device used to log "Kept the open-port alerts", with or without any: 23 per production sweep."""
+    first, second, alert = two_devices_with_port_22_open
+    if nas2_alerts == 'only the other device has one':
+        pass                                                # nas-1's open port_22 alert, from the fixture
+    else:
+        alert.device_id = second.id
+        alert.resolved = True                               # nas-1 has no open alert in these three cases
+        if nas2_alerts == 'none':
+            db_session.delete(alert)
+        elif nas2_alerts == 'an open alert not keyed by port':
+            alert.resolved = False
+            alert.alert_subtype = 'weak_tls'
+    db_session.commit()
+    _every_scan_fails(scanner, how)
+    with caplog.at_level(logging.INFO, logger='services.security_scanner'):
+        _run(scanner)
+    assert scanner.nm.scan.call_count == 2
+    assert 'Kept the open-port alerts of nas-2' not in caplog.text
+    kept_nas1 = 'Kept the open-port alerts of nas-1: its port scan failed' in caplog.text
+    assert kept_nas1 is (nas2_alerts == 'only the other device has one')
+    assert scanner.current_scan['devices_completed'] == 2
+
+
+def test_a_failed_alert_lookup_does_not_stop_the_scan(scanner, two_devices_with_port_22_open, db_session, caplog,
+                                                      monkeypatch):
+    def lookup_fails(device):
+        raise RuntimeError('database is locked')
+    monkeypatch.setattr(scanner, '_open_port_alerts', lookup_fails, raising=False)
+    _every_scan_fails(scanner, 'host timeout')
+    with caplog.at_level(logging.INFO, logger='services.security_scanner'):
+        _run(scanner)
+    _first, _second, alert = two_devices_with_port_22_open
+    db_session.refresh(alert)
+    assert alert.resolved is False
+    assert scanner.nm.scan.call_count == 2 and scanner.current_scan['devices_completed'] == 2
+    assert 'Kept the open-port alerts' not in caplog.text
+    assert 'Error scanning device' not in caplog.text
+    assert 'database is locked' in caplog.text

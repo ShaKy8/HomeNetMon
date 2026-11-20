@@ -379,7 +379,7 @@ class NetworkSecurityScanner:
                         # Close alerts for ports that are no longer open, but only after a scan that completed:
                         # a failed one's empty or partial list says nothing about which ports are closed
                         if outcome.get('failed'):
-                            logger.info(f"Kept the open-port alerts of {device.display_name}: its port scan failed")
+                            self._log_kept_port_alerts(device)
                         else:
                             self.resolve_closed_port_alerts(device, device_results)
 
@@ -715,20 +715,9 @@ class NetworkSecurityScanner:
         Returns the number resolved. Runs inside the caller's app context.
         """
         try:
-            from models import Alert
             open_ports = {r.port for r in scan_results if r.state == 'open'}
-            candidates = Alert.query.filter(
-                Alert.device_id == device.id,
-                Alert.alert_type.like('security_%'),
-                Alert.alert_subtype.like('port_%'),
-                Alert.resolved == False,  # SQLAlchemy expression
-            ).all()
             resolved = 0
-            for alert in candidates:
-                try:
-                    port = int(alert.alert_subtype.split('_', 1)[1])
-                except (ValueError, IndexError):
-                    continue
+            for alert, port in self._open_port_alerts(device):
                 if port not in open_ports:
                     alert.resolved = True
                     alert.resolved_at = datetime.utcnow()
@@ -741,6 +730,31 @@ class NetworkSecurityScanner:
             logger.error(f"Error resolving closed-port alerts for device {device.id}: {e}")
             db.session.rollback()
             return 0
+
+    def _open_port_alerts(self, device: Device) -> List[Tuple[Alert, int]]:
+        """This device's open port-keyed security alerts, each with its port: the ones resolve_closed_port_alerts
+        closes. Runs inside the caller's app context."""
+        keyed = []
+        for alert in Alert.query.filter(
+            Alert.device_id == device.id,
+            Alert.alert_type.like('security_%'),
+            Alert.alert_subtype.like('port_%'),
+            Alert.resolved == False,  # SQLAlchemy expression
+        ).all():
+            try:
+                keyed.append((alert, int(alert.alert_subtype.split('_', 1)[1])))
+            except (ValueError, IndexError):
+                continue
+        return keyed
+
+    def _log_kept_port_alerts(self, device: Device):
+        """After a port scan that did not complete: say that the device's open-port alerts stay open, if it has any."""
+        try:
+            if self._open_port_alerts(device):
+                logger.info(f"Kept the open-port alerts of {device.display_name}: its port scan failed")
+        except Exception as e:
+            logger.error(f"Error reading the open-port alerts of device {device.id}: {e}")
+            db.session.rollback()
 
     def get_previous_scan_results(self, device_id: int) -> List[Dict]:
         """Open services seen in the previous scan(s) of this device, for change detection."""
