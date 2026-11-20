@@ -359,7 +359,8 @@ class NetworkSecurityScanner:
                         # Update progress to show scanning started
                         self._update_scan_progress(current_device_progress=25)
 
-                        device_results = self.scan_device_ports(device)
+                        outcome = {}
+                        device_results = self.scan_device_ports(device, outcome)
                         if self._stop_event.is_set():
                             break        # its nmap may have been killed: no port list to close alerts with
                         scan_results.extend(device_results)
@@ -375,8 +376,12 @@ class NetworkSecurityScanner:
                         device_alerts = self.analyze_security_results(device, device_results)
                         security_alerts.extend(device_alerts)
 
-                        # Close alerts for ports that are no longer open
-                        self.resolve_closed_port_alerts(device, device_results)
+                        # Close alerts for ports that are no longer open, but only after a scan that completed:
+                        # a failed one's empty or partial list says nothing about which ports are closed
+                        if outcome.get('failed'):
+                            logger.info(f"Kept the open-port alerts of {device.display_name}: its port scan failed")
+                        else:
+                            self.resolve_closed_port_alerts(device, device_results)
 
                         # Mark device as completed
                         self._update_scan_progress(
@@ -449,8 +454,12 @@ class NetworkSecurityScanner:
             logger.error(f"Failed to start background scan: {e}")
             return {'success': False, 'error': str(e)}
 
-    def scan_device_ports(self, device: Device) -> List[PortScanResult]:
-        """Enhanced port scanning with comprehensive service detection"""
+    def scan_device_ports(self, device: Device, outcome=None) -> List[PortScanResult]:
+        """Enhanced port scanning with comprehensive service detection. When the scan does not complete (nmap fails,
+        or its output cannot be read), ``outcome``, a dict the caller passes, gets ``failed = True``: the list
+        returned is then empty or partial and says nothing about which ports are closed."""
+        if outcome is None:
+            outcome = {}
         results = []
 
         # Skip scanning printers entirely to prevent them from printing junk
@@ -520,6 +529,7 @@ class NetworkSecurityScanner:
 
             except Exception as e:
                 scan_duration = time.time() - scan_start_time
+                outcome['failed'] = True
                 if self._stop_event.wait(self.STOP_GRACE):
                     # SIGTERM killed nmap; python-nmap's message is the half-written XML
                     logger.info(f"Security scan of {device.display_name} cut short by a stop after {scan_duration:.1f}s")
@@ -582,6 +592,7 @@ class NetworkSecurityScanner:
                         results.append(result)
 
         except Exception as e:
+            outcome['failed'] = True
             logger.error(f"Error scanning {device.ip_address}: {e}")
 
         return results
