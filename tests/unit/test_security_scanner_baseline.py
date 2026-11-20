@@ -121,3 +121,24 @@ def test_a_skipped_device_records_nothing(scanner, device):
     _sweep(scanner, {80: 'http'})
     assert scanner.nm.scan.call_count == 0
     assert _completed_records(device) == 0
+
+
+def _messages(scanner, device, port, service, version):
+    result = ss.PortScanResult(device_id=device.id, ip_address=IP, port=port, state='open', service=service,
+                               version=version, product='', extra_info='', confidence=10,
+                               scanned_at=datetime.utcnow())
+    return sorted((a.alert_type, a.message) for a in scanner.analyze_security_results(device, [result], baseline=True))
+
+
+def test_risk_alerts_without_a_version_drop_the_v(scanner, device):
+    assert _messages(scanner, device, 23, 'telnet', '') == [
+        ('suspicious_port', 'Suspicious service detected: telnet on port 23'),
+        ('vulnerability', 'High-risk service: telnet on port 23')]
+    assert _messages(scanner, device, 23, 'telnet', '0.17')[1] == ('vulnerability', 'High-risk service: telnet v0.17 on port 23')
+
+
+def test_risk_alerts_without_a_service_name_say_so_plainly(scanner, device, monkeypatch):
+    monkeypatch.setitem(scanner.risk_weights, 'unknown', 7)     # so an unnamed suspicious port also reaches high risk
+    assert _messages(scanner, device, 3389, '', '') == [
+        ('suspicious_port', 'Suspicious service detected on port 3389'),
+        ('vulnerability', 'High-risk service on port 3389')]

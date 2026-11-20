@@ -668,7 +668,8 @@ class NetworkSecurityScanner:
                     device_name=device.display_name,
                     alert_type='suspicious_port',
                     severity='high',
-                    message=f"Suspicious service detected: {result.service} on port {result.port}",
+                    message=(f"Suspicious service detected: {result.service} on port {result.port}" if result.service
+                             else f"Suspicious service detected on port {result.port}"),
                     detected_at=datetime.utcnow(),
                     port=result.port,
                     service=result.service,
@@ -682,12 +683,15 @@ class NetworkSecurityScanner:
             if result.state == 'open':
                 risk_score = self.calculate_risk_score(result.port, result.service)
                 if risk_score >= 9:  # Much higher risk threshold to reduce false alarms
+                    # python-nmap gives an empty version (and name) when nmap could not detect it
+                    label = f"{result.service} v{result.version}" if result.version else result.service
                     alert = SecurityAlert(
                         device_id=device.id,
                         device_name=device.display_name,
                         alert_type='vulnerability',
                         severity='critical' if risk_score >= 8 else 'high',
-                        message=f"High-risk service: {result.service} v{result.version} on port {result.port}",
+                        message=(f"High-risk service: {label} on port {result.port}" if label
+                                 else f"High-risk service on port {result.port}"),
                         detected_at=datetime.utcnow(),
                         port=result.port,
                         service=result.service,
