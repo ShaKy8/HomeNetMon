@@ -94,6 +94,10 @@ class NetworkSecurityScanner:
             'top_ports': 1000,  # Scan top 1000 most common ports
             'service_detection': True,
             'version_detection': True,
+            # At nmap's default of 7, a port that accepts and then stays silent costs up to 156 s of probe waits, past
+            # host_timeout. At 0 nmap sends the NULL probe and the probes registered for that port number: silent
+            # copies of the Google speakers' ports took 46 s, where 1 and 2 (light mode) still hit 60 s.
+            'version_intensity': 0,
             'aggressive_timing': True,  # T4 timing
             'skip_host_discovery': True,  # Assume hosts are up
             'max_concurrent_scans': 5,
@@ -341,6 +345,7 @@ class NetworkSecurityScanner:
 
                 scan_results = []
                 security_alerts = []
+                completed_device_ids = []       # devices whose port scan completed, ports found or not
 
                 for i, device in enumerate(devices):
                     if self._stop_event.is_set():
@@ -372,8 +377,15 @@ class NetworkSecurityScanner:
                             open_ports_found=self.current_scan['open_ports_found'] + len([r for r in device_results if r.state == 'open'])
                         )
 
+                        # A completed scan with no completed scan before it in the comparison window is the
+                        # device's baseline: every open port would otherwise be a new service
+                        completed = not outcome.get('failed') and not outcome.get('skipped')
+                        baseline = completed and not self._completed_scan_since(device.id, self._comparison_cutoff())
+                        if completed:
+                            completed_device_ids.append(device.id)
+
                         # Analyze results for security issues
-                        device_alerts = self.analyze_security_results(device, device_results)
+                        device_alerts = self.analyze_security_results(device, device_results, baseline=baseline)
                         security_alerts.extend(device_alerts)
 
                         # Close alerts for ports that are no longer open, but only after a scan that completed:
@@ -402,9 +414,9 @@ class NetworkSecurityScanner:
                     return
 
                 # Store scan results
-                if scan_results:
+                if scan_results or completed_device_ids:
                     logger.info(f"Storing {len(scan_results)} scan results")
-                    self.store_scan_results(scan_results)
+                    self.store_scan_results(scan_results, completed_device_ids)
 
                 # Process security alerts
                 if security_alerts:
@@ -457,7 +469,8 @@ class NetworkSecurityScanner:
     def scan_device_ports(self, device: Device, outcome=None) -> List[PortScanResult]:
         """Enhanced port scanning with comprehensive service detection. When the scan does not complete (nmap fails,
         the host hits --host-timeout, or the output cannot be read), ``outcome``, a dict the caller passes, gets
-        ``failed = True``: the list returned is then empty or partial and says nothing about which ports are closed."""
+        ``failed = True``: the list returned is then empty or partial and says nothing about which ports are closed.
+        A device not scanned (a printer, this host) gets ``skipped = True``."""
         if outcome is None:
             outcome = {}
         results = []
@@ -465,6 +478,7 @@ class NetworkSecurityScanner:
         # Skip scanning printers entirely to prevent them from printing junk
         if device.device_type == 'printer':
             logger.info(f"Skipping security scan for printer: {device.display_name} ({device.ip_address})")
+            outcome['skipped'] = True
             return results
 
         # Double-check: Skip if hostname suggests it's a printer
@@ -478,11 +492,13 @@ class NetworkSecurityScanner:
                 device.device_type = 'printer'
                 db.session.commit()
                 logger.info(f"Auto-classified {device.display_name} as printer based on hostname")
+            outcome['skipped'] = True
             return results
 
         # Skip problematic devices that cause hangs
         if device.ip_address in self._own_addresses:
             logger.warning(f"Skipping security scan for problematic device: {device.display_name} ({device.ip_address}) - known to cause hangs")
+            outcome['skipped'] = True
             return results
 
         try:
@@ -502,10 +518,7 @@ class NetworkSecurityScanner:
                 logger.debug(f"Excluding printer ports from scan: {exclude_str}")
 
             if self.scan_config['service_detection']:
-                nmap_args += " -sV"
-
-            if self.scan_config['version_detection']:
-                nmap_args += " --version-intensity 7"
+                nmap_args += f" -sV --version-intensity {self.scan_config['version_intensity']}"
 
             if self.scan_config['skip_host_discovery']:
                 nmap_args += " -Pn"
@@ -563,6 +576,7 @@ class NetworkSecurityScanner:
                             device.device_type = 'printer'
                             db.session.commit()
                             # Stop scanning this device
+                            outcome['skipped'] = True
                             return results
 
                         result = PortScanResult(
@@ -613,17 +627,22 @@ class NetworkSecurityScanner:
             return b'timedout="true"' in output
         return isinstance(output, str) and 'timedout="true"' in output
 
-    def analyze_security_results(self, device: Device, scan_results: List[PortScanResult]) -> List[SecurityAlert]:
-        """Analyze scan results for security issues"""
+    def analyze_security_results(self, device: Device, scan_results: List[PortScanResult],
+                                 baseline: bool = False) -> List[SecurityAlert]:
+        """Analyze scan results for security issues. A ``baseline`` scan has nothing to compare with, so it raises
+        no new-service alerts; the suspicious-port and high-risk checks still apply."""
         alerts = []
-
-        # Get previous scan results for comparison
-        previous_results = self.get_previous_scan_results(device.id)
-        previous_services = {(r['port'], r['service']) for r in previous_results}
         current_services = {(r.port, r.service) for r in scan_results if r.state == 'open'}
 
         # Check for new services
-        new_services = current_services - previous_services
+        if baseline:
+            logger.info(f"First completed scan of {device.display_name}: {len(current_services)} open port(s) "
+                        f"recorded as its baseline, no new-service alerts")
+            new_services = set()
+        else:
+            previous_results = self.get_previous_scan_results(device.id)
+            previous_services = {(r['port'], r['service']) for r in previous_results}
+            new_services = current_services - previous_services
         for port, service in new_services:
             alert = SecurityAlert(
                 device_id=device.id,
@@ -756,16 +775,35 @@ class NetworkSecurityScanner:
             logger.error(f"Error reading the open-port alerts of device {device.id}: {e}")
             db.session.rollback()
 
+    def _comparison_cutoff(self) -> datetime:
+        """Start of the window a scan is compared with. It reaches back far enough to include the previous scan at
+        the configured cadence; the old fixed 24 h window was shorter than the daily interval, so every open port was
+        "new" on every scan."""
+        lookback_seconds = max(24 * 3600, 2 * int(self.scan_interval) + 3600)
+        return datetime.utcnow() - timedelta(seconds=lookback_seconds)
+
+    def _completed_scan_since(self, device_id: int, cutoff: datetime) -> bool:
+        """Whether a completed port scan of this device was recorded since ``cutoff`` (store_scan_results writes a
+        scan_completed event for each one, ports found or not). If the lookup fails, answer True: the scan is then
+        compared as before rather than taken as a baseline."""
+        try:
+            from models import SecurityEvent
+            return db.session.query(SecurityEvent.id).filter(
+                SecurityEvent.device_id == device_id,
+                SecurityEvent.event_type == 'scan_completed',
+                SecurityEvent.created_at >= cutoff,
+            ).first() is not None
+        except Exception as e:
+            logger.error(f"Error looking up the previous scans of device {device_id}: {e}")
+            db.session.rollback()
+            return True
+
     def get_previous_scan_results(self, device_id: int) -> List[Dict]:
         """Open services seen in the previous scan(s) of this device, for change detection."""
         try:
             from models import SecurityScan
 
-            # Look back far enough to include the previous scan at the configured
-            # cadence. The old fixed 24 h window was shorter than the daily interval,
-            # so every open port was "new" on every scan.
-            lookback_seconds = max(24 * 3600, 2 * int(self.scan_interval) + 3600)
-            cutoff_time = datetime.utcnow() - timedelta(seconds=lookback_seconds)
+            cutoff_time = self._comparison_cutoff()
 
             previous_scans = db.session.query(SecurityScan).filter(
                 and_(
@@ -789,8 +827,9 @@ class NetworkSecurityScanner:
             logger.error(f"Error getting previous scan results: {e}")
             return []
 
-    def store_scan_results(self, scan_results: List[PortScanResult]):
-        """Store scan results in database"""
+    def store_scan_results(self, scan_results: List[PortScanResult], completed_device_ids=()):
+        """Store scan results in database, and a scan_completed event for each device scanned: those with results
+        and ``completed_device_ids``, whose scan completed with or without ports."""
         try:
             from models import SecurityScan, SecurityEvent
 
@@ -818,7 +857,7 @@ class NetworkSecurityScanner:
                 db.session.add(security_scan)
 
             # Create a security event for the completed scan
-            device_ids = list(set(r.device_id for r in scan_results))
+            device_ids = list(set(r.device_id for r in scan_results) | set(completed_device_ids))
             for device_id in device_ids:
                 device_results = [r for r in scan_results if r.device_id == device_id]
                 open_ports = [r for r in device_results if r.state == 'open']
