@@ -48,7 +48,7 @@ Treat this checkout as a live system, not a sandbox.
 | `models.py` | Every SQLAlchemy model, `init_db()`, `_ensure_columns()`, `seed_default_configuration()`. |
 | `version.py` | Version and system information. The version shown in the UI comes from the latest git tag when git is available. |
 | `api/` | One blueprint per file (ten) plus `rate_limited_endpoints.py`. |
-| `core/` | Cross-cutting infrastructure: `security_middleware.py` (Host check, CSRF, headers), `host_policy.py`, `error_handler.py`, `validators.py`, `health.py` (thread heartbeats), `watchdog_status.py`, `websocket_memory_manager.py`, `shutdown.py` (on a gunicorn stop, closes the Socket.IO clients and idle connections so it ends in seconds), `gunicorn_compat.py` (gunicorn counted each closed WebSocket connection off twice). |
+| `core/` | Cross-cutting infrastructure: `security_middleware.py` (Host check, CSRF, headers), `host_policy.py`, `error_handler.py`, `validators.py`, `health.py` (thread heartbeats), `watchdog_status.py`, `websocket_memory_manager.py`, `shutdown.py` (on a gunicorn stop, closes the Socket.IO clients and idle connections, and ends the wait for a new connection's first data, so it ends in seconds), `gunicorn_compat.py` (gunicorn counted each closed WebSocket connection off twice). |
 | `monitoring/` | `scanner.py`, `monitor.py`, `alerts.py`, `wan_monitor.py`, `bandwidth_monitor.py`, and the helpers `ping.py`, `neighbors.py`, `mdns.py`, `device_classifier.py`, `notification_policy.py`, `iot_device_optimizer.py`. |
 | `services/` | Thread owners `security_scanner.py`, `performance_monitor.py`, `resource_monitor.py`; shared logic `retention.py`, `device_counts.py`, `configuration_service.py`, `push_notifications.py`, `alert_correlation.py`, `alert_priority.py`, `query_cache.py`, `performance_cache.py`, `rate_limiter.py`, `pagination.py`, `tailscale.py`, `websocket_throttle.py`, `device_control.py`, `health_score.py`, `network_topology.py`. |
 | `performance_middleware.py`, `api_documentation.py` | Response timing and cache headers; OpenAPI, `/api/docs`, `/api/redoc`. |
@@ -124,7 +124,7 @@ PY
 ### Test and lint
 
 ```bash
-pytest tests/unit tests/integration -q                 # the CI suite: 850 passed, 0 skipped, about 25 s (2026-11-19)
+pytest tests/unit tests/integration -q                 # the CI suite: 856 passed, 0 skipped, about 25 s (2026-11-19)
 pytest tests/unit tests/integration --cov=. --cov-fail-under=47   # with the coverage floor CI enforces
 pytest tests/unit/test_alerts_api.py -q                # one file
 pytest tests/unit/test_route_inventory.py::test_api_surface_is_exactly_the_allowlist   # one test; or -k <substring>

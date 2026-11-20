@@ -3,11 +3,18 @@ dashboard open, the worker sat out the whole 30 s --graceful-timeout on every re
 the SIGTERM handler gunicorn's worker installed and closes the Socket.IO clients. The real signal module is never
 touched here: the tests hand core.shutdown a fake one."""
 
+import os
 import signal
+import socket
 import threading
 import time
 import types
 from pathlib import Path
+
+import pytest
+from gunicorn import util as gunicorn_util
+from gunicorn.config import Config
+from gunicorn.workers import gthread
 
 import core.shutdown as shutdown
 
@@ -149,6 +156,115 @@ def test_stop_now_runs_in_the_handler_after_gunicorns_on_every_signal(monkeypatc
     assert calls == ['gunicorn', 'monitor', 'gunicorn', 'monitor']
 
 
+# A new connection that has not sent its first data yet: gunicorn waits for that data in a pool thread, on a
+# selector of its own, for up to 5 s, and the stop waited with it (7 s for a client that does not close). These use
+# real gunicorn connections on a TCP loopback pair; TConn.wait_for_data is patched only under monkeypatch.
+
+class _Worker(gthread.ThreadWorker):
+    def __init__(self):                      # only what the SIGTERM chain touches
+        self.alive = True
+        self.keepalived_conns = []
+        self.pending_conns = []
+
+    def handle_exit(self, signum, frame):
+        self.alive = False
+
+
+@pytest.fixture
+def first_data(monkeypatch):
+    """Restore TConn.wait_for_data and the wake pipe after the test; yield a maker of (TConn, client socket)."""
+    monkeypatch.setattr(gthread.TConn, 'wait_for_data', gthread.TConn.wait_for_data)
+    monkeypatch.setattr(shutdown, '_wake_fds', None, raising=False)
+    listener = socket.create_server(('127.0.0.1', 0))
+    opened = []
+
+    def connect():
+        client = socket.create_connection(listener.getsockname())
+        server_side, addr = listener.accept()
+        opened.extend((client, server_side))
+        return gthread.TConn(Config(), server_side, addr, listener.getsockname()), client
+    yield connect
+    for sock in opened:
+        sock.close()
+    listener.close()
+    for fd in getattr(shutdown, '_wake_fds', None) or ():
+        os.close(fd)
+
+
+def _install_on_gthread_worker(monkeypatch):
+    worker = _Worker()
+    installed = _fake_signal(monkeypatch, worker.handle_exit)
+    assert shutdown.close_live_clients_on_sigterm(_socketio(FakeEio([]))) is True
+    return worker, installed[signal.SIGTERM]
+
+
+def _wait_in_thread(conn, timeout=5.0):
+    result = {}
+    thread = threading.Thread(target=lambda: result.setdefault('ready', conn.wait_for_data(timeout)), daemon=True)
+    thread.start()
+    return thread, result
+
+
+def test_sigterm_ends_a_wait_for_first_data(monkeypatch, first_data):
+    worker, handler = _install_on_gthread_worker(monkeypatch)
+    conn, _client = first_data()             # the client stays open and sends nothing, and never closes
+    thread, result = _wait_in_thread(conn)
+    time.sleep(0.2)
+    assert thread.is_alive()                 # really waiting for first data
+    handler(signal.SIGTERM, None)
+    thread.join(1.0)
+    assert not thread.is_alive() and result == {'ready': False}
+    assert worker.alive is False
+    # gunicorn now closes it gracefully (finish_request): the read side is already ended, so no 2 s linger
+    started = time.monotonic()
+    gunicorn_util.close_graceful(conn.sock)
+    assert time.monotonic() - started < 0.5
+
+
+def test_after_sigterm_a_new_wait_returns_at_once(monkeypatch, first_data):
+    _worker, handler = _install_on_gthread_worker(monkeypatch)
+    handler(signal.SIGTERM, None)
+    handler(signal.SIGTERM, None)            # systemd and the master both signal the worker
+    conn, _client = first_data()
+    started = time.monotonic()
+    assert conn.wait_for_data(5.0) is False
+    assert time.monotonic() - started < 0.5
+
+
+def test_data_that_is_there_is_still_served_after_sigterm(monkeypatch, first_data):
+    _worker, handler = _install_on_gthread_worker(monkeypatch)
+    conn, client = first_data()
+    client.sendall(b'GET / HTTP/1.1\r\n')
+    time.sleep(0.05)
+    handler(signal.SIGTERM, None)
+    assert conn.wait_for_data(5.0) is True and conn.data_ready is True
+
+
+def test_without_a_stop_the_wait_is_unchanged(monkeypatch, first_data):
+    _install_on_gthread_worker(monkeypatch)
+    conn, client = first_data()
+    # data arriving during the wait is served
+    thread, result = _wait_in_thread(conn)
+    time.sleep(0.1)
+    client.sendall(b'GET')
+    thread.join(1.0)
+    assert result == {'ready': True}
+    # a plain timeout returns False and leaves the socket alone: the slow client goes on to pending_conns
+    other, other_client = first_data()
+    assert other.wait_for_data(0.2) is False
+    other_client.sendall(b'late')
+    other.sock.setblocking(True)
+    other.sock.settimeout(1)
+    assert other.sock.recv(10) == b'late'
+
+
+def test_the_wait_is_patched_only_in_a_gthread_worker(monkeypatch, first_data):
+    original = gthread.TConn.wait_for_data
+    _fake_signal(monkeypatch, lambda signum, frame: None)
+    shutdown.close_live_clients_on_sigterm(_socketio(FakeEio([])))
+    assert gthread.TConn.wait_for_data is original and getattr(shutdown, '_wake_fds', None) is None
+
+
 def test_wsgi_installs_it():
     source = (ROOT / 'wsgi.py').read_text()
     assert 'close_live_clients_on_sigterm(socketio, stop_now=[app._monitor.request_stop])' in source
@@ -182,3 +298,18 @@ def test_engineio_server_can_list_and_close_its_clients(app):
     eio = app.socketio.server.eio
     assert isinstance(eio.sockets, dict)
     assert callable(eio.disconnect)
+
+
+def test_gunicorn_waits_for_first_data_in_the_pool_thread():
+    """_waking_wait_for_data copies TConn.wait_for_data and relies on handle() deferring and finish_request()
+    closing a deferred connection once the worker is stopping."""
+    import inspect
+    wait = inspect.getsource(gthread.TConn.wait_for_data)
+    for line in ('if self.data_ready:', 'sel = selectors.DefaultSelector()',
+                 'sel.register(self.sock, selectors.EVENT_READ)', 'events = sel.select(timeout=timeout)',
+                 'self.data_ready = True', 'except (OSError, ValueError):', 'sel.close()'):
+        assert line in wait, line
+    handle = inspect.getsource(gthread.ThreadWorker.handle)
+    assert 'if not conn.wait_for_data(DEFAULT_WORKER_DATA_TIMEOUT):' in handle and 'return _DEFER' in handle
+    finish = inspect.getsource(gthread.ThreadWorker.finish_request)
+    assert 'if result is _DEFER and self.alive:' in finish and 'conn.close(graceful=True)' in finish
