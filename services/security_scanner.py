@@ -650,7 +650,9 @@ class NetworkSecurityScanner:
                 device_name=device.display_name,
                 alert_type='new_service',
                 severity=self.calculate_service_severity(port, service),
-                message=f"New service detected: {service} on port {port}",
+                # python-nmap gives an empty name when nmap could not name the port
+                message=(f"New service detected: {service} on port {port}" if service
+                         else f"New service detected on port {port}"),
                 detected_at=datetime.utcnow(),
                 port=port,
                 service=service,

@@ -80,6 +80,16 @@ def test_a_port_that_opens_beside_a_renamed_one_still_alerts(scanner, device):
     assert _sweep(scanner, {1443: 'ies-lm', 8080: 'http-proxy'}) == [('new_service', 8080)]
 
 
+def test_a_new_port_without_a_service_name_says_so_plainly(scanner, device):
+    _sweep(scanner, {80: 'http'})
+    scanner.nm.scan.side_effect = lambda ip, arguments: {'scan': {ip: {'tcp': {
+        p: {'state': 'open', 'name': n} for p, n in {80: 'http', 8080: 'http-proxy', 40030: ''}.items()}}}}
+    with patch.object(scanner, 'process_security_alerts') as process:
+        scanner.run_security_scan()
+    messages = sorted(a.message for call in process.call_args_list for a in call.args[0])
+    assert messages == ['New service detected on port 40030', 'New service detected: http-proxy on port 8080']
+
+
 def test_a_timed_out_scan_records_nothing_so_the_next_completed_one_is_the_baseline(scanner, device):
     assert _sweep(scanner, timed_out=True) == []
     assert _completed_records(device) == 0
