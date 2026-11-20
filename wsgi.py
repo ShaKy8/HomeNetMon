@@ -19,4 +19,5 @@ app, socketio = create_app()
 install_closed_socket_guard()
 # A stop otherwise waits out --graceful-timeout for open Socket.IO pages and idle connections (core/shutdown.py),
 # and 5 to 7 s for ping retries and presence checks after SIGTERM kills the running pings (monitoring/monitor.py).
-close_live_clients_on_sigterm(socketio, stop_now=[app._monitor.request_stop])
+# The scanner learns why its nmap sweep died (monitoring/scanner.py).
+close_live_clients_on_sigterm(socketio, stop_now=[app._monitor.request_stop, app._scanner.request_stop])

@@ -15,6 +15,10 @@ from monitoring.notification_policy import NotificationPolicy
 logger = logging.getLogger(__name__)
 
 class NetworkScanner:
+    # After nmap fails, how long to wait for a stop before calling it an error: systemd's SIGTERM kills nmap and
+    # reaches the worker's handler (request_stop) at the same moment, and this thread can see nmap die first.
+    STOP_GRACE = 1.0
+
     def __init__(self, app=None):
         self.nm = nmap.PortScanner()
         self.mac_parser = manuf.MacParser()
@@ -364,6 +368,10 @@ class NetworkScanner:
                     devices.append(device_info)
 
         except Exception as e:
+            if self._stop_event.wait(self.STOP_GRACE):
+                # SIGTERM killed nmap; python-nmap's message is the half-written XML
+                logger.info("nmap scan cut short by a stop")
+                return []
             logger.error(f"Error during nmap scan: {e}")
 
         return devices
@@ -558,6 +566,10 @@ class NetworkScanner:
                     # Merge with nmap scan results
                     self._emit_scan_progress(30, 'Running network discovery (nmap)...', len(arp_devices), 0)
                     nmap_devices = self.nmap_scan(network_range)
+                    if self._stop_event.is_set():
+                        # request_stop: the sweep was cut short, so record and announce nothing
+                        logger.info("Network scan interrupted by a stop: nothing recorded")
+                        return
                     logger.info(f"Found {len(nmap_devices)} devices with nmap scan")
                     self._emit_scan_progress(60, 'Merging scan results...', len(nmap_devices), 0)
 
@@ -945,3 +957,9 @@ class NetworkScanner:
         logger.info("Stopping network scanner")
         self._stop_event.set()
         self.is_running = False
+
+    def request_stop(self):
+        """Begin a stop from a SIGTERM handler (core/shutdown.py): only sets the event, with no logging and no lock
+        of its own. systemd's SIGTERM also kills a running nmap sweep; nmap_scan then knows why it failed, and
+        scan_network records nothing of the cut-short scan."""
+        self._stop_event.set()

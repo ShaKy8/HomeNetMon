@@ -267,7 +267,7 @@ def test_the_wait_is_patched_only_in_a_gthread_worker(monkeypatch, first_data):
 
 def test_wsgi_installs_it():
     source = (ROOT / 'wsgi.py').read_text()
-    assert 'close_live_clients_on_sigterm(socketio, stop_now=[app._monitor.request_stop])' in source
+    assert 'close_live_clients_on_sigterm(socketio, stop_now=[app._monitor.request_stop, app._scanner.request_stop])' in source
 
 
 # The fix leans on the installed gunicorn and Engine.IO. A version bump that renames these would quietly bring the
