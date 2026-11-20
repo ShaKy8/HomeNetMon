@@ -61,6 +61,10 @@ class PortScanResult:
 class NetworkSecurityScanner:
     """Enhanced enterprise-grade network security scanner for HomeNetMon with comprehensive vulnerability assessment"""
 
+    # After nmap fails, how long to wait for a stop before calling it an error: systemd's SIGTERM kills nmap and
+    # reaches the worker's handler (request_stop) at the same moment, and this thread can see nmap die first.
+    STOP_GRACE = 1.0
+
     def __init__(self, app=None):
         self.app = app
         self.running = False
@@ -202,6 +206,13 @@ class NetworkSecurityScanner:
         self.running = False
         logger.info("Security scanner stopped")
 
+    def request_stop(self):
+        """Begin a stop from a SIGTERM handler (core/shutdown.py): only sets the event, with no logging and no lock
+        of its own. systemd's SIGTERM also kills a running port scan; scan_device_ports then knows why it failed,
+        and run_security_scan scans no further device and records nothing, so no alert is closed on the strength
+        of a scan that was cut short."""
+        self._stop_event.set()
+
     def get_scan_progress(self):
         """Get current scan progress"""
         return dict(self.current_scan)
@@ -332,6 +343,8 @@ class NetworkSecurityScanner:
                 security_alerts = []
 
                 for i, device in enumerate(devices):
+                    if self._stop_event.is_set():
+                        break
 
                     record_heartbeat('SecurityScanner')
                     try:
@@ -347,6 +360,8 @@ class NetworkSecurityScanner:
                         self._update_scan_progress(current_device_progress=25)
 
                         device_results = self.scan_device_ports(device)
+                        if self._stop_event.is_set():
+                            break        # its nmap may have been killed: no port list to close alerts with
                         scan_results.extend(device_results)
 
                         # Update progress after port scan
@@ -374,6 +389,12 @@ class NetworkSecurityScanner:
                         logger.error(f"Error scanning device {device.id}: {e}")
                         # Still mark as completed to continue with other devices
                         self._update_scan_progress(devices_completed=i + 1)
+
+                if self._stop_event.is_set():
+                    # request_stop: the scan was cut short, so record nothing and close no alerts
+                    logger.info("Security scan interrupted by a stop: nothing recorded")
+                    self._update_scan_progress(active=False, status='stopped', end_time=datetime.utcnow())
+                    return
 
                 # Store scan results
                 if scan_results:
@@ -499,6 +520,10 @@ class NetworkSecurityScanner:
 
             except Exception as e:
                 scan_duration = time.time() - scan_start_time
+                if self._stop_event.wait(self.STOP_GRACE):
+                    # SIGTERM killed nmap; python-nmap's message is the half-written XML
+                    logger.info(f"Security scan of {device.display_name} cut short by a stop after {scan_duration:.1f}s")
+                    return results
                 logger.error(f"Security scan failed for {device.display_name} after {scan_duration:.1f}s: {e}")
                 # results is the (empty) port list: continue with the other devices
                 return results
