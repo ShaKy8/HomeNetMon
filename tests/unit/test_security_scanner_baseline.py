@@ -3,7 +3,8 @@ ports of the scans in the window before it; a device that had no completed scan 
 --host-timeout, a device last scanned weeks ago) got a pushed new-service alert for every open port. Such a scan is
 now stored and raises no new-service alert; suspicious-port and high-risk alerts still apply. Every completed scan
 leaves a scan_completed record, even with no ports, so a quiet device that opens a port still alerts. A scan that
-failed, timed out or was skipped records nothing."""
+failed, timed out or was skipped records nothing. The comparison is by port: nmap naming an open port differently
+(Sonos 1443 upnp, then ies-lm) is not a new service."""
 
 import logging
 from datetime import datetime, timedelta
@@ -67,6 +68,16 @@ def test_a_first_completed_scan_is_the_baseline(scanner, device, caplog):
 def test_a_port_that_opens_after_the_baseline_alerts(scanner, device):
     assert _sweep(scanner, {80: 'http'}) == []
     assert _sweep(scanner, {80: 'http', 8080: 'http-proxy'}) == [('new_service', 8080)]
+
+
+def test_a_new_name_on_a_port_that_was_open_is_not_a_new_service(scanner, device):
+    assert _sweep(scanner, {1443: 'upnp', 7000: 'rtsp'}) == []
+    assert _sweep(scanner, {1443: 'ies-lm', 7000: 'rtsp'}) == []
+
+
+def test_a_port_that_opens_beside_a_renamed_one_still_alerts(scanner, device):
+    assert _sweep(scanner, {1443: 'upnp'}) == []
+    assert _sweep(scanner, {1443: 'ies-lm', 8080: 'http-proxy'}) == [('new_service', 8080)]
 
 
 def test_a_timed_out_scan_records_nothing_so_the_next_completed_one_is_the_baseline(scanner, device):

@@ -640,9 +640,10 @@ class NetworkSecurityScanner:
                         f"recorded as its baseline, no new-service alerts")
             new_services = set()
         else:
-            previous_results = self.get_previous_scan_results(device.id)
-            previous_services = {(r['port'], r['service']) for r in previous_results}
-            new_services = current_services - previous_services
+            # Compared by port, as the alert is keyed: nmap can name an open port differently from one scan to the
+            # next (Sonos 1443 was upnp, then ies-lm at --version-intensity 0), and that is not a new service.
+            previous_ports = {r['port'] for r in self.get_previous_scan_results(device.id)}
+            new_services = {(port, service) for port, service in current_services if port not in previous_ports}
         for port, service in new_services:
             alert = SecurityAlert(
                 device_id=device.id,
