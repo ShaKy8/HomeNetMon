@@ -456,8 +456,8 @@ class NetworkSecurityScanner:
 
     def scan_device_ports(self, device: Device, outcome=None) -> List[PortScanResult]:
         """Enhanced port scanning with comprehensive service detection. When the scan does not complete (nmap fails,
-        or its output cannot be read), ``outcome``, a dict the caller passes, gets ``failed = True``: the list
-        returned is then empty or partial and says nothing about which ports are closed."""
+        the host hits --host-timeout, or the output cannot be read), ``outcome``, a dict the caller passes, gets
+        ``failed = True``: the list returned is then empty or partial and says nothing about which ports are closed."""
         if outcome is None:
             outcome = {}
         results = []
@@ -538,6 +538,13 @@ class NetworkSecurityScanner:
                 # results is the (empty) port list: continue with the other devices
                 return results
 
+            if self._host_timed_out():
+                # nmap gave up on the host and reports it "up" with no ports, which reads as every port closed
+                outcome['failed'] = True
+                logger.info(f"Security scan of {device.display_name} hit its {self.scan_config['host_timeout']} "
+                            f"host timeout after {scan_duration:.1f}s: its open ports are unknown")
+                return results
+
             # Parse results
             if device.ip_address in scan_result['scan']:
                 host_info = scan_result['scan'][device.ip_address]
@@ -596,6 +603,15 @@ class NetworkSecurityScanner:
             logger.error(f"Error scanning {device.ip_address}: {e}")
 
         return results
+
+    def _host_timed_out(self) -> bool:
+        """Whether nmap's --host-timeout ended the last scan (one host per scan). python-nmap drops the host's
+        timedout="true", so look in nmap's raw XML: bytes after a scan, str after analyse_nmap_xml_scan(). Quotes
+        inside attribute values are escaped, so only nmap's own markup can match."""
+        output = self.nm.get_nmap_last_output()
+        if isinstance(output, bytes):
+            return b'timedout="true"' in output
+        return isinstance(output, str) and 'timedout="true"' in output
 
     def analyze_security_results(self, device: Device, scan_results: List[PortScanResult]) -> List[SecurityAlert]:
         """Analyze scan results for security issues"""
