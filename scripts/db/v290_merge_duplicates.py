@@ -97,10 +97,14 @@ def presence_buckets(cur, device_id):
 COEXIST_MIN_BUCKETS = 3
 
 
-def coexistence_edges(cur, rows):
+def coexistence_edges(cur, rows, absorbed=None):
     """{(id_a, id_b): shared windows} for pairs that answered pings in >= 3 of the same
-    30-minute windows: two devices, not one device with a rotated MAC."""
-    buckets = {r['id']: presence_buckets(cur, r['id']) for r in rows}
+    30-minute windows: two devices, not one device with a rotated MAC. ``absorbed`` maps a
+    row to the rows --force-pair folds into it, whose pings count as its own: a dry run has
+    not moved them yet (once executed they are already there)."""
+    absorbed = absorbed or {}
+    buckets = {r['id']: presence_buckets(cur, r['id']).union(*(presence_buckets(cur, d) for d in absorbed.get(r['id'], ())))
+               for r in rows}
     edges = {}
     for i, a in enumerate(rows):
         for b in rows[i + 1:]:
@@ -174,6 +178,9 @@ def run(db_path, execute, only=None, skip=(), force_pairs=(), delete_orphans=Fal
         summary['dropped_rows'] += 1
 
     forced_ids = {drop for _, drop in force_pairs}      # a kept row may still anchor its name group
+    absorbed = {}
+    for keep_id, drop_id in force_pairs:
+        absorbed.setdefault(keep_id, set()).update({drop_id} | absorbed.pop(drop_id, set()))
     groups = {}
     for row in cur.execute('SELECT * FROM devices WHERE hostname IS NOT NULL ORDER BY id'):
         if row['id'] in forced_ids:
@@ -195,7 +202,7 @@ def run(db_path, execute, only=None, skip=(), force_pairs=(), delete_orphans=Fal
             print(f'  skip  {key}: {len(real)} rows have real MACs ({len(rows)} rows) - several units share the name')
             summary['skipped'] += 1
             continue
-        edges = coexistence_edges(cur, rows)
+        edges = coexistence_edges(cur, rows, absorbed)
         linked = {i for pair in edges for i in pair}
         for (a, b), shared in sorted(edges.items()):
             print(f'  apart {key}: rows {a} and {b} answered pings in {shared} of the same 30-minute windows')

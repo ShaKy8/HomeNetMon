@@ -146,3 +146,24 @@ class TestMerge:
         assert [r[0] for r in con.execute('SELECT id FROM devices')] == [b]
         assert a not in {r[0] for r in con.execute('SELECT id FROM devices')}
         con.close()
+
+    def test_dry_run_counts_the_pings_a_forced_pair_moves(self, db_file):
+        # The omarchy.lan merge of 2026-11-20: forcing 193 into 222 moved 193's pings, so 178 (which coexisted with
+        # 193) coexisted with 222 once executed and stayed apart, while the dry run had planned to fold it.
+        con = sqlite3.connect(db_file)
+        cur = con.cursor()
+        keep = _device(cur, 'laptop.lan', RAND_1, '192.168.1.90', NOW)
+        forced = _device(cur, 'laptop.lan', RAND_2, None, NOW - timedelta(days=10))
+        other = _device(cur, 'laptop.lan', RAND_3, None, NOW - timedelta(days=10))
+        _pings(cur, keep, NOW - timedelta(hours=1), 6)
+        _pings(cur, forced, NOW - timedelta(days=10, hours=5), 30)     # five hours side by side with ``other``
+        _pings(cur, other, NOW - timedelta(days=10, hours=5), 30)
+        con.commit()
+        con.close()
+        planned = merge.run(db_file, execute=False, force_pairs=[(keep, forced)])
+        done = merge.run(db_file, execute=True, force_pairs=[(keep, forced)])
+        assert done == {'merged': 1, 'dropped_rows': 1, 'skipped': 1}      # the forced pair; ``other`` stays apart
+        assert planned == done
+        con = sqlite3.connect(db_file)
+        assert {r[0] for r in con.execute('SELECT id FROM devices')} == {keep, other}
+        con.close()
